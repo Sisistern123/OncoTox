@@ -1,6 +1,95 @@
 
 # OncoTox Project Notes
 
+## 03.04.2026
+### Advisor updates and alignment
+- Clarification from Artem:
+  - toxicity/response definition should be driven by available labels in selected datasets
+  - if possible, include multiple response types instead of a single endpoint
+  - prefer continuous outputs (IC50/viability-like) and binarize only for specific evaluations
+  - prepare overlap and applicable sample counts to judge feasibility before modeling
+- Methodology guidance:
+  - DrugBank can be used for FDA/drug annotation support: https://go.drugbank.com/
+  - multi-task setup can handle missing labels via masked losses (no need to force full intersection)
+  - output/task weighting may be needed during training
+
+### Notebook work completed (`notebooks/compare_GDSC_CTRP.ipynb`)
+#### 1) Cell-line overlap with SCP542 (case-insensitive, unique names)
+- SCP542 unique cell lines: `198`
+- GDSC unique cell lines: `967`; overlap with SCP542: `133`; missing from GDSC: `65`
+- CTRPv2 unique cell lines: `1107`; overlap with SCP542: `190`; missing from CTRPv2: `8`
+- PRISM unique cell lines: `915`; overlap with SCP542: `182`; missing from PRISM: `16`
+- Matching used normalized names (trim + lowercase; SCP542/PRISM names split on `_` where applicable).
+
+#### 2) Drug/compound harmonization and cross-dataset overlap
+- Built unified catalog: `data/drug/all_sources_drug_catalog.csv`
+  - source rows: GDSC `295`, CTRPv2 `545`, PRISM `6575`
+  - total rows: `7415`
+- Name-based unique compounds:
+  - GDSC `286`, CTRPv2 `545`, PRISM `6575`
+  - overall union: `7040`
+- Pairwise name overlap (normalized name):
+  - CTRPv2 vs GDSC: `66`
+  - CTRPv2 vs PRISM: `218`
+  - GDSC vs PRISM: `144`
+- Added CTRPv2<->PRISM BRD-based matching (from canonical `BRD-*` IDs):
+  - BRD overlap: `243` (higher-confidence link)
+- Exported overlap candidates:
+  - `data/drug/drug_overlap_candidates.csv`
+
+#### 3) DrugBank overlap
+- Loaded DrugBank XML (`/Users/selin/Desktop/OncoTox/full database.xml`) and matched to catalog via normalized names (+ synonym expansion where available).
+- Dataset-level matches to DrugBank:
+  - GDSC: `118 / 295` (`40.00%`)
+  - CTRPv2: `173 / 545` (`31.74%`)
+  - PRISM: `3483 / 6575` (`52.97%`)
+  - overall: `3774 / 7415` (`50.9%`)
+- Exported review files:
+  - `data/drug/drugbank_overlap_matches.csv`
+  - `data/drug/drugbank_overlap_unmatched.csv`
+
+#### 4) Applicable sample numbers (non-null response values)
+- Computed for SCP542-overlapping cell lines vs each dataset's own full response space:
+  - GDSC (`LN_IC50`): `8,007 / 242,036` (`3.31%`)
+  - CTRPv2 (`cpd_avg_pv` viability): `1,521,028 / 7,227,951` (`21.04%`)
+  - PRISM (Extended Primary matrix values): `1,210,432 / 4,213,048` (`28.73%`)
+- Added second completeness metric in notebook:
+  - `pct_non_null_within_overlap_subset` = non-null overlap rows / total overlap rows
+  - Current values: GDSC `100%`, CTRPv2 `100%`, PRISM `97.95%`
+
+### Interpretation notes
+- "Applicable sample numbers" are comparable as response coverage indicators, but raw units differ:
+  - GDSC/CTRPv2: long-table response rows
+  - PRISM: matrix entries (compound x cell line)
+- Therefore percentages are best interpreted as coverage estimates, not strict one-to-one sample equivalence.
+
+### Cleanup/refactor performed
+- Refactored repetitive SCP542 comparison code into reusable notebook helpers.
+- Removed trailing empty notebook cells and tiny redundant summary CSV files.
+
+### Pending decisions / next actions
+- Decide primary training endpoint strategy:
+  - option A: single dataset first (higher consistency)
+  - option B: multi-task with masked missing labels (higher coverage)
+- Decide whether to harmonize drug identity using:
+  - conservative set (name + BRD agreement), or
+  - broader set (name/synonym candidates for manual curation).
+- Prepare a compact slide/table for in-person discussion with Artem next week:
+  - cell-line overlap, response coverage, and recommended modeling path.
+
+## 31.03.2026
+### Advisor response to project-definition questions
+- Project framing:
+  - define toxicity according to available experimental labels in selected datasets
+  - if multiple toxicity/response types exist and effort is reasonable, try to model all
+- Target label format:
+  - prefer continuous outputs (e.g., IC50/viability-like values) when available
+  - convert model outputs to binary labels only when needed for downstream comparison
+- Data source guidance:
+  - Sanger site was temporarily unavailable at the time
+  - scDrugAtlas can be used if all data are obtained successfully; note Harmony processing and avoid direct cross-dataset merging
+  - can follow up in person at the lab
+
 ## 30.03.2026
 - downloaded raw scRNA-seq cell line data from the PERCEPTION paper
   - original publication: https://doi.org/10.1038/s41588-020-00726-6
@@ -60,5 +149,3 @@ Sent message to Artem to align on project direction before processing data. Wait
     - hard to identify which cell line is which
     - consolidated file format / variable definitions unclear
   - Status: waiting for response
-
--
