@@ -11,6 +11,7 @@ dependencies = [
     "pandas>=3.0.1",
     "pytdc>=0.3.6",
     "scanpy>=1.12",
+    "torch>=2.11.0",
 ]
 
 [dependency-groups]
