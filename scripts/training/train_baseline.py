@@ -70,4 +70,4 @@ for epoch in range(EPOCHS):
     if (epoch + 1) % 5 == 0 or epoch == 0:
         print(f"Epoch [{epoch+1:02d}/{EPOCHS}] | Train MSE: {avg_train_loss:.4f} | Val MSE: {avg_val_loss:.4f}")
 
-print("scGPT Training complete!")
+print("Baseline Training complete!")

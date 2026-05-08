@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from model.dataset import ScGPTDrugDataset
-from model.OncoMLP import OncoMLP
+from scripts.model.dataset import ScGPTDrugDataset
+from scripts.model.OncoMLP import OncoMLP
 
 # --- 1. Configuration ---
 FILE_PATH = "/Users/selin/Desktop/OncoTox/data/scRNAseq_SCP542/metadata/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad"

@@ -16,14 +16,22 @@ class ScGPTDrugDataset(Dataset):
         if split_col not in adata.obs.columns:
             raise ValueError(f"Split column '{split_col}' not found! Run the split generation script first.")
 
-        valid_adata = adata[adata.obs[split_col] == split].copy()
+        # Get the names of the cells that belong to this split to avoid index misalignment
+        split_indices = adata.obs[adata.obs[split_col] == split].index
+
+
+        if len(split_indices) == 0:
+            raise ValueError(f"No cells found for split '{split}' in {h5ad_path}")
+
+        # Slice using the index names instead of a boolean mask
+        valid_adata = adata[split_indices].copy()
         print(f"Loaded {valid_adata.n_obs} cells for the '{split}' set.")
 
         # 2. Extract Features (X)
         if use_rep in valid_adata.obsm.keys():
             self.X = torch.tensor(valid_adata.obsm[use_rep], dtype=torch.float32)
         else:
-            raise ValueError(f"Representation '{use_rep}' not found in adata.obsm!")
+            raise ValueError(f"Representation '{use_rep}' not found in adata.obsm! Please verify your embeddings.")
 
         # 3. Extract Targets (y)
         target_col = f'viability_{target_drug}'
