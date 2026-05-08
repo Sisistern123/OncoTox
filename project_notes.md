@@ -1,6 +1,66 @@
 
 # OncoTox Project Notes
 
+## 21.04.2026 - 08.05.2026
+
+
+
+
+### Preprocessing Timeline
+scp542_conversion.py: massive, raw CPM_data.txt and Metadata.txt files and compiled them into foundational SCP542_CCLE.h5ad object.
+
+scGPT Execution (The Embedding Phase): The scGPT foundation model was run using that raw .h5ad file to generate the continuous biological prior, outputting SCP542_CCLE_scGPT_human_embeddings.h5ad.
+
+ctrp_to_h5ad.py (The Target Mapping): loaded those embeddings, parsed the CTRPv2 databases, merged the metadata, and cleanly mapped the paclitaxel viability scores to specific cell lines. This generated the final, all-in-one file: SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad.
+
+The UMAP Script (Latent Space Validation): loaded that final file into memory, calculated the standard PCA baselines, ran the UMAPs, and generated the comparative visual proof
+
+## 20.04.2026
+### thoughts about available scores
+#### GDSC2 (Genomics of Drug Sensitivity in Cancer)
+Focus: Continuous dose-response profiling across a wide concentration range.
+- LN_IC50 (Natural Log of Half-Maximal Inhibitory Concentration): The concentration required to kill 50% of the cells. Lower values mean higher toxicity to the cancer cell line.
+- AUC (Area Under the Curve): The integrated area under the dose-response curve. It captures both the potency (how much drug is needed) and efficacy (the maximum kill rate). Lower values indicate strong sensitivity.
+Best Pick for Multi-task: AUC is generally preferred over IC50 for machine learning because it captures the entire behavior of the curve, whereas IC50 can be noisy if the drug never actually reaches a 50% kill rate (resulting in extrapolated, artificial values).
+
+#### CTRPv2 (Cancer Therapeutics Response Portal)
+Focus: Similar to GDSC, this focuses on multi-dose response curves, but uses different curve-fitting algorithms and raw viability measurements.
+- area_under_curve: As highlighted in your data dictionary, this is the integrated area under their sigmoid-fit concentration-response curve. Lower values equal higher sensitivity.
+- cpd_avg_pv (Compound Average Percent Viability): The weighted average of surviving cells across all tested doses.
+Best Pick for Multi-task: area_under_curve. Using AUC here allows your CTRPv2 head to learn a conceptually similar target to your GDSC head, even though the raw scales differ.
+
+#### PRISM Repurposing (Public 24Q2)
+Focus: High-throughput, single-dose screening. According to your provided Readme, all compounds here were screened at a single dose of 2.5 μM. Because there is no dose curve, there is no AUC or IC50.
+- LMFI (Log2 Median Fluorescence Intensity): The raw optical readout of the barcodes.
+- LFC (Log2 Fold Change): The median collapsed log-ratio of treated cells versus negative control (DMSO) cells. A negative LFC means the cancer cell line was depleted (killed) by the drug.
+Best Pick for Multi-task: LFC (specifically from the Extended_Primary_Data_Matrix.csv). This is your only true efficacy metric for this dataset.
+
+Multi-Task Recommendations
+multi-task neural network with three output heads, your best target matrix configuration would be:
+
+Head 1 (GDSC2): AUC
+Head 2 (CTRPv2): area_under_curve
+Head 3 (PRISM): LFC
+
+
+
+hard to actually find toxicity definition and annotations, since toxicity is wanted for cancer treatments but excessive toxicity results in withdrawing from trials.
+
+## 06.04.2026
+### Ideas
+- train on scRNA-seq data first and fine-tune on specific cancer types?
+  - depends on available datasets
+- train on scRNA-seq data first and fine-tune on clinical data?
+  - depends on labels chosen for training?
+  - depends on finding sufficient and properly labeled clinical data
+- combine the two above ideas
+  - find clinical scRNA-seq data sets for specific cancer types
+  - maybe do bulk or pseudo bulk RNA-seq training as well, since scRNA-seq data is sparse?
+- make a scRNA-seq transformer to use as a pretrained model? VAE? something else entirely?
+- use scGPT embeddings (https://www.nature.com/articles/s41592-024-02201-0)
+- look how (sc) DeepInsight could work with this
+
+
 ## 03.04.2026
 ### Advisor updates and alignment
 - Clarification from Artem:
