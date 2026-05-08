@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 class OncoMLP(nn.Module):
-    def __init__(self, input_dim, hidden_dim=256, dropout_rate=0.3):
+    def __init__(self, input_dim, hidden_dim=64, dropout_rate=0.5):
         super(OncoMLP, self).__init__()
 
         self.network = nn.Sequential(

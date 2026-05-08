@@ -27,7 +27,7 @@ INPUT_DIM = sample_x.shape[0]
 
 model = OncoMLP(input_dim=INPUT_DIM)
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
+optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-3)
 
 device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
 print(f"Training on device: {device}")
