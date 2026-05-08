@@ -1,0 +1,7 @@
+README.md
+pyproject.toml
+oncotox.egg-info/PKG-INFO
+oncotox.egg-info/SOURCES.txt
+oncotox.egg-info/dependency_links.txt
+oncotox.egg-info/requires.txt
+oncotox.egg-info/top_level.txt

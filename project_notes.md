@@ -1,11 +1,17 @@
 
 # OncoTox Project Notes
+## 08.05.2026
+### Dataset Splitting
+* Total cells: 53,513
+* Cells with a valid paclitaxel viability score: 44,367
+* **Train/Val/Test Splits:** Added `ad.settings.allow_write_nullable_strings = True` to the split script and successfully executed `create_splits.py`.
+* saved a random 70/15/15 data split directly into the `.h5ad` object (`split_paclitaxel` column) to ensure absolute reproducibility and prevent data leakage between runs
+    * **Train:** 31,056 cells
+    * **Val:** 6,655 cells
+    * **Test:** 6,656 cells
+    * **Unassigned (No Label):** 9,146 cells
 
-## 21.04.2026 - 08.05.2026
-
-
-
-
+## 21.04.2026 - 07.05.2026
 ### Preprocessing Timeline
 scp542_conversion.py: massive, raw CPM_data.txt and Metadata.txt files and compiled them into foundational SCP542_CCLE.h5ad object.
 
