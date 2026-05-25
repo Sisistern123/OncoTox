@@ -1,5 +1,94 @@
 
 # OncoTox Project Notes
+## 25.05.2026
+
+### 1. HVG Filtering + Preprocessing Orchestrator
+Refactored the preprocessing pipeline so a single command runs every step in the correct order and exposes the HVG count as a tunable knob.
+
+* New entry point: `scripts/preprocessing/run_preprocessing.py`
+* Each existing preprocessing script (`scp542_conversion.py`, `ctrp_to_h5ad.py`, `create_splits.py`, `add_pca.py`) was refactored to expose a `run(...)` function but still works standalone via argparse.
+* `scp542_conversion.py` now accepts `--n-top-genes`. HVGs are computed on a `log1p` copy (Seurat flavor) so the saved `.X` keeps the original CPM values that scGPT expects. The chosen count is recorded in `adata.uns["hvg_n_top_genes"]`.
+* `add_pca.py` accepts `--force` to recompute `X_pca` (since it otherwise short-circuits when the obsm key already exists).
+* scGPT embedding generation lives in another repo (`/Users/selin/PycharmProjects/scGPT/gen_embeds.py`). The orchestrator either subprocess-calls it via `--scgpt-python <interp>` or pauses for a manual run.
+
+**Pipeline order (fixed once, used by orchestrator):**
+1. `scp542_conversion` (CPM + Metadata, optional HVG filter) → `SCP542_CCLE.h5ad`
+2. `gen_embeds.py` (scGPT, external repo) → `SCP542_CCLE_scGPT_human_embeddings.h5ad`
+3. `ctrp_to_h5ad` (paclitaxel viability targets) → `..._with_targets.h5ad`
+4. `create_splits` (cell-line-grouped 70/15/15) — writes `split_paclitaxel` in place
+5. `add_pca` (PCA baseline `X_pca`) — writes in place
+
+**Run command used:**
+```
+uv run scripts/preprocessing/run_preprocessing.py \
+  --n-top-genes 5000 \
+  --scgpt-python /Users/selin/PycharmProjects/scGPT/.venv/bin/python
+```
+
+**Pipeline run output (HVG-5000):**
+* Gene count after HVG filtering: `22,722 → 5,000`
+* scGPT vocab match: `4,576 / 5,000` genes (of vocab size 60,697); 424 HVGs were OOV
+* scGPT embedding time on CPU: `~1h 31m` for 53,513 cells (batch size 64)
+* Final AnnData: `53,513 cells × 5,000 genes`
+* Paclitaxel target coverage: `44,367 / 53,513` cells with valid viability score
+* Final cell split distribution (170 cell lines → 119/25/26):
+    * train: `31,824` | val: `5,035` | test: `7,508` | unassigned: `9,146`
+* (Distribution is identical to the pre-HVG run, confirming the gene filter does not touch obs/labels.)
+
+### 2. First HVG-5000 Training Pass (Old Model: BatchNorm+ReLU, hidden 64→32, fixed LR)
+**PCA Baseline (X_pca, HVG-5000):**
+* Epoch [01/50] | Train MSE: 0.1731 | Val MSE: 0.0547
+* Epoch [05/50] | Train MSE: 0.0192 | Val MSE: 0.0362   ← best val
+* Epoch [10/50] | Train MSE: 0.0114 | Val MSE: 0.0373
+* Epoch [50/50] | Train MSE: 0.0089 | Val MSE: 0.0393
+* Gap (final): ~0.030 — clear overfitting after epoch ~5.
+
+**scGPT (X_scGPT, HVG-5000):**
+* Epoch [01/50] | Train MSE: 0.1187 | Val MSE: 0.0492
+* Epoch [15/50] | Train MSE: 0.0169 | Val MSE: 0.0360
+* Epoch [50/50] | Train MSE: 0.0177 | Val MSE: 0.0354
+* Gap (final): ~0.018
+* Val MSE oscillated between 0.0354 and 0.0423 across epochs — sign that LR was too high and that the reported final-epoch metric is not a stable representative.
+
+**Comparison vs no-HVG regularized run (from 08.05.2026):**
+| Run                     | Train MSE | Val MSE | Gap   |
+|-------------------------|-----------|---------|-------|
+| PCA (no HVG)            | 0.0082    | 0.0380  | 0.030 |
+| PCA (HVG-5000)          | 0.0089    | 0.0393  | 0.030 |
+| scGPT (no HVG)          | 0.0260    | 0.0391  | 0.013 |
+| scGPT (HVG-5000)        | 0.0177    | 0.0354  | 0.018 |
+
+scGPT got a small but real val improvement (~10% relative). PCA was unchanged within noise — consistent with the hypothesis that the PCA baseline is bottlenecked by cell-line memorization rather than gene-vocabulary breadth.
+
+### 3. Model Architecture / Regularization Upgrade
+Issues with the previous setup (visible in the run logs):
+* Reported MSE is the final-epoch value, but val isn't monotone — the best model isn't the saved one.
+* No LR scheduling or early stopping → val oscillates and we keep training past the best point.
+* `BatchNorm1d` is noisy across cell-line-heterogeneous mini-batches (each batch mixes cells from many lines, so the running stats drift).
+* No reproducibility seeding.
+
+**Changes:**
+* `scripts/model/OncoMLP.py`
+    * Default normalization switched to **`LayerNorm`** (more stable than BatchNorm for embedding-style inputs with heterogeneous batches; still configurable: `norm="layer" | "batch" | "none"`).
+    * Activation switched from `ReLU` to **`GELU`** (smoother gradient, generally better for continuous regression on dense embeddings).
+    * Added **input dropout** (default `0.1`) so the raw embedding itself is regularized, not just the post-linear features.
+    * `hidden_dims` is now a configurable tuple. Defaults: `(64, 32)` for the PCA head, widened to `(128, 64)` for scGPT in its training script (since the 512-dim embedding tolerates slightly more capacity).
+    * Backbone preserved: 2 hidden layers + final scalar output, dropout=0.5, weight_decay=1e-3.
+
+* `scripts/training/training_utils.py` (new)
+    * `train_model(...)` shared loop used by both heads.
+    * Reproducible **seeding** for Python/NumPy/Torch/CUDA/MPS.
+    * **ReduceLROnPlateau** scheduler (factor 0.5, patience 3) — auto-cools the LR when val plateaus.
+    * **Early stopping** with patience 10.
+    * In-memory **best-val checkpoint**: the returned model is loaded with the state_dict that achieved the lowest val MSE, not the final-epoch weights.
+    * **Gradient clipping** (`max_norm=1.0`) to dampen the val-MSE oscillations seen on scGPT.
+    * Optional **Huber/SmoothL1 loss** (`loss="huber"`) for robustness against viability outliers (defaults still to MSE so prior runs remain comparable).
+
+* `scripts/training/train_baseline.py` and `train_scGPT.py`
+    * Both now build a `TrainConfig`, instantiate `OncoMLP`, and delegate to `train_model`. Each script ends by printing the best val MSE and the epoch it occurred at.
+
+**Expected effect:** the reported val MSE should drop noticeably for both heads simply because we now report the best epoch and stop training before it degrades. The architectural changes (LayerNorm + GELU + input dropout) should specifically reduce the scGPT val oscillation. Re-running on HVG-5000 should be the next sanity check.
+
 ## 08.05.2026
 
 ### 1. Initial Setup & Random Splitting (The Data Leak)
