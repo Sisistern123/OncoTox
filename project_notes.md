@@ -1,93 +1,148 @@
 
 # OncoTox Project Notes
+## 26.05.2026
+
+### Multi-drug refactor (v2-plan iterative step: single-task -> masked multi-task)
+Single-task paclitaxel pipeline is still fully runnable (`train_baseline.py`, `train_scGPT.py`) — the new code is purely additive. Step taken is the v2 plan's stated next milestone ("iteratively expand … to include masked losses"), kept small via a per-drug subset and a cheap baseline.
+
+**New artifacts written into the h5ad (by `ctrp_to_h5ad.py`):**
+* `adata.obsm["Y_ctrp"]`  : float32 (n_cells, K), per-cell viability for each drug (NaN where missing).
+* `adata.obsm["M_ctrp"]`  : bool    (n_cells, K), True where a label is observed.
+* `adata.uns["ctrp_drugs"]`: ordered list of K drug names = column order of Y/M.
+* `adata.obs["split_ctrp"]`: cell-line-grouped 70/15/15 split shared across every head (drug-agnostic, leakage-free).
+* Per-drug legacy columns (`viability_<drug>`, `train_mask_<drug>`, `split_<drug>`) kept for paclitaxel back-compat.
+
+**Drug-scope knob (v2 plan: "starting small"):**
+* Default: `--min-cell-lines 50` -> keeps drugs screened on >=50 SCP542-overlapping cell lines.
+* All CTRPv2 drugs: `--all-drugs` (equivalent to `--min-cell-lines 0`).
+* Intermediate K: `train_multitask.py --drugs paclitaxel docetaxel gemcitabine ...` (no preprocessing rerun needed as long as those drugs passed the prep-time filter).
+
+**Multi-task model & training:**
+* `OncoMLP` now takes `output_dim=K` (default 1 -> unchanged for paclitaxel).
+* `training_utils.train_model` auto-switches to masked MSE / masked Huber when it sees 3-tuple batches; logs top-k best/worst per-drug val MSE.
+* New entry point: `scripts/training/train_multitask.py --use-rep {X_pca,X_scGPT}`.
+
+**Sanity baseline (cheap failure detection, per v2 plan):**
+* Per-drug-mean predictor (predicts the train-set mean viability per head) is always computed and compared to the trained model's per-drug val MSE after training. Heads where the model fails to beat this floor have not learned anything useful regardless of absolute MSE.
+
+**Commands:**
+```bash
+# Multi-task preprocessing (>=50 cell-line drugs only, paclitaxel cols kept)
+uv run scripts/preprocessing/run_preprocessing.py --n-top-genes 5000 \
+    --min-cell-lines 50 --skip-scgpt --start-at targets
+
+# All CTRPv2 drugs
+uv run scripts/preprocessing/run_preprocessing.py --start-at targets \
+    --skip-scgpt --all-drugs
+
+# Few-drug intermediate (validate masked-loss pipeline before going wide)
+uv run scripts/training/train_multitask.py --use-rep X_scGPT \
+    --drugs paclitaxel docetaxel gemcitabine
+
+# Full multi-task on whatever was persisted by ctrp_to_h5ad
+uv run scripts/training/train_multitask.py --use-rep X_scGPT
+uv run scripts/training/train_multitask.py --use-rep X_pca
+```
+
+**Open questions for the next iteration:**
+* Does multi-task hurt or help paclitaxel's val MSE vs the 0.0336 / 0.0351 single-task numbers?
+* Which heads consistently fail to beat the per-drug-mean baseline? (Candidates for removal or re-weighting.)
+* Loss weighting: currently uniform per observed entry; per-head weighting or per-drug uncertainty is a future tweak.
+
 ## 25.05.2026
 
-### 1. HVG Filtering + Preprocessing Orchestrator
-Refactored the preprocessing pipeline so a single command runs every step in the correct order and exposes the HVG count as a tunable knob.
+### Preprocessing orchestrator + HVG-5000
+Added `scripts/preprocessing/run_preprocessing.py` to run preprocessing end-to-end with tunable HVG count.
 
-* New entry point: `scripts/preprocessing/run_preprocessing.py`
-* Each existing preprocessing script (`scp542_conversion.py`, `ctrp_to_h5ad.py`, `create_splits.py`, `add_pca.py`) was refactored to expose a `run(...)` function but still works standalone via argparse.
-* `scp542_conversion.py` now accepts `--n-top-genes`. HVGs are computed on a `log1p` copy (Seurat flavor) so the saved `.X` keeps the original CPM values that scGPT expects. The chosen count is recorded in `adata.uns["hvg_n_top_genes"]`.
-* `add_pca.py` accepts `--force` to recompute `X_pca` (since it otherwise short-circuits when the obsm key already exists).
-* scGPT embedding generation lives in another repo (`/Users/selin/PycharmProjects/scGPT/gen_embeds.py`). The orchestrator either subprocess-calls it via `--scgpt-python <interp>` or pauses for a manual run.
+**Pipeline order:**
+1. `scp542_conversion` → `SCP542_CCLE.h5ad`
+2. `gen_embeds.py` (external: `/Users/selin/PycharmProjects/scGPT/gen_embeds.py`) → `..._scGPT_human_embeddings.h5ad`
+3. `ctrp_to_h5ad` → `..._with_targets.h5ad`
+4. `create_splits` (cell-line-grouped 70/15/15, writes `split_paclitaxel`)
+5. `add_pca` (writes `X_pca`, optional `--force`)
 
-**Pipeline order (fixed once, used by orchestrator):**
-1. `scp542_conversion` (CPM + Metadata, optional HVG filter) → `SCP542_CCLE.h5ad`
-2. `gen_embeds.py` (scGPT, external repo) → `SCP542_CCLE_scGPT_human_embeddings.h5ad`
-3. `ctrp_to_h5ad` (paclitaxel viability targets) → `..._with_targets.h5ad`
-4. `create_splits` (cell-line-grouped 70/15/15) — writes `split_paclitaxel` in place
-5. `add_pca` (PCA baseline `X_pca`) — writes in place
-
-**Run command used:**
-```
+**Command used:**
+```bash
 uv run scripts/preprocessing/run_preprocessing.py \
   --n-top-genes 5000 \
   --scgpt-python /Users/selin/PycharmProjects/scGPT/.venv/bin/python
 ```
 
-**Pipeline run output (HVG-5000):**
-* Gene count after HVG filtering: `22,722 → 5,000`
-* scGPT vocab match: `4,576 / 5,000` genes (of vocab size 60,697); 424 HVGs were OOV
-* scGPT embedding time on CPU: `~1h 31m` for 53,513 cells (batch size 64)
-* Final AnnData: `53,513 cells × 5,000 genes`
-* Paclitaxel target coverage: `44,367 / 53,513` cells with valid viability score
-* Final cell split distribution (170 cell lines → 119/25/26):
-    * train: `31,824` | val: `5,035` | test: `7,508` | unassigned: `9,146`
-* (Distribution is identical to the pre-HVG run, confirming the gene filter does not touch obs/labels.)
+**How HVG-5000 is filtered (`scp542_conversion.py`):**
+1. Start from full CPM matrix (`53,513 × 22,722`).
+2. Create copy, run `log1p`, then `sc.pp.highly_variable_genes(..., n_top_genes=5000, flavor="seurat")`.
+3. Subset original CPM matrix to selected genes (saved `.X` remains CPM).
+4. Save chosen count in `adata.uns["hvg_n_top_genes"]`.
 
-### 2. First HVG-5000 Training Pass (Old Model: BatchNorm+ReLU, hidden 64→32, fixed LR)
-**PCA Baseline (X_pca, HVG-5000):**
+**Pipeline outputs (HVG-5000):**
+* Gene count: `22,722 → 5,000`
+* scGPT vocab match: `4,576 / 5,000` (424 OOV)
+* Embedded AnnData: `53,513 × 5,000`
+* Paclitaxel labels: `44,367 / 53,513` cells
+* Split counts: train `31,824` | val `5,035` | test `7,508` | unassigned `9,146`
+
+### Training outputs kept from terminal runs
+
+#### A) HVG-5000 with old model (BatchNorm+ReLU, hidden 64→32, fixed LR)
+**PCA baseline (X_pca):**
 * Epoch [01/50] | Train MSE: 0.1731 | Val MSE: 0.0547
-* Epoch [05/50] | Train MSE: 0.0192 | Val MSE: 0.0362   ← best val
+* Epoch [05/50] | Train MSE: 0.0192 | Val MSE: 0.0362
 * Epoch [10/50] | Train MSE: 0.0114 | Val MSE: 0.0373
+* Epoch [15/50] | Train MSE: 0.0093 | Val MSE: 0.0377
+* Epoch [20/50] | Train MSE: 0.0091 | Val MSE: 0.0388
+* Epoch [25/50] | Train MSE: 0.0092 | Val MSE: 0.0379
+* Epoch [30/50] | Train MSE: 0.0090 | Val MSE: 0.0381
+* Epoch [35/50] | Train MSE: 0.0088 | Val MSE: 0.0395
+* Epoch [40/50] | Train MSE: 0.0091 | Val MSE: 0.0368
+* Epoch [45/50] | Train MSE: 0.0089 | Val MSE: 0.0358
 * Epoch [50/50] | Train MSE: 0.0089 | Val MSE: 0.0393
-* Gap (final): ~0.030 — clear overfitting after epoch ~5.
 
-**scGPT (X_scGPT, HVG-5000):**
+**scGPT (X_scGPT):**
 * Epoch [01/50] | Train MSE: 0.1187 | Val MSE: 0.0492
+* Epoch [05/50] | Train MSE: 0.0232 | Val MSE: 0.0393
+* Epoch [10/50] | Train MSE: 0.0179 | Val MSE: 0.0377
 * Epoch [15/50] | Train MSE: 0.0169 | Val MSE: 0.0360
+* Epoch [20/50] | Train MSE: 0.0173 | Val MSE: 0.0423
+* Epoch [25/50] | Train MSE: 0.0175 | Val MSE: 0.0367
+* Epoch [30/50] | Train MSE: 0.0176 | Val MSE: 0.0366
+* Epoch [35/50] | Train MSE: 0.0177 | Val MSE: 0.0366
+* Epoch [40/50] | Train MSE: 0.0177 | Val MSE: 0.0391
+* Epoch [45/50] | Train MSE: 0.0175 | Val MSE: 0.0359
 * Epoch [50/50] | Train MSE: 0.0177 | Val MSE: 0.0354
-* Gap (final): ~0.018
-* Val MSE oscillated between 0.0354 and 0.0423 across epochs — sign that LR was too high and that the reported final-epoch metric is not a stable representative.
 
-**Comparison vs no-HVG regularized run (from 08.05.2026):**
-| Run                     | Train MSE | Val MSE | Gap   |
-|-------------------------|-----------|---------|-------|
-| PCA (no HVG)            | 0.0082    | 0.0380  | 0.030 |
-| PCA (HVG-5000)          | 0.0089    | 0.0393  | 0.030 |
-| scGPT (no HVG)          | 0.0260    | 0.0391  | 0.013 |
-| scGPT (HVG-5000)        | 0.0177    | 0.0354  | 0.018 |
+#### B) HVG-5000 with upgraded model/training (LayerNorm+GELU+scheduler+early stopping)
+**PCA baseline (X_pca):**
+* [baseline] Epoch [01/50] | Train MSE: 0.0895 | Val MSE: 0.0355 | LR: 1.0e-03  <- best
+* [baseline] Epoch [05/50] | Train MSE: 0.0169 | Val MSE: 0.0363 | LR: 1.0e-03
+* [baseline] Epoch [08/50] | Train MSE: 0.0136 | Val MSE: 0.0351 | LR: 5.0e-04  <- best
+* [baseline] Epoch [10/50] | Train MSE: 0.0127 | Val MSE: 0.0374 | LR: 5.0e-04
+* [baseline] Epoch [15/50] | Train MSE: 0.0115 | Val MSE: 0.0361 | LR: 2.5e-04
+* [baseline] Early stopping at epoch 18 (no val improvement for 10 epochs).
+* [baseline] Training complete. Best Val MSE: 0.0351 at epoch 8.
 
-scGPT got a small but real val improvement (~10% relative). PCA was unchanged within noise — consistent with the hypothesis that the PCA baseline is bottlenecked by cell-line memorization rather than gene-vocabulary breadth.
+**scGPT (X_scGPT):**
+* [scGPT] Epoch [01/50] | Train MSE: 0.0532 | Val MSE: 0.0363 | LR: 1.0e-03  <- best
+* [scGPT] Epoch [03/50] | Train MSE: 0.0359 | Val MSE: 0.0350 | LR: 1.0e-03  <- best
+* [scGPT] Epoch [05/50] | Train MSE: 0.0314 | Val MSE: 0.0343 | LR: 1.0e-03  <- best
+* [scGPT] Epoch [10/50] | Train MSE: 0.0254 | Val MSE: 0.0350 | LR: 5.0e-04
+* [scGPT] Epoch [12/50] | Train MSE: 0.0248 | Val MSE: 0.0341 | LR: 5.0e-04  <- best
+* [scGPT] Epoch [14/50] | Train MSE: 0.0241 | Val MSE: 0.0336 | LR: 5.0e-04  <- best
+* [scGPT] Epoch [15/50] | Train MSE: 0.0240 | Val MSE: 0.0401 | LR: 5.0e-04
+* [scGPT] Epoch [20/50] | Train MSE: 0.0218 | Val MSE: 0.0357 | LR: 2.5e-04
+* [scGPT] Early stopping at epoch 24 (no val improvement for 10 epochs).
+* [scGPT] Training complete. Best Val MSE: 0.0336 at epoch 14.
 
-### 3. Model Architecture / Regularization Upgrade
-Issues with the previous setup (visible in the run logs):
-* Reported MSE is the final-epoch value, but val isn't monotone — the best model isn't the saved one.
-* No LR scheduling or early stopping → val oscillates and we keep training past the best point.
-* `BatchNorm1d` is noisy across cell-line-heterogeneous mini-batches (each batch mixes cells from many lines, so the running stats drift).
-* No reproducibility seeding.
+### Model/training upgrades (concise)
+* `scripts/model/OncoMLP.py`: default `LayerNorm`, `GELU`, input dropout (`0.1`), configurable `hidden_dims` (`(64,32)` PCA, `(128,64)` scGPT).
+* `scripts/training/training_utils.py` (new): seeded training, ReduceLROnPlateau, early stopping, best-val checkpoint restore, gradient clipping.
+* `train_baseline.py` / `train_scGPT.py`: migrated to shared `TrainConfig` + `train_model(...)`.
 
-**Changes:**
-* `scripts/model/OncoMLP.py`
-    * Default normalization switched to **`LayerNorm`** (more stable than BatchNorm for embedding-style inputs with heterogeneous batches; still configurable: `norm="layer" | "batch" | "none"`).
-    * Activation switched from `ReLU` to **`GELU`** (smoother gradient, generally better for continuous regression on dense embeddings).
-    * Added **input dropout** (default `0.1`) so the raw embedding itself is regularized, not just the post-linear features.
-    * `hidden_dims` is now a configurable tuple. Defaults: `(64, 32)` for the PCA head, widened to `(128, 64)` for scGPT in its training script (since the 512-dim embedding tolerates slightly more capacity).
-    * Backbone preserved: 2 hidden layers + final scalar output, dropout=0.5, weight_decay=1e-3.
-
-* `scripts/training/training_utils.py` (new)
-    * `train_model(...)` shared loop used by both heads.
-    * Reproducible **seeding** for Python/NumPy/Torch/CUDA/MPS.
-    * **ReduceLROnPlateau** scheduler (factor 0.5, patience 3) — auto-cools the LR when val plateaus.
-    * **Early stopping** with patience 10.
-    * In-memory **best-val checkpoint**: the returned model is loaded with the state_dict that achieved the lowest val MSE, not the final-epoch weights.
-    * **Gradient clipping** (`max_norm=1.0`) to dampen the val-MSE oscillations seen on scGPT.
-    * Optional **Huber/SmoothL1 loss** (`loss="huber"`) for robustness against viability outliers (defaults still to MSE so prior runs remain comparable).
-
-* `scripts/training/train_baseline.py` and `train_scGPT.py`
-    * Both now build a `TrainConfig`, instantiate `OncoMLP`, and delegate to `train_model`. Each script ends by printing the best val MSE and the epoch it occurred at.
-
-**Expected effect:** the reported val MSE should drop noticeably for both heads simply because we now report the best epoch and stop training before it degrades. The architectural changes (LayerNorm + GELU + input dropout) should specifically reduce the scGPT val oscillation. Re-running on HVG-5000 should be the next sanity check.
+### Quick comparison (best val MSE)
+| Setup | PCA best val | scGPT best val |
+|-------|--------------|----------------|
+| No HVG, regularized run from 08.05 | ~0.0375 (epoch 10) | ~0.0371 (epoch 10) |
+| HVG-5000, old model | 0.0362 (epoch 5) | 0.0354 (epoch 50) |
+| HVG-5000, upgraded model | **0.0351 (epoch 8)** | **0.0336 (epoch 14)** |
 
 ## 08.05.2026
 

@@ -5,22 +5,24 @@ Steps (training is NOT included here):
                            (optionally filtered to top-N highly variable genes)
     2. gen_embeds.py     : SCP542_CCLE.h5ad    ->  SCP542_CCLE_scGPT_human_embeddings.h5ad
                            (lives in a separate repo, invoked via subprocess)
-    3. ctrp_to_h5ad      : map CTRPv2 viability targets onto the embedded AnnData
-                           -> SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad
-    4. create_splits     : cell-line-grouped 70/15/15 train/val/test split
-    5. add_pca           : PCA baseline embedding (X_pca)
+    3. ctrp_to_h5ad      : map CTRPv2 viability onto the embedded AnnData
+                           -> writes both the multi-drug matrices
+                              (Y_ctrp / M_ctrp / uns['ctrp_drugs']) and the
+                              legacy per-drug columns for back-compat.
+    4. create_splits     : cell-line-grouped 70/15/15 train/val/test split.
+                           Writes BOTH split_<target_drug> (single-drug, for
+                           the original paclitaxel pipeline) and split_ctrp
+                           (drug-agnostic, used by the multi-task trainer).
+    5. add_pca           : PCA baseline embedding (X_pca).
 
 Examples:
-    # Full pipeline, top-5000 HVGs, with scGPT auto-run via the given interpreter
-    python scripts/preprocessing/run_preprocessing.py \
-        --n-top-genes 5000 \
+    # Full pipeline, top-5000 HVGs, multi-task ready, with scGPT auto-run
+    python scripts/preprocessing/run_preprocessing.py \\
+        --n-top-genes 5000 \\
+        --min-cell-lines 50 \\
         --scgpt-python /Users/selin/PycharmProjects/scGPT/.venv/bin/python
 
-    # Same, but you'll run gen_embeds.py manually when prompted
-    python scripts/preprocessing/run_preprocessing.py --n-top-genes 5000
-
-    # Resume the pipeline starting at the splits step (e.g. after manually
-    # re-running an earlier step)
+    # Resume the pipeline starting at the splits step
     python scripts/preprocessing/run_preprocessing.py --start-at splits
 """
 
@@ -104,8 +106,29 @@ def main():
         default=5000,
         help="Number of highly variable genes to retain (0 disables HVG filtering).",
     )
-    parser.add_argument("--target-drug", default="paclitaxel")
+    parser.add_argument(
+        "--min-cell-lines",
+        type=int,
+        default=50,
+        help="Minimum SCP542-overlapping cell-line coverage to keep a CTRP drug as a head.",
+    )
+    parser.add_argument(
+        "--all-drugs",
+        action="store_true",
+        help="Shortcut for --min-cell-lines 0 (keep every CTRPv2 drug with any overlap).",
+    )
+    parser.add_argument(
+        "--target-drug",
+        default="paclitaxel",
+        help="Drug also exposed as flat viability/train_mask/split columns "
+        "(kept for back-compat with the original single-drug training scripts).",
+    )
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--skip-multi-split",
+        action="store_true",
+        help="Skip writing the drug-agnostic split_ctrp column.",
+    )
     parser.add_argument(
         "--scgpt-python",
         default=None,
@@ -137,6 +160,7 @@ def main():
     args = parser.parse_args()
 
     hvg = args.n_top_genes if args.n_top_genes and args.n_top_genes > 0 else None
+    min_cell_lines = 0 if args.all_drugs else args.min_cell_lines
     start_idx = STEP_ORDER.index(args.start_at)
     total = len(STEP_ORDER)
 
@@ -163,21 +187,38 @@ def main():
             _run_scgpt(args.scgpt_python, Path(args.scgpt_script))
 
     if start_idx <= STEP_ORDER.index("targets"):
-        _print_step(3, total, f"ctrp_to_h5ad (drug='{args.target_drug}')")
+        _print_step(
+            3,
+            total,
+            f"ctrp_to_h5ad (multi-drug, min_cell_lines={min_cell_lines}, "
+            f"legacy_col='{args.target_drug}')",
+        )
         ctrp_to_h5ad.run(
             input_h5ad=str(EMBED_H5AD),
             output_h5ad=str(TARGETS_H5AD),
             ctrp_dir=str(CTRP_DIR),
-            target_drug=args.target_drug,
+            min_cell_lines=min_cell_lines,
+            extra_single_drug_cols=(args.target_drug,) if args.target_drug else (),
         )
 
     if start_idx <= STEP_ORDER.index("splits"):
-        _print_step(4, total, f"create_splits (drug='{args.target_drug}', seed={args.seed})")
-        create_splits.run(
-            h5ad_path=str(TARGETS_H5AD),
-            target_drug=args.target_drug,
-            seed=args.seed,
+        _print_step(
+            4,
+            total,
+            f"create_splits (single-drug='{args.target_drug}', "
+            f"multi={'no' if args.skip_multi_split else 'yes'}, seed={args.seed})",
         )
+        if args.target_drug:
+            create_splits.run(
+                h5ad_path=str(TARGETS_H5AD),
+                target_drug=args.target_drug,
+                seed=args.seed,
+            )
+        if not args.skip_multi_split:
+            create_splits.run_multi(
+                h5ad_path=str(TARGETS_H5AD),
+                seed=args.seed,
+            )
 
     if start_idx <= STEP_ORDER.index("pca"):
         _print_step(5, total, f"add_pca (force={args.force_pca})")

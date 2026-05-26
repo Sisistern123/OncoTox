@@ -27,12 +27,16 @@ class OncoMLP(nn.Module):
         dropout_rate: float = 0.5,
         input_dropout: float = 0.1,
         norm: str = "layer",
+        output_dim: int = 1,
     ):
         super().__init__()
 
         if norm not in {"layer", "batch", "none"}:
             raise ValueError(f"norm must be 'layer', 'batch', or 'none' (got {norm!r})")
+        if output_dim < 1:
+            raise ValueError(f"output_dim must be >= 1 (got {output_dim})")
 
+        self.output_dim = output_dim
         layers: list[nn.Module] = []
 
         if input_dropout and input_dropout > 0:
@@ -49,7 +53,7 @@ class OncoMLP(nn.Module):
             layers.append(nn.Dropout(dropout_rate))
             prev_dim = h
 
-        layers.append(nn.Linear(prev_dim, 1))
+        layers.append(nn.Linear(prev_dim, output_dim))
         self.network = nn.Sequential(*layers)
 
     def forward(self, x):
