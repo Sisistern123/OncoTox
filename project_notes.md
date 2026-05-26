@@ -49,6 +49,28 @@ uv run scripts/training/train_multitask.py --use-rep X_pca
 * Which heads consistently fail to beat the per-drug-mean baseline? (Candidates for removal or re-weighting.)
 * Loss weighting: currently uniform per observed entry; per-head weighting or per-drug uncertainty is a future tweak.
 
+### Run versioning + artifact saving
+Every training run (single-drug or multi-task) writes a self-contained directory under `runs/` (gitignored), plus appends one row to `runs/runs_index.csv`. All versioning lives in `scripts/training/training_utils.py` (`create_run_dir`, `save_run`).
+
+**Per-run files:**
+* `config.json`           - the exact TrainConfig used.
+* `run_meta.json`         - drug scope (paclitaxel / subset / all_drugs), rep, dataset sizes, hidden_dims, host info.
+* `history.csv`           - epoch, train_mse, val_mse, lr.
+* `summary.json`          - best_val_mse, best_epoch, mean baseline vs model MSE, heads-beating-baseline count.
+* `best_model.pt`         - state_dict of the best-val-MSE checkpoint.
+* `per_drug_results.csv`  - (multi-task only) drug, model_val_mse, baseline_val_mse, delta, n_val.
+
+**Ledger columns (`runs/runs_index.csv`):** `run_id, tag, scope, rep, K, n_train_cells, n_val_cells, best_epoch, best_val_mse, baseline_mean_mse, model_mean_mse, n_beats_baseline, n_total_heads, started_at, finished_at`.
+
+Historical paclitaxel results (best val MSE 0.0375 / 0.0371 on 08.05, then 0.0351 / 0.0336 on 25.05 HVG-5000) are documented above in this file and serve as the single-task reference points for any future multi-task comparison.
+
+**Commands:**
+```bash
+uv run scripts/training/train_baseline.py
+uv run scripts/training/train_scGPT.py
+uv run scripts/training/train_multitask.py --use-rep X_scGPT
+```
+
 ## 25.05.2026
 
 ### Preprocessing orchestrator + HVG-5000

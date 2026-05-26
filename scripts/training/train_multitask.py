@@ -38,8 +38,11 @@ from scripts.model.OncoMLP import OncoMLP
 from scripts.model.dataset import MultiDrugDataset
 from scripts.training.training_utils import (
     TrainConfig,
+    create_run_dir,
     pick_device,
+    save_run,
     train_model,
+    utc_now_iso,
 )
 
 FILE_PATH = "/Users/selin/Desktop/OncoTox/data/scRNAseq_SCP542/metadata/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad"
@@ -249,11 +252,23 @@ def main():
         loss=args.loss,
     )
 
+    if args.drugs:
+        scope = "subset"
+    elif output_dim <= 1:
+        scope = "single_drug"
+    else:
+        scope = "all_drugs"
+    run_tag = f"multitask_{args.use_rep}_{scope}"
+    if scope == "subset":
+        run_tag += f"_K{output_dim}"
+    run_dir = create_run_dir(run_tag)
+    started_at = utc_now_iso()
+
     print(
         f"Starting multi-task training: rep={args.use_rep}, K={output_dim} drugs, "
         f"input_dim={input_dim}, hidden_dims={hidden_dims}."
     )
-    best_model, _history = train_model(
+    best_model, history = train_model(
         model,
         train_loader,
         val_loader,
@@ -271,6 +286,37 @@ def main():
         counts=val_counts,
         topk=args.baseline_topk,
         tag=tag,
+    )
+
+    save_run(
+        run_dir=run_dir,
+        tag=run_tag,
+        config=config,
+        history=history,
+        model=best_model,
+        run_meta={
+            "scope": scope,
+            "drug_scope_kind": "multi_drug",
+            "drugs_requested": args.drugs,
+            "rep": args.use_rep,
+            "h5ad_path": args.path,
+            "input_dim": input_dim,
+            "output_dim": output_dim,
+            "hidden_dims": list(hidden_dims),
+            "dropout_rate": args.dropout,
+            "input_dropout": args.input_dropout,
+            "norm": "layer",
+            "batch_size": args.batch_size,
+            "loss": args.loss,
+            "n_train_cells": len(train_dataset),
+            "n_val_cells": len(val_dataset),
+            "script": "scripts/training/train_multitask.py",
+        },
+        started_at=started_at,
+        drug_names=train_dataset.drug_names,
+        model_per_drug_val_mse=model_mse,
+        baseline_per_drug_val_mse=baseline_mse,
+        n_val_per_drug=val_counts,
     )
 
 
