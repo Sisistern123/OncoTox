@@ -14,13 +14,15 @@ Two entry points:
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 import anndata as ad
 import numpy as np
 import scanpy as sc
 from sklearn.model_selection import train_test_split
 
-DEFAULT_PATH = "/Users/selin/Desktop/OncoTox/data/scRNAseq_SCP542/metadata/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad"
+from scripts.preprocessing.layout import PipelinePaths, add_data_args
+
 DEFAULT_DRUG = "paclitaxel"
 DEFAULT_MULTI_SPLIT_COL = "split_ctrp"
 DEFAULT_MASK_OBSM_KEY = "M_ctrp"
@@ -35,7 +37,7 @@ def _split_cell_lines(
     return train_lines, val_lines, test_lines
 
 
-def run(h5ad_path: str = DEFAULT_PATH, target_drug: str = DEFAULT_DRUG, seed: int = 42):
+def run(h5ad_path: str, target_drug: str = DEFAULT_DRUG, seed: int = 42):
     """Per-drug cell-line-grouped 70/15/15 train/val/test split."""
     print(f"Loading {h5ad_path}...")
     adata = sc.read_h5ad(h5ad_path)
@@ -72,7 +74,7 @@ def run(h5ad_path: str = DEFAULT_PATH, target_drug: str = DEFAULT_DRUG, seed: in
 
 
 def run_multi(
-    h5ad_path: str = DEFAULT_PATH,
+    h5ad_path: str,
     seed: int = 42,
     split_col: str = DEFAULT_MULTI_SPLIT_COL,
     mask_obsm_key: str = DEFAULT_MASK_OBSM_KEY,
@@ -135,7 +137,13 @@ def _save(adata, h5ad_path: str) -> None:
 
 def _parse_args():
     parser = argparse.ArgumentParser(description="Create cell-line-grouped train/val/test splits.")
-    parser.add_argument("--path", default=DEFAULT_PATH)
+    add_data_args(parser)
+    parser.add_argument(
+        "--path",
+        type=Path,
+        default=None,
+        help="Targets h5ad (default: <variant>/..._with_targets.h5ad).",
+    )
     parser.add_argument(
         "--mode",
         choices=("single", "multi"),
@@ -151,12 +159,14 @@ def _parse_args():
 
 if __name__ == "__main__":
     args = _parse_args()
+    paths = PipelinePaths.build(args.data_root, args.variant)
+    h5ad_path = str(args.path or paths.targets_h5ad)
     if args.mode == "multi":
         run_multi(
-            h5ad_path=args.path,
+            h5ad_path=h5ad_path,
             seed=args.seed,
             split_col=args.split_col,
             mask_obsm_key=args.mask_obsm_key,
         )
     else:
-        run(args.path, args.drug, args.seed)
+        run(h5ad_path, args.drug, args.seed)

@@ -30,9 +30,8 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 
-DEFAULT_INPUT = "/Users/selin/Desktop/OncoTox/data/scRNAseq_SCP542/metadata/SCP542_CCLE_scGPT_human_embeddings.h5ad"
-DEFAULT_OUTPUT = "/Users/selin/Desktop/OncoTox/data/scRNAseq_SCP542/metadata/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad"
-DEFAULT_CTRP_DIR = "/Users/selin/Desktop/OncoTox/data/metadata/CTRPv2.0_2015_ctd2_ExpandedDataset"
+from scripts.preprocessing.layout import PipelinePaths, add_data_args
+
 DEFAULT_MIN_CELL_LINES = 50
 DEFAULT_EXTRA_SINGLE_DRUG_COLS: tuple[str, ...] = ("paclitaxel",)
 
@@ -121,9 +120,9 @@ def _build_drug_table(
 
 
 def run(
-    input_h5ad: str = DEFAULT_INPUT,
-    output_h5ad: str = DEFAULT_OUTPUT,
-    ctrp_dir: str = DEFAULT_CTRP_DIR,
+    input_h5ad: str,
+    output_h5ad: str,
+    ctrp_dir: str,
     min_cell_lines: int = DEFAULT_MIN_CELL_LINES,
     target_drugs: Sequence[str] | None = None,
     extra_single_drug_cols: Sequence[str] = DEFAULT_EXTRA_SINGLE_DRUG_COLS,
@@ -237,9 +236,25 @@ def run(
 
 def _parse_args():
     parser = argparse.ArgumentParser(description="Merge CTRPv2 viability targets into embedded AnnData.")
-    parser.add_argument("--input", default=DEFAULT_INPUT)
-    parser.add_argument("--output", default=DEFAULT_OUTPUT)
-    parser.add_argument("--ctrp-dir", default=DEFAULT_CTRP_DIR)
+    add_data_args(parser)
+    parser.add_argument(
+        "--input",
+        type=Path,
+        default=None,
+        help="Embedding h5ad (default: <variant>/SCP542_CCLE_scGPT_human_embeddings.h5ad).",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Output h5ad (default: <variant>/..._with_targets.h5ad).",
+    )
+    parser.add_argument(
+        "--ctrp-dir",
+        type=Path,
+        default=None,
+        help="CTRPv2 directory (default: <data-root>/metadata/CTRPv2...).",
+    )
     parser.add_argument(
         "--min-cell-lines",
         type=int,
@@ -268,11 +283,12 @@ def _parse_args():
 
 if __name__ == "__main__":
     args = _parse_args()
+    paths = PipelinePaths.build(args.data_root, args.variant)
     min_cell_lines = 0 if args.all_drugs else args.min_cell_lines
     run(
-        input_h5ad=args.input,
-        output_h5ad=args.output,
-        ctrp_dir=args.ctrp_dir,
+        input_h5ad=str(args.input or paths.embed_h5ad),
+        output_h5ad=str(args.output or paths.targets_h5ad),
+        ctrp_dir=str(args.ctrp_dir or paths.ctrp_dir),
         min_cell_lines=min_cell_lines,
         target_drugs=args.drugs,
         extra_single_drug_cols=tuple(args.single_drug_cols),

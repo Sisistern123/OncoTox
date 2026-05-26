@@ -1,4 +1,4 @@
-# Data and large artifacts (paths outside repo may still use Desktop/OncoTox/data)
+# Data and large artifacts (under Desktop/OncoTox/data; see scripts/preprocessing/layout.py)
 data/
 
 # Python bytecode and caches

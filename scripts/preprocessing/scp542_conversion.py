@@ -4,15 +4,18 @@ import anndata as ad
 import pandas as pd
 import scanpy as sc
 
-DEFAULT_EXPR = "/Users/selin/Desktop/OncoTox/data/scRNAseq_SCP542/expression/CPM_data.txt"
-DEFAULT_META = "/Users/selin/Desktop/OncoTox/data/scRNAseq_SCP542/metadata/Metadata.txt"
-DEFAULT_OUTPUT = "/Users/selin/Desktop/OncoTox/data/scRNAseq_SCP542/metadata/SCP542_CCLE.h5ad"
+from scripts.preprocessing.layout import (
+    PipelinePaths,
+    VARIANT_N_TOP_GENES,
+    add_data_args,
+    guard_output,
+)
 
 
 def run(
-    input_expr: str = DEFAULT_EXPR,
-    input_meta: str = DEFAULT_META,
-    output_path: str = DEFAULT_OUTPUT,
+    input_expr: str,
+    input_meta: str,
+    output_path: str,
     n_top_genes: int | None = None,
 ):
     """Build the foundational SCP542_CCLE.h5ad object from raw CPM + metadata.
@@ -42,7 +45,6 @@ def run(
             )
         else:
             print(f"Selecting top {n_top_genes} highly variable genes...")
-            # Compute HVGs on a log1p copy so the saved .X stays as CPM (what scGPT expects).
             adata_hvg = adata.copy()
             sc.pp.log1p(adata_hvg)
             sc.pp.highly_variable_genes(
@@ -65,18 +67,33 @@ def run(
 
 def _parse_args():
     parser = argparse.ArgumentParser(description="Build SCP542_CCLE.h5ad from raw CPM + metadata.")
-    parser.add_argument("--input-expr", default=DEFAULT_EXPR)
-    parser.add_argument("--input-meta", default=DEFAULT_META)
-    parser.add_argument("--output", default=DEFAULT_OUTPUT)
+    add_data_args(parser)
     parser.add_argument(
         "--n-top-genes",
         type=int,
         default=None,
-        help="If set, filter to top N highly variable genes before saving.",
+        help="Override HVG count (default follows --variant).",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Replace output h5ad if it already exists.",
+    )
+    args = parser.parse_args()
+    paths = PipelinePaths.build(args.data_root, args.variant)
+    n_top = args.n_top_genes
+    if n_top is None:
+        n_top = VARIANT_N_TOP_GENES[args.variant]
+    hvg = n_top if n_top and n_top > 0 else None
+    guard_output(paths.raw_h5ad, overwrite=args.overwrite, step="scp542_conversion")
+    paths.processed_dir.mkdir(parents=True, exist_ok=True)
+    run(
+        str(paths.expr_file),
+        str(paths.meta_file),
+        str(paths.raw_h5ad),
+        hvg,
+    )
 
 
 if __name__ == "__main__":
-    args = _parse_args()
-    run(args.input_expr, args.input_meta, args.output, args.n_top_genes)
+    _parse_args()

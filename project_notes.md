@@ -29,14 +29,33 @@ scripts were removed.
 **Sanity baseline (cheap failure detection, per v2 plan):**
 * Per-drug-mean predictor (predicts the train-set mean viability per head) is computed up-front and compared to the trained model's per-drug val MSE at the end. Heads where the model fails to beat this floor have not learned anything useful regardless of absolute MSE.
 
+### Data layout and path resolution
+
+Defaults live in one place: `scripts/preprocessing/layout.py` (`DEFAULT_DATA_ROOT`, scGPT script/model paths). Override with `--data-root` / `--scgpt-script` if needed. No shell env vars required.
+
+Directory structure under `DEFAULT_DATA_ROOT` (`/Users/selin/Desktop/OncoTox/data`):
+
+```
+data/
+  scRNAseq_SCP542/expression/CPM_data.txt
+  scRNAseq_SCP542/metadata/Metadata.txt
+  metadata/CTRPv2.0_2015_ctd2_ExpandedDataset/
+  processed/scRNAseq_SCP542/hvg5000/     # default training (--variant hvg5000)
+  processed/scRNAseq_SCP542/all_genes/   # full transcriptome (--variant all_genes)
+```
+
+`scripts/preprocessing/layout.py` is the **only** module that maps `(data_root, variant)` → file paths. The orchestrator passes those paths into each step. Rerunning `convert` or scGPT on the same variant **fails** unless `--overwrite` is passed; `hvg5000` and `all_genes` never share an output folder.
+
 ### Pipeline order
 
 **A. Preprocessing (`run_preprocessing.py` orchestrates 5 steps):**
-1. `scp542_conversion`       -> `SCP542_CCLE.h5ad` (optional HVG filter).
-2. `gen_embeds.py` (external) -> `..._scGPT_human_embeddings.h5ad`.
-3. `ctrp_to_h5ad`            -> `..._with_targets.h5ad` (writes Y_ctrp, M_ctrp, ctrp_drugs + legacy paclitaxel cols).
-4. `create_splits`           -> writes both `split_paclitaxel` (legacy) and `split_ctrp` (multi-task).
-5. `add_pca`                 -> writes `X_pca` baseline.
+1. `scp542_conversion`       -> `processed/.../<variant>/SCP542_CCLE.h5ad`
+2. `gen_embeds.py` (external) -> `..._scGPT_human_embeddings.h5ad`
+3. `ctrp_to_h5ad`            -> `..._with_targets.h5ad`
+4. `create_splits`           -> `split_paclitaxel` + `split_ctrp`
+5. `add_pca`                 -> `X_pca`
+
+Use `--variant hvg5000` (default) or `--variant all_genes` to pick the output subdirectory.
 
 **B. Training (all via `train_multitask.py`):**
 
@@ -52,19 +71,14 @@ Each training run writes a versioned directory under `runs/` (see below).
 
 **C. End-to-end commands:**
 ```bash
-# Full preprocessing (HVG-5000, default --min-cell-lines 50, auto-runs scGPT)
 uv run scripts/preprocessing/run_preprocessing.py \
-    --n-top-genes 5000 --min-cell-lines 50 \
-    --scgpt-python /Users/selin/PycharmProjects/scGPT/.venv/bin/python
+    --variant hvg5000 --start-at targets --skip-scgpt --all-drugs
 
-# Re-do only the multi-drug target step (e.g. to switch to all CTRPv2 drugs)
 uv run scripts/preprocessing/run_preprocessing.py \
-    --start-at targets --skip-scgpt --all-drugs
+    --variant all_genes --all-drugs --scgpt-python "$SCGPT_PYTHON"
 
-# Training entry points (see table above for the matrix of scope x rep)
 uv run scripts/training/train_multitask.py --use-rep X_scGPT
-uv run scripts/training/train_multitask.py --use-rep X_pca
-uv run scripts/training/train_multitask.py --use-rep X_scGPT --drugs paclitaxel
+uv run scripts/training/train_multitask.py --variant hvg5000 --use-rep X_pca --drugs paclitaxel
 ```
 
 ### Run versioning + artifact saving
@@ -82,10 +96,38 @@ Every `train_multitask.py` run writes a self-contained directory under `runs/` (
 
 Historical paclitaxel results (best val MSE 0.0375 / 0.0371 on 08.05, then 0.0351 / 0.0336 on 25.05 HVG-5000) are documented below in this file and serve as the single-task reference points for any future multi-task comparison.
 
+### First multi-task results (HVG-5000, `--all-drugs`, `split_ctrp`)
+
+Preprocessing was re-run with `--start-at targets --skip-scgpt --all-drugs` so that `Y_ctrp` / `M_ctrp` cover all 545 CTRPv2 drugs (no `--min-cell-lines` filter; 180 / 198 cell-line overlap). New `split_ctrp` distribution: train 34,126 / val 7,121 / test 5,980 / unassigned 6,286 cells over 126 / 27 / 27 cell lines. All four runs share these splits and use the per-drug-mean sanity baseline.
+
+| Run id | Rep | K | Best epoch | Best val MSE | Baseline mean MSE | Model mean MSE | Heads beating baseline |
+|---|---|---|---|---|---|---|---|
+| `20260526_132914_multitask_X_scGPT_subset_K1` | X_scGPT | 1 (paclitaxel) | 11 | **0.0412** | 0.0434 | 0.0412 | 1 / 1 |
+| `20260526_132952_multitask_X_pca_subset_K1`   | X_pca   | 1 (paclitaxel) |  5 | **0.0393** | 0.0434 | 0.0393 | 1 / 1 |
+| `20260526_133012_multitask_X_scGPT_all_drugs` | X_scGPT | 545           |  7 | **0.0105** | 0.0097 | 0.0103 | **142 / 545** |
+| `20260526_133112_multitask_X_pca_all_drugs`   | X_pca   | 545           |  6 | **0.0112** | 0.0097 | 0.0114 | 97 / 545 |
+
+Observations:
+* **Paclitaxel K=1 on `split_ctrp` (6,497 val labels) is not directly comparable to the historical 25.05 numbers (`split_paclitaxel`, 5,035 val labels):** the multi-task split holds out a different set of 27 cell lines, so the absolute MSE level shifts. Within this new split, PCA (0.0393) beats scGPT (0.0412) on paclitaxel alone, mirroring the previous-day trend.
+* **K=545 numerically looks better (~0.0105) only because most viability values are near 1.0** — the per-drug-mean baseline drops to 0.0097, so the multi-task model only beats baseline on **142 / 545** heads (scGPT) vs **97 / 545** (PCA). scGPT beats baseline on ~47% more heads than PCA at the same K and split.
+* The same low-coverage heads (n_val=221) dominate the "worse than baseline" list for both reps: `brd-k30748066`, `vx-680`, `brd-k33514849`, `brd9876:mk-1775 (4:1 mol/mol)`, `bafilomycin a1`. These are candidates for either dropping or weighting down in the next iteration.
+* `gsk-j4` is the largest single win in both reps (model MSE ≈ 0.000 vs baseline 0.011 at n=221) — a sanity check that the multi-task head can fit a low-variance drug-line combination.
+
+Saved artifacts:
+* `runs/20260526_132914_multitask_X_scGPT_subset_K1/`
+* `runs/20260526_132952_multitask_X_pca_subset_K1/`
+* `runs/20260526_133012_multitask_X_scGPT_all_drugs/`
+* `runs/20260526_133112_multitask_X_pca_all_drugs/`
+* Aggregated ledger: `runs/runs_index.csv`.
+
+### New notebook: HVG-5000 vs all-genes UMAP comparison
+`notebooks/hvg_vs_all_genes_umap.ipynb` — uses `PipelinePaths.build` for `hvg5000` vs `all_genes`.
+
 ### Open questions for the next iteration
-* Does multi-task hurt or help paclitaxel's val MSE vs the 0.0336 / 0.0351 single-task numbers? (Compare new paclitaxel run to historical reference.)
-* Which heads consistently fail to beat the per-drug-mean baseline? (Candidates for removal or re-weighting.)
-* Loss weighting: currently uniform per observed entry; per-head weighting or per-drug uncertainty is a future tweak.
+* Does multi-task hurt or help paclitaxel's val MSE vs the 0.0336 / 0.0351 single-task numbers? (Need to re-train paclitaxel single-task on `split_paclitaxel` to apples-to-apples compare; `split_ctrp` paclitaxel numbers above are on a different val set.)
+* Which heads consistently fail to beat the per-drug-mean baseline? (Concrete starting list: small-n heads above — drop them or down-weight.)
+* Loss weighting: currently uniform per observed entry; per-head weighting or per-drug uncertainty is a future tweak — especially relevant given the 142/545 vs 97/545 split.
+* Does HVG-5000 leave noticeable cancer-type / drug-response signal on the table compared to the full transcriptome? (Visual answer from the new notebook once the all-genes side is regenerated.)
 
 ## 25.05.2026
 
@@ -327,7 +369,7 @@ hard to actually find toxicity definition and annotations, since toxicity is wan
   - `data/drug/drug_overlap_candidates.csv`
 
 #### 3) DrugBank overlap
-- Loaded DrugBank XML (`/Users/selin/Desktop/OncoTox/full database.xml`) and matched to catalog via normalized names (+ synonym expansion where available).
+- Loaded DrugBank XML (`/Users/selin/Desktop/OncoTox/data/full database.xml`) and matched to catalog via normalized names (+ synonym expansion where available).
 - Dataset-level matches to DrugBank:
   - GDSC: `118 / 295` (`40.00%`)
   - CTRPv2: `173 / 545` (`31.74%`)

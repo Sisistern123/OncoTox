@@ -45,7 +45,7 @@ from scripts.training.training_utils import (
     utc_now_iso,
 )
 
-FILE_PATH = "/Users/selin/Desktop/OncoTox/data/scRNAseq_SCP542/metadata/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad"
+from scripts.preprocessing.layout import PipelinePaths, add_data_args
 
 DEFAULT_HIDDEN_DIMS = {
     "X_pca": (64, 32),
@@ -55,7 +55,13 @@ DEFAULT_HIDDEN_DIMS = {
 
 def _parse_args():
     parser = argparse.ArgumentParser(description="Multi-task CTRP drug-response training.")
-    parser.add_argument("--path", default=FILE_PATH)
+    add_data_args(parser)
+    parser.add_argument(
+        "--path",
+        type=str,
+        default=None,
+        help="Override targets h5ad (default: derived from --data-root and --variant).",
+    )
     parser.add_argument(
         "--use-rep",
         default="X_scGPT",
@@ -199,15 +205,17 @@ def _evaluate_model_per_drug_mse(
 
 def main():
     args = _parse_args()
+    paths = PipelinePaths.build(args.data_root, args.variant)
+    h5ad_path = args.path or str(paths.targets_h5ad)
 
     hidden_dims = tuple(args.hidden_dims) if args.hidden_dims else DEFAULT_HIDDEN_DIMS[args.use_rep]
     tag = args.tag or args.use_rep
 
     train_dataset = MultiDrugDataset(
-        h5ad_path=args.path, use_rep=args.use_rep, split="train", drugs=args.drugs
+        h5ad_path=h5ad_path, use_rep=args.use_rep, split="train", drugs=args.drugs
     )
     val_dataset = MultiDrugDataset(
-        h5ad_path=args.path, use_rep=args.use_rep, split="val", drugs=args.drugs
+        h5ad_path=h5ad_path, use_rep=args.use_rep, split="val", drugs=args.drugs
     )
 
     if train_dataset.drug_names != val_dataset.drug_names:
@@ -299,7 +307,9 @@ def main():
             "drug_scope_kind": "multi_drug",
             "drugs_requested": args.drugs,
             "rep": args.use_rep,
-            "h5ad_path": args.path,
+            "data_root": str(paths.data_root),
+            "variant": paths.variant,
+            "h5ad_path": h5ad_path,
             "input_dim": input_dim,
             "output_dim": output_dim,
             "hidden_dims": list(hidden_dims),

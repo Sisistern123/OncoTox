@@ -1,29 +1,20 @@
 """Orchestrate the full OncoTox preprocessing pipeline in the correct order.
 
-Steps (training is NOT included here):
-    1. scp542_conversion : raw CPM + Metadata  ->  SCP542_CCLE.h5ad
-                           (optionally filtered to top-N highly variable genes)
-    2. gen_embeds.py     : SCP542_CCLE.h5ad    ->  SCP542_CCLE_scGPT_human_embeddings.h5ad
-                           (lives in a separate repo, invoked via subprocess)
-    3. ctrp_to_h5ad      : map CTRPv2 viability onto the embedded AnnData
-                           -> writes both the multi-drug matrices
-                              (Y_ctrp / M_ctrp / uns['ctrp_drugs']) and the
-                              legacy per-drug columns for back-compat.
-    4. create_splits     : cell-line-grouped 70/15/15 train/val/test split.
-                           Writes BOTH split_<target_drug> (single-drug, for
-                           the original paclitaxel pipeline) and split_ctrp
-                           (drug-agnostic, used by the multi-task trainer).
-    5. add_pca           : PCA baseline embedding (X_pca).
+Paths are derived once from ``--data-root`` (default in ``layout.py``) and
+``--variant``, then passed explicitly to each step. Outputs live only under::
 
-Examples:
-    # Full pipeline, top-5000 HVGs, multi-task ready, with scGPT auto-run
-    python scripts/preprocessing/run_preprocessing.py \\
-        --n-top-genes 5000 \\
-        --min-cell-lines 50 \\
-        --scgpt-python /Users/selin/PycharmProjects/scGPT/.venv/bin/python
+    <data-root>/processed/scRNAseq_SCP542/<variant>/
 
-    # Resume the pipeline starting at the splits step
-    python scripts/preprocessing/run_preprocessing.py --start-at splits
+Expensive steps (convert, scGPT) refuse to overwrite existing files unless
+``--overwrite`` is passed. ``hvg5000`` and ``all_genes`` never share a folder.
+
+Examples::
+
+    uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \\
+        --start-at targets --skip-scgpt --scgpt-python ...
+
+    uv run scripts/preprocessing/run_preprocessing.py --variant all_genes --all-drugs \\
+        --scgpt-python ...
 """
 
 from __future__ import annotations
@@ -37,25 +28,20 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.preprocessing import (  # noqa: E402 - sys.path manipulation above
+from scripts.preprocessing import (  # noqa: E402
     add_pca,
     create_splits,
     ctrp_to_h5ad,
     scp542_conversion,
 )
-
-DATA_ROOT = Path("/Users/selin/Desktop/OncoTox")
-EXPR_FILE = DATA_ROOT / "data/scRNAseq_SCP542/expression/CPM_data.txt"
-META_FILE = DATA_ROOT / "data/scRNAseq_SCP542/metadata/Metadata.txt"
-RAW_H5AD = DATA_ROOT / "data/scRNAseq_SCP542/metadata/SCP542_CCLE.h5ad"
-EMBED_H5AD = DATA_ROOT / "data/scRNAseq_SCP542/metadata/SCP542_CCLE_scGPT_human_embeddings.h5ad"
-TARGETS_H5AD = (
-    DATA_ROOT
-    / "data/scRNAseq_SCP542/metadata/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad"
+from scripts.preprocessing.layout import (  # noqa: E402
+    DEFAULT_SCGPT_MODEL_DIR,
+    DEFAULT_SCGPT_SCRIPT,
+    PipelinePaths,
+    VARIANT_N_TOP_GENES,
+    add_data_args,
+    guard_output,
 )
-CTRP_DIR = DATA_ROOT / "data/metadata/CTRPv2.0_2015_ctd2_ExpandedDataset"
-
-DEFAULT_SCGPT_SCRIPT = Path("/Users/selin/PycharmProjects/scGPT/gen_embeds.py")
 
 STEP_ORDER = ["convert", "scgpt", "targets", "splits", "pca"]
 
@@ -65,34 +51,45 @@ def _print_step(idx: int, total: int, label: str) -> None:
     print(f"\n{bar}\n[{idx}/{total}] {label}\n{bar}")
 
 
-def _run_scgpt(scgpt_python: str | None, scgpt_script: Path) -> None:
+def _run_scgpt(
+    scgpt_python: str | None,
+    scgpt_script: Path,
+    model_dir: Path,
+    input_path: Path,
+    output_path: Path,
+    overwrite: bool,
+) -> None:
+    guard_output(output_path, overwrite=overwrite, step="scGPT embeddings")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
     if not scgpt_script.exists():
-        raise FileNotFoundError(
-            f"scGPT embedding script not found at: {scgpt_script}\n"
-            f"Pass --scgpt-script to point to the right path."
-        )
+        raise FileNotFoundError(f"scGPT script not found: {scgpt_script}")
 
     if scgpt_python:
-        cmd = [scgpt_python, str(scgpt_script)]
+        cmd = [
+            scgpt_python,
+            str(scgpt_script),
+            "--input",
+            str(input_path),
+            "--output",
+            str(output_path),
+            "--model-dir",
+            str(model_dir),
+        ]
         print(f"Running scGPT via subprocess:\n  {' '.join(cmd)}")
         subprocess.run(cmd, check=True)
     else:
-        print()
         print("-" * 70)
-        print("MANUAL STEP: generate scGPT embeddings.")
-        print("Re-run this orchestrator with --scgpt-python <path> to automate, or")
-        print("run the following in your scGPT env and then come back here:")
-        print(f"  python {scgpt_script}")
-        print()
-        print(f"  expected input  : {RAW_H5AD}")
-        print(f"  expected output : {EMBED_H5AD}")
-        print("-" * 70)
-        input("Press Enter once gen_embeds.py has completed successfully... ")
-
-    if not EMBED_H5AD.exists():
-        raise RuntimeError(
-            f"Expected scGPT output not found after this step:\n  {EMBED_H5AD}"
+        print("MANUAL STEP: run gen_embeds.py, then press Enter.")
+        print(
+            f"  python {scgpt_script} --input {input_path} --output {output_path} "
+            f"--model-dir {model_dir}"
         )
+        print("-" * 70)
+        input("Press Enter once embeddings exist... ")
+
+    if not output_path.exists():
+        raise RuntimeError(f"Expected scGPT output missing:\n  {output_path}")
 
 
 def main():
@@ -100,132 +97,116 @@ def main():
         description="Run the full OncoTox preprocessing pipeline in order.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    add_data_args(parser)
     parser.add_argument(
         "--n-top-genes",
         type=int,
-        default=5000,
-        help="Number of highly variable genes to retain (0 disables HVG filtering).",
+        default=None,
+        help="Override HVG count for convert (default follows --variant).",
     )
-    parser.add_argument(
-        "--min-cell-lines",
-        type=int,
-        default=50,
-        help="Minimum SCP542-overlapping cell-line coverage to keep a CTRP drug as a head.",
-    )
-    parser.add_argument(
-        "--all-drugs",
-        action="store_true",
-        help="Shortcut for --min-cell-lines 0 (keep every CTRPv2 drug with any overlap).",
-    )
-    parser.add_argument(
-        "--target-drug",
-        default="paclitaxel",
-        help="Drug also exposed as flat viability/train_mask/split columns "
-        "(kept for back-compat with the original single-drug training scripts).",
-    )
+    parser.add_argument("--min-cell-lines", type=int, default=50)
+    parser.add_argument("--all-drugs", action="store_true")
+    parser.add_argument("--target-drug", default="paclitaxel")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument(
-        "--skip-multi-split",
-        action="store_true",
-        help="Skip writing the drug-agnostic split_ctrp column.",
-    )
+    parser.add_argument("--skip-multi-split", action="store_true")
     parser.add_argument(
         "--scgpt-python",
         default=None,
-        help="Python interpreter that has the scgpt package installed. "
-        "If omitted, you will be prompted to run gen_embeds.py manually.",
+        help="Python with scgpt installed (only needed when running the scGPT step).",
     )
     parser.add_argument(
         "--scgpt-script",
-        default=str(DEFAULT_SCGPT_SCRIPT),
-        help="Path to gen_embeds.py in the scGPT repo.",
+        type=Path,
+        default=DEFAULT_SCGPT_SCRIPT,
+        help="gen_embeds.py path.",
     )
     parser.add_argument(
-        "--skip-scgpt",
-        action="store_true",
-        help="Skip scGPT embedding generation (assume embeddings already exist).",
+        "--scgpt-model-dir",
+        type=Path,
+        default=DEFAULT_SCGPT_MODEL_DIR,
+        help="scGPT_human weights directory.",
     )
+    parser.add_argument("--skip-scgpt", action="store_true")
     parser.add_argument(
         "--force-pca",
         action="store_true",
-        help="Recompute X_pca even if it already exists in the h5ad file.",
+        help="Recompute X_pca inside the targets h5ad (does not rebuild embeddings).",
     )
     parser.add_argument(
-        "--start-at",
-        choices=STEP_ORDER,
-        default="convert",
-        help="Resume the pipeline starting at the given step.",
+        "--overwrite",
+        action="store_true",
+        help="Allow convert/scGPT to replace existing raw or embedding h5ad files.",
     )
+    parser.add_argument("--start-at", choices=STEP_ORDER, default="convert")
 
     args = parser.parse_args()
+    paths = PipelinePaths.build(args.data_root, args.variant)
+    paths.processed_dir.mkdir(parents=True, exist_ok=True)
 
-    hvg = args.n_top_genes if args.n_top_genes and args.n_top_genes > 0 else None
+    default_hvg = VARIANT_N_TOP_GENES[args.variant]
+    n_top = args.n_top_genes if args.n_top_genes is not None else default_hvg
+    hvg = n_top if n_top and n_top > 0 else None
     min_cell_lines = 0 if args.all_drugs else args.min_cell_lines
     start_idx = STEP_ORDER.index(args.start_at)
     total = len(STEP_ORDER)
 
+    print(f"data_root : {paths.data_root}")
+    print(f"variant   : {paths.variant} -> {paths.processed_dir}")
+
     if start_idx <= STEP_ORDER.index("convert"):
-        hvg_label = f"with top-{hvg} HVGs" if hvg else "no HVG filter"
+        hvg_label = f"top-{hvg} HVGs" if hvg else "no HVG filter"
         _print_step(1, total, f"scp542_conversion ({hvg_label})")
+        guard_output(paths.raw_h5ad, overwrite=args.overwrite, step="scp542_conversion")
         scp542_conversion.run(
-            input_expr=str(EXPR_FILE),
-            input_meta=str(META_FILE),
-            output_path=str(RAW_H5AD),
-            n_top_genes=hvg,
+            str(paths.expr_file),
+            str(paths.meta_file),
+            str(paths.raw_h5ad),
+            hvg,
         )
 
     if start_idx <= STEP_ORDER.index("scgpt"):
         if args.skip_scgpt:
-            _print_step(2, total, "scGPT embedding generation (SKIPPED via --skip-scgpt)")
-            if not EMBED_H5AD.exists():
-                raise RuntimeError(
-                    f"--skip-scgpt was set but expected embeddings file is missing:\n"
-                    f"  {EMBED_H5AD}"
-                )
+            _print_step(2, total, "scGPT (skipped)")
+            if not paths.embed_h5ad.exists():
+                raise RuntimeError(f"--skip-scgpt but missing:\n  {paths.embed_h5ad}")
         else:
-            _print_step(2, total, "scGPT embedding generation (gen_embeds.py)")
-            _run_scgpt(args.scgpt_python, Path(args.scgpt_script))
+            _print_step(2, total, "scGPT embeddings")
+            _run_scgpt(
+                args.scgpt_python,
+                Path(args.scgpt_script),
+                Path(args.scgpt_model_dir),
+                paths.raw_h5ad,
+                paths.embed_h5ad,
+                args.overwrite,
+            )
 
     if start_idx <= STEP_ORDER.index("targets"):
-        _print_step(
-            3,
-            total,
-            f"ctrp_to_h5ad (multi-drug, min_cell_lines={min_cell_lines}, "
-            f"legacy_col='{args.target_drug}')",
-        )
+        _print_step(3, total, f"ctrp_to_h5ad (min_cell_lines={min_cell_lines})")
+        if not paths.embed_h5ad.exists():
+            raise RuntimeError(f"Missing embeddings input:\n  {paths.embed_h5ad}")
         ctrp_to_h5ad.run(
-            input_h5ad=str(EMBED_H5AD),
-            output_h5ad=str(TARGETS_H5AD),
-            ctrp_dir=str(CTRP_DIR),
+            str(paths.embed_h5ad),
+            str(paths.targets_h5ad),
+            str(paths.ctrp_dir),
             min_cell_lines=min_cell_lines,
             extra_single_drug_cols=(args.target_drug,) if args.target_drug else (),
         )
 
     if start_idx <= STEP_ORDER.index("splits"):
-        _print_step(
-            4,
-            total,
-            f"create_splits (single-drug='{args.target_drug}', "
-            f"multi={'no' if args.skip_multi_split else 'yes'}, seed={args.seed})",
-        )
+        _print_step(4, total, "create_splits")
+        if not paths.targets_h5ad.exists():
+            raise RuntimeError(f"Missing targets h5ad:\n  {paths.targets_h5ad}")
         if args.target_drug:
-            create_splits.run(
-                h5ad_path=str(TARGETS_H5AD),
-                target_drug=args.target_drug,
-                seed=args.seed,
-            )
+            create_splits.run(str(paths.targets_h5ad), args.target_drug, args.seed)
         if not args.skip_multi_split:
-            create_splits.run_multi(
-                h5ad_path=str(TARGETS_H5AD),
-                seed=args.seed,
-            )
+            create_splits.run_multi(str(paths.targets_h5ad), seed=args.seed)
 
     if start_idx <= STEP_ORDER.index("pca"):
         _print_step(5, total, f"add_pca (force={args.force_pca})")
-        add_pca.run(h5ad_path=str(TARGETS_H5AD), force=args.force_pca)
+        add_pca.run(str(paths.targets_h5ad), force=args.force_pca)
 
     print("\nPreprocessing pipeline complete.")
-    print(f"Final file: {TARGETS_H5AD}")
+    print(f"Final file: {paths.targets_h5ad}")
 
 
 if __name__ == "__main__":
