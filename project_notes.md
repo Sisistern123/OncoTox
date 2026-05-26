@@ -3,73 +3,89 @@
 ## 26.05.2026
 
 ### Multi-drug refactor (v2-plan iterative step: single-task -> masked multi-task)
-Single-task paclitaxel pipeline is still fully runnable (`train_baseline.py`, `train_scGPT.py`) — the new code is purely additive. Step taken is the v2 plan's stated next milestone ("iteratively expand … to include masked losses"), kept small via a per-drug subset and a cheap baseline.
+Replaced the paclitaxel-only training with a single multi-task entry point that
+runs masked MSE over any subset of CTRPv2 drugs. K=1 reduces exactly to plain
+MSE (no missing entries), so paclitaxel single-task is now just one flag combo
+on `train_multitask.py` — the dedicated `train_baseline.py` / `train_scGPT.py`
+scripts were removed.
 
 **New artifacts written into the h5ad (by `ctrp_to_h5ad.py`):**
 * `adata.obsm["Y_ctrp"]`  : float32 (n_cells, K), per-cell viability for each drug (NaN where missing).
 * `adata.obsm["M_ctrp"]`  : bool    (n_cells, K), True where a label is observed.
 * `adata.uns["ctrp_drugs"]`: ordered list of K drug names = column order of Y/M.
 * `adata.obs["split_ctrp"]`: cell-line-grouped 70/15/15 split shared across every head (drug-agnostic, leakage-free).
-* Per-drug legacy columns (`viability_<drug>`, `train_mask_<drug>`, `split_<drug>`) kept for paclitaxel back-compat.
+* Per-drug legacy columns (`viability_<drug>`, `train_mask_<drug>`, `split_<drug>`) still written for downstream tools that read flat columns.
 
-**Drug-scope knob (v2 plan: "starting small"):**
+**Drug-scope knobs:**
 * Default: `--min-cell-lines 50` -> keeps drugs screened on >=50 SCP542-overlapping cell lines.
 * All CTRPv2 drugs: `--all-drugs` (equivalent to `--min-cell-lines 0`).
 * Intermediate K: `train_multitask.py --drugs paclitaxel docetaxel gemcitabine ...` (no preprocessing rerun needed as long as those drugs passed the prep-time filter).
 
 **Multi-task model & training:**
-* `OncoMLP` now takes `output_dim=K` (default 1 -> unchanged for paclitaxel).
-* `training_utils.train_model` auto-switches to masked MSE / masked Huber when it sees 3-tuple batches; logs top-k best/worst per-drug val MSE.
-* New entry point: `scripts/training/train_multitask.py --use-rep {X_pca,X_scGPT}`.
+* `OncoMLP` takes `output_dim=K` (default 1).
+* `training_utils.train_model` auto-switches to masked MSE / masked Huber when it sees 3-tuple `(x, y, mask)` batches; logs top-k best/worst per-drug val MSE.
+* Only entry point: `scripts/training/train_multitask.py`.
 
 **Sanity baseline (cheap failure detection, per v2 plan):**
-* Per-drug-mean predictor (predicts the train-set mean viability per head) is always computed and compared to the trained model's per-drug val MSE after training. Heads where the model fails to beat this floor have not learned anything useful regardless of absolute MSE.
+* Per-drug-mean predictor (predicts the train-set mean viability per head) is computed up-front and compared to the trained model's per-drug val MSE at the end. Heads where the model fails to beat this floor have not learned anything useful regardless of absolute MSE.
 
-**Commands:**
+### Pipeline order
+
+**A. Preprocessing (`run_preprocessing.py` orchestrates 5 steps):**
+1. `scp542_conversion`       -> `SCP542_CCLE.h5ad` (optional HVG filter).
+2. `gen_embeds.py` (external) -> `..._scGPT_human_embeddings.h5ad`.
+3. `ctrp_to_h5ad`            -> `..._with_targets.h5ad` (writes Y_ctrp, M_ctrp, ctrp_drugs + legacy paclitaxel cols).
+4. `create_splits`           -> writes both `split_paclitaxel` (legacy) and `split_ctrp` (multi-task).
+5. `add_pca`                 -> writes `X_pca` baseline.
+
+**B. Training (all via `train_multitask.py`):**
+
+| Scenario | Command |
+|---|---|
+| scGPT, all CTRPv2 drugs that survived the prep filter | `train_multitask.py --use-rep X_scGPT` |
+| PCA baseline, all CTRPv2 drugs | `train_multitask.py --use-rep X_pca` |
+| scGPT, few-drug intermediate (validate masked loss on K=3 before going wide) | `train_multitask.py --use-rep X_scGPT --drugs paclitaxel docetaxel gemcitabine` |
+| scGPT single-task paclitaxel (replaces old `train_scGPT.py`) | `train_multitask.py --use-rep X_scGPT --drugs paclitaxel` |
+| PCA single-task paclitaxel (replaces old `train_baseline.py`) | `train_multitask.py --use-rep X_pca --drugs paclitaxel` |
+
+Each training run writes a versioned directory under `runs/` (see below).
+
+**C. End-to-end commands:**
 ```bash
-# Multi-task preprocessing (>=50 cell-line drugs only, paclitaxel cols kept)
-uv run scripts/preprocessing/run_preprocessing.py --n-top-genes 5000 \
-    --min-cell-lines 50 --skip-scgpt --start-at targets
+# Full preprocessing (HVG-5000, default --min-cell-lines 50, auto-runs scGPT)
+uv run scripts/preprocessing/run_preprocessing.py \
+    --n-top-genes 5000 --min-cell-lines 50 \
+    --scgpt-python /Users/selin/PycharmProjects/scGPT/.venv/bin/python
 
-# All CTRPv2 drugs
-uv run scripts/preprocessing/run_preprocessing.py --start-at targets \
-    --skip-scgpt --all-drugs
+# Re-do only the multi-drug target step (e.g. to switch to all CTRPv2 drugs)
+uv run scripts/preprocessing/run_preprocessing.py \
+    --start-at targets --skip-scgpt --all-drugs
 
-# Few-drug intermediate (validate masked-loss pipeline before going wide)
-uv run scripts/training/train_multitask.py --use-rep X_scGPT \
-    --drugs paclitaxel docetaxel gemcitabine
-
-# Full multi-task on whatever was persisted by ctrp_to_h5ad
+# Training entry points (see table above for the matrix of scope x rep)
 uv run scripts/training/train_multitask.py --use-rep X_scGPT
 uv run scripts/training/train_multitask.py --use-rep X_pca
+uv run scripts/training/train_multitask.py --use-rep X_scGPT --drugs paclitaxel
 ```
 
-**Open questions for the next iteration:**
-* Does multi-task hurt or help paclitaxel's val MSE vs the 0.0336 / 0.0351 single-task numbers?
-* Which heads consistently fail to beat the per-drug-mean baseline? (Candidates for removal or re-weighting.)
-* Loss weighting: currently uniform per observed entry; per-head weighting or per-drug uncertainty is a future tweak.
-
 ### Run versioning + artifact saving
-Every training run (single-drug or multi-task) writes a self-contained directory under `runs/` (gitignored), plus appends one row to `runs/runs_index.csv`. All versioning lives in `scripts/training/training_utils.py` (`create_run_dir`, `save_run`).
+Every `train_multitask.py` run writes a self-contained directory under `runs/` (gitignored) and appends one row to `runs/runs_index.csv` for cross-run comparison. All versioning lives in `scripts/training/training_utils.py` (`create_run_dir`, `save_run`).
 
 **Per-run files:**
 * `config.json`           - the exact TrainConfig used.
-* `run_meta.json`         - drug scope (paclitaxel / subset / all_drugs), rep, dataset sizes, hidden_dims, host info.
+* `run_meta.json`         - drug scope (`single_drug` / `subset` / `all_drugs`), rep, dataset sizes, hidden_dims, host info.
 * `history.csv`           - epoch, train_mse, val_mse, lr.
 * `summary.json`          - best_val_mse, best_epoch, mean baseline vs model MSE, heads-beating-baseline count.
 * `best_model.pt`         - state_dict of the best-val-MSE checkpoint.
-* `per_drug_results.csv`  - (multi-task only) drug, model_val_mse, baseline_val_mse, delta, n_val.
+* `per_drug_results.csv`  - drug, model_val_mse, baseline_val_mse, delta, n_val.
 
 **Ledger columns (`runs/runs_index.csv`):** `run_id, tag, scope, rep, K, n_train_cells, n_val_cells, best_epoch, best_val_mse, baseline_mean_mse, model_mean_mse, n_beats_baseline, n_total_heads, started_at, finished_at`.
 
-Historical paclitaxel results (best val MSE 0.0375 / 0.0371 on 08.05, then 0.0351 / 0.0336 on 25.05 HVG-5000) are documented above in this file and serve as the single-task reference points for any future multi-task comparison.
+Historical paclitaxel results (best val MSE 0.0375 / 0.0371 on 08.05, then 0.0351 / 0.0336 on 25.05 HVG-5000) are documented below in this file and serve as the single-task reference points for any future multi-task comparison.
 
-**Commands:**
-```bash
-uv run scripts/training/train_baseline.py
-uv run scripts/training/train_scGPT.py
-uv run scripts/training/train_multitask.py --use-rep X_scGPT
-```
+### Open questions for the next iteration
+* Does multi-task hurt or help paclitaxel's val MSE vs the 0.0336 / 0.0351 single-task numbers? (Compare new paclitaxel run to historical reference.)
+* Which heads consistently fail to beat the per-drug-mean baseline? (Candidates for removal or re-weighting.)
+* Loss weighting: currently uniform per observed entry; per-head weighting or per-drug uncertainty is a future tweak.
 
 ## 25.05.2026
 
@@ -157,7 +173,7 @@ uv run scripts/preprocessing/run_preprocessing.py \
 ### Model/training upgrades (concise)
 * `scripts/model/OncoMLP.py`: default `LayerNorm`, `GELU`, input dropout (`0.1`), configurable `hidden_dims` (`(64,32)` PCA, `(128,64)` scGPT).
 * `scripts/training/training_utils.py` (new): seeded training, ReduceLROnPlateau, early stopping, best-val checkpoint restore, gradient clipping.
-* `train_baseline.py` / `train_scGPT.py`: migrated to shared `TrainConfig` + `train_model(...)`.
+* `train_baseline.py` / `train_scGPT.py`: migrated to shared `TrainConfig` + `train_model(...)`. (Both scripts were later removed on 26.05 -- subsumed by `train_multitask.py --drugs paclitaxel --use-rep X_pca|X_scGPT`.)
 
 ### Quick comparison (best val MSE)
 | Setup | PCA best val | scGPT best val |
