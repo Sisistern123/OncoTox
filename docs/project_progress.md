@@ -11,7 +11,7 @@ Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition** throug
 
 ## Pipeline overview (at a glance)
 
-![OncoTox pipeline status overview](pipeline_overview.png)
+![OncoTox pipeline status overview](./pipeline_overview.png)
 
 Green = done / on-plan · amber = addition or partial · red (dashed) = still missing.
 Stages 1–6 below are complete; the two red boxes (cross-database PRISM/GDSC heads and the
