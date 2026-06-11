@@ -20,6 +20,97 @@ XAI stretch goal) are the remaining work. Regenerate with
 
 ---
 
+## Model mechanics — exact input, output, targets, and MSE (reference)
+
+*The single most-asked detail: what does a training example actually look like, what is
+the label defined over, and how is the reported MSE computed? Everything below is read
+straight out of the code (`scripts/model/`, `scripts/training/`, `scripts/preprocessing/`).*
+
+### Unit of a training example = **one single cell**
+
+The model is fed **per single cell**, never per cell line / per cancer type / per drug. Cell
+line, cancer type, and drug identity are *not* input features — they only determine the label
+and the train/val/test grouping.
+
+- **Input `X` (per cell):** one embedding vector, shape `(D,)`.
+  - `X_scGPT` → **512-dim** scGPT embedding, or `X_pca` → PCA of the (HVG-5000 / all-genes)
+    expression. Selected via `--use-rep`; read from `adata.obsm[use_rep]` (`dataset.py`).
+- **Output (per cell):**
+  - **Single-task:** 1 scalar = predicted viability for the one drug.
+  - **Multi-task:** **`K`-dim vector**, one scalar per CTRPv2 drug "head". The net is one shared
+    trunk + a single final `Linear(prev_dim → K)` — so the "K heads" are the K **rows of that
+    one output layer**; all hidden layers are shared across drugs (`OncoMLP.py:56`).
+    The default catalog is **K = 545** drugs.
+- Architecture: input-dropout → `[Linear → LayerNorm → GELU → Dropout]×hidden_dims` → `Linear→K`.
+  hidden_dims **(64,32) for PCA, (128,64) for scGPT** (`train_multitask.py:DEFAULT_HIDDEN_DIMS`).
+
+### Target `y` — what "viability" is, and at what granularity it is defined
+
+- Viability = CTRPv2 **`cpd_avg_pv`** (Compound Average Percent Viability — weighted average of
+  surviving cells across all tested doses; most values sit **near 1.0**).
+- It is defined **per (cell line × drug)** — a *bulk* number, **not** measured per single cell.
+  `ctrp_to_h5ad.py` aggregates every CTRPv2 measurement to one value per (cell line, drug) by
+  **mean** (`_build_drug_table`: `groupby(["ccl_name_norm","cpd_name_norm"]).mean()`), pivots to
+  a (cell line × drug) matrix, then **broadcasts each bulk value to every single cell of the
+  matching cell line** (`Y_full = cl_drug_matrix.reindex(cell_line_norm.values)`).
+  ⇒ **All cells of a given cell line carry the identical label vector.**
+- Stored as `obsm["Y_ctrp"]` `(n_cells, K)` float32 (NaN where missing) + `obsm["M_ctrp"]`
+  `(n_cells, K)` bool mask; `uns["ctrp_drugs"]` is the length-K column→drug ordering.
+- **Not** per cancer type. Cancer type is used only to color the UMAPs (§3), never as label/feature.
+- Drug column kept only if screened on ≥ `--min-cell-lines` overlapping cell lines (default 50;
+  the K=545 run used `--all-drugs` = min 0).
+
+### Mask `M` — handles the sparsity
+
+`M[cell, k] = True` iff that cell's **cell line** was actually screened against drug `k`. Missing
+(cell-line-never-tested-on-drug-k) entries are **excluded from the loss and from all metrics** —
+this is the masked-loss machinery (`MultiDrugDataset` fills missing `Y` with 0.0 only so it's
+safe to pass through PyTorch; the mask zeroes them out before they touch the loss).
+
+### Exact MSE computation (`training_utils.py`)
+
+**Multi-task (masked) — per batch:**
+1. Per-element squared error `sq = (preds − y)²`, shape `(batch, K)`.
+2. Mask it: `sq * M` zeroes unobserved (cell, drug) pairs.
+3. Batch loss `= (sq*M).sum() / M.sum()` (`_masked_mean`) — mean over **only observed
+   (cell, drug) entries**; returns 0 if a batch has no observed entries.
+
+**Epoch MSE (train and val)** accumulate across batches:
+`running_sq_sum += (sq*M).sum()`, `running_n += M.sum()`, then `MSE = running_sq_sum / running_n`.
+This is **entry-pooled**: every observed *(cell, drug)* pair is weighted equally, so high-coverage
+drugs — and cell lines contributing more cells — count proportionally more. It is **not** a
+per-drug average. `best_val_mse` in `summary.json` / `history.csv` `val_mse` is this number.
+
+**Single-task:** plain `((preds − y)²).mean()` over the batch (no mask); epoch = `sq.sum()/numel`.
+
+**Gradients** flow only through observed entries (the mask zeroes the rest). Optimizer: **Adam**
+(lr 1e-3, weight_decay 1e-3) on masked **MSE** (or masked-Huber, `beta=0.05`, via `--loss huber`);
+grad-clip max-norm 1.0; ReduceLROnPlateau (factor 0.5, patience 3); early-stop (patience 10) on
+the entry-pooled val MSE; best-val-MSE checkpoint is restored at the end.
+
+### ⚠️ Two different aggregations are reported — do not confuse them
+
+| Name | Where | Definition | K=545 scGPT |
+|---|---|---|---|
+| **Entry-pooled MSE** | `best_val_mse`, `history.csv` | `Σ sq·M / Σ M` over all observed entries | **0.0105** |
+| **Macro per-drug MSE** | `model_mean_mse` / `baseline_mean_mse` | per-drug `Σ_cells sq_k / n_k`, then `np.nanmean` over drugs (each drug equal weight) | **0.0103** |
+
+Only the **macro per-drug** numbers are what the **per-drug-mean baseline** is compared against
+(`train_multitask._per_drug_constant_mse`): the baseline predicts, for each drug, the constant
+**train-set mean viability over observed cells**; "**heads beating baseline**" counts drugs whose
+model per-drug val MSE < that constant's per-drug val MSE (scGPT 142/545, PCA 97/545 — §6).
+
+### Why this matters for reading every MSE in this doc
+
+- MSE ≈ 0.01 looks tiny **because `cpd_avg_pv` clusters near 1.0** — the constant baseline already
+  sits at 0.0097, so absolute MSE is nearly meaningless; **heads-beating-baseline** is the honest
+  signal.
+- Because the label is constant within a cell line, splits **must** be grouped by `Cell_line`
+  (70/15/15, `create_splits.py`) — otherwise the model memorizes the per-cell-line label
+  (this is exactly the §4 leakage story).
+
+---
+
 ## 0. The plan (for reference)
 
 A staged prototype:
