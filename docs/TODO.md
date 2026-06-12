@@ -8,9 +8,12 @@ My running task list. Scientific open questions live in
 - [ ] **Rerun the whole pipeline from scratch, both variants** (`hvg5000`, `all_genes`):
       `convert → scGPT embeddings → targets → splits → pca`. **Includes regenerating the scGPT
       embeddings.**
-- [ ] **Re-train all baselines** on the regenerated data and refresh the result tables in
-      [Step 04](./steps/04-single-task-results.md) / [Step 05](./steps/05-multitask-results.md):
-      single-task (paclitaxel) and multi-task (K=545), for both `X_scGPT` and `X_pca`.
+- [ ] **Re-train all baselines — the 8-run matrix:** `{all_genes, hvg5000}` × `{X_pca, X_scGPT}` ×
+      `{single-task paclitaxel, all-drugs K=545}`. Refresh the tables in
+      [Step 04](./steps/04-single-task-results.md) / [Step 05](./steps/05-multitask-results.md).
+      Per condition, PCA uses the full filtered set (5,000 / 22,722) and scGPT its in-vocab subset
+      (4,576 / 20,570) — **the OOV gap is intentionally part of the comparison** (scGPT's vocabulary
+      coverage is a property of the model; *shouganai*).
 - [ ] Sanity-check the rerun with `notebooks/verify_variants.ipynb` (gene counts, cell alignment,
       `.X` state, PCA-vs-scGPT UMAPs).
 - [ ] **Presentation slides.**

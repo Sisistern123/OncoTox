@@ -85,10 +85,18 @@ convert : 22,722 → 5,000 genes (HVG)  — the single filter        [.X = CPM]
 `add_pca.py` reads the **convert counts** `SCP542_CCLE.h5ad` (the full HVG set) to compute `X_pca`,
 *not* the targets `.X` (which lost the OOV genes). So `X_pca` is a genuine HVG-5000 (or, for
 `all_genes`, full-transcriptome) PCA — a standard single-cell PCA baseline — while scGPT uses the
-vocabulary subset it is able to. Changing the gene set means re-running `convert`, which forces a
-re-embed and a re-PCA; that is why `hvg5000` and `all_genes` live in **separate folders that never
-share files** (`guard_output` enforces it). `notebooks/verify_variants.ipynb` checks these gene
-counts and the `X_pca` source at any time.
+vocabulary subset it is able to.
+
+**This gene-count asymmetry (PCA on the full filtered set, scGPT on its in-vocab subset) is
+intentional.** Dropping out-of-vocabulary genes is a real property of *using* scGPT, so each method
+is compared exactly as it would be applied in practice: PCA on the genes the HVG step selects, scGPT
+on the genes it can actually embed. The comparison therefore includes scGPT's vocabulary coverage as
+part of the model, not as a confound to be normalized away.
+
+Changing the gene set means re-running `convert`, which forces a re-embed and a re-PCA; that is why
+`hvg5000` and `all_genes` live in **separate folders that never share files** (`guard_output`
+enforces it). `notebooks/verify_variants.ipynb` checks these gene counts and the `X_pca` source at
+any time.
 
 ### The two representations — what they are scientifically
 
