@@ -203,7 +203,14 @@ def main():
 
     if start_idx <= STEP_ORDER.index("pca"):
         _print_step(5, total, f"add_pca (force={args.force_pca})")
-        add_pca.run(str(paths.targets_h5ad), force=args.force_pca)
+        # PCA baseline is computed on the HVG-filtered convert counts (paths.raw_h5ad),
+        # NOT the targets .X (which has had scGPT-OOV genes dropped) -- keeps PCA on the
+        # single HVG filter for a clean PCA-vs-scGPT comparison.
+        add_pca.run(
+            str(paths.targets_h5ad),
+            force=args.force_pca,
+            counts_h5ad=str(paths.raw_h5ad),
+        )
 
     print("\nPreprocessing pipeline complete.")
     print(f"Final file: {paths.targets_h5ad}")

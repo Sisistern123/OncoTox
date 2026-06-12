@@ -14,12 +14,12 @@ a drug-response scalar. It is **fully supervised** — `train_model` in
 `scripts/training/training_utils.py` optimizes a (masked) **MSE** or **Huber** loss directly against
 observed labels, with no classification, pseudo-labeling, or consistency/contrastive objective.
 
-The *weak supervision* is in the **labels, not the algorithm**: the response value is a **bulk**
-(cell-line-level) measurement broadcast onto every single cell of that line (see the target section
-below). Mapping one average bulk score onto thousands of heterogeneous single cells deliberately
-injects label noise — this is the project's central modeling assumption (plan §Strategy): by forcing
-the network to map a heterogeneous single-cell input to the *average* bulk response, it must learn
-the transcriptomic signatures of sensitivity rather than any per-cell idiosyncrasy.
+The *weak supervision* lives in the **labels, not the algorithm**. The response value is a **bulk**
+(cell-line-level) measurement, broadcast onto every single cell of that line (target section below).
+Mapping one average score onto thousands of heterogeneous cells deliberately injects label noise.
+That is the project's central assumption (plan §Strategy): forced to map a noisy single-cell input
+to the *average* bulk response, the network must learn the transcriptomic signature of sensitivity
+rather than any per-cell quirk.
 
 Two points that are easy to misstate:
 
@@ -70,12 +70,14 @@ in the code:
 3. **Broadcast** each bulk value to every cell of the matching line —
    `Y_full = cl_drug_matrix.reindex(cell_line_norm.values)`.
 
-⇒ **every cell of a given line carries the identical label vector** — the structural fact that makes
-grouped splitting mandatory (below) and absolute MSE small (next). The result is stored as
-`obsm["Y_ctrp"]` `(n_cells, K)` float32 (NaN where unscreened) with the length-K column→drug map in
-`uns["ctrp_drugs"]`. A drug column is kept only if screened on ≥ `--min-cell-lines` overlapping
-lines (default 50; the K=545 run used `--all-drugs`, i.e. min 0). Cancer type is never a label or a
-feature — it only colors the UMAPs in [Step 02](02-preprocessing-and-embeddings.md).
+⇒ **every cell of a line carries the identical label vector.** Two consequences follow: grouped
+splitting becomes mandatory (below), and the absolute MSE is small (next section).
+
+The result is stored as `obsm["Y_ctrp"]` `(n_cells, K)` float32, NaN where unscreened, with the
+length-K column→drug map in `uns["ctrp_drugs"]`. A drug column is kept only if screened on
+≥ `--min-cell-lines` overlapping lines (default 50; the K=545 run used `--all-drugs`, i.e. min 0).
+Cancer type is never a label or a feature — it only colors the UMAPs in
+[Step 02](02-preprocessing-and-embeddings.md).
 
 ---
 
@@ -115,24 +117,26 @@ the cross-database block-sparse matrix in [Step 06](06-cross-database-integratio
 | **Macro per-drug MSE** | `model_mean_mse` / `baseline_mean_mse` | per-drug `Σ_cells sq_k / n_k`, then `np.nanmean` over drugs (equal weight per drug) | **0.0103** |
 
 Only the **macro per-drug** numbers feed the **per-drug-mean baseline** comparison
-(`train_multitask._per_drug_constant_mse`): a null model predicting, for each drug, the constant
-train-set mean viability over its observed cells. "**Heads beating baseline**" counts drugs whose
-model per-drug val MSE < that constant's (scGPT 142/545, PCA 97/545 — [Step 05](05-multitask-results.md)).
-**This is the honest metric**, because absolute MSE ≈ 0.01 is misleadingly tiny: with `cpd_avg_pv`
-clustered near 1.0 the constant baseline already achieves ≈ 0.0097, so beating it — not the raw MSE —
-is what signals a head actually learned response.
+(`train_multitask._per_drug_constant_mse`). That baseline is a null model: for each drug it predicts
+the constant train-set mean viability over that drug's observed cells. "**Heads beating baseline**"
+then counts drugs whose model per-drug val MSE beats that constant (scGPT 142/545, PCA 97/545 —
+[Step 05](05-multitask-results.md)).
+
+**This is the honest metric.** Absolute MSE ≈ 0.01 is misleadingly tiny: because `cpd_avg_pv`
+clusters near 1.0, the constant baseline already reaches ≈ 0.0097. So *beating the baseline*, not the
+raw MSE, is what shows a head actually learned response.
 
 ---
 
 ## Why splits must be cell-line-grouped
 
-Because the label is **constant within a cell line**, a random cell-level split would place cells of
-the same line (hence the same label and near-identical tissue signature) in both train and val,
-letting the model memorize the per-line label instead of learning response. `create_splits.py`
-therefore partitions **whole cell lines** 70/15/15 (`split_ctrp`, drug-agnostic so it is leakage-free
-for all heads at once; `split_paclitaxel` for the single-task case). This is not a detail — it is the
-methodological control that exposes the PCA-vs-scGPT overfitting gap in
-[Step 04](04-single-task-results.md).
+Because the label is **constant within a cell line**, a random cell-level split would put cells of
+the same line in both train and val. Those cells share the same label and a near-identical tissue
+signature, so the model could memorize the per-line label instead of learning response.
+`create_splits.py` avoids this by partitioning **whole cell lines** 70/15/15: `split_ctrp` is
+drug-agnostic (one split is leakage-free for all heads at once), and `split_paclitaxel` is the
+single-task version. This is not a detail — it is the control that exposes the PCA-vs-scGPT
+overfitting gap in [Step 04](04-single-task-results.md).
 
 ---
 

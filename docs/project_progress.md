@@ -122,6 +122,8 @@ run-versioning ledger ([Step 05](./steps/05-multitask-results.md)).
 
 ## Open questions carried forward
 
+*Action items live in [TODO.md](./TODO.md); this list is the scientific open questions.*
+
 - Does multi-task help or hurt paclitaxel vs the 0.0336 single-task number? (Needs a
   single-task re-run on `split_ctrp`.)
 - Which low-coverage heads (n_val = 221) to drop or down-weight?

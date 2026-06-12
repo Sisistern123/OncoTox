@@ -26,72 +26,90 @@ existing embeddings, and `--overwrite` is required to replace the guarded `conve
 | # | Step / script | Reads | Writes (added to the h5ad) |
 |---|---|---|---|
 | 1 | **convert** — `scp542_conversion.py` | `expression/CPM_data.txt` (genes×cells) + `metadata/Metadata.txt` | `SCP542_CCLE.h5ad`: cells×genes, `.X` = **CPM**. **HVG filtering happens here** (see below); records `uns["hvg_n_top_genes"]`. |
-| 2 | **scgpt** — external `gen_embeds.py` (separate scGPT venv) | the **convert output** `SCP542_CCLE.h5ad` | `..._scGPT_human_embeddings.h5ad`: adds `obsm["X_scGPT"]` (**512-dim**). |
+| 2 | **scgpt** — external `gen_embeds.py` (separate scGPT venv) | the **convert output** `SCP542_CCLE.h5ad` | `..._scGPT_human_embeddings.h5ad`: adds `obsm["X_scGPT"]` (**512-dim**) **and drops scGPT-OOV genes from `.X`** (hvg5000: 5,000→4,576). |
 | 3 | **targets** — `ctrp_to_h5ad.py` | the embeddings h5ad + the 4 CTRPv2 tables | `..._with_targets.h5ad`: adds `obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]` ([Step 03](03-model-and-training-design.md) for mechanics). |
 | 4 | **splits** — `create_splits.py` | the targets h5ad (in place) | `obs["split_paclitaxel"]` (`run`) + `obs["split_ctrp"]` (`run_multi`) — cell-line-grouped. |
-| 5 | **pca** — `add_pca.py` | the targets h5ad (in place) | `obsm["X_pca"]`: `normalize_total(1e4)` → `log1p` → `sc.pp.pca` (≈50 comps) over the **same gene set**. |
+| 5 | **pca** — `add_pca.py` | the targets h5ad + the **convert counts** `SCP542_CCLE.h5ad` | `obsm["X_pca"]`: `normalize_total(1e4)` → `log1p` → `sc.pp.pca` (≈50 comps) computed on the **HVG-filtered convert counts** (5,000 genes), *not* the targets `.X`. Targets `.X` left unchanged. |
 
 ✅ On-plan order: embeddings + comparative UMAP (below) come **before** any predictor — the plan's
 Phase-1 latent validation gates the regression work.
 
 ---
 
-## What HVG filtering removes — and why it forces re-embedding
+## What HVG filtering removes, and what `.X` holds at each stage
 
-**HVG filtering is part of step 1 (`convert`), not a later pass.** The gene-set choice is set by
-`--variant` (`layout.VARIANT_N_TOP_GENES`: `hvg5000 → 5000`, `all_genes → None`). The raw `.X` is
-**CPM** (counts-per-million: library-size-normalized but not log-transformed), so in
-`scp542_conversion.py`:
+HVG filtering happens **inside step 1 (`convert`)**, never as a later pass. Whether it runs is set
+by `--variant` (`layout.VARIANT_N_TOP_GENES`: `hvg5000 → 5000`, `all_genes → None`).
 
-- Highly variable genes are selected on a **`log1p` copy** via
-  `sc.pp.highly_variable_genes(n_top_genes=5000, flavor="seurat")` — the Seurat flavor is a
-  **dispersion-based** selector (it bins genes by mean expression and ranks each by its normalized
-  dispersion = variance/mean within its bin), and the dispersion statistic assumes a log scale,
-  which is why selection runs on the `log1p` copy. The **original CPM** matrix is then subset to the
-  chosen genes (saved `.X` stays CPM, recording `uns["hvg_n_top_genes"]`); CPM is kept because scGPT
-  applies its own value binning and PCA re-normalizes downstream, so neither wants a pre-logged `.X`.
-- **What is filtered:** the **genes** — `22,722 → 5,000` for `hvg5000` (the most informative,
-  cell-to-cell-variable genes). Cells (53,513) are untouched.
-- **What is *not* the input to the model:** the genes / `.X` themselves are **never fed to the
-  network**. They exist only to be turned into the two **representations** the model actually uses
-  (next).
+**How the selection works** (`scp542_conversion.py`), starting from `.X` = CPM
+(counts-per-million; 22,722 genes × 53,513 cells):
 
-**The coupling that makes step order matter** — both downstream representations are derived from
-whatever gene set step 1 kept:
+1. Copy the matrix and `log1p` the **copy only**. (`sc.pp.highly_variable_genes(flavor="seurat")`
+   ranks genes by normalized dispersion — a statistic defined on the log scale — so it needs
+   log-transformed input.)
+2. On that copy, keep the **top 5,000 genes** by dispersion.
+3. Subset the **original CPM** matrix to those 5,000 genes. Discard the log1p copy.
+
+So at the `convert` step, two things are true:
+
+- **Only genes are filtered** — `22,722 → 5,000`. All 53,513 cells are kept.
+- **The values are not transformed.** `log1p` only *ranked* the genes; it never touched the saved
+  numbers. The kept genes keep their CPM values, and `convert` records `uns["hvg_n_top_genes"]`.
+
+**A second, scGPT-specific reduction happens at the `scgpt` step — and it does *not* propagate to
+PCA.** scGPT can only embed genes in its own fixed vocabulary, so `gen_embeds.py` drops the
+out-of-vocabulary (OOV) genes from the embeddings file's `.X`: `5,000 → 4,576` for `hvg5000`
+(424 OOV) and `22,722 → 20,570` for `all_genes` (2,152 OOV). This shrinks **only the gene set scGPT
+embeds**. The HVG filter is applied **once**, and PCA uses that full filtered set (below).
+
+**What `.X` holds along the pipeline** (`hvg5000` gene counts shown):
+
+| After step | `.X` holds | genes |
+|---|---|---|
+| convert | CPM, subset to HVG | 5,000 |
+| scgpt | CPM, scGPT-OOV genes dropped (+ `obsm["X_scGPT"]`) | 4,576 |
+| targets, splits | CPM, unchanged | 4,576 |
+| pca | CPM, **unchanged** (+ `obsm["X_pca"]`, computed from the convert file) | 4,576 |
+
+So the trainable file's `.X` stays CPM throughout (the `pca` step no longer rewrites it). The model
+never reads `.X` anyway — only `obsm["X_scGPT"]` / `obsm["X_pca"]`.
+
+**Filter once — where each representation's genes come from.**
 
 ```
-convert (HVG choice fixes the gene set in .X)
-        │
-        ├─► scgpt  : X_scGPT  (512-d)  ← embeds exactly those genes
-        └─► pca    : X_pca    (≈50-d)  ← PCA of exactly those genes
+convert : 22,722 → 5,000 genes (HVG)  — the single filter        [.X = CPM]
+   ├─ scgpt : embeds the 4,576 of those in scGPT's vocabulary ──► X_scGPT (512-d)
+   └─ pca   : PCA of all 5,000 HVG genes (read from convert) ───► X_pca   (≈50-d)
 ```
 
-So **re-filtering = re-running `convert`, which invalidates both `X_scGPT` (must re-embed) and
-`X_pca` (must recompute)**. Because `scgpt` reads the `convert` output, the fixed `convert → scgpt`
-order already guarantees the embeddings reflect the current gene set — you cannot filter "after"
-embedding. This is exactly why `hvg5000` and `all_genes` are **separate folders that never share
-files** (`guard_output` enforces it): each is one self-consistent (gene set, X_scGPT, X_pca) triple.
+`add_pca.py` reads the **convert counts** `SCP542_CCLE.h5ad` (the full HVG set) to compute `X_pca`,
+*not* the targets `.X` (which lost the OOV genes). So `X_pca` is a genuine HVG-5000 (or, for
+`all_genes`, full-transcriptome) PCA — a standard single-cell PCA baseline — while scGPT uses the
+vocabulary subset it is able to. Changing the gene set means re-running `convert`, which forces a
+re-embed and a re-PCA; that is why `hvg5000` and `all_genes` live in **separate folders that never
+share files** (`guard_output` enforces it). `notebooks/verify_variants.ipynb` checks these gene
+counts and the `X_pca` source at any time.
 
 ### The two representations — what they are scientifically
 
-- **`X_scGPT` (512-dim, the prior).** scGPT (`gen_embeds.py`, `scGPT_human` weights) is a
-  transformer foundation model pretrained self-supervised on ~33 M human cells via masked
-  gene-expression modeling. For each cell it tokenizes the expressed genes together with their
-  value-binned expression and attends over them, emitting a single fixed-length **cell embedding**.
-  Genes outside scGPT's gene vocabulary are **out-of-vocabulary (OOV)** and ignored — hence only
-  4,576 / 5,000 HVGs contribute (424 OOV). This is the hypothesized *denoised biological prior* that
-  aligns functional cell states across tissues.
-- **`X_pca` (≈50-dim, the baseline).** A standard linear baseline: `add_pca.py` runs
-  `normalize_total(target_sum=1e4)` → `log1p` → `sc.pp.pca`, capturing the directions of greatest
-  linear variance. Because that variance is dominated by tissue-of-origin markers, PCA clusters
-  cells into discrete lineage "islands" (the failure mode the scGPT prior is meant to overcome —
-  Fig. 3/4 below).
+- **`X_scGPT` (512-dim, the prior).** scGPT (`gen_embeds.py`, `scGPT_human` weights) is a transformer
+  foundation model, pretrained self-supervised on ~33 M human cells. For each cell it reads the
+  expressed genes and their binned expression values and outputs one fixed-length **cell embedding**.
+  Genes outside scGPT's vocabulary are dropped as **out-of-vocabulary (OOV)**, so only 4,576 / 5,000
+  HVGs contribute (424 OOV). This is the hypothesized *denoised biological prior* — it aligns
+  functional cell states across tissues.
+- **`X_pca` (≈50-dim, the baseline).** The standard single-cell linear baseline. `add_pca.py` runs
+  `normalize_total(1e4)` → `log1p` → `sc.pp.pca` on the **full HVG-5000 convert counts** (`all_genes`:
+  all 22,722), keeping the directions of greatest variance. That variance is dominated by
+  tissue-of-origin markers, so PCA clusters cells into discrete lineage "islands" — the failure mode
+  the scGPT prior is meant to overcome (Fig. 3/4 below).
 
 ### HVG-5000 pipeline outputs
 
-- Genes: **22,722 → 5,000**
-- scGPT vocab match: **4,576 / 5,000** (424 OOV — genes absent from the scGPT vocabulary)
-- Embedded AnnData: 53,513 × 5,000 (with `X_scGPT` 512-d in `obsm`)
+- Genes after HVG (convert): **22,722 → 5,000** — the single filter
+- scGPT embeds the **4,576** of those in its vocabulary (424 OOV); PCA uses all **5,000**
+- Trainable AnnData: `.X` = CPM, **53,513 × 4,576** (OOV-dropped), carrying `X_scGPT` (512-d, from the
+  4,576 vocab genes) and `X_pca` (50-d, from the 5,000 HVG genes) in `obsm`
 - Paclitaxel labels: 44,367 / 53,513 cells
 - `split_paclitaxel`: train **31,824** / val **5,035** / test **7,508** / unassigned **9,146**
 
@@ -108,10 +126,13 @@ The model/training upgrade that landed alongside this work is in
 
 ## `all_genes` (full-transcriptome) variant (26.05.2026)
 
-Re-running the **whole** orchestrator with `--variant all_genes` (HVG off) regenerates an
-independent `(gene set = all 22,722, X_scGPT, X_pca)` triple under
-`processed/scRNAseq_SCP542/all_genes/`. `notebooks/hvg_vs_all_genes_umap.ipynb` compares the two
-variants' UMAPs. Evaluation of the all-genes side is still pending.
+Re-running the **whole** orchestrator with `--variant all_genes` (HVG off) regenerates an independent
+gene set under `processed/scRNAseq_SCP542/all_genes/`. Here `convert` keeps all 22,722 genes, and the
+`scgpt` OOV-drop then takes it to **20,570** genes — so this trainable file is **53,513 × 20,570**,
+and its `X_pca` is computed on those 20,570 genes (i.e. a scGPT-vocabulary PCA, not the literal full
+transcriptome). `notebooks/hvg_vs_all_genes_umap.ipynb` compares the two variants' UMAPs, and
+`notebooks/verify_variants.ipynb` checks the gene counts directly. Evaluation of the all-genes side
+is still pending.
 
 ✅ On-plan / closes part of the HVG deviation by enabling the full-transcriptome comparison.
 
