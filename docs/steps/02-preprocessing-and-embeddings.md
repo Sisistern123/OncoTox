@@ -135,10 +135,11 @@ The model/training upgrade that landed alongside this work is in
 ## `all_genes` (full-transcriptome) variant (26.05.2026)
 
 Re-running the **whole** orchestrator with `--variant all_genes` (HVG off) regenerates an independent
-gene set under `processed/scRNAseq_SCP542/all_genes/`. Here `convert` keeps all 22,722 genes, and the
-`scgpt` OOV-drop then takes it to **20,570** genes — so this trainable file is **53,513 × 20,570**,
-and its `X_pca` is computed on those 20,570 genes (i.e. a scGPT-vocabulary PCA, not the literal full
-transcriptome). `notebooks/hvg_vs_all_genes_umap.ipynb` compares the two variants' UMAPs, and
+gene set under `processed/scRNAseq_SCP542/all_genes/`. `convert` keeps all 22,722 genes; the `scgpt`
+OOV-drop then leaves **20,570** in `.X` (what scGPT embeds), while **`X_pca` is computed on the full
+22,722 convert counts** — a genuine full-transcriptome PCA. So the trainable file is **53,513 ×
+20,570** in `.X`, carrying `X_scGPT` (from the 20,570 in-vocab genes) and `X_pca` (from all 22,722).
+`notebooks/hvg_vs_all_genes_umap.ipynb` compares the two variants' UMAPs, and
 `notebooks/verify_variants.ipynb` checks the gene counts directly. Evaluation of the all-genes side
 is still pending.
 
