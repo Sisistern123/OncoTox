@@ -31,7 +31,11 @@ outcomes** (responder / non-responder).
 
 ## What this needs first
 
-- A stable cross-database multi-task model ([Step 06](06-cross-database-integration.md)).
+- A stable cross-database multi-task model ([Step 06](06-cross-database-integration.md)) — its
+  `runs/<…>/best_model.pt` becomes the pre-trained **trunk**, with `OncoMLP`
+  (`scripts/model/OncoMLP.py`) given a swappable clinical (binary) head.
+- A new fine-tune entrypoint alongside `scripts/training/train_multitask.py`, plus a clinical
+  dataset loader analogous to `scripts/model/dataset.py`.
 - Access to a clinical dataset with binary outcomes (not yet in the project — the plan notes
   large-scale clinical data is the standing bottleneck).
 
@@ -45,10 +49,3 @@ outcomes** (responder / non-responder).
 
 - Pre-trained model checkpoint packaged as reusable starting weights.
 - At least one fine-tuning / transfer demonstration documented here.
-
-## Code touchpoints (what will be extended, not yet written)
-
-- `runs/<…>/best_model.pt` from [Step 06](06-cross-database-integration.md) as the pre-trained
-  trunk; `scripts/model/OncoMLP.py` for a swappable clinical (binary) head.
-- New training entrypoint alongside `scripts/training/train_multitask.py` for the fine-tune loop;
-  a clinical dataset loader analogous to `scripts/model/dataset.py`.

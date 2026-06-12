@@ -19,29 +19,25 @@ biological mechanism.*
 
 ## What this needs first
 
-- A stable, trained predictor worth interpreting — ideally the cross-database model
-  ([Step 06](06-cross-database-integration.md)), but the existing CTRPv2 multi-task model
-  ([Step 05](05-multitask-results.md)) is already a valid interpretation target.
+A stable, trained predictor worth interpreting — a checkpoint `runs/<…>/best_model.pt` loaded into
+`OncoMLP` (`scripts/model/OncoMLP.py`), with cells fed via `scripts/model/dataset.py`. Ideally the
+cross-database model ([Step 06](06-cross-database-integration.md)), but the existing CTRPv2
+multi-task model ([Step 05](05-multitask-results.md)) is already a valid target. The analysis itself
+would most naturally live in a new `notebooks/` notebook, alongside the existing
+`notebooks/scgpt_umap.ipynb` / `notebooks/analysis.ipynb`.
 
 ## Open design questions (to resolve when starting)
 
-- The model consumes **embeddings** (`X_scGPT` 512-dim or `X_pca`), not raw genes — so feature
-  importance is over embedding dimensions, not directly genes. Need a strategy to map embedding-dim
-  importance back to **transcriptomic drivers** (e.g. attribution through to input genes, or
-  correlating salient embedding dims with gene programs).
-- Which method: gradient-based attribution (Integrated Gradients / saliency), SHAP, or
-  permutation importance per head?
-- Per-drug-head interpretation: which transcriptomic signatures drive resistance for a specific
+- **Attribution target.** The model consumes **embeddings** (`X_scGPT` 512-dim or `X_pca`), not raw
+  genes, so importance is over embedding dimensions. The hard part is mapping embedding-dim
+  importance back to **transcriptomic drivers** — e.g. propagating attributions through to input
+  genes, or correlating salient embedding dims with known gene programs.
+- **Method:** gradient-based attribution (Integrated Gradients / saliency), SHAP, or per-head
+  permutation importance.
+- **Per-drug-head interpretation:** which transcriptomic signatures drive resistance for a specific
   compound.
 
 ## Definition of done
 
 - Feature-importance attributions produced for ≥1 drug head and linked to plausible biology.
 - Method + findings documented here.
-
-## Code touchpoints (what will be extended, not yet written)
-
-- A trained checkpoint `runs/<…>/best_model.pt` + `scripts/model/OncoMLP.py` as the model to
-  attribute through; `scripts/model/dataset.py` to feed cells.
-- Likely a new `notebooks/` analysis notebook (cf. existing `notebooks/scgpt_umap.ipynb`,
-  `notebooks/analysis.ipynb`) for the attribution + biological interpretation.

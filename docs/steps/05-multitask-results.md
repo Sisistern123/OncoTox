@@ -24,8 +24,9 @@ mechanics are in [Step 03](03-model-and-training-design.md).
 - `obsm["Y_ctrp"]` — float32 (n_cells, K), per-cell viability, NaN where missing.
 - `obsm["M_ctrp"]` — bool (n_cells, K), True where observed.
 - `uns["ctrp_drugs"]` — ordered length-K drug-name list (column order of Y/M).
-- `obs["split_ctrp"]` — **one drug-agnostic, cell-line-grouped 70/15/15 split** shared
-  across all heads (leakage-free for every drug simultaneously).
+- `obs["split_ctrp"]` — **one drug-agnostic, cell-line-grouped 70/15/15 split** written by
+  `create_splits.py` `run_multi()`, shared across all heads (leakage-free for every drug at once;
+  a single shared split is only possible *because* the leakage control is at the cell-line level).
 - Legacy flat `viability_<drug>` / `train_mask_<drug>` / `split_<drug>` kept for back-compat.
 
 **Drug-scope filter:** keep a drug only if screened on ≥ `--min-cell-lines` overlapping
@@ -40,10 +41,13 @@ CTRPv2 (the stricter-normalization 180; cf. the audit's 190 in
 - Cells: **train 34,126 / val 7,121 / test 5,980 / unassigned 6,286**
 - Cell lines: **126 train / 27 val / 27 test**
 
-**Model & training:** single `OncoMLP` with `output_dim = K`; `train_model` auto-detects
-3-tuple `(x, y, mask)` batches → **masked MSE** (mean over observed entries only). A
-**per-drug-mean sanity baseline** (predict train-set mean viability per head) is computed
-up front — any head the model can't beat hasn't learned anything.
+**Model & training:** a single `OncoMLP` with `output_dim = K`, fed by `MultiDrugDataset`
+(`scripts/model/dataset.py`) whose 3-tuple `(x, y, mask)` batches `train_model` auto-detects to
+switch into **masked MSE** (mean over observed entries only). Up front,
+`train_multitask._per_drug_constant_mse` computes a **per-drug-mean sanity baseline** — the proper
+null model here: for each drug it predicts the constant train-set mean viability over that drug's
+observed cells. Because labels cluster near 1.0, that constant is already a strong predictor, so a
+head only counts as having *learned* response if it **beats its own drug's constant**.
 
 **Shared hyperparameters** (from `config.json` / `run_meta.json`): batch 128, epochs 50
 (early-stopped), lr 1e-3, weight_decay 1e-3, dropout 0.5, input_dropout 0.1, grad_clip 1.0,
@@ -111,21 +115,5 @@ n_beats_baseline, n_total_heads, started_at, finished_at). `runs/` is gitignored
 ✅ On-plan: satisfies "retain every working version + data to re-run + results, even
 suboptimal ones."
 
----
-
-## Code & key variables
-
-- **Targets:** `scripts/preprocessing/ctrp_to_h5ad.py` writes `obsm["Y_ctrp"]` (float32 n_cells×K,
-  NaN where missing), `obsm["M_ctrp"]` (bool mask), `uns["ctrp_drugs"]` (length-K column order).
-  Aggregation: `groupby(["ccl_name_norm","cpd_name_norm"]).mean()` → pivot → `reindex` onto cells.
-  Scope flag `--all-drugs` / `--min-cell-lines`.
-- **Split:** `scripts/preprocessing/create_splits.py` `run_multi()` (mode `multi`) →
-  `obs["split_ctrp"]` (drug-agnostic, cell-line-grouped, leakage-free for all heads).
-- **Dataset:** `MultiDrugDataset` (`scripts/model/dataset.py`) → `(x, y, mask)` batches.
-- **Model/train:** `OncoMLP(output_dim=K)` via
-  `uv run scripts/training/train_multitask.py --use-rep {X_scGPT|X_pca}` (omit `--drugs` = all K).
-  Masked MSE + per-drug baseline in `scripts/training/training_utils.py` /
-  `train_multitask._per_drug_constant_mse`. Flags in [Step 03](03-model-and-training-design.md).
-- **Run artifacts:** `create_run_dir` / `save_run` (`training_utils.py`) →
-  `runs/<timestamp>_<tag>/` (`config.json`, `run_meta.json`, `history.csv`, `summary.json`,
-  `best_model.pt`, `per_drug_results.csv`) + a row in `runs/runs_index.csv`.
+The full 545-head run is reproduced with `train_multitask.py --use-rep {X_scGPT|X_pca}` (omitting
+`--drugs` selects all K).

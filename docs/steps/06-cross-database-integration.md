@@ -29,16 +29,21 @@ setup (via masked losses) to handle sparse or missing labels."
 ## Planned approach (from the project plan)
 
 1. **Add PRISM first** (the plan's explicit next move): the much larger, far sparser dataset
-   (915 lines, 6,575 compounds, ~29 % non-null). Use the harmonized drug catalog
-   ([Step 01](01-datasets-and-harmonization.md): name + BRD-ID + DrugBank links) to align PRISM
-   compounds to the existing CTRPv2 heads and add PRISM-only heads.
+   (915 lines, 6,575 compounds, ~29 % non-null). This needs a PRISM/GDSC analog of
+   `scripts/preprocessing/ctrp_to_h5ad.py` that emits additional `Y_*` / `M_*` blocks (or extends
+   `Y_ctrp`/`M_ctrp` into a unified matrix), using the harmonized drug catalog
+   ([Step 01](01-datasets-and-harmonization.md): name + BRD-ID + DrugBank links, already in
+   `data/drug/`) as the join keys to align PRISM compounds onto existing CTRPv2 heads and to add
+   PRISM-only heads. `scripts/preprocessing/layout.py` gains the new source files.
 2. **Then GDSC** (`LN_IC50` / `AUC`) — a *different metric type*, so this is where heads stop being
    homogeneous and the model becomes genuinely multi-metric.
-3. **Masked loss across the union:** extend the `M_*` mask machinery
-   ([Step 03](03-model-and-training-design.md)) to a block-sparse label matrix spanning all
-   sources; each (cell line × drug × metric) entry is observed in only some databases.
-4. **Cross-database splits:** keep the cell-line-grouped, leakage-free split discipline
-   ([Step 04](04-single-task-results.md)) across the unified cell-line set.
+3. **Masked loss across the union:** generalize the `MultiDrugDataset` mask machinery
+   (`scripts/model/dataset.py`) and the masked loss ([Step 03](03-model-and-training-design.md)) to
+   a block-sparse label matrix spanning all sources — each (cell line × drug × metric) entry is
+   observed in only some databases — with per-database/per-metric head grouping and weighting in
+   `scripts/training/train_multitask.py`.
+4. **Cross-database splits:** keep the cell-line-grouped, leakage-free split discipline of
+   `create_splits.py` ([Step 04](04-single-task-results.md)) across the unified cell-line set.
 
 ## Open design questions (to resolve when starting)
 
@@ -58,12 +63,3 @@ setup (via masked losses) to handle sparse or missing labels."
   [Step 05](05-multitask-results.md)).
 - Result documented here with run IDs in the versioning ledger
   ([Step 05](05-multitask-results.md)).
-
-## Code touchpoints (what will be extended, not yet written)
-
-- A PRISM/GDSC analog of `scripts/preprocessing/ctrp_to_h5ad.py` to emit additional
-  `Y_*` / `M_*` blocks (or extend `Y_ctrp`/`M_ctrp` to a unified matrix).
-- `scripts/preprocessing/layout.py` for the new source files; harmonized catalog from
-  [Step 01](01-datasets-and-harmonization.md) for the join keys.
-- `scripts/model/dataset.py` (`MultiDrugDataset`) mask machinery generalized over the union.
-- `scripts/training/train_multitask.py` for per-database/per-metric head grouping + weighting.

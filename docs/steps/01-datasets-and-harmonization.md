@@ -1,8 +1,9 @@
 # Step 01 — Datasets & harmonization
 
-*Part of [OncoTox project progress](../project_progress.md). Covers: the raw datasets
-collected, the cross-dataset overlap/coverage audit, the drug catalog, and the harmonization
-strategy that aligns cell lines and compounds across sources.*
+*Part of [OncoTox project progress](../project_progress.md). Covers: the raw datasets, what each
+response assay actually measures, the cross-dataset overlap/coverage audit, and how cell lines and
+compounds are harmonized across sources — distinguishing the one-off exploratory audit from the
+normalization that actually feeds training.*
 
 Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition**.
 
@@ -12,24 +13,43 @@ Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition**.
 
 | Dataset | Role | Key numbers | Used? |
 |---|---|---|---|
-| **SCP542** scRNA-seq (PERCEPTION paper, Kinker et al. 2020) | single-cell input | **53,513 cells × 22,722 genes**, **198 unique cell lines** | ✅ primary |
-| **CTRPv2** | viability labels | 1,107 cell lines, **545 compounds**, target `cpd_avg_pv` | ✅ primary |
-| **PRISM** Repurposing (Public 24Q2) | single-dose LFC | 915 cell lines, 6,575 compounds | downloaded, not used |
-| **GDSC2** | IC50 / AUC | 967 cell lines, 295 drugs | downloaded, not used |
+| **SCP542** scRNA-seq (Kinker et al. 2020; used in PERCEPTION) | single-cell input | **53,513 cells × 22,722 genes**, **198 unique cell lines** | ✅ primary |
+| **CTRPv2** (Cancer Therapeutics Response Portal v2) | viability labels | 1,107 cell lines, **545 compounds**, target `cpd_avg_pv` | ✅ primary |
+| **PRISM** Repurposing (Public 24Q2) | multiplexed viability (LFC) | 915 cell lines, 6,575 compounds | downloaded, not used |
+| **GDSC2** | `LN_IC50` / AUC | 967 cell lines, 295 drugs | downloaded, not used |
 
-- SCP542 source: SCP542 / Broad Single Cell Portal; `.X` stored as **CPM**.
-- CTRPv2 raw tables used: `v20.data.per_cpd_post_qc.txt` (`cpd_avg_pv`),
-  `v20.meta.per_experiment.txt`, `v20.meta.per_cell_line.txt`, `v20.meta.per_compound.txt`.
+**What the assays measure (and why the resolution mismatch matters).** SCP542 (from the Broad
+Single Cell Portal; `.X` stored as **CPM** — counts-per-million, library-size-normalized) is a
+pan-cancer cell-line scRNA-seq atlas capturing **single-cell** heterogeneity. The three response
+datasets are all **bulk, cell-line-level** drug screens:
+
+- **CTRPv2 `cpd_avg_pv`** = *compound average percent viability* — the dose-averaged fraction of a
+  cell population surviving relative to vehicle (DMSO) controls (a CellTiter-Glo-type readout). It
+  is an **efficacy** metric, mostly near 1.0. The raw tables used are
+  `v20.data.per_cpd_post_qc.txt` (the `cpd_avg_pv` values), joined via
+  `v20.meta.per_experiment.txt` to `v20.meta.per_cell_line.txt` (`ccl_name`) and
+  `v20.meta.per_compound.txt` (`cpd_name`).
+- **GDSC2** reports `LN_IC50` (natural-log half-maximal inhibitory concentration) and AUC.
+- **PRISM** is a barcoded, multiplexed viability assay reporting log fold-change vs control — very
+  large and very sparse.
+
+The whole project exists to **bridge this bulk-to-single-cell gap** (plan §Understanding): the
+bulk labels are the only high-volume continuous signal available, so they are mapped onto single
+cells as weak supervision ([Step 03](03-model-and-training-design.md)).
 
 ✅ On-plan: SCP542 + CTRPv2 are the designated primary pair; PRISM/GDSC reserved for later.
 
 ---
 
-## Overlap & coverage audit (03.04.2026) — `notebooks/compare_GDSC_CTRP.ipynb`
+## Overlap & coverage audit (03.04.2026)
 
-The work behind the plan's **Fig. 1 / Fig. 2**.
+The audit lives in the standalone notebook `notebooks/compare_GDSC_CTRP.ipynb` — a one-off
+exploratory analysis (not part of the training pipeline) that produces the plan's **Fig. 1 / Fig. 2**
+and writes the drug-catalog CSVs. Its purpose is to pick the **highest-confidence intersection** to
+start from before any modeling (plan sub-goal 3).
 
-**Cell-line overlap with SCP542** (normalized: trim + lowercase; SCP542/PRISM split on `_`):
+**Cell-line overlap with SCP542** (the notebook's normalization: trim + lowercase; SCP542/PRISM
+split on `_`):
 
 | Dataset | Total lines | Overlap w/ SCP542 | Missing |
 |---|---|---|---|
@@ -37,18 +57,21 @@ The work behind the plan's **Fig. 1 / Fig. 2**.
 | CTRPv2 | 1,107 | **190** | 8 |
 | PRISM | 915 | 182 | 16 |
 
-**Drug / compound harmonization** — unified catalog `data/drug/all_sources_drug_catalog.csv`
-(7,415 source rows; GDSC 295 / CTRPv2 545 / PRISM 6,575; union 7,040):
+**Drug / compound harmonization** — the notebook builds a unified catalog
+`data/drug/all_sources_drug_catalog.csv` (7,415 source rows; GDSC 295 / CTRPv2 545 / PRISM 6,575;
+union 7,040) by matching compounds three ways, in increasing confidence:
 
-- Name overlap (normalized): CTRPv2↔GDSC 66, CTRPv2↔PRISM 218, GDSC↔PRISM 144.
-- **BRD-ID overlap CTRPv2↔PRISM: 243** (higher-confidence link).
-- Exports: `data/drug/drug_overlap_candidates.csv`.
+- **Normalized name** overlap: CTRPv2↔GDSC 66, CTRPv2↔PRISM 218, GDSC↔PRISM 144.
+- **BRD-ID** overlap CTRPv2↔PRISM: **243** — the higher-confidence link, because Broad **BRD
+  identifiers** are canonical per compound (stable across name synonyms and salt forms), unlike
+  free-text names. Candidate pairs exported to `data/drug/drug_overlap_candidates.csv`.
+- **DrugBank** name+synonym match (from `full database.xml`), which additionally enables future
+  FDA-status filtering (plan sub-goal 1): GDSC 118/295 (40.0 %), CTRPv2 173/545 (31.7 %),
+  PRISM 3,483/6,575 (53.0 %), overall 3,774/7,415 (50.9 %). Exports:
+  `drugbank_overlap_matches.csv`, `drugbank_overlap_unmatched.csv`.
 
-**DrugBank match** (from `full database.xml`, normalized names + synonyms):
-GDSC 118/295 (40.0 %), CTRPv2 173/545 (31.7 %), PRISM 3,483/6,575 (53.0 %),
-overall 3,774/7,415 (50.9 %). Exports: `drugbank_overlap_matches.csv`, `..._unmatched.csv`.
-
-**Applicable (non-null) response coverage within SCP542 overlap:**
+**Applicable (non-null) response coverage within the SCP542 overlap** — this is what motivates
+choosing CTRPv2 as the starting database:
 
 | Dataset | Metric | Non-null / total | % | % within overlap subset |
 |---|---|---|---|---|
@@ -56,56 +79,37 @@ overall 3,774/7,415 (50.9 %). Exports: `drugbank_overlap_matches.csv`, `..._unma
 | CTRPv2 | `cpd_avg_pv` | 1,521,028 / 7,227,951 | 21.04 % | **100 %** |
 | PRISM | extended primary matrix | 1,210,432 / 4,213,048 | 28.73 % | 97.95 % |
 
-✅ On-plan: satisfies sub-goal 1 (harmonization incl. BRD + DrugBank) and supplies the
-Fig. 1/2 numbers the plan rests sub-goal 3 on.
+The decisive number is CTRPv2's **100 % non-null within the SCP542 overlap**: the 190-line × 545-drug
+block is a **complete target matrix**, exactly the dense, highest-confidence intersection the plan
+wants for the initial baseline.
 
-> ⚠️ **Number to reconcile:** this audit reports **190** overlapping cell lines
-> (case-insensitive). The training pipeline (`ctrp_to_h5ad.py`) normalizes more strictly
-> (also strips `-`) and reports **180** at run time (see
-> [Step 05](05-multitask-results.md)). Same data, different normalization — pick one for the
-> thesis figure and the pipeline.
+✅ On-plan: satisfies sub-goal 1 (harmonization incl. BRD + DrugBank) and supplies the Fig. 1/2
+numbers sub-goal 3 rests on.
 
 ---
 
-## Harmonization strategy (reference)
+## What actually feeds training vs. what is forward-looking
 
-How the sources are aligned — gathered for the writeup:
+The audit above is **exploratory** — its catalogs (`all_sources_drug_catalog.csv`,
+`drug_overlap_candidates.csv`, the DrugBank exports) are **not yet consumed by any model**. They are
+built for the cross-database join in [Step 06](06-cross-database-integration.md), where PRISM/GDSC
+heads finally need a unified compound vocabulary.
 
-- **Cell lines:** name normalization (trim + lowercase; SCP542/PRISM split on `_`; the pipeline
-  additionally strips `-`) → SCP542∩CTRPv2 = **190** by the audit normalization, **180** by the
-  stricter pipeline one (the number to reconcile above).
-- **Drugs:** matched three ways — normalized **name**, **BRD-ID** (CTRPv2↔PRISM 243, the
-  higher-confidence link), and **DrugBank** name+synonym match (CTRPv2 173/545) — see the audit
-  above for all pairwise counts and exports (`drug_overlap_candidates.csv`,
-  `drugbank_overlap_matches.csv`).
-- **Expression:** SCP542 `.X` kept as **CPM**; HVG selection done on a `log1p` copy but the saved
-  matrix stays CPM (see [Step 02](02-preprocessing-and-embeddings.md)). Two harmonized variants on
-  disk: `hvg5000` (default) and `all_genes`.
-- **PRISM / GDSC are harmonized but not yet wired into training** (cross-database heads = the open
-  Phase-3b — see the scorecard in the [index](../project_progress.md)).
+Today the trained model depends on Step 01 through exactly **one** thing: the cell-line and drug
+**name normalization inside the pipeline**, `_normalize_cell_line` / `_normalize_drug` in
+`scripts/preprocessing/ctrp_to_h5ad.py` (trim + lowercase + **strip `-`**). These produce the
+`ccl_name_norm` / `cpd_name_norm` join keys that map CTRPv2 viability onto SCP542 cells during the
+**targets** step ([Step 02](02-preprocessing-and-embeddings.md)). Because this normalization is
+stricter than the audit notebook's, it reports **180** overlapping lines at pipeline run time, not
+190:
 
-## Drugs — scope and catalog (reference)
+> ⚠️ **Number to reconcile:** **190** (audit notebook, case-insensitive) vs **180** (pipeline
+> `ctrp_to_h5ad.py`, which also strips `-`). Same data, different normalization — pick one
+> consistently for the thesis figure and the pipeline.
 
-- **CTRPv2 compound set: K = 545** drugs (the `--all-drugs` run). Optional coverage filter keeps
-  a drug only if screened on ≥ `--min-cell-lines` overlapping lines (default 50) — the headline
-  run used min 0 = all 545 (see [Step 05](05-multitask-results.md)).
-- Each drug = one **column/head** of the shared output layer; identity is *not* an input feature.
-- Single-task work uses **paclitaxel** as the reference drug (see
-  [Step 04](04-single-task-results.md)).
-- Unified cross-source catalog `data/drug/all_sources_drug_catalog.csv` (GDSC 295 / CTRPv2 545 /
-  PRISM 6,575; union 7,040) — built for the eventual cross-database heads.
-
----
-
-## Code, notebooks & key variables
-
-- **Notebook — the whole audit:** `notebooks/compare_GDSC_CTRP.ipynb` — cell-line overlap,
-  name/BRD/DrugBank drug matching, the Fig. 1 / Fig. 2 coverage numbers above.
-- **Catalog + export artifacts** (`data/drug/`): `all_sources_drug_catalog.csv` (unified catalog),
-  `drug_overlap_candidates.csv`, `drugbank_overlap_matches.csv`, `drugbank_overlap_unmatched.csv`.
-- **Raw CTRPv2 source tables** (`metadata/CTRPv2.0_2015_ctd2_ExpandedDataset/`):
-  `v20.data.per_cpd_post_qc.txt` (`cpd_avg_pv`), `v20.meta.per_experiment.txt`,
-  `v20.meta.per_cell_line.txt` (`ccl_name`), `v20.meta.per_compound.txt` (`cpd_name`).
-- **Normalization used by the pipeline** (the stricter 180-overlap rule): `_normalize_cell_line`
-  and `_normalize_drug` in `scripts/preprocessing/ctrp_to_h5ad.py` (trim + lowercase + strip `-`),
-  producing the `ccl_name_norm` / `cpd_name_norm` keys everything downstream joins on.
+From this overlap, a drug becomes a model **head** (one column of `obsm["Y_ctrp"]`, one row of the
+output layer — never an input feature) only if it was screened on ≥ `--min-cell-lines` overlapping
+lines; the headline run used `--all-drugs` (min 0) → **K = 545**
+([Step 05](05-multitask-results.md)). The single-task work uses **paclitaxel** as its reference drug
+([Step 04](04-single-task-results.md)). PRISM and GDSC are harmonized but **not wired into training**
+— their integration is the open Phase-3b in the [scorecard](../project_progress.md).

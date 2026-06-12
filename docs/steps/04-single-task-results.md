@@ -17,8 +17,12 @@ is in [Step 03](03-model-and-training-design.md).
 
 ## Single-task paclitaxel baseline + data-leak fix (08.05.2026)
 
-Target endpoint: per-cell **paclitaxel viability** (`viability_paclitaxel`), i.e. the bulk
-`cpd_avg_pv` broadcast to every cell of the matching cell line.
+The first predictor regresses per-cell **paclitaxel viability** — the column
+`obs["viability_paclitaxel"]`, i.e. the bulk `cpd_avg_pv` broadcast to every cell of the matching
+line. It is loaded by `ScGPTDrugDataset` (`scripts/model/dataset.py`, `target_drug="paclitaxel"`)
+and trained with `train_multitask.py --use-rep {X_scGPT|X_pca} --drugs paclitaxel`
+(`output_dim = 1`). This was deliberately built **smallest-first** (plan §Prototyping) and used as
+a methodological probe before scaling out.
 
 - Total cells **53,513**; cells with a valid paclitaxel label **44,367**.
 
@@ -28,11 +32,15 @@ train 31,056 / val 6,655 / test 6,656 / unassigned 9,146.
 - scGPT: train MSE 0.0132 / val 0.0137
 - PCA: train MSE 0.0022 / **val 0.0011** ← implausibly good
 
-→ **Data leakage**: cells of the same cell line in both train and val; PCA memorized the
-tissue island + its bulk label.
+→ **Data leakage**: with cells split randomly, the same cell line lands in both train and val.
+Since the label is constant within a line and PCA isolates each line as a tissue "island", the model
+reduces to a nearest-neighbour lookup of the memorized per-line label — the val score measures
+memorization, not generalization. The implausibly low PCA val MSE is the tell.
 
-**Step 2 — cell-line-grouped split** (`create_splits.py`, sklearn `train_test_split`,
-`random_state=42`, group = `Cell_line`; 70/15/15 = test_size 0.30 then 0.50):
+**Step 2 — cell-line-grouped split** — the correct cross-validation design for this label
+structure: `create_splits.py` `run()` partitions **whole cell lines** with sklearn
+`train_test_split` (`random_state=42`, group = `Cell_line`; 70/15/15 = test_size 0.30 then 0.50)
+into `obs["split_paclitaxel"]`, so no line appears in two splits:
 
 - **170 cell lines with paclitaxel labels → 119 train / 25 val / 26 test**
 - Cells: **train 31,824 / val 5,035 / test 7,508 / unassigned 9,146**
@@ -70,7 +78,8 @@ LayerNorm/GELU model + scheduler/early-stop training upgrade
 | HVG-5000, old model (BatchNorm/ReLU) | 0.0362 (ep 5) | 0.0354 (ep 50) |
 | **HVG-5000, upgraded model** | **0.0351 (ep 8)** | **0.0336 (ep 14)** |
 
-These are the **single-task reference points** (`split_paclitaxel`, 5,035 val cells).
+These are the **single-task reference points** (`split_paclitaxel`, 5,035 val cells), loaded by
+`ScGPTDrugDataset` over `obsm["X_scGPT"]` / `obsm["X_pca"]`.
 
 ✅ On-plan (still single-task CTRPv2 viability on the overlap; best result to date).
 
@@ -78,17 +87,3 @@ These are the **single-task reference points** (`split_paclitaxel`, 5,035 val ce
 > (25/26 held-out lines); the multi-task paclitaxel head in [Step 05](05-multitask-results.md)
 > uses `split_ctrp` (27 held-out lines). An apples-to-apples "does multi-task help paclitaxel?"
 > comparison still needs a single-task re-run on `split_ctrp`.
-
----
-
-## Code & key variables
-
-- **Split:** `scripts/preprocessing/create_splits.py` `run()` (mode `single`) → writes
-  `obs["split_paclitaxel"]` (cell-line-grouped via `sklearn.train_test_split`,
-  `random_state=42`, group `Cell_line`, test_size 0.30 then 0.50).
-- **Label column:** `obs["viability_paclitaxel"]` (the bulk `cpd_avg_pv` broadcast to cells).
-- **Dataset:** `ScGPTDrugDataset` (`scripts/model/dataset.py`, `target_drug="paclitaxel"`).
-- **Train:** `uv run scripts/training/train_multitask.py --use-rep {X_scGPT|X_pca} --drugs paclitaxel`
-  (single drug ⇒ `output_dim=1`). Reps `obsm["X_scGPT"]` / `obsm["X_pca"]` from
-  [Step 02](02-preprocessing-and-embeddings.md); model/flags in
-  [Step 03](03-model-and-training-design.md).
