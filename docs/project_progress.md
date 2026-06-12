@@ -67,6 +67,33 @@ Step 08   + clinical fine-tuning               (continuous pre-train → binary 
 
 ---
 
+## Experiment matrix — PCA vs scGPT
+
+The central comparison (the plan's core hypothesis) is run as a **2 × 2 × 2 = 8-run matrix**.
+All eight runs share the cell-line-grouped split and the same MLP head + training protocol; only
+the input representation (and its gene set) changes.
+
+| Axis | Values |
+|---|---|
+| **Gene set** | `all_genes` (full transcriptome) · `hvg5000` (top-5,000 HVG from raw) |
+| **Representation** | `X_pca` (standard single-cell PCA baseline) · `X_scGPT` (512-d embedding) |
+| **Task** | single-task (paclitaxel) · multi-task (all drugs, K = 545) |
+
+**Genes per condition** — PCA uses the full filtered set; scGPT uses only its in-vocabulary subset.
+This OOV gap is **intentional** (scGPT's vocabulary coverage is part of the model — see
+[Step 02](./steps/02-preprocessing-and-embeddings.md)):
+
+| Gene set | PCA genes | scGPT genes (in-vocab) |
+|---|---|---|
+| `all_genes` | 22,722 | 20,570 |
+| `hvg5000` | 5,000 | 4,576 |
+
+Results live in [Step 04](./steps/04-single-task-results.md) (single-task) and
+[Step 05](./steps/05-multitask-results.md) (multi-task). Action list for running the full matrix:
+[TODO.md](./TODO.md).
+
+---
+
 ## The plan (for reference)
 
 A staged prototype (from the plan PDF):

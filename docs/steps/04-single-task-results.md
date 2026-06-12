@@ -5,7 +5,8 @@ baseline, the random-split data leak and its grouped-split fix, regularization, 
 progression of best single-task val MSE through the HVG-5000 + model upgrade.*
 
 This is plan-Phase-2 (single-task continuous `cpd_avg_pv` regression). Model/training design
-is in [Step 03](03-model-and-training-design.md).
+is in [Step 03](03-model-and-training-design.md). These are the **single-task (paclitaxel) rows of
+the 8-run experiment matrix** ([index](../project_progress.md#experiment-matrix--pca-vs-scgpt)).
 
 > **Scope — 1 database, 1 score.** Everything here predicts the **single** CTRPv2 metric
 > `cpd_avg_pv` (viability) for the **single** drug paclitaxel. This is the narrowest slice of

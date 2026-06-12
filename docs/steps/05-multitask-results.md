@@ -5,7 +5,9 @@ model over all 545 CTRPv2 drugs, its results vs. the per-drug-mean baseline, and
 ledger that records every training run.*
 
 This moves from plan-Phase-2 (single-task) into plan-Phase-3 (masked-loss multi-task). Masked-loss
-mechanics are in [Step 03](03-model-and-training-design.md).
+mechanics are in [Step 03](03-model-and-training-design.md). These are the **multi-task (all-drugs,
+K=545) rows of the 8-run experiment matrix**
+([index](../project_progress.md#experiment-matrix--pca-vs-scgpt)).
 
 > **Scope — still 1 database, 1 score; "multi-task" here = multi-*drug* only.** Every one of the
 > K=545 heads predicts the **same** metric (`cpd_avg_pv` viability) from the **same** database
