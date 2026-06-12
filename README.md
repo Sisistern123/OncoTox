@@ -8,13 +8,14 @@ embeddings as a denoised biological prior and comparing against a PCA baseline.
 
 All project documentation lives in [`docs/`](docs/):
 
-- **[docs/project_progress.md](docs/project_progress.md)** — the source of truth: a
-  complete, chronological record of every step, number, parameter, and result, with
-  alignment notes against the project plan. Start here.
+- **[docs/project_progress.md](docs/project_progress.md)** — the source of truth: an index
+  (pipeline overview, full project arc, current-status scorecard, doc conventions) linking to
+  thematic step files under [`docs/steps/`](docs/steps/) that hold the complete record of every
+  step, number, parameter, and result, with alignment notes against the project plan. Start here.
+- **[docs/steps/](docs/steps/)** — the eight self-contained step files (01–05 done, 06–08
+  planned placeholders) covering the whole project structure end-to-end.
 - **[docs/project_notes.md](docs/project_notes.md)** — dated thought/decision log
   (reasoning, advisor updates, ideas, open questions).
-- **[docs/documentation_guide.md](docs/documentation_guide.md)** — the roles of the two
-  docs above and the conventions for keeping them in sync.
 
 ### Pipeline status at a glance
 
@@ -30,7 +31,7 @@ scripts/model/           # OncoMLP + datasets
 scripts/training/        # train_multitask.py + shared training utils / run versioning
 notebooks/               # overlap audit, scGPT vs PCA UMAPs, HVG-vs-all-genes comparison
 runs/                    # per-run artifacts + runs_index.csv (gitignored)
-docs/                    # project_progress.md, project_notes.md, documentation_guide.md, figures
+docs/                    # project_progress.md (index) + steps/ (01-08), project_notes.md, figures
 ```
 
 ## Quickstart
