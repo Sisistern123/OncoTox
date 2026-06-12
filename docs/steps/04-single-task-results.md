@@ -75,12 +75,16 @@ LayerNorm/GELU model + scheduler/early-stop training upgrade
 
 | Setup | PCA best val | scGPT best val |
 |---|---|---|
-| No-HVG, regularized (08.05) | ~0.0375 (ep 10) | ~0.0371 (ep 10) |
-| HVG-5000, old model (BatchNorm/ReLU) | 0.0362 (ep 5) | 0.0354 (ep 50) |
-| **HVG-5000, upgraded model** | **0.0351 (ep 8)** | **0.0336 (ep 14)** |
+| No-HVG, regularized (08.05) | _open — rerun_ | ~0.0371 (ep 10) |
+| HVG-5000, old model (BatchNorm/ReLU) | _open — rerun_ | 0.0354 (ep 50) |
+| **HVG-5000, upgraded model** | _open — rerun_ | **0.0336 (ep 14)** |
 
 These are the **single-task reference points** (`split_paclitaxel`, 5,035 val cells), loaded by
 `ScGPTDrugDataset` over `obsm["X_scGPT"]` / `obsm["X_pca"]`.
+
+> **PCA column left open.** The PCA baselines are being re-run tomorrow on the corrected `X_pca`
+> (PCA on the full HVG-5000 / full-transcriptome counts — [Step 02](02-preprocessing-and-embeddings.md));
+> numbers go here after the rerun. See [TODO](../TODO.md). The scGPT numbers are current.
 
 ✅ On-plan (still single-task CTRPv2 viability on the overlap; best result to date).
 

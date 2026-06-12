@@ -61,19 +61,23 @@ scGPT input_dim **512** / hidden (128,64); PCA input_dim per `X_pca` / hidden (6
 | Run id | Rep | K | Best epoch | Best val MSE | Baseline mean MSE | Model mean MSE | Heads beat baseline |
 |---|---|---|---|---|---|---|---|
 | `20260526_132914_multitask_X_scGPT_subset_K1` | X_scGPT | 1 (paclitaxel) | 11 | 0.0412 | 0.0434 | 0.0412 | 1 / 1 |
-| `20260526_132952_multitask_X_pca_subset_K1` | X_pca | 1 (paclitaxel) | 5 | 0.0393 | 0.0434 | 0.0393 | 1 / 1 |
+| _pending rerun_ | X_pca | 1 (paclitaxel) | — | — | — | — | — |
 | `20260526_133012_multitask_X_scGPT_all_drugs` | X_scGPT | 545 | 7 | 0.0105 | 0.0097 | 0.0103 | **142 / 545** |
-| `20260526_133112_multitask_X_pca_all_drugs` | X_pca | 545 | 6 | 0.0112 | 0.0097 | 0.0114 | 97 / 545 |
+| _pending rerun_ | X_pca | 545 | — | — | — | — | — |
 
-**Reading the results:**
+> **The two X_pca runs are left open.** They will be re-run tomorrow on the corrected `X_pca`
+> (PCA on the full HVG-5000 / full-transcriptome counts — [Step 02](02-preprocessing-and-embeddings.md));
+> see [TODO](../TODO.md). The scGPT runs are current.
+
+**Reading the results (scGPT):**
 
 - The K=545 ~0.0105 looks good **only because most viability values sit near 1.0**, so the
   per-drug-mean baseline is already 0.0097. The honest metric is **heads-beating-baseline**:
-  **scGPT 142/545 vs PCA 97/545** — scGPT wins on ~47 % more heads at the same K and split.
+  **scGPT 142/545** (the PCA comparison is pending the rerun).
 - Worst heads (model < baseline) are the lowest-coverage ones (n_val = 221): `brd-k30748066`,
   `vx-680`, `brd-k33514849`, `brd9876:mk-1775 (4:1 mol/mol)`, `bafilomycin a1` — candidates
   to drop or down-weight.
-- Largest single win in both reps: `gsk-j4` (model ≈ 0.000 vs baseline 0.011, n = 221) —
+- Largest single win (scGPT run): `gsk-j4` (model ≈ 0.000 vs baseline 0.011, n = 221) —
   sanity check that a head can fit a low-variance drug-line combination.
 
 ✅ On-plan: masked-loss multi-task, correctly gated behind a working single-task baseline,
@@ -85,9 +89,9 @@ with the cheap sanity baseline the plan's prototyping section calls for.
 > masked-loss machinery — but PRISM/GDSC are **not yet integrated**, so plan-Phase-3 is only
 > half done. Don't read the 545-head run as "the multi-task goal is complete."
 
-> ⚠️ **Not comparable:** the K=1 paclitaxel numbers here (val 0.0412 scGPT / 0.0393 PCA on
-> `split_ctrp`, 27 held-out lines) are **not** comparable to the single-task numbers in
-> [Step 04](04-single-task-results.md) (0.0336 / 0.0351 on `split_paclitaxel`, different
+> ⚠️ **Not comparable:** the K=1 paclitaxel number here (val 0.0412 scGPT on `split_ctrp`,
+> 27 held-out lines; PCA pending) is **not** comparable to the single-task number in
+> [Step 04](04-single-task-results.md) (0.0336 scGPT on `split_paclitaxel`; PCA pending, different
 > held-out lines). An apples-to-apples "does multi-task help paclitaxel?" comparison still
 > needs a single-task re-run on `split_ctrp`.
 
