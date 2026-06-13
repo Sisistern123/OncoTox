@@ -42,5 +42,5 @@ My running task list. Scientific open questions live in
       ([Step 06](./steps/06-cross-database-integration.md)).
 - [ ] **XAI / feature interpretability** ([Step 07](./steps/07-xai-feature-interpretability.md)).
 - [ ] **Foundation model + clinical fine-tuning** ([Step 08](./steps/08-foundation-model-and-clinical-finetuning.md)).
-- [ ] Evaluate HVG-5000 vs `all_genes` (`notebooks/hvg_vs_all_genes_umap.ipynb`).
+- [ ] Evaluate HVG-5000 vs `all_genes` (`notebooks/verify_variants.ipynb`).
 - [ ] Reconcile the 190 (audit) vs 180 (pipeline) cell-line overlap and pick one for the thesis.

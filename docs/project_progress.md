@@ -199,8 +199,8 @@ run-versioning ledger ([Step 05](./steps/05-multitask-results.md)).
   ([Step 05](./steps/05-multitask-results.md)).
 - Which low-coverage heads (n_val = 221) to drop or down-weight?
 - Move loss from uniform-per-entry to per-head / uncertainty weighting?
-- Does HVG-5000 lose signal vs the full transcriptome? (Pending the all-genes side of
-  `hvg_vs_all_genes_umap.ipynb`.)
+- Does HVG-5000 lose signal vs the full transcriptome? (Compare the variants in
+  `verify_variants.ipynb`.)
 - When to integrate PRISM/GDSC as additional masked heads (the true Phase-3,
   [Step 06](./steps/06-cross-database-integration.md))?
 

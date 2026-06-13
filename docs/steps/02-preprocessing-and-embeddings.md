@@ -139,9 +139,8 @@ gene set under `processed/scRNAseq_SCP542/all_genes/`. `convert` keeps all 22,72
 OOV-drop then leaves **20,570** in `.X` (what scGPT embeds), while **`X_pca` is computed on the full
 22,722 convert counts** — a genuine full-transcriptome PCA. So the trainable file is **53,513 ×
 20,570** in `.X`, carrying `X_scGPT` (from the 20,570 in-vocab genes) and `X_pca` (from all 22,722).
-`notebooks/hvg_vs_all_genes_umap.ipynb` compares the two variants' UMAPs, and
-`notebooks/verify_variants.ipynb` checks the gene counts directly. Evaluation of the all-genes side
-is still pending.
+`notebooks/verify_variants.ipynb` checks the gene counts directly and plots the two variants'
+UMAPs side by side. Evaluation of the all-genes side is still pending.
 
 ✅ On-plan / closes part of the HVG deviation by enabling the full-transcriptome comparison.
 
@@ -149,11 +148,11 @@ is still pending.
 
 ## Latent-space validation (UMAP, Fig. 3 / Fig. 4)
 
-`notebooks/scgpt_umap.ipynb` is a **standalone validation notebook** (not part of the orchestrator):
-it builds `X_umap_standard` (from `X_pca`) vs `X_umap_scGPT` (from `X_scGPT`) via `sc.pp.neighbors`
-+ UMAP, colored by `Cancer_type` (**Fig. 3**) and `viability_paclitaxel` (**Fig. 4**). It visually
-confirmed the hypothesis: PCA = discrete tissue "islands", scGPT = continuous shared manifold;
-paclitaxel sensitivity mixed across the scGPT manifold.
+`notebooks/verify_variants.ipynb` (§7) is the **standalone validation** (not part of the
+orchestrator): it builds PCA-vs-scGPT UMAPs for **both** variants via `sc.pp.neighbors` + UMAP,
+colored by `Cancer_type` (**Fig. 3**) and `viability_paclitaxel` (**Fig. 4**). It visually confirmed
+the hypothesis: PCA = discrete tissue "islands", scGPT = continuous shared manifold; paclitaxel
+sensitivity mixed across the scGPT manifold.
 
 ---
 
