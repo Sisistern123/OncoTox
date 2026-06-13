@@ -3,20 +3,26 @@
 My running task list. Scientific open questions live in
 [project_progress.md](./project_progress.md#open-questions-carried-forward); this is the action list.
 
-## Next up (rerun day — 2026-06-13)
+## Done — 2026-06-13
 
-- [ ] **Rerun the whole pipeline from scratch, both variants** (`hvg5000`, `all_genes`):
-      `convert → scGPT embeddings → targets → splits → pca`. **Includes regenerating the scGPT
-      embeddings.**
-- [ ] **Re-train all baselines — the 8-run matrix:** `{all_genes, hvg5000}` × `{X_pca, X_scGPT}` ×
-      `{single-task paclitaxel, all-drugs K=545}`. Refresh the tables in
-      [Step 04](./steps/04-single-task-results.md) / [Step 05](./steps/05-multitask-results.md).
-      Per condition, PCA uses the full filtered set (5,000 / 22,722) and scGPT its in-vocab subset
-      (4,576 / 20,570) — **the OOV gap is intentionally part of the comparison** (scGPT's vocabulary
-      coverage is a property of the model; *shouganai*).
-- [ ] Sanity-check the rerun with `notebooks/verify_variants.ipynb` (gene counts, cell alignment,
-      `.X` state, PCA-vs-scGPT UMAPs).
+- [x] **8-run matrix trained** on the fixed `X_pca`: `{all_genes, hvg5000}` × `{X_pca, X_scGPT}` ×
+      `{single paclitaxel, all-drugs K=545}`, all on the shared `split_ctrp`. Results in
+      [Step 05](./steps/05-multitask-results.md). Headline: all-drugs heads-beating **scGPT > PCA in
+      both gene sets** (135/103, 141/80); single-paclitaxel **PCA > scGPT**.
+- [x] Verified both variants' gene counts, cell alignment, `.X` (CPM), and `X_pca`/`X_scGPT` dims
+      (the `verify_variants.ipynb` non-UMAP checks). Embeddings confirmed on filtered (4,576) and
+      non-filtered (20,570) data.
+
+## Still to do
+
 - [ ] **Presentation slides.**
+- [ ] Run the **UMAP cells** of `notebooks/verify_variants.ipynb` for the visual PCA-vs-scGPT
+      comparison (compute-heavy; not run on 13.06).
+- [ ] *(Skipped 13.06, optional)* Regenerate scGPT embeddings from scratch — the existing embeddings
+      are verified correct, so re-embedding both variants (~hours, 32 GB, identical output) was a
+      no-op; do it only if a from-scratch reproducibility pass is wanted.
+- [ ] *(Optional)* Re-run the `split_paclitaxel` single-task to fill [Step 04](./steps/04-single-task-results.md)'s
+      PCA column, or retire that progression in favour of the matrix's `split_ctrp` single-task.
 
 ## Make the PCA-vs-scGPT comparison properly fair
 
@@ -27,7 +33,8 @@ My running task list. Scientific open questions live in
 - [ ] Confirm the scGPT input preprocessing in `gen_embeds.py` (raw counts vs CPM) so scGPT is fed
       what it expects and isn't handicapped.
 - [ ] Add multiple seeds / CV folds for error bars (only 27 val cell lines → noisy point estimates).
-- [ ] Single-task re-run on `split_ctrp` for an apples-to-apples "does multi-task help paclitaxel?".
+- [ ] Compare the single-task paclitaxel (K=1, now on `split_ctrp`) against the paclitaxel **head**
+      inside the K=545 run — "does multi-task help paclitaxel?" (the single-task numbers now exist).
 
 ## Roadmap (project plan)
 

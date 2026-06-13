@@ -94,6 +94,49 @@ Results live in [Step 04](./steps/04-single-task-results.md) (single-task) and
 
 ---
 
+## Where everything is saved (file map)
+
+Data root: `DEFAULT_DATA_ROOT = /Users/selin/Desktop/OncoTox/data` (override with `--data-root`).
+Each gene-set variant has its own folder `processed/scRNAseq_SCP542/<variant>/` holding three h5ad
+files in pipeline order. **There is no separate file per representation, per drug, or per task** —
+one trainable file per variant bundles everything, and the representation / drug / task are
+*selected at training time*, not stored as separate files.
+
+**Raw inputs** (shared, not per-variant):
+- scRNA-seq counts → `data/scRNAseq_SCP542/expression/CPM_data.txt`
+- cell metadata → `data/scRNAseq_SCP542/metadata/Metadata.txt`
+- CTRPv2 tables → `data/metadata/CTRPv2.0_2015_ctd2_ExpandedDataset/v20.*`
+
+**Exact location of each artifact** (paths under `processed/scRNAseq_SCP542/`):
+
+| Artifact | HVG filtered? | File | Stored as | Shape / genes |
+|---|---|---|---|---|
+| Counts (CPM) | **filtered** | `hvg5000/SCP542_CCLE.h5ad` | `.X` | 53,513 × 5,000 |
+| Counts (CPM) | **non-filtered** | `all_genes/SCP542_CCLE.h5ad` | `.X` | 53,513 × 22,722 |
+| **scGPT embeddings — filtered HVG** | **filtered** | `hvg5000/SCP542_CCLE_scGPT_human_embeddings.h5ad` | `obsm["X_scGPT"]` | 53,513 × 512 (from 4,576 in-vocab genes) |
+| **scGPT embeddings — non-filtered** | **non-filtered** | `all_genes/SCP542_CCLE_scGPT_human_embeddings.h5ad` | `obsm["X_scGPT"]` | 53,513 × 512 (from 20,570 in-vocab genes) |
+| **PCA — filtered HVG** | **filtered** | `hvg5000/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad` | `obsm["X_pca"]` | 53,513 × 50 (computed on the 5,000 HVG) |
+| **PCA — non-filtered** | **non-filtered** | `all_genes/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad` | `obsm["X_pca"]` | 53,513 × 50 (computed on all 22,722) |
+| Drug labels — **all 545 drugs** | both | `<variant>/…_with_targets.h5ad` | `obsm["Y_ctrp"]` (+ `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`) | 53,513 × 545 |
+| Drug labels — **one drug (paclitaxel)** | both | same `…_with_targets.h5ad` | one column of `Y_ctrp` selected via `--drugs paclitaxel`; legacy `obs["viability_paclitaxel"]` | 53,513 × 1 |
+| Split — shared, cell-line-grouped | both | same `…_with_targets.h5ad` | `obs["split_ctrp"]` | per-cell |
+| Split — paclitaxel-only (legacy) | both | same `…_with_targets.h5ad` | `obs["split_paclitaxel"]` | per-cell |
+
+**The trainable file** is `<variant>/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad` — the only
+file passed to training. It contains, together: `X_scGPT`, `X_pca`, `Y_ctrp`, `M_ctrp`, `split_ctrp`,
+`split_paclitaxel`, `viability_paclitaxel`, and `uns["ctrp_drugs"]`.
+
+**How the 8 matrix runs select from these files** (no new files are written for a run's inputs):
+- gene set → `--variant {hvg5000, all_genes}` (which folder)
+- representation → `--use-rep {X_scGPT, X_pca}` (which `obsm` key)
+- task → `--drugs paclitaxel` (one drug) vs omitted (all 545)
+
+**Training outputs:** each run writes `runs/<timestamp>_<tag>/` (gitignored) with `best_model.pt`,
+`config.json`, `run_meta.json` (records the variant via the targets path), `history.csv`,
+`summary.json`, `per_drug_results.csv`; one index row per run in `runs/runs_index.csv`.
+
+---
+
 ## The plan (for reference)
 
 A staged prototype (from the plan PDF):
@@ -151,8 +194,9 @@ run-versioning ledger ([Step 05](./steps/05-multitask-results.md)).
 
 *Action items live in [TODO.md](./TODO.md); this list is the scientific open questions.*
 
-- Does multi-task help or hurt paclitaxel vs the 0.0336 single-task number? (Needs a
-  single-task re-run on `split_ctrp`.)
+- Does multi-task help or hurt paclitaxel? Single-task on `split_ctrp` now exists (scGPT 0.0406,
+  PCA 0.0372 on `hvg5000`); compare against the paclitaxel **head** inside the K=545 run
+  ([Step 05](./steps/05-multitask-results.md)).
 - Which low-coverage heads (n_val = 221) to drop or down-weight?
 - Move loss from uniform-per-entry to per-head / uncertainty weighting?
 - Does HVG-5000 lose signal vs the full transcriptome? (Pending the all-genes side of

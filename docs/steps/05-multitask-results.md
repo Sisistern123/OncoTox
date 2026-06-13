@@ -56,29 +56,35 @@ head only counts as having *learned* response if it **beats its own drug's const
 scheduler patience 3, early-stop patience 10, seed 42, loss MSE, norm LayerNorm.
 scGPT input_dim **512** / hidden (128,64); PCA input_dim per `X_pca` / hidden (64,32).
 
-**The four runs (all share `split_ctrp`; n_train 34,126 / n_val 7,121):**
+**The 8-run matrix (refreshed 13.06.2026; all share `split_ctrp`, n_train 34,126 / n_val 7,121).**
+Baseline mean MSE over drugs is the per-drug constant: **0.0434** for K=1 paclitaxel, **0.0097** for
+K=545. Run dirs `runs/20260613_1648xx–1651xx_*` (see `runs/runs_index.csv`).
 
-| Run id | Rep | K | Best epoch | Best val MSE | Baseline mean MSE | Model mean MSE | Heads beat baseline |
-|---|---|---|---|---|---|---|---|
-| `20260526_132914_multitask_X_scGPT_subset_K1` | X_scGPT | 1 (paclitaxel) | 11 | 0.0412 | 0.0434 | 0.0412 | 1 / 1 |
-| _pending rerun_ | X_pca | 1 (paclitaxel) | — | — | — | — | — |
-| `20260526_133012_multitask_X_scGPT_all_drugs` | X_scGPT | 545 | 7 | 0.0105 | 0.0097 | 0.0103 | **142 / 545** |
-| _pending rerun_ | X_pca | 545 | — | — | — | — | — |
+| Gene set | Task | Rep | Best val MSE | Best ep | Model mean MSE | Heads beat baseline |
+|---|---|---|---|---|---|---|
+| `hvg5000` | single (K=1) | scGPT | 0.0406 | 3 | 0.0406 | 1 / 1 |
+| `hvg5000` | single (K=1) | PCA | **0.0372** | 5 | 0.0372 | 1 / 1 |
+| `hvg5000` | all (K=545) | scGPT | 0.0107 | 6 | 0.0106 | **135 / 545** |
+| `hvg5000` | all (K=545) | PCA | 0.0110 | 8 | 0.0112 | 103 / 545 |
+| `all_genes` | single (K=1) | scGPT | 0.0442 | 9 | 0.0442 | **0 / 1** |
+| `all_genes` | single (K=1) | PCA | **0.0334** | 9 | 0.0334 | 1 / 1 |
+| `all_genes` | all (K=545) | scGPT | 0.0105 | 7 | 0.0104 | **141 / 545** |
+| `all_genes` | all (K=545) | PCA | 0.0114 | 10 | 0.0116 | 80 / 545 |
 
-> **The two X_pca runs are left open.** They will be re-run tomorrow on the corrected `X_pca`
-> (PCA on the full HVG-5000 / full-transcriptome counts — [Step 02](02-preprocessing-and-embeddings.md));
-> see [TODO](../TODO.md). The scGPT runs are current.
+**Reading the results:**
 
-**Reading the results (scGPT):**
-
-- The K=545 ~0.0105 looks good **only because most viability values sit near 1.0**, so the
-  per-drug-mean baseline is already 0.0097. The honest metric is **heads-beating-baseline**:
-  **scGPT 142/545** (the PCA comparison is pending the rerun).
-- Worst heads (model < baseline) are the lowest-coverage ones (n_val = 221): `brd-k30748066`,
-  `vx-680`, `brd-k33514849`, `brd9876:mk-1775 (4:1 mol/mol)`, `bafilomycin a1` — candidates
-  to drop or down-weight.
-- Largest single win (scGPT run): `gsk-j4` (model ≈ 0.000 vs baseline 0.011, n = 221) —
-  sanity check that a head can fit a low-variance drug-line combination.
+- **All-drugs (K=545), heads-beating-baseline — the honest metric:** **scGPT beats PCA in both gene
+  sets** — `hvg5000` **135 vs 103**, `all_genes` **141 vs 80**. scGPT's margin is *larger* on the
+  full transcriptome. This is the core-hypothesis signal: scGPT learns real response on more drugs
+  than the PCA baseline. (Absolute MSE ≈ 0.011 stays misleadingly low because the baseline is already
+  0.0097 — read heads, not raw MSE.)
+- **Single paclitaxel (K=1) flips it:** **PCA edges scGPT** in both gene sets (`hvg5000` 0.0372 <
+  0.0406; `all_genes` 0.0334 < 0.0442), and `all_genes`/scGPT even fails to beat the constant
+  baseline (**0/1**). On one low-variance drug a 50-d PCA is competitive; scGPT's advantage emerges
+  **across many drugs**, not a single one.
+- ⚠️ **Capacity caveat:** PCA is 50-d into hidden `(64,32)`, scGPT 512-d into `(128,64)` — the reps
+  differ in dimensionality and head size, so the single-drug PCA edge may partly reflect capacity,
+  not representation quality. Matching capacity is a [TODO](../TODO.md) item.
 
 ✅ On-plan: masked-loss multi-task, correctly gated behind a working single-task baseline,
 with the cheap sanity baseline the plan's prototyping section calls for.
@@ -89,16 +95,11 @@ with the cheap sanity baseline the plan's prototyping section calls for.
 > masked-loss machinery — but PRISM/GDSC are **not yet integrated**, so plan-Phase-3 is only
 > half done. Don't read the 545-head run as "the multi-task goal is complete."
 
-> ⚠️ **Not comparable:** the K=1 paclitaxel number here (val 0.0412 scGPT on `split_ctrp`,
-> 27 held-out lines; PCA pending) is **not** comparable to the single-task number in
-> [Step 04](04-single-task-results.md) (0.0336 scGPT on `split_paclitaxel`; PCA pending, different
-> held-out lines). An apples-to-apples "does multi-task help paclitaxel?" comparison still
-> needs a single-task re-run on `split_ctrp`.
-
-> ⚠️ **Provenance:** these four `run_meta.json` files record the targets h5ad at the **old
-> flat path** `data/scRNAseq_SCP542/metadata/…_with_targets.h5ad`, i.e. they predate the
-> variant-based `processed/<variant>/` layout refactor (commit `900abe6`). Re-running under
-> `processed/hvg5000/` should reproduce them but hasn't been done.
+> ⚠️ **Split note — these are the matrix single-task cells, not Step 04's.** The K=1 rows above use
+> `--drugs paclitaxel` on the **shared `split_ctrp`** (27 held-out lines), the same split as the
+> K=545 runs — so within this table every comparison is apples-to-apples. They are **not** comparable
+> to [Step 04](04-single-task-results.md)'s progression, which uses the separate `split_paclitaxel`
+> (25 held-out lines). Different splits = different held-out cell lines.
 
 ---
 

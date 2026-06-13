@@ -5,8 +5,13 @@ baseline, the random-split data leak and its grouped-split fix, regularization, 
 progression of best single-task val MSE through the HVG-5000 + model upgrade.*
 
 This is plan-Phase-2 (single-task continuous `cpd_avg_pv` regression). Model/training design
-is in [Step 03](03-model-and-training-design.md). These are the **single-task (paclitaxel) rows of
-the 8-run experiment matrix** ([index](../project_progress.md#experiment-matrix--pca-vs-scgpt)).
+is in [Step 03](03-model-and-training-design.md).
+
+> **Which single-task is this?** The numbers below are the **earlier dedicated-`split_paclitaxel`
+> baseline** (its own split over paclitaxel-labelled lines). The **8-run experiment matrix's**
+> single-task cells use the *shared* `split_ctrp` and live in
+> [Step 05](05-multitask-results.md) (refreshed 13.06.2026, with the corrected `X_pca`). The two are
+> on different splits and are not directly comparable.
 
 > **Scope — 1 database, 1 score.** Everything here predicts the **single** CTRPv2 metric
 > `cpd_avg_pv` (viability) for the **single** drug paclitaxel. This is the narrowest slice of
@@ -82,9 +87,11 @@ LayerNorm/GELU model + scheduler/early-stop training upgrade
 These are the **single-task reference points** (`split_paclitaxel`, 5,035 val cells), loaded by
 `ScGPTDrugDataset` over `obsm["X_scGPT"]` / `obsm["X_pca"]`.
 
-> **PCA column left open.** The PCA baselines are being re-run tomorrow on the corrected `X_pca`
-> (PCA on the full HVG-5000 / full-transcriptome counts — [Step 02](02-preprocessing-and-embeddings.md));
-> numbers go here after the rerun. See [TODO](../TODO.md). The scGPT numbers are current.
+> **PCA column left open — and not part of the 13.06 matrix rerun.** This `split_paclitaxel`
+> progression is the legacy dedicated-split baseline; the matrix rerun used the shared `split_ctrp`
+> (its single-task PCA-vs-scGPT numbers are in [Step 05](05-multitask-results.md)). The PCA cells
+> here would only be filled by re-running the `split_paclitaxel` single-task separately. The scGPT
+> numbers are the original baseline.
 
 ✅ On-plan (still single-task CTRPv2 viability on the overlap; best result to date).
 
