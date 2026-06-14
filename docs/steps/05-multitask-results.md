@@ -35,7 +35,7 @@ K=545) rows of the 8-run experiment matrix**
 cell lines (default 50). This run used **`--all-drugs` (= min 0) → K = 545 drugs**.
 
 **Run-time overlap reported by the pipeline:** **180 / 198** SCP542 cell lines overlap
-CTRPv2 (the stricter-normalization 180; cf. the audit's 190 in
+CTRPv2 (180 = lines with actual post-QC measurements; the audit's 190 counts roster name-matches — see
 [Step 01](01-datasets-and-harmonization.md)).
 
 **`split_ctrp` distribution (shared by all four runs below):**
@@ -91,6 +91,9 @@ Per-drug-mean baseline: **0.0434** (K=1 paclitaxel), **0.0097** (K=545). Run dir
   was **largely a capacity artifact**: PCA had been handicapped by the smaller `(64,32)` trunk.
 - **Net:** scGPT's clear, robust win is **lower overfitting**, not higher absolute accuracy. Once PCA
   isn't handicapped, the two are close on raw predictive metrics (PCA even ahead on `all_genes`).
+- **Which heads are even learnable** is driven by coverage + response variance — see
+  `notebooks/drug_coverage.ipynb`: the ≈16-line drugs (n_val 221) are the unreliable/hardest heads,
+  while high-coverage high-variance drugs (docetaxel, gemcitabine, oligomycin a) are the easiest.
 
 > ⚠️ **Remaining caveat:** input dimensionality still differs (PCA ~50 vs scGPT 512), so the *first*
 > projection isn't matched — for a fully controlled test, raise PCA `n_comps` toward 512

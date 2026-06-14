@@ -70,8 +70,8 @@ Step 08   + clinical fine-tuning               (continuous pre-train → binary 
 ## Experiment matrix — PCA vs scGPT
 
 The central comparison (the plan's core hypothesis) is run as a **2 × 2 × 2 = 8-run matrix**.
-All eight runs share the cell-line-grouped split and the same MLP head + training protocol; only
-the input representation (and its gene set) changes.
+All eight runs share the cell-line-grouped split and a **matched trunk** `(128,64)` (set 14.06.2026)
++ identical training protocol; only the input representation (and its gene set) changes.
 
 | Axis | Values |
 |---|---|
@@ -88,8 +88,14 @@ This OOV gap is **intentional** (scGPT's vocabulary coverage is part of the mode
 | `all_genes` | 22,722 | 20,570 |
 | `hvg5000` | 5,000 | 4,576 |
 
-Results live in [Step 04](./steps/04-single-task-results.md) (single-task) and
-[Step 05](./steps/05-multitask-results.md) (multi-task). Action list for running the full matrix:
+**Result (matched trunk, 14.06.2026):** scGPT **overfits less** (single-task train/val gap
+0.012–0.018 vs PCA 0.028–0.029) but does **not** beat PCA on raw accuracy once head capacity is
+equal — on all-drugs PCA is competitive/better (`hvg5000` 158 vs 156; `all_genes` PCA 196 vs scGPT
+137). So the representation mainly affects *generalization*, not predictive power. (The earlier
+"scGPT ≫ PCA" was a capacity artifact from PCA's smaller trunk.)
+
+Results: [Step 04](./steps/04-single-task-results.md) (single-task), [Step 05](./steps/05-multitask-results.md)
+(multi-task); per-drug coverage & learnability in `notebooks/drug_coverage.ipynb`. Action list:
 [TODO.md](./TODO.md).
 
 ---
@@ -170,7 +176,7 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 | Sub-goal 3: baseline on SCP542×CTRPv2 highest-confidence intersection | ✅ Done | [Step 04](./steps/04-single-task-results.md)–[05](./steps/05-multitask-results.md) |
 | Phase 1: scGPT embeddings + UMAP latent validation | ✅ Done | [Step 02](./steps/02-preprocessing-and-embeddings.md); Fig. 3/4 |
 | Phase 2: single-task continuous `cpd_avg_pv` regression | ✅ Done | best scGPT val **0.0336** ([Step 04](./steps/04-single-task-results.md)) |
-| Core hypothesis: scGPT overfits less than PCA | ✅ Confirmed | gap 0.013 vs 0.029 ([Step 04](./steps/04-single-task-results.md)) |
+| Core hypothesis: scGPT overfits less than PCA | ✅ Confirmed (generalization only) | matched-trunk gap 0.012–0.018 vs 0.028–0.029; but PCA ≈/better on raw accuracy ([Step 05](./steps/05-multitask-results.md)) |
 | Phase 3a: multi-task masked loss | ✅ Done **within CTRPv2 only** | [Step 05](./steps/05-multitask-results.md) |
 | Phase 3b: integrate PRISM / GDSC (cross-database, efficacy+toxicity) | ❌ Not started | data downloaded + harmonized only ([Step 06](./steps/06-cross-database-integration.md)) |
 | Stretch: XAI / feature importance | ❌ Not started | [Step 07](./steps/07-xai-feature-interpretability.md) |
@@ -185,8 +191,9 @@ run-versioning ledger ([Step 05](./steps/05-multitask-results.md)).
 
 1. **Multi-task today = 545 CTRPv2 drugs, not CTRPv2+PRISM+GDSC** — plan-Phase-3 half done
    (the real "combine all" is [Step 06](./steps/06-cross-database-integration.md)).
-2. **Cell-line overlap is quoted as 190 (audit/Fig. 1) vs 180 (pipeline)** — same data,
-   different name normalization; pick one and use it consistently.
+2. **Cell-line overlap: 190 vs 180** — 190 = name matches in CTRPv2's roster; 180 = lines with
+   actual post-QC measurements (10 listed-but-unscreened lines drop out). It's **data availability,
+   not normalization** (verified 14.06). Use 180 (the trainable set).
 
 ---
 
@@ -197,7 +204,8 @@ run-versioning ledger ([Step 05](./steps/05-multitask-results.md)).
 - Does multi-task help or hurt paclitaxel? Single-task on `split_ctrp` now exists (scGPT 0.0406,
   PCA 0.0372 on `hvg5000`); compare against the paclitaxel **head** inside the K=545 run
   ([Step 05](./steps/05-multitask-results.md)).
-- Which low-coverage heads (n_val = 221) to drop or down-weight?
+- Which low-coverage heads to drop or down-weight? (Quantified in `notebooks/drug_coverage.ipynb`:
+  the ≈16-line drugs, n_val 221, are the unreliable/hardest heads.)
 - Move loss from uniform-per-entry to per-head / uncertainty weighting?
 - Does HVG-5000 lose signal vs the full transcriptome? (Compare the variants in
   `verify_variants.ipynb`.)
@@ -217,7 +225,8 @@ run-versioning ledger ([Step 05](./steps/05-multitask-results.md)).
   **scorecard + arc** above if the plan-vs-reality picture changed. Each step carries its own
   ✅ on-plan / ⚠️ deviation callouts against the plan PDF.
 - **Keep numbers consistent** between this index, the step files, and `project_notes.md`.
-- **Known cross-doc inconsistency to keep flagging:** SCP542×CTRPv2 cell-line overlap is **190**
-  (audit notebook, case-insensitive) vs **180** (pipeline `ctrp_to_h5ad.py`, which also strips
-  `-`). Same data, different normalization — pick one per context
-  ([Step 01](./steps/01-datasets-and-harmonization.md)).
+- **190 vs 180 cell-line overlap — resolved (14.06):** it is **not** a normalization difference
+  (both rules give 190). **190** = SCP542 names found in CTRPv2's cell-line *roster*; **180** = those
+  with actual **post-QC viability measurements**. The 10-line gap is unscreened lines (no labels):
+  `abc1, hs939t, jhh7, mdamb436, mfe280, ncih1048, ncih2073, ncih2347, rerflckj, ten`. Use **180**
+  (the trainable set); 190 is the roster count ([Step 01](./steps/01-datasets-and-harmonization.md)).

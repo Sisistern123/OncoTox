@@ -29,7 +29,7 @@ Regenerate the figure with `uv run docs/make_pipeline_overview.py`.
 scripts/preprocessing/   # SCP542 conversion, CTRP target mapping, splits, PCA, orchestrator
 scripts/model/           # OncoMLP + datasets
 scripts/training/        # train_multitask.py + shared training utils / run versioning
-notebooks/               # overlap audit (compare_GDSC_CTRP) + variant checks & PCA-vs-scGPT UMAPs (verify_variants)
+notebooks/               # overlap audit (compare_GDSC_CTRP), variant checks & UMAPs (verify_variants), drug coverage (drug_coverage)
 runs/                    # per-run artifacts + runs_index.csv (gitignored)
 docs/                    # project_progress.md (index) + steps/ (01-08), project_notes.md, figures
 ```

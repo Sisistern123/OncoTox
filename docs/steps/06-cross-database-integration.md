@@ -53,7 +53,8 @@ setup (via masked losses) to handle sparse or missing labels."
   29 % vs GDSC 3 % non-null)? Ties into the [Step 05](05-multitask-results.md) open question on
   per-head / uncertainty weighting.
 - Whether to harmonize metrics onto a common response scale, or keep them as separate heads.
-- Reconcile the 190-vs-180 cell-line normalization ([Step 01](01-datasets-and-harmonization.md))
+- Use 180 (lines with measurements), not 190 (roster name-matches) — see
+  [Step 01](01-datasets-and-harmonization.md)
   before unioning sources.
 
 ## Definition of done

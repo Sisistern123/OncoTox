@@ -66,4 +66,5 @@ sufficient for this task? The steps below are designed to answer it.
       ([Step 06](./steps/06-cross-database-integration.md)).
 - [ ] **XAI / feature interpretability** ([Step 07](./steps/07-xai-feature-interpretability.md)).
 - [ ] **Foundation model + clinical fine-tuning** ([Step 08](./steps/08-foundation-model-and-clinical-finetuning.md)).
-- [ ] Reconcile the 190 (audit) vs 180 (pipeline) cell-line overlap and pick one for the thesis.
+- [x] **190 vs 180 resolved** (14.06): not normalization — 190 = CTRPv2 roster name-matches, 180 =
+      lines with actual post-QC measurements (10 listed-but-unscreened drop out). Use 180.

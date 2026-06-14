@@ -1,5 +1,39 @@
 
 # OncoTox Project Notes
+## 10–14.06.2026
+
+### Documentation restructure
+Split the source-of-truth into a thin index `project_progress.md` + eight step files under
+`docs/steps/` (01 datasets/harmonization … 08 foundation model). Added `docs/TODO.md` and a pipeline
+overview figure.
+
+### PCA fix — compute on the HVG counts, not the OOV-dropped `.X`
+Found `add_pca` was computing `X_pca` on the targets `.X`, which the `scgpt` step had already reduced
+to scGPT's in-vocab genes (5,000→4,576; 22,722→20,570). Changed it to compute PCA from the **convert
+counts** (full HVG-5000 / 22,722 genes) and to leave `.X` as CPM. **Decision:** the scGPT OOV drop
+is kept as part of the comparison (it's a real property of using scGPT), so PCA uses the full
+filtered set and scGPT its in-vocab subset.
+
+### Matched trunk + 8-run matrix rerun
+Set `DEFAULT_HIDDEN_DIMS` to `(128,64)` for **both** reps (was (64,32) for PCA) so head capacity is
+equal — only the input representation differs. Re-ran the full 8-run matrix
+`{hvg5000, all_genes} × {X_pca, X_scGPT} × {single, all-drugs}` on `split_ctrp`.
+**Result:** scGPT overfits less (single-task gap 0.012–0.018 vs PCA 0.028–0.029), but with matched
+capacity PCA is competitive/better on raw accuracy (all-drugs heads-beating: `hvg5000` 158 vs 156;
+`all_genes` PCA 196 vs scGPT 137). The earlier scGPT lead (135 vs 103; 141 vs 80) was a capacity
+artifact. Net: scGPT's edge is generalization, not predictive power.
+
+### Drug coverage / learnability (`notebooks/drug_coverage.ipynb`)
+Quantified per-drug coverage and response variance. No drug covers all 180 lines (max 179, median
+171); 382 drugs ≥90% coverage, 80 drugs <50%; 14 drugs have std<0.05 (unlearnable). Low-coverage
+drugs (~16 lines, n_val 221) are exactly the hardest/unreliable heads.
+
+### 190 vs 180 cell-line overlap — resolved
+**Not** a normalization difference (both rules give 190). **190** = SCP542 names in CTRPv2's
+cell-line roster; **180** = those with actual post-QC viability measurements. 10 roster-listed but
+unscreened lines drop out: `abc1, hs939t, jhh7, mdamb436, mfe280, ncih1048, ncih2073, ncih2347,
+rerflckj, ten`. Use 180 (the trainable set).
+
 ## 26.05.2026
 
 ### Multi-drug refactor (v2-plan iterative step: single-task -> masked multi-task)

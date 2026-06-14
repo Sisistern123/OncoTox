@@ -99,13 +99,15 @@ Today the trained model depends on Step 01 through exactly **one** thing: the ce
 **name normalization inside the pipeline**, `_normalize_cell_line` / `_normalize_drug` in
 `scripts/preprocessing/ctrp_to_h5ad.py` (trim + lowercase + **strip `-`**). These produce the
 `ccl_name_norm` / `cpd_name_norm` join keys that map CTRPv2 viability onto SCP542 cells during the
-**targets** step ([Step 02](02-preprocessing-and-embeddings.md)). Because this normalization is
-stricter than the audit notebook's, it reports **180** overlapping lines at pipeline run time, not
-190:
+**targets** step ([Step 02](02-preprocessing-and-embeddings.md)). At pipeline run time the overlap
+is **180**, not the audit's 190 — and the reason is **data availability, not normalization**:
 
-> ⚠️ **Number to reconcile:** **190** (audit notebook, case-insensitive) vs **180** (pipeline
-> `ctrp_to_h5ad.py`, which also strips `-`). Same data, different normalization — pick one
-> consistently for the thesis figure and the pipeline.
+> ✅ **190 vs 180 — resolved (14.06.2026).** Both normalizations (with/without stripping `-`) give
+> **190** SCP542 names that appear in CTRPv2's cell-line roster (`v20.meta.per_cell_line.txt`). But
+> only **180** of those have actual **post-QC viability measurements** (`v20.data.per_cpd_post_qc.txt`,
+> merged through experiment→cell-line) — the table the pipeline builds `Y_ctrp` from. The **10**
+> roster-listed-but-unscreened lines are `abc1, hs939t, jhh7, mdamb436, mfe280, ncih1048, ncih2073,
+> ncih2347, rerflckj, ten`. Use **180** (the trainable set); 190 is just the name-match count.
 
 From this overlap, a drug becomes a model **head** (one column of `obsm["Y_ctrp"]`, one row of the
 output layer — never an input feature) only if it was screened on ≥ `--min-cell-lines` overlapping
