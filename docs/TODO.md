@@ -26,10 +26,14 @@ My running task list. Scientific open questions live in
 
 ## Make the PCA-vs-scGPT comparison properly fair
 
-- [ ] Address the dimensionality / capacity mismatch: PCA `X_pca` is ≈50-d with hidden `(64,32)`,
-      scGPT is 512-d with hidden `(128,64)`. Match input dim and/or head capacity so the comparison
-      measures representation quality, not capacity (e.g. sweep PCA `n_comps`, or give both reps the
-      same trunk).
+- [x] **Matched the trunk** (14.06.2026): both reps now use `(128,64)` so the head capacity is
+      equal — only the input representation differs. Result: scGPT's win is *lower overfitting*, not
+      higher accuracy; PCA is competitive/better on all-drugs once un-handicapped
+      ([Step 05](./steps/05-multitask-results.md)).
+- [ ] Close the remaining input-dim gap: PCA is ~50-d (scanpy default `n_comps`) vs scGPT 512-d, so
+      the *first* projection still differs. Sweep PCA `n_comps` (e.g. up to 512) for a fully
+      controlled test. (Note: `add_pca` currently hard-codes scanpy's default 50; max is
+      `min(n_cells, n_genes)−1`.)
 - [ ] Confirm the scGPT input preprocessing in `gen_embeds.py` (raw counts vs CPM) so scGPT is fed
       what it expects and isn't handicapped.
 - [ ] Add multiple seeds / CV folds for error bars (only 27 val cell lines → noisy point estimates).

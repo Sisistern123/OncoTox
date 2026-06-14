@@ -47,8 +47,10 @@ from scripts.training.training_utils import (
 
 from scripts.preprocessing.layout import PipelinePaths, add_data_args
 
+# Matched trunk for a fair PCA-vs-scGPT comparison: both reps use the same hidden
+# layers, so only the input representation (and its first projection) differs.
 DEFAULT_HIDDEN_DIMS = {
-    "X_pca": (64, 32),
+    "X_pca": (128, 64),
     "X_scGPT": (128, 64),
 }
 

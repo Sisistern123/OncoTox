@@ -146,8 +146,10 @@ overfitting gap in [Step 04](04-single-task-results.md).
 input dropout → `[Linear → LayerNorm → GELU → Dropout]` per hidden layer → `Linear(→ output_dim)`.
 Defaults encode specific choices for this regime:
 
-- **`hidden_dims` = (64,32) for PCA, (128,64) for scGPT** (`train_multitask.DEFAULT_HIDDEN_DIMS`) —
-  scGPT's 512-d input warrants a slightly wider trunk than PCA's ≈50-d.
+- **`hidden_dims` = (128,64) for both reps** (`train_multitask.DEFAULT_HIDDEN_DIMS`, matched
+  14.06.2026) — a **matched trunk** so only the input representation (and its first projection)
+  differs, making PCA vs scGPT a fair comparison. (Earlier runs used (64,32) for PCA, which
+  handicapped it — see [Step 05](05-multitask-results.md).)
 - **LayerNorm** (not BatchNorm): batches are cell-line-grouped and small, so BatchNorm running
   statistics are noisy; LayerNorm normalizes per-sample and is stable here.
 - **GELU** rather than ReLU — a smoother activation for continuous-valued targets.
