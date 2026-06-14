@@ -123,7 +123,7 @@ arrow(XS[0] + W / 2, yb, XS[0] + W / 2, ROW_B + H)
 for i in range(3):
     arrow(XS[i] + W, ROW_B + H / 2, XS[i + 1], ROW_B + H / 2, color=RED, dashed=True)
 
-ax.text(99.5, 1.2, "* 190 case-insensitive (audit) vs 180 stricter pipeline normalization",
+ax.text(99.5, 1.2, "* 190 = name-matches in CTRPv2's roster; 180 = lines with actual post-QC measurements",
         ha="right", va="bottom", fontsize=8, color=GREY, style="italic")
 
 fig.savefig(OUT, dpi=160, bbox_inches="tight", facecolor="white")
