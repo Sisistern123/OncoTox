@@ -34,7 +34,10 @@ sufficient for this task? The steps below are designed to answer it.
       all genes; find scGPT's sweet spot.
 
 **3. Understand the result**
-- [ ] Per-drug **response-distribution** analysis (how many drugs are learnable, given viability ≈ 1.0?).
+- [x] Per-drug **coverage & response-distribution** analysis → `notebooks/drug_coverage.ipynb`
+      (coverage per drug, variance per drug, and coverage/variance vs beats-baseline). Finding:
+      no drug covers all 180 lines (max 179, median 171); 80 drugs < 50% coverage; the low-coverage
+      drugs (≈16 lines, n_val 221) are the unreliable/hardest heads.
 - [ ] **Predicted-vs-true** diagnostics: is the model just predicting the per-cell-line mean? Does
       averaging per-cell predictions back to the line help? Compare single-task paclitaxel (K=1) vs
       the paclitaxel head inside the K=545 run.
