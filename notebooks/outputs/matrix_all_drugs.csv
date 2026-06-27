@@ -1,5 +1,5 @@
-gene_set,rep,input_dim,val_mse,heads_beat_baseline,n_heads,baseline_mean_mse,run_dir
-hvg5000,X_pca,512,0.0103,169,545,0.0097,20260627_191310_multitask_X_pca_all_drugs
-hvg5000,X_scGPT,512,0.0105,147,545,0.0097,20260627_191401_multitask_X_scGPT_all_drugs
-all_genes,X_pca,512,0.0106,138,545,0.0097,20260627_191502_multitask_X_pca_all_drugs
-all_genes,X_scGPT,512,0.0106,131,545,0.0097,20260627_191546_multitask_X_scGPT_all_drugs
+gene_set,rep,val_mse,heads_beat_baseline,n_heads,baseline_mean_mse
+hvg5000,X_pca,0.0103,169,545,0.0097
+hvg5000,X_scGPT,0.0105,147,545,0.0097
+all_genes,X_pca,0.0106,138,545,0.0097
+all_genes,X_scGPT,0.0106,131,545,0.0097

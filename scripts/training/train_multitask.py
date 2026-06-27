@@ -34,6 +34,9 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
+import scanpy as sc
+from sklearn.model_selection import GroupKFold
+
 from scripts.model.OncoMLP import OncoMLP
 from scripts.model.dataset import MultiDrugDataset
 from scripts.training.training_utils import (
@@ -354,6 +357,104 @@ def train_rep(
         "output_dim": output_dim,
         "rep": use_rep,
     }
+
+
+def cv_evaluate(
+    *,
+    use_rep: str,
+    config: TrainConfig,
+    h5ad_path: str | None = None,
+    adata=None,
+    n_splits: int = 5,
+    drugs: list[str] | None = None,
+    hidden_dims: tuple[int, ...] | None = None,
+    batch_size: int = 128,
+    dropout: float = 0.5,
+    input_dropout: float = 0.1,
+    group_col: str = "Cell_line",
+    eligible_splits: tuple[str, ...] = ("train", "val"),
+) -> list[dict]:
+    """K-fold **GroupKFold** cross-validation over cell lines for one rep.
+
+    Answers "is the PCA-vs-scGPT difference real, or a one-split artifact?" by
+    re-fitting on `n_splits` cell-line-grouped folds and returning per-fold
+    metrics (so the caller can report mean ± std). Grouping is by ``group_col``
+    (cell line), so no line appears in both train and val of a fold — the same
+    leakage control as the fixed `split_ctrp`, but resampled `n_splits` ways.
+
+    Only cells whose `split_ctrp` is in ``eligible_splits`` are used. The default
+    ``("train", "val")`` **holds the fixed test set out entirely** (CV resamples
+    only the 153 train+val lines); pass ``("train", "val", "test")`` to pool all
+    180 measured lines. The h5ad is read once and sliced per fold via ``cell_mask``.
+
+    Returns a list of per-fold dicts: best_val_mse, train_mse_at_best, gap
+    (val−train at best epoch), n_beats / n_total (heads beating the per-drug-mean
+    baseline), model_mean_mse, baseline_mean_mse, and fold line counts.
+    """
+    if hidden_dims is None:
+        hidden_dims = DEFAULT_HIDDEN_DIMS[use_rep]
+    hidden_dims = tuple(hidden_dims)
+    if adata is None:
+        if h5ad_path is None:
+            raise ValueError("Provide either h5ad_path or a preloaded adata.")
+        adata = sc.read_h5ad(h5ad_path)
+
+    if group_col not in adata.obs.columns:
+        raise ValueError(f"group_col '{group_col}' not in adata.obs.")
+    eligible = adata.obs["split_ctrp"].isin(eligible_splits).to_numpy()
+    groups_all = adata.obs[group_col].astype(str).to_numpy()
+    idx = np.flatnonzero(eligible)
+    device = pick_device()
+
+    gkf = GroupKFold(n_splits=n_splits)
+    folds: list[dict] = []
+    for fold, (tr, va) in enumerate(gkf.split(idx, groups=groups_all[idx]), start=1):
+        train_cells = np.zeros(adata.n_obs, dtype=bool)
+        val_cells = np.zeros(adata.n_obs, dtype=bool)
+        train_cells[idx[tr]] = True
+        val_cells[idx[va]] = True
+
+        train_ds = MultiDrugDataset(adata=adata, use_rep=use_rep, cell_mask=train_cells, drugs=drugs)
+        val_ds = MultiDrugDataset(adata=adata, use_rep=use_rep, cell_mask=val_cells, drugs=drugs)
+        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+
+        baseline_const = _per_drug_train_mean(train_ds)
+        baseline_mse, _ = _per_drug_constant_mse(baseline_const, val_ds)
+
+        model = OncoMLP(
+            input_dim=train_ds.X.shape[1],
+            hidden_dims=hidden_dims,
+            dropout_rate=dropout,
+            input_dropout=input_dropout,
+            norm="layer",
+            output_dim=len(train_ds.drug_names),
+        )
+        tag = f"cv{fold}/{n_splits}_{use_rep}"
+        best_model, history = train_model(
+            model, train_loader, val_loader, config=config, tag=tag,
+            drug_names=train_ds.drug_names,
+        )
+        model_mse, _ = _evaluate_model_per_drug_mse(best_model, val_loader, device)
+
+        finite = np.isfinite(baseline_mse) & np.isfinite(model_mse)
+        n_total = int(finite.sum())
+        n_beats = int((model_mse[finite] < baseline_mse[finite]).sum())
+        be = history.best_epoch
+        folds.append({
+            "fold": fold,
+            "rep": use_rep,
+            "n_train_lines": int(np.unique(groups_all[idx][tr]).size),
+            "n_val_lines": int(np.unique(groups_all[idx][va]).size),
+            "best_val_mse": float(history.best_val_mse),
+            "train_mse_at_best": float(history.train_mse[be - 1]),
+            "gap": float(history.val_mse[be - 1] - history.train_mse[be - 1]),
+            "n_beats": n_beats,
+            "n_total": n_total,
+            "model_mean_mse": float(np.nanmean(model_mse)),
+            "baseline_mean_mse": float(np.nanmean(baseline_mse)),
+        })
+    return folds
 
 
 def main():

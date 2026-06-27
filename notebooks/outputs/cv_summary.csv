@@ -1,0 +1,3 @@
+rep,heads_beat (mean±std),all_drugs val_mse (mean±std),paclitaxel gap (mean±std)
+X_pca,207 ± 73 / 545,0.0106 ± 0.0008,+0.011 ± 0.020
+X_scGPT,191 ± 94 / 545,0.0107 ± 0.0009,-0.002 ± 0.014

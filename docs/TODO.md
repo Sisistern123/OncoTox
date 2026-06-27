@@ -21,19 +21,25 @@ My running task list. Scientific open questions live in
 sufficient for this task? The steps below are designed to answer it.
 
 **1. Is the difference real?**
-- [ ] Grouped **5-fold cross-validation** (`GroupKFold` over cell lines); report **mean ± std** for
-      the overfitting gap and heads-beating (turns the 512-d "169 vs 147" into e.g. "160 ± 9 vs
-      150 ± 11"). Only 27 val lines in one split → current numbers are point estimates.
+- [x] Grouped **5-fold cross-validation** (`GroupKFold` over cell lines, **test held out**, CV over the
+      153 train+val lines) → `notebooks/07_training.ipynb` §2. **Answer: largely no.** Heads-beating
+      `hvg5000` PCA **207 ± 73** vs scGPT **191 ± 94** — the fold std dwarfs the ~16 difference, so the
+      single-split "169 vs 147" is within noise. Overfitting direction survives weakly (paclitaxel gap
+      PCA +0.011 ± 0.020 vs scGPT −0.002 ± 0.014). See [Step 05](./steps/05-multitask-results.md).
 
 **2. Fair comparison & better metric**
 - [x] **Match input dimensionality**: PCA now uses **512 components** (`add_pca.DEFAULT_N_COMPS`,
       overridable with `--pca-n-comps`) so PCA and scGPT share the same input width. The **full 8-run
       matrix was re-run at 512-d** in `notebooks/07_training.ipynb` (run dirs `runs/20260627_1913xx_*`),
       superseding the ~50-d matrix; results in [Step 05](./steps/05-multitask-results.md).
-- [ ] Add a **per-drug correlation** metric (Spearman/Pearson, predicted vs true across held-out
-      lines), restricted to drugs with real response variance — more informative than beating a constant.
-- [ ] **HVG-count sweep** (1k/2k/3k/5k) under CV — scGPT improved with filtering while PCA preferred
-      all genes; find scGPT's sweet spot.
+- [x] Add a **per-drug correlation** metric (Spearman/Pearson, predicted vs true across held-out
+      lines), restricted to drugs with real response variance → `notebooks/07_training.ipynb` §3.
+      **Sobering result:** per-drug rank correlation ≈ 0 for *both* reps (mean Spearman PCA −0.02,
+      scGPT −0.05; ~4% of 461 drugs ρ > 0.3) — neither rep ranks cell lines; MSE wins are shrinkage to
+      the mean, not real predictive power. See [Step 05](./steps/05-multitask-results.md).
+- [~] **HVG-count sweep** (1k/2k/3k/5k) under CV — scGPT improved with filtering while PCA preferred
+      all genes; find scGPT's sweet spot. Harness ready (`07` §4, all-drugs CV, test held out); data-gen
+      for `hvg1000/2000/3000` (scGPT re-embed) is in `05` §B and running. Curve fills in once built.
 
 **3. Understand the result**
 - [x] Per-drug **coverage & response-distribution** analysis → `notebooks/04_drug_coverage.ipynb`

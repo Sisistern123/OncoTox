@@ -1,5 +1,5 @@
-gene_set,rep,train_mse,val_mse,gap_val_minus_train,best_epoch,run_dir
-hvg5000,X_pca,0.0114,0.0447,0.0333,2,20260627_191350_multitask_X_pca_subset_K1
-hvg5000,X_scGPT,0.0369,0.0409,0.004,2,20260627_191449_multitask_X_scGPT_subset_K1
-all_genes,X_pca,0.0415,0.0385,-0.003,1,20260627_191533_multitask_X_pca_subset_K1
-all_genes,X_scGPT,0.0317,0.0448,0.013,4,20260627_191624_multitask_X_scGPT_subset_K1
+gene_set,rep,train_mse,val_mse,gap_val_minus_train,best_epoch
+hvg5000,X_pca,0.0114,0.0447,0.0333,2
+hvg5000,X_scGPT,0.0369,0.0409,0.004,2
+all_genes,X_pca,0.0415,0.0385,-0.003,1
+all_genes,X_scGPT,0.0317,0.0448,0.013,4

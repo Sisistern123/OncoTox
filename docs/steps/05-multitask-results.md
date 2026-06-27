@@ -38,10 +38,19 @@ cell lines (default 50). This run used **`--all-drugs` (= min 0) → K = 545 dru
 CTRPv2 (180 = lines with actual post-QC measurements; the audit's 190 counts roster name-matches — see
 [Step 01](01-datasets-and-harmonization.md)).
 
-**`split_ctrp` distribution (shared by all four runs below):**
+**`split_ctrp` distribution (one cell-line-grouped **70/15/15** split, shared by all heads):**
 
-- Cells: **train 34,126 / val 7,121 / test 5,980 / unassigned 6,286**
-- Cell lines: **126 train / 27 val / 27 test**
+| split | lines | % of lines | cells | % of measured cells |
+|---|---|---|---|---|
+| train | 126 | 70.0% | 34,126 | 72.3% |
+| val   | 27  | 15.0% | 7,121  | 15.1% |
+| test  | 27  | 15.0% | 5,980  | 12.7% |
+
+- 70/15/15 is the design target at the **cell-line** level (`create_splits._split_cell_lines`); the
+  **cell** percentages differ slightly because lines carry different cell counts.
+- `unassigned` = **18 lines / 6,286 cells** (SCP542 lines with no CTRP measurement; 198 → 180 measured).
+- **Cross-validation** (`notebooks/07_training.ipynb` §2) **holds `test` out** and resamples only the
+  153 train+val lines via 5-fold GroupKFold, so test is never seen in CV.
 
 **Model & training:** a single `OncoMLP` with `output_dim = K`, fed by `MultiDrugDataset`
 (`scripts/model/dataset.py`) whose 3-tuple `(x, y, mask)` batches `train_model` auto-detects to
@@ -104,6 +113,43 @@ Reproducible in `notebooks/07_training.ipynb`; run dirs `runs/20260627_1913xx_*`
 > `all_genes` rows early-stop very fast (best epoch 1–4), so their gaps are noisy — `all_genes`·PCA's
 > **−0.003** reflects near-no learning + the dropout offset, not genuine negative generalization. The
 > clean comparison is `hvg5000` single-task (scGPT 0.004 vs PCA 0.033).
+
+### Is the difference real? — 5-fold cross-validation (27.06.2026)
+
+The single-split numbers above rest on **27 val lines**, so they are point estimates. To test
+robustness, `cv_evaluate` (`notebooks/07_training.ipynb` §2) runs **5-fold GroupKFold over `Cell_line`,
+holding the fixed `test` set out** and resampling only the 153 train+val lines (~122 train / ~31 val
+per fold). On `hvg5000`:
+
+| Rep | Heads beating baseline (mean ± std) | All-drugs val MSE | Paclitaxel gap (val − train) |
+|---|---|---|---|
+| `X_pca` | **207 ± 73** / 545 | 0.0106 ± 0.0008 | **+0.011 ± 0.020** |
+| `X_scGPT` | **191 ± 94** / 545 | 0.0107 ± 0.0009 | **−0.002 ± 0.014** |
+
+- **The PCA-vs-scGPT heads-beating gap is *not* robust:** the fold std (±73–94) **dwarfs** the
+  PCA−scGPT difference (~16). The single-split "169 vs 147" is within fold noise — don't read it as a
+  real PCA advantage. PCA's mean stays ≥ scGPT's, but not significantly.
+- **The overfitting direction survives, weakly:** mean paclitaxel gap is lower for scGPT (−0.002) than
+  PCA (+0.011), consistent with the denoised-prior claim, but the spreads overlap.
+
+### Better metric — per-drug correlation (27.06.2026)
+
+Because viability clusters near 1.0, beating the per-drug-mean on MSE is a weak bar. §3 of the notebook
+instead correlates **predicted vs true viability across held-out cell lines**, per drug (Spearman +
+Pearson), restricted to the 461 drugs with real per-line variance (std ≥ 0.05, ≥ 5 val lines):
+
+| Rep | mean Spearman | median Spearman | frac. drugs ρ > 0.3 |
+|---|---|---|---|
+| `X_pca` | −0.02 | −0.01 | 4.3% |
+| `X_scGPT` | −0.05 | −0.05 | 3.9% |
+
+- **Sobering:** per-drug rank correlation is **≈ 0 for both reps** — the models do **not** rank cell
+  lines by drug response. The marginal MSE "wins" over the per-drug-mean reflect shrinking toward the
+  constant, **not** real per-line predictive power. At this resolution (per-line viability broadcast to
+  cells, values ≈ 1.0) the task is barely learnable beyond the mean — for *either* representation.
+- This reframes the whole comparison: the scGPT-vs-PCA question is secondary to the fact that **neither
+  rep yet predicts response variation across lines**. Motivates the better-target / better-metric work
+  in [TODO.md](../TODO.md) (correlation-based selection, drugs with real variance).
 
 ✅ On-plan: masked-loss multi-task, correctly gated behind a working single-task baseline,
 with the cheap sanity baseline the plan's prototyping section calls for.

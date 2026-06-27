@@ -56,7 +56,7 @@ class MultiDrugDataset(Dataset):
 
     def __init__(
         self,
-        h5ad_path,
+        h5ad_path=None,
         use_rep: str = "X_scGPT",
         split: str = "train",
         split_col: str = "split_ctrp",
@@ -64,16 +64,27 @@ class MultiDrugDataset(Dataset):
         mask_obsm_key: str = "M_ctrp",
         drugs_uns_key: str = "ctrp_drugs",
         drugs: "list[str] | None" = None,
+        adata=None,
+        cell_mask=None,
     ):
-        self.split = split
-        print(f"Loading multi-drug {split} split from {h5ad_path}...")
-        adata = sc.read_h5ad(h5ad_path)
+        """Load a multi-drug split.
 
-        if split_col not in adata.obs.columns:
-            raise ValueError(
-                f"Split column '{split_col}' not found in adata.obs. "
-                f"Run create_splits.run_multi first."
-            )
+        Cell selection is one of two modes:
+          * default — cells where ``obs[split_col] == split`` (e.g. the fixed
+            ``split_ctrp`` train/val/test column);
+          * ``cell_mask`` — an explicit boolean array over all cells, used by the
+            cross-validation harness so folds don't depend on a stored split.
+
+        Pass a preloaded ``adata`` to avoid re-reading the h5ad (e.g. once per CV
+        run instead of once per fold); otherwise ``h5ad_path`` is read.
+        """
+        self.split = split
+        if adata is None:
+            if h5ad_path is None:
+                raise ValueError("Provide either h5ad_path or a preloaded adata.")
+            print(f"Loading multi-drug data from {h5ad_path}...")
+            adata = sc.read_h5ad(h5ad_path)
+
         for key in (y_obsm_key, mask_obsm_key):
             if key not in adata.obsm:
                 raise ValueError(
@@ -84,10 +95,23 @@ class MultiDrugDataset(Dataset):
                 f"uns['{drugs_uns_key}'] not found. Run ctrp_to_h5ad first."
             )
 
-        split_mask = (adata.obs[split_col] == split).to_numpy()
+        if cell_mask is not None:
+            split_mask = np.asarray(cell_mask, dtype=bool)
+            if split_mask.shape[0] != adata.n_obs:
+                raise ValueError(
+                    f"cell_mask length {split_mask.shape[0]} != n_obs {adata.n_obs}."
+                )
+            self.split = "custom-mask"
+        else:
+            if split_col not in adata.obs.columns:
+                raise ValueError(
+                    f"Split column '{split_col}' not found in adata.obs. "
+                    f"Run create_splits.run_multi first."
+                )
+            split_mask = (adata.obs[split_col] == split).to_numpy()
         n_split = int(split_mask.sum())
         if n_split == 0:
-            raise ValueError(f"No cells found for split '{split}' in {h5ad_path}")
+            raise ValueError(f"No cells found for split '{self.split}'.")
 
         if use_rep not in adata.obsm:
             raise ValueError(
@@ -127,7 +151,7 @@ class MultiDrugDataset(Dataset):
         n_per_cell = M.sum(axis=1)
         n_per_drug = M.sum(axis=0)
         print(
-            f"Loaded {n_split} cells for the '{split}' set. "
+            f"Loaded {n_split} cells for the '{self.split}' set. "
             f"K={len(self.drug_names)} drugs | "
             f"mean drugs/cell={n_per_cell.mean():.1f} | "
             f"min drug coverage={int(n_per_drug.min())} cells | "

@@ -11,10 +11,14 @@ DEFAULT_DATA_ROOT = Path("/Users/selin/Desktop/OncoTox/data")
 DEFAULT_SCGPT_SCRIPT = Path("/Users/selin/PycharmProjects/scGPT/gen_embeds.py")
 DEFAULT_SCGPT_MODEL_DIR = Path("/Users/selin/Desktop/OncoTox/scGPT/scGPT_human")
 
-VARIANTS = ("hvg5000", "all_genes")
+VARIANTS = ("hvg1000", "hvg2000", "hvg3000", "hvg5000", "all_genes")
 DEFAULT_VARIANT = "hvg5000"
 
+# hvg1000/2000/3000 added for the HVG-count sweep (find scGPT's filtering sweet spot).
 VARIANT_N_TOP_GENES: dict[str, int | None] = {
+    "hvg1000": 1000,
+    "hvg2000": 2000,
+    "hvg3000": 3000,
     "hvg5000": 5000,
     "all_genes": None,
 }
