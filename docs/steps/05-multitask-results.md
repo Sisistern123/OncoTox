@@ -151,6 +151,25 @@ Pearson), restricted to the 461 drugs with real per-line variance (std ≥ 0.05,
   rep yet predicts response variation across lines**. Motivates the better-target / better-metric work
   in [TODO.md](../TODO.md) (correlation-based selection, drugs with real variance).
 
+### HVG sweet spot — heads-beating vs gene count (27.06.2026)
+
+Does scGPT have a preferred HVG count? `notebooks/07_training.ipynb` §4 builds each variant (1k/2k/3k/5k,
+full pipeline incl. scGPT re-embed; `05` §B) and runs the same **5-fold GroupKFold, test held out,
+all 545 drugs**:
+
+| HVG genes | `X_pca` heads-beat (mean ± std) | `X_scGPT` heads-beat (mean ± std) |
+|---|---|---|
+| 1,000 | 201 ± 76 | 193 ± 83 |
+| 2,000 | 203 ± 78 | 185 ± 84 |
+| 3,000 | 216 ± 85 | 190 ± 83 |
+| 5,000 | 210 ± 73 | 189 ± 94 |
+
+- **No sweet spot.** scGPT heads-beating is **flat (~185–193) across all HVG counts** — filtering does
+  not help it here, contrary to the earlier hunch that "scGPT improves with filtering." Val MSE is
+  likewise ~constant (0.0105–0.0107) everywhere.
+- PCA is marginally higher at every count, but the ±73–85 fold spread overlaps scGPT completely — the
+  PCA-vs-scGPT gap is within noise at all HVG counts, consistent with the CV finding above.
+
 ✅ On-plan: masked-loss multi-task, correctly gated behind a working single-task baseline,
 with the cheap sanity baseline the plan's prototyping section calls for.
 

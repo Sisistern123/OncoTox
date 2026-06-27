@@ -37,9 +37,9 @@ sufficient for this task? The steps below are designed to answer it.
       **Sobering result:** per-drug rank correlation ≈ 0 for *both* reps (mean Spearman PCA −0.02,
       scGPT −0.05; ~4% of 461 drugs ρ > 0.3) — neither rep ranks cell lines; MSE wins are shrinkage to
       the mean, not real predictive power. See [Step 05](./steps/05-multitask-results.md).
-- [~] **HVG-count sweep** (1k/2k/3k/5k) under CV — scGPT improved with filtering while PCA preferred
-      all genes; find scGPT's sweet spot. Harness ready (`07` §4, all-drugs CV, test held out); data-gen
-      for `hvg1000/2000/3000` (scGPT re-embed) is in `05` §B and running. Curve fills in once built.
+- [x] **HVG-count sweep** (1k/2k/3k/5k) under CV (all drugs, test held out) → `07` §4, variants built in
+      `05` §B. **No sweet spot:** scGPT heads-beating is flat (~185–193) across 1k–5k (filtering doesn't
+      help it); PCA marginally higher everywhere but within fold noise. See [Step 05](./steps/05-multitask-results.md).
 
 **3. Understand the result**
 - [x] Per-drug **coverage & response-distribution** analysis → `notebooks/04_drug_coverage.ipynb`
