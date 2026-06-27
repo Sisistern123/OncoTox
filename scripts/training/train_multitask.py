@@ -205,19 +205,41 @@ def _evaluate_model_per_drug_mse(
     return mse, counts
 
 
-def main():
-    args = _parse_args()
-    paths = PipelinePaths.build(args.data_root, args.variant)
-    h5ad_path = args.path or str(paths.targets_h5ad)
+def train_rep(
+    *,
+    use_rep: str,
+    h5ad_path: str,
+    config: TrainConfig,
+    drugs: list[str] | None = None,
+    hidden_dims: tuple[int, ...] | None = None,
+    batch_size: int = 128,
+    dropout: float = 0.5,
+    input_dropout: float = 0.1,
+    data_root: str | None = None,
+    variant: str | None = None,
+    tag: str | None = None,
+    baseline_topk: int = 5,
+    print_comparison: bool = True,
+) -> dict:
+    """Train one multi-task OncoMLP for ``use_rep`` and persist a run dir.
 
-    hidden_dims = tuple(args.hidden_dims) if args.hidden_dims else DEFAULT_HIDDEN_DIMS[args.use_rep]
-    tag = args.tag or args.use_rep
+    This is the single source of truth for a training run; both the CLI
+    (``main``) and ``notebooks/07_training.ipynb`` call it so they cannot drift.
+
+    Returns a results dict with ``run_dir``, ``summary``, ``history``, the
+    per-drug val MSE arrays (model + per-drug-mean baseline), ``drug_names``,
+    and ``input_dim`` / ``output_dim`` for in-notebook plotting.
+    """
+    if hidden_dims is None:
+        hidden_dims = DEFAULT_HIDDEN_DIMS[use_rep]
+    hidden_dims = tuple(hidden_dims)
+    tag = tag or use_rep
 
     train_dataset = MultiDrugDataset(
-        h5ad_path=h5ad_path, use_rep=args.use_rep, split="train", drugs=args.drugs
+        h5ad_path=h5ad_path, use_rep=use_rep, split="train", drugs=drugs
     )
     val_dataset = MultiDrugDataset(
-        h5ad_path=h5ad_path, use_rep=args.use_rep, split="val", drugs=args.drugs
+        h5ad_path=h5ad_path, use_rep=use_rep, split="val", drugs=drugs
     )
 
     if train_dataset.drug_names != val_dataset.drug_names:
@@ -226,8 +248,8 @@ def main():
             "rerun ctrp_to_h5ad to regenerate Y_ctrp consistently."
         )
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     sample_x, _, _ = train_dataset[0]
     input_dim = sample_x.shape[0]
@@ -244,38 +266,26 @@ def main():
     model = OncoMLP(
         input_dim=input_dim,
         hidden_dims=hidden_dims,
-        dropout_rate=args.dropout,
-        input_dropout=args.input_dropout,
+        dropout_rate=dropout,
+        input_dropout=input_dropout,
         norm="layer",
         output_dim=output_dim,
     )
 
-    config = TrainConfig(
-        epochs=args.epochs,
-        lr=args.lr,
-        weight_decay=args.weight_decay,
-        grad_clip=1.0,
-        scheduler_patience=3,
-        early_stop_patience=10,
-        log_every=5,
-        seed=args.seed,
-        loss=args.loss,
-    )
-
-    if args.drugs:
+    if drugs:
         scope = "subset"
     elif output_dim <= 1:
         scope = "single_drug"
     else:
         scope = "all_drugs"
-    run_tag = f"multitask_{args.use_rep}_{scope}"
+    run_tag = f"multitask_{use_rep}_{scope}"
     if scope == "subset":
         run_tag += f"_K{output_dim}"
     run_dir = create_run_dir(run_tag)
     started_at = utc_now_iso()
 
     print(
-        f"Starting multi-task training: rep={args.use_rep}, K={output_dim} drugs, "
+        f"Starting multi-task training: rep={use_rep}, K={output_dim} drugs, "
         f"input_dim={input_dim}, hidden_dims={hidden_dims}."
     )
     best_model, history = train_model(
@@ -289,16 +299,17 @@ def main():
 
     device = pick_device()
     model_mse, _ = _evaluate_model_per_drug_mse(best_model, val_loader, device)
-    _print_baseline_comparison(
-        drug_names=train_dataset.drug_names,
-        baseline_mse=baseline_mse,
-        model_mse=model_mse,
-        counts=val_counts,
-        topk=args.baseline_topk,
-        tag=tag,
-    )
+    if print_comparison:
+        _print_baseline_comparison(
+            drug_names=train_dataset.drug_names,
+            baseline_mse=baseline_mse,
+            model_mse=model_mse,
+            counts=val_counts,
+            topk=baseline_topk,
+            tag=tag,
+        )
 
-    save_run(
+    summary = save_run(
         run_dir=run_dir,
         tag=run_tag,
         config=config,
@@ -307,19 +318,19 @@ def main():
         run_meta={
             "scope": scope,
             "drug_scope_kind": "multi_drug",
-            "drugs_requested": args.drugs,
-            "rep": args.use_rep,
-            "data_root": str(paths.data_root),
-            "variant": paths.variant,
+            "drugs_requested": drugs,
+            "rep": use_rep,
+            "data_root": str(data_root) if data_root is not None else None,
+            "variant": variant,
             "h5ad_path": h5ad_path,
             "input_dim": input_dim,
             "output_dim": output_dim,
             "hidden_dims": list(hidden_dims),
-            "dropout_rate": args.dropout,
-            "input_dropout": args.input_dropout,
+            "dropout_rate": dropout,
+            "input_dropout": input_dropout,
             "norm": "layer",
-            "batch_size": args.batch_size,
-            "loss": args.loss,
+            "batch_size": batch_size,
+            "loss": config.loss,
             "n_train_cells": len(train_dataset),
             "n_val_cells": len(val_dataset),
             "script": "scripts/training/train_multitask.py",
@@ -329,6 +340,52 @@ def main():
         model_per_drug_val_mse=model_mse,
         baseline_per_drug_val_mse=baseline_mse,
         n_val_per_drug=val_counts,
+    )
+
+    return {
+        "run_dir": run_dir,
+        "summary": summary,
+        "history": history,
+        "model_per_drug_val_mse": model_mse,
+        "baseline_per_drug_val_mse": baseline_mse,
+        "n_val_per_drug": val_counts,
+        "drug_names": train_dataset.drug_names,
+        "input_dim": input_dim,
+        "output_dim": output_dim,
+        "rep": use_rep,
+    }
+
+
+def main():
+    args = _parse_args()
+    paths = PipelinePaths.build(args.data_root, args.variant)
+    h5ad_path = args.path or str(paths.targets_h5ad)
+
+    config = TrainConfig(
+        epochs=args.epochs,
+        lr=args.lr,
+        weight_decay=args.weight_decay,
+        grad_clip=1.0,
+        scheduler_patience=3,
+        early_stop_patience=10,
+        log_every=5,
+        seed=args.seed,
+        loss=args.loss,
+    )
+
+    train_rep(
+        use_rep=args.use_rep,
+        h5ad_path=h5ad_path,
+        config=config,
+        drugs=args.drugs,
+        hidden_dims=tuple(args.hidden_dims) if args.hidden_dims else None,
+        batch_size=args.batch_size,
+        dropout=args.dropout,
+        input_dropout=args.input_dropout,
+        data_root=paths.data_root,
+        variant=paths.variant,
+        tag=args.tag,
+        baseline_topk=args.baseline_topk,
     )
 
 

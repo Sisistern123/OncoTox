@@ -8,8 +8,19 @@ import scanpy as sc
 from scripts.preprocessing.layout import PipelinePaths, add_data_args
 
 
-def run(h5ad_path: str, force: bool = False, counts_h5ad: str | None = None):
+DEFAULT_N_COMPS = 512
+
+
+def run(
+    h5ad_path: str,
+    force: bool = False,
+    counts_h5ad: str | None = None,
+    n_comps: int = DEFAULT_N_COMPS,
+):
     """Compute the PCA baseline (``X_pca``) and store it in the targets AnnData.
+
+    ``n_comps`` PCA components are kept (default 512, matching the scGPT embedding
+    width so the PCA-vs-scGPT comparison uses the same input dimensionality).
 
     PCA is computed on the **HVG-filtered counts** taken from ``counts_h5ad`` (the
     ``convert`` output ``SCP542_CCLE.h5ad``), *not* on the targets file's own ``.X``.
@@ -47,7 +58,12 @@ def run(h5ad_path: str, force: bool = False, counts_h5ad: str | None = None):
 
     sc.pp.normalize_total(src, target_sum=1e4)
     sc.pp.log1p(src)
-    sc.pp.pca(src)
+    max_comps = min(src.n_obs, src.n_vars)
+    if n_comps > max_comps:
+        raise ValueError(
+            f"n_comps={n_comps} exceeds min(n_obs, n_vars)={max_comps} for {counts_h5ad}."
+        )
+    sc.pp.pca(src, n_comps=n_comps)
     adata.obsm["X_pca"] = src.obsm["X_pca"]
     print(f"  X_pca computed on {src.n_vars} genes -> shape {adata.obsm['X_pca'].shape}.")
 
@@ -74,6 +90,12 @@ def _parse_args():
         help="Counts h5ad to compute PCA from (default: <variant>/SCP542_CCLE.h5ad, the HVG-filtered convert output).",
     )
     parser.add_argument("--force", action="store_true", help="Recompute X_pca even if it exists.")
+    parser.add_argument(
+        "--n-comps",
+        type=int,
+        default=DEFAULT_N_COMPS,
+        help=f"Number of PCA components to keep (default: {DEFAULT_N_COMPS}, matches scGPT width).",
+    )
     return parser.parse_args()
 
 
@@ -81,4 +103,4 @@ if __name__ == "__main__":
     args = _parse_args()
     paths = PipelinePaths.build(args.data_root, args.variant)
     counts = args.counts or paths.raw_h5ad
-    run(str(args.path or paths.targets_h5ad), args.force, counts_h5ad=str(counts))
+    run(str(args.path or paths.targets_h5ad), args.force, counts_h5ad=str(counts), n_comps=args.n_comps)

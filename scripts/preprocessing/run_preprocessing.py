@@ -133,6 +133,12 @@ def main():
         help="Recompute X_pca inside the targets h5ad (does not rebuild embeddings).",
     )
     parser.add_argument(
+        "--pca-n-comps",
+        type=int,
+        default=add_pca.DEFAULT_N_COMPS,
+        help=f"PCA components for the X_pca baseline (default: {add_pca.DEFAULT_N_COMPS}, matches scGPT width).",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Allow convert/scGPT to replace existing raw or embedding h5ad files.",
@@ -202,7 +208,7 @@ def main():
             create_splits.run_multi(str(paths.targets_h5ad), seed=args.seed)
 
     if start_idx <= STEP_ORDER.index("pca"):
-        _print_step(5, total, f"add_pca (force={args.force_pca})")
+        _print_step(5, total, f"add_pca (force={args.force_pca}, n_comps={args.pca_n_comps})")
         # PCA baseline is computed on the HVG-filtered convert counts (paths.raw_h5ad),
         # NOT the targets .X (which has had scGPT-OOV genes dropped) -- keeps PCA on the
         # single HVG filter for a clean PCA-vs-scGPT comparison.
@@ -210,6 +216,7 @@ def main():
             str(paths.targets_h5ad),
             force=args.force_pca,
             counts_h5ad=str(paths.raw_h5ad),
+            n_comps=args.pca_n_comps,
         )
 
     print("\nPreprocessing pipeline complete.")

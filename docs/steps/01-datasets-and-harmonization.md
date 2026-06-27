@@ -43,7 +43,7 @@ cells as weak supervision ([Step 03](03-model-and-training-design.md)).
 
 ## Overlap & coverage audit (03.04.2026)
 
-The audit lives in the standalone notebook `notebooks/compare_GDSC_CTRP.ipynb` — a one-off
+The audit lives in the standalone notebook `notebooks/02_compare_GDSC_CTRP.ipynb` — a one-off
 exploratory analysis (not part of the training pipeline) that produces the plan's **Fig. 1 / Fig. 2**
 and writes the drug-catalog CSVs. Its purpose is to pick the **highest-confidence intersection** to
 start from before any modeling (plan sub-goal 3).

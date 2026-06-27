@@ -76,7 +76,7 @@ All eight runs share the cell-line-grouped split and a **matched trunk** `(128,6
 | Axis | Values |
 |---|---|
 | **Gene set** | `all_genes` (full transcriptome) · `hvg5000` (top-5,000 HVG from raw) |
-| **Representation** | `X_pca` (standard single-cell PCA baseline) · `X_scGPT` (512-d embedding) |
+| **Representation** | `X_pca` (standard single-cell PCA baseline, **512-d** to match scGPT) · `X_scGPT` (512-d embedding) |
 | **Task** | single-task (paclitaxel) · multi-task (all drugs, K = 545) |
 
 **Genes per condition** — PCA uses the full filtered set; scGPT uses only its in-vocabulary subset.
@@ -88,15 +88,23 @@ This OOV gap is **intentional** (scGPT's vocabulary coverage is part of the mode
 | `all_genes` | 22,722 | 20,570 |
 | `hvg5000` | 5,000 | 4,576 |
 
-**Result (matched trunk, 14.06.2026):** scGPT **overfits less** (single-task train/val gap
-0.012–0.018 vs PCA 0.028–0.029) but does **not** beat PCA on raw accuracy once head capacity is
-equal — on all-drugs PCA is competitive/better (`hvg5000` 158 vs 156; `all_genes` PCA 196 vs scGPT
-137). So the representation mainly affects *generalization*, not predictive power. (The earlier
-"scGPT ≫ PCA" was a capacity artifact from PCA's smaller trunk.)
+**Result (matched trunk + matched 512-d width, 27.06.2026):** scGPT **overfits far less** —
+`hvg5000` single-task train/val gap **0.004 (scGPT) vs 0.033 (PCA)** — but does **not** beat PCA on
+raw accuracy: on all-drugs PCA leads on heads-beating (`hvg5000` **169 vs 147**, `all_genes` **138 vs
+131**), val MSEs within 0.0003. So the representation mainly affects *generalization*, not predictive
+power — and this now holds with input dimensionality matched, so it is **not** a capacity artifact.
 
 Results: [Step 04](./steps/04-single-task-results.md) (single-task), [Step 05](./steps/05-multitask-results.md)
-(multi-task); per-drug coverage & learnability in `notebooks/drug_coverage.ipynb`. Action list:
+(multi-task); per-drug coverage & learnability in `notebooks/04_drug_coverage.ipynb`. Action list:
 [TODO.md](./TODO.md).
+
+> **PCA width matched to scGPT (27.06.2026).** The original matrix used a **~50-d** PCA (scanpy
+> default) + a smaller `(64,32)` PCA trunk, both of which handicapped PCA. PCA now keeps **512
+> components** (`add_pca.DEFAULT_N_COMPS`, override `--pca-n-comps`) on the matched `(128,64)` trunk,
+> so PCA and scGPT share input width *and* parameter count — the last comparison confound is closed.
+> The **full 8-run matrix was re-run at 512-d** (reproducible in `notebooks/07_training.ipynb`; run
+> dirs `runs/20260627_1913xx_*`); the numbers above and in [Step 05](./steps/05-multitask-results.md)
+> are these 512-d results and supersede the 14.06 (~50-d) matrix.
 
 ---
 
@@ -121,8 +129,8 @@ one trainable file per variant bundles everything, and the representation / drug
 | Counts (CPM) | **non-filtered** | `all_genes/SCP542_CCLE.h5ad` | `.X` | 53,513 × 22,722 |
 | **scGPT embeddings — filtered HVG** | **filtered** | `hvg5000/SCP542_CCLE_scGPT_human_embeddings.h5ad` | `obsm["X_scGPT"]` | 53,513 × 512 (from 4,576 in-vocab genes) |
 | **scGPT embeddings — non-filtered** | **non-filtered** | `all_genes/SCP542_CCLE_scGPT_human_embeddings.h5ad` | `obsm["X_scGPT"]` | 53,513 × 512 (from 20,570 in-vocab genes) |
-| **PCA — filtered HVG** | **filtered** | `hvg5000/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad` | `obsm["X_pca"]` | 53,513 × 50 (computed on the 5,000 HVG) |
-| **PCA — non-filtered** | **non-filtered** | `all_genes/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad` | `obsm["X_pca"]` | 53,513 × 50 (computed on all 22,722) |
+| **PCA — filtered HVG** | **filtered** | `hvg5000/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad` | `obsm["X_pca"]` | 53,513 × **512** (computed on the 5,000 HVG; matches scGPT width) |
+| **PCA — non-filtered** | **non-filtered** | `all_genes/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad` | `obsm["X_pca"]` | 53,513 × **512** (computed on all 22,722; matches scGPT width) |
 | Drug labels — **all 545 drugs** | both | `<variant>/…_with_targets.h5ad` | `obsm["Y_ctrp"]` (+ `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`) | 53,513 × 545 |
 | Drug labels — **one drug (paclitaxel)** | both | same `…_with_targets.h5ad` | one column of `Y_ctrp` selected via `--drugs paclitaxel`; legacy `obs["viability_paclitaxel"]` | 53,513 × 1 |
 | Split — shared, cell-line-grouped | both | same `…_with_targets.h5ad` | `obs["split_ctrp"]` | per-cell |
@@ -140,6 +148,29 @@ file passed to training. It contains, together: `X_scGPT`, `X_pca`, `Y_ctrp`, `M
 **Training outputs:** each run writes `runs/<timestamp>_<tag>/` (gitignored) with `best_model.pt`,
 `config.json`, `run_meta.json` (records the variant via the targets path), `history.csv`,
 `summary.json`, `per_drug_results.csv`; one index row per run in `runs/runs_index.csv`.
+
+---
+
+## Notebooks (`notebooks/`, pipeline order)
+
+Notebooks are **numbered in workflow order** so the pipeline reads top-to-bottom. Exploration /
+decision notebooks come first, then the reproducible **preprocess → train** pipeline. All notebook
+figures and tables are written to **`notebooks/outputs/`** (kept out of the notebook root so the
+directory stays clean).
+
+| # | Notebook | Role |
+|---|---|---|
+| 01 | `01_scDAExploration.ipynb` | Initial single-cell (SCP542) data exploration. |
+| 02 | `02_compare_GDSC_CTRP.ipynb` | Cross-database drug-catalog harmonization (CTRP/GDSC/DrugBank). |
+| 03 | `03_analysis.ipynb` | CTRP→PRISM drug-repurposing / clinical-phase mapping. |
+| 04 | `04_drug_coverage.ipynb` | Per-drug coverage & learnability (→ `outputs/*_drug_learnability.csv`, `outputs/drug_coverage.png`). |
+| 05 | `05_preprocessing.ipynb` | **Runnable front-end to `run_preprocessing.py`** — documents the 5-step pipeline and (re-)runs the PCA step at the configured width (512). |
+| 06 | `06_verify_variants.ipynb` | Audits the `hvg5000` vs `all_genes` preprocessing outputs; PCA-vs-scGPT UMAPs (→ `outputs/variants.png`). |
+| 07 | `07_training.ipynb` | **Reproducible multi-task training** — trains `X_pca` + `X_scGPT` via `train_rep()`, plots the PCA-vs-scGPT comparison (→ `outputs/training_*`, `outputs/per_drug_*`). |
+
+`05_preprocessing.ipynb` and `07_training.ipynb` both call the **same script entry points** the CLI
+uses (`run_preprocessing.py`, `train_multitask.train_rep`), so the notebooks and command line cannot
+drift — they are documentation *and* a re-run, not a fork.
 
 ---
 
@@ -176,7 +207,7 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 | Sub-goal 3: baseline on SCP542×CTRPv2 highest-confidence intersection | ✅ Done | [Step 04](./steps/04-single-task-results.md)–[05](./steps/05-multitask-results.md) |
 | Phase 1: scGPT embeddings + UMAP latent validation | ✅ Done | [Step 02](./steps/02-preprocessing-and-embeddings.md); Fig. 3/4 |
 | Phase 2: single-task continuous `cpd_avg_pv` regression | ✅ Done | best scGPT val **0.0336** ([Step 04](./steps/04-single-task-results.md)) |
-| Core hypothesis: scGPT overfits less than PCA | ✅ Confirmed (generalization only) | matched-trunk gap 0.012–0.018 vs 0.028–0.029; but PCA ≈/better on raw accuracy ([Step 05](./steps/05-multitask-results.md)) |
+| Core hypothesis: scGPT overfits less than PCA | ✅ Confirmed (generalization only) | 512-d matched: `hvg5000` single-task gap 0.004 (scGPT) vs 0.033 (PCA); but PCA ≈/better on all-drugs accuracy (169 vs 147) ([Step 05](./steps/05-multitask-results.md)) |
 | Phase 3a: multi-task masked loss | ✅ Done **within CTRPv2 only** | [Step 05](./steps/05-multitask-results.md) |
 | Phase 3b: integrate PRISM / GDSC (cross-database, efficacy+toxicity) | ❌ Not started | data downloaded + harmonized only ([Step 06](./steps/06-cross-database-integration.md)) |
 | Stretch: XAI / feature importance | ❌ Not started | [Step 07](./steps/07-xai-feature-interpretability.md) |
@@ -185,7 +216,10 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 **Additions beyond the written plan (all defensible — document them):** random→leak→grouped
 split ([Step 04](./steps/04-single-task-results.md)); HVG-5000 + all-genes comparison
 ([Step 02](./steps/02-preprocessing-and-embeddings.md)); per-drug-mean sanity baseline +
-run-versioning ledger ([Step 05](./steps/05-multitask-results.md)).
+run-versioning ledger ([Step 05](./steps/05-multitask-results.md)); **512-d PCA** (input width
+matched to scGPT, removing the dimensionality confound — [Step 05](./steps/05-multitask-results.md));
+**reproducible preprocessing/training notebooks** (`notebooks/05_preprocessing.ipynb`,
+`notebooks/07_training.ipynb`).
 
 **Two things to flag clearly in the writeup:**
 
@@ -204,11 +238,11 @@ run-versioning ledger ([Step 05](./steps/05-multitask-results.md)).
 - Does multi-task help or hurt paclitaxel? Single-task on `split_ctrp` now exists (scGPT 0.0406,
   PCA 0.0372 on `hvg5000`); compare against the paclitaxel **head** inside the K=545 run
   ([Step 05](./steps/05-multitask-results.md)).
-- Which low-coverage heads to drop or down-weight? (Quantified in `notebooks/drug_coverage.ipynb`:
+- Which low-coverage heads to drop or down-weight? (Quantified in `notebooks/04_drug_coverage.ipynb`:
   the ≈16-line drugs, n_val 221, are the unreliable/hardest heads.)
 - Move loss from uniform-per-entry to per-head / uncertainty weighting?
 - Does HVG-5000 lose signal vs the full transcriptome? (Compare the variants in
-  `verify_variants.ipynb`.)
+  `06_verify_variants.ipynb`.)
 - When to integrate PRISM/GDSC as additional masked heads (the true Phase-3,
   [Step 06](./steps/06-cross-database-integration.md))?
 

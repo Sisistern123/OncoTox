@@ -1,5 +1,39 @@
 
 # OncoTox Project Notes
+## 27.06.2026
+
+### PCA width raised to 512 (match scGPT)
+`add_pca` kept scanpy's default ~50 PCA components, so the PCA baseline and scGPT differed in input
+width (50 vs 512) — a confound on the first projection. Added `n_comps` (CLI `--n-comps` /
+`run_preprocessing.py --pca-n-comps`) with **`DEFAULT_N_COMPS = 512`** and regenerated `X_pca`
+in-place for **both** variants (`hvg5000`, `all_genes`), so `obsm["X_pca"]` is now 53,513 × 512 like
+`X_scGPT`. **Decision:** match dimensionality so the PCA-vs-scGPT comparison differs only in *how*
+genes are encoded, not in capacity.
+
+### 512-d re-run — full 8-run matrix
+Re-ran the **entire** matrix at 512-d via `07_training.ipynb` (run dirs `runs/20260627_1913xx_*`),
+superseding the 14.06 (~50-d) matrix. Headlines (per-drug-mean baseline 0.0097 at K=545; ~0.043 at
+K=1):
+- **All-drugs heads-beating:** `hvg5000` PCA **169** vs scGPT 147; `all_genes` PCA **138** vs scGPT
+  131 (val MSEs within 0.0003). PCA competitive/better on raw accuracy.
+- **Single-task gap (val−train):** `hvg5000` scGPT **0.004** vs PCA **0.033** → scGPT overfits far
+  less; matching PCA to 512-d *sharpened* the contrast (more first-layer capacity → PCA fits train
+  harder). `all_genes` single-task is noisy (early-stops epoch 1–4; PCA's −0.003 gap is a
+  dropout/early-stop artifact, not real generalization).
+- **Net:** scGPT's win is generalization, not accuracy — and now with input width matched it can't be
+  written off as a capacity artifact.
+
+### Refactor: shared `train_rep()`
+Extracted the body of `train_multitask.main()` into `train_rep(...)` returning the run dir, history,
+and per-drug MSE arrays. The CLI and `notebooks/07_training.ipynb` both call it, so they cannot drift.
+
+### Notebooks numbered + outputs foldered
+Renamed the notebooks with pipeline-order prefixes (`01_scDAExploration` … `06_verify_variants`) and
+added two new ones: **`05_preprocessing.ipynb`** (runnable front-end to `run_preprocessing.py`, incl.
+the 512-d PCA step) and **`07_training.ipynb`** (reproducible PCA-vs-scGPT training + plots). Moved all
+stray notebook outputs into **`notebooks/outputs/`** and pointed the notebooks' `savefig`/`to_csv`
+there, so the notebook root stays clean.
+
 ## 10–14.06.2026
 
 ### Documentation restructure
@@ -23,7 +57,7 @@ capacity PCA is competitive/better on raw accuracy (all-drugs heads-beating: `hv
 `all_genes` PCA 196 vs scGPT 137). The earlier scGPT lead (135 vs 103; 141 vs 80) was a capacity
 artifact. Net: scGPT's edge is generalization, not predictive power.
 
-### Drug coverage / learnability (`notebooks/drug_coverage.ipynb`)
+### Drug coverage / learnability (`notebooks/04_drug_coverage.ipynb`)
 Quantified per-drug coverage and response variance. No drug covers all 180 lines (max 179, median
 171); 382 drugs ≥90% coverage, 80 drugs <50%; 14 drugs have std<0.05 (unlearnable). Low-coverage
 drugs (~16 lines, n_val 221) are exactly the hardest/unreliable heads.
@@ -378,7 +412,7 @@ hard to actually find toxicity definition and annotations, since toxicity is wan
   - multi-task setup can handle missing labels via masked losses (no need to force full intersection)
   - output/task weighting may be needed during training
 
-### Notebook work completed (`notebooks/compare_GDSC_CTRP.ipynb`)
+### Notebook work completed (`notebooks/02_compare_GDSC_CTRP.ipynb`)
 #### 1) Cell-line overlap with SCP542 (case-insensitive, unique names)
 - SCP542 unique cell lines: `198`
 - GDSC unique cell lines: `967`; overlap with SCP542: `133`; missing from GDSC: `65`

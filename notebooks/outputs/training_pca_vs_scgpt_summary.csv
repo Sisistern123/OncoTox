@@ -1,0 +1,3 @@
+rep,input_dim,K_heads,best_val_mse,best_epoch,model_mean_mse,baseline_mean_mse,n_beats_baseline,n_total_heads,run_dir
+X_pca,512,545,0.010366848762211304,7,0.01018737148025731,0.009717293460686493,149,545,runs/20260627_183349_multitask_X_pca_all_drugs
+X_scGPT,512,545,0.010673776700211865,6,0.010703463115998535,0.009717293460686493,128,545,runs/20260627_183421_multitask_X_scGPT_all_drugs

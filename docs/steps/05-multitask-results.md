@@ -54,51 +54,56 @@ head only counts as having *learned* response if it **beats its own drug's const
 **Shared hyperparameters** (from `config.json` / `run_meta.json`): batch 128, epochs 50
 (early-stopped), lr 1e-3, weight_decay 1e-3, dropout 0.5, input_dropout 0.1, grad_clip 1.0,
 scheduler patience 3, early-stop patience 10, seed 42, loss MSE, norm LayerNorm.
-**Matched trunk (14.06.2026):** both reps now use the **same** hidden layers `(128,64)`, so only the
-input representation (scGPT 512-d / PCA ~50-d, and its first projection) differs — a fair
-PCA-vs-scGPT comparison. (Earlier runs used `(64,32)` for PCA vs `(128,64)` for scGPT, which
-handicapped PCA; see the capacity note below.)
+**Matched trunk + matched width.** Both reps use the **same** hidden layers `(128,64)`
+(`DEFAULT_HIDDEN_DIMS`, set 14.06.2026) **and** the same **512-d** input (`X_pca` raised from scanpy's
+~50 default to `add_pca.DEFAULT_N_COMPS = 512` on 27.06.2026), so the entire network — including the
+first projection's parameter count — is identical and **only the representation differs**. This closes
+the last comparison confound. (History: the original matrix used a `(64,32)` PCA trunk and a ~50-d PCA,
+both of which handicapped PCA; the numbers below supersede those.)
 
-**The 8-run matrix (matched trunk, 14.06.2026; all share `split_ctrp`, n_train 34,126 / n_val 7,121).**
-Per-drug-mean baseline: **0.0434** (K=1 paclitaxel), **0.0097** (K=545). Run dirs
-`runs/20260614_2056xx_*` (see `runs/runs_index.csv`).
+**The 8-run matrix (512-d, 27.06.2026; all share `split_ctrp`, n_train 34,126 / n_val 7,121).**
+Per-drug-mean baseline: **~0.043** (K=1 paclitaxel, data-derived, rep-independent), **0.0097** (K=545).
+Reproducible in `notebooks/07_training.ipynb`; run dirs `runs/20260627_1913xx_*` (see
+`runs/runs_index.csv`).
 
-**Single-task (K=1 paclitaxel) — the overfitting story:**
+**Single-task (K=1 paclitaxel) — the overfitting story** (gap = val − train, at the best epoch):
 
-| Gene set | Rep | Train MSE | Val MSE | Train/val gap |
+| Gene set | Rep | Train MSE | Val MSE | Gap (val−train) |
 |---|---|---|---|---|
-| `hvg5000` | scGPT | 0.023 | 0.041 | **0.018** |
-| `hvg5000` | PCA | 0.010 | 0.039 | 0.028 |
-| `all_genes` | scGPT | 0.033 | 0.045 | **0.012** |
-| `all_genes` | PCA | 0.010 | 0.038 | 0.029 |
+| `hvg5000` | scGPT | 0.037 | 0.041 | **0.004** |
+| `hvg5000` | PCA | 0.011 | 0.045 | 0.033 |
+| `all_genes` | scGPT | 0.032 | 0.045 | 0.013 |
+| `all_genes` | PCA | 0.042 | 0.039 | −0.003 |
 
-**All-drugs (K=545) — heads beating baseline:**
+**All-drugs (K=545) — heads beating the per-drug-mean baseline:**
 
 | Gene set | Rep | Val MSE | Heads beat baseline |
 |---|---|---|---|
-| `hvg5000` | scGPT | 0.0105 | 158 / 545 |
-| `hvg5000` | PCA | 0.0105 | 156 / 545 |
-| `all_genes` | scGPT | 0.0106 | 137 / 545 |
-| `all_genes` | PCA | 0.0104 | **196 / 545** |
+| `hvg5000` | scGPT | 0.0105 | 147 / 545 |
+| `hvg5000` | PCA | 0.0103 | **169 / 545** |
+| `all_genes` | scGPT | 0.0106 | 131 / 545 |
+| `all_genes` | PCA | 0.0106 | **138 / 545** |
 
-**Reading the results (matched trunk):**
+**Reading the results (matched trunk + matched 512-d width):**
 
-- **Core hypothesis — supported (single-task):** scGPT **overfits far less** — train/val gap
-  **0.012–0.018** vs PCA **0.028–0.029** — even though PCA's *raw* val MSE is slightly lower. scGPT
-  trades a little fit for much better generalization, exactly the denoised-prior claim.
-- **All-drugs, with capacity matched:** PCA is now **competitive/better** — `hvg5000` 158 vs 156
-  (≈ tie), `all_genes` **PCA 196 vs scGPT 137**. The earlier scGPT advantage (135 vs 103; 141 vs 80)
-  was **largely a capacity artifact**: PCA had been handicapped by the smaller `(64,32)` trunk.
-- **Net:** scGPT's clear, robust win is **lower overfitting**, not higher absolute accuracy. Once PCA
-  isn't handicapped, the two are close on raw predictive metrics (PCA even ahead on `all_genes`).
+- **Core hypothesis — supported (single-task, `hvg5000`):** scGPT's train/val gap is **0.004** vs
+  PCA's **0.033** — scGPT overfits far less. Matching PCA to 512-d *sharpened* this: PCA's extra
+  first-layer capacity lets it fit the train set harder (train 0.011) while val stays high (0.045),
+  exactly the memorization the denoised scGPT prior is meant to avoid.
+- **All-drugs — PCA competitive/better on raw accuracy:** heads-beating `hvg5000` **PCA 169 vs scGPT
+  147**, `all_genes` **PCA 138 vs scGPT 131**; val MSEs are within 0.0003. scGPT does **not** win on
+  absolute predictive metrics.
+- **Net:** scGPT's robust, reproducible win is **lower overfitting**, not higher accuracy — and this
+  now holds with input dimensionality matched, so it can no longer be dismissed as a capacity artifact.
 - **Which heads are even learnable** is driven by coverage + response variance — see
-  `notebooks/drug_coverage.ipynb`: the ≈16-line drugs (n_val 221) are the unreliable/hardest heads,
+  `notebooks/04_drug_coverage.ipynb`: the ≈16-line drugs (n_val 221) are the unreliable/hardest heads,
   while high-coverage high-variance drugs (docetaxel, gemcitabine, oligomycin a) are the easiest.
 
-> ⚠️ **Remaining caveat:** input dimensionality still differs (PCA ~50 vs scGPT 512), so the *first*
-> projection isn't matched — for a fully controlled test, raise PCA `n_comps` toward 512
-> ([TODO](../TODO.md)). Also note the all-drugs "gap" is not a clean overfit measure (train MSE is
-> logged with dropout active, so it can exceed the masked val MSE).
+> ⚠️ **Gap-metric caveat.** Train MSE is logged with dropout (0.5) + input-dropout (0.1) **active**, so
+> it can sit *below or above* the (dropout-free) masked val MSE; the gap is indicative, not exact. The
+> `all_genes` rows early-stop very fast (best epoch 1–4), so their gaps are noisy — `all_genes`·PCA's
+> **−0.003** reflects near-no learning + the dropout offset, not genuine negative generalization. The
+> clean comparison is `hvg5000` single-task (scGPT 0.004 vs PCA 0.033).
 
 ✅ On-plan: masked-loss multi-task, correctly gated behind a working single-task baseline,
 with the cheap sanity baseline the plan's prototyping section calls for.

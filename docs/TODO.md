@@ -22,19 +22,21 @@ sufficient for this task? The steps below are designed to answer it.
 
 **1. Is the difference real?**
 - [ ] Grouped **5-fold cross-validation** (`GroupKFold` over cell lines); report **mean ± std** for
-      the overfitting gap and heads-beating (turns "158 vs 156" into "155 ± 9 vs 152 ± 11"). Only
-      27 val lines in one split → current numbers are point estimates.
+      the overfitting gap and heads-beating (turns the 512-d "169 vs 147" into e.g. "160 ± 9 vs
+      150 ± 11"). Only 27 val lines in one split → current numbers are point estimates.
 
 **2. Fair comparison & better metric**
-- [ ] **Match input dimensionality**: sweep PCA `n_comps` up to 512 so only the representation
-      differs (currently hard-coded to scanpy's default 50; max = `min(n_cells, n_genes)−1`).
+- [x] **Match input dimensionality**: PCA now uses **512 components** (`add_pca.DEFAULT_N_COMPS`,
+      overridable with `--pca-n-comps`) so PCA and scGPT share the same input width. The **full 8-run
+      matrix was re-run at 512-d** in `notebooks/07_training.ipynb` (run dirs `runs/20260627_1913xx_*`),
+      superseding the ~50-d matrix; results in [Step 05](./steps/05-multitask-results.md).
 - [ ] Add a **per-drug correlation** metric (Spearman/Pearson, predicted vs true across held-out
       lines), restricted to drugs with real response variance — more informative than beating a constant.
 - [ ] **HVG-count sweep** (1k/2k/3k/5k) under CV — scGPT improved with filtering while PCA preferred
       all genes; find scGPT's sweet spot.
 
 **3. Understand the result**
-- [x] Per-drug **coverage & response-distribution** analysis → `notebooks/drug_coverage.ipynb`
+- [x] Per-drug **coverage & response-distribution** analysis → `notebooks/04_drug_coverage.ipynb`
       (coverage per drug, variance per drug, and coverage/variance vs beats-baseline). Finding:
       no drug covers all 180 lines (max 179, median 171); 80 drugs < 50% coverage; the low-coverage
       drugs (≈16 lines, n_val 221) are the unreliable/hardest heads.
@@ -54,7 +56,7 @@ sufficient for this task? The steps below are designed to answer it.
 - [ ] **Presentation slides** (15.06) — outstanding fixes: add a Core-Hypothesis slide before the
       first UMAP; de-duplicate the two UMAP slides; Results slide needs "heads beating baseline
       (out of 545)" + the conclusion line; fix "5.000" → "5,000"; reword target "(AUC)".
-- [ ] Run the **UMAP cells** of `notebooks/verify_variants.ipynb` (compute-heavy; not yet run).
+- [ ] Run the **UMAP cells** of `notebooks/06_verify_variants.ipynb` (compute-heavy; not yet run).
 - [ ] *(Optional)* Regenerate scGPT embeddings from scratch — identical output; only for a
       reproducibility pass.
 - [ ] *(Optional)* Re-run the `split_paclitaxel` single-task to fill

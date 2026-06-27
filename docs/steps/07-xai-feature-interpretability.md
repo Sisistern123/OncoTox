@@ -24,7 +24,7 @@ A stable, trained predictor worth interpreting — a checkpoint `runs/<…>/best
 cross-database model ([Step 06](06-cross-database-integration.md)), but the existing CTRPv2
 multi-task model ([Step 05](05-multitask-results.md)) is already a valid target. The analysis itself
 would most naturally live in a new `notebooks/` notebook, alongside the existing
-`notebooks/verify_variants.ipynb` / `notebooks/analysis.ipynb`.
+`notebooks/06_verify_variants.ipynb` / `notebooks/03_analysis.ipynb`.
 
 ## Open design questions (to resolve when starting)
 

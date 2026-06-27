@@ -29,7 +29,7 @@ existing embeddings, and `--overwrite` is required to replace the guarded `conve
 | 2 | **scgpt** — external `gen_embeds.py` (separate scGPT venv) | the **convert output** `SCP542_CCLE.h5ad` | `..._scGPT_human_embeddings.h5ad`: adds `obsm["X_scGPT"]` (**512-dim**) **and drops scGPT-OOV genes from `.X`** (hvg5000: 5,000→4,576). |
 | 3 | **targets** — `ctrp_to_h5ad.py` | the embeddings h5ad + the 4 CTRPv2 tables | `..._with_targets.h5ad`: adds `obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]` ([Step 03](03-model-and-training-design.md) for mechanics). |
 | 4 | **splits** — `create_splits.py` | the targets h5ad (in place) | `obs["split_paclitaxel"]` (`run`) + `obs["split_ctrp"]` (`run_multi`) — cell-line-grouped. |
-| 5 | **pca** — `add_pca.py` | the targets h5ad + the **convert counts** `SCP542_CCLE.h5ad` | `obsm["X_pca"]`: `normalize_total(1e4)` → `log1p` → `sc.pp.pca` (≈50 comps) computed on the **HVG-filtered convert counts** (5,000 genes), *not* the targets `.X`. Targets `.X` left unchanged. |
+| 5 | **pca** — `add_pca.py` | the targets h5ad + the **convert counts** `SCP542_CCLE.h5ad` | `obsm["X_pca"]`: `normalize_total(1e4)` → `log1p` → `sc.pp.pca` (**512 comps**, matching the scGPT width) computed on the **HVG-filtered convert counts** (5,000 genes), *not* the targets `.X`. Targets `.X` left unchanged. |
 
 ✅ On-plan order: embeddings + comparative UMAP (below) come **before** any predictor — the plan's
 Phase-1 latent validation gates the regression work.
@@ -79,7 +79,7 @@ never reads `.X` anyway — only `obsm["X_scGPT"]` / `obsm["X_pca"]`.
 ```
 convert : 22,722 → 5,000 genes (HVG)  — the single filter        [.X = CPM]
    ├─ scgpt : embeds the 4,576 of those in scGPT's vocabulary ──► X_scGPT (512-d)
-   └─ pca   : PCA of all 5,000 HVG genes (read from convert) ───► X_pca   (≈50-d)
+   └─ pca   : PCA of all 5,000 HVG genes (read from convert) ───► X_pca   (512-d)
 ```
 
 `add_pca.py` reads the **convert counts** `SCP542_CCLE.h5ad` (the full HVG set) to compute `X_pca`,
@@ -95,7 +95,7 @@ part of the model, not as a confound to be normalized away.
 
 Changing the gene set means re-running `convert`, which forces a re-embed and a re-PCA; that is why
 `hvg5000` and `all_genes` live in **separate folders that never share files** (`guard_output`
-enforces it). `notebooks/verify_variants.ipynb` checks these gene counts and the `X_pca` source at
+enforces it). `notebooks/06_verify_variants.ipynb` checks these gene counts and the `X_pca` source at
 any time.
 
 ### The two representations — what they are scientifically
@@ -106,7 +106,10 @@ any time.
   Genes outside scGPT's vocabulary are dropped as **out-of-vocabulary (OOV)**, so only 4,576 / 5,000
   HVGs contribute (424 OOV). This is the hypothesized *denoised biological prior* — it aligns
   functional cell states across tissues.
-- **`X_pca` (≈50-dim, the baseline).** The standard single-cell linear baseline. `add_pca.py` runs
+- **`X_pca` (512-dim, the baseline).** The standard single-cell linear baseline, sized to **512
+  components to match the scGPT embedding width** so the two reps differ only in *how* the genes are
+  encoded, not in input dimensionality (`add_pca.DEFAULT_N_COMPS = 512`, overridable with
+  `--pca-n-comps`). `add_pca.py` runs
   `normalize_total(1e4)` → `log1p` → `sc.pp.pca` on the **full HVG-5000 convert counts** (`all_genes`:
   all 22,722), keeping the directions of greatest variance. That variance is dominated by
   tissue-of-origin markers, so PCA clusters cells into discrete lineage "islands" — the failure mode
@@ -117,7 +120,7 @@ any time.
 - Genes after HVG (convert): **22,722 → 5,000** — the single filter
 - scGPT embeds the **4,576** of those in its vocabulary (424 OOV); PCA uses all **5,000**
 - Trainable AnnData: `.X` = CPM, **53,513 × 4,576** (OOV-dropped), carrying `X_scGPT` (512-d, from the
-  4,576 vocab genes) and `X_pca` (50-d, from the 5,000 HVG genes) in `obsm`
+  4,576 vocab genes) and `X_pca` (512-d, from the 5,000 HVG genes) in `obsm`
 - Paclitaxel labels: 44,367 / 53,513 cells
 - `split_paclitaxel`: train **31,824** / val **5,035** / test **7,508** / unassigned **9,146**
 
@@ -139,7 +142,7 @@ gene set under `processed/scRNAseq_SCP542/all_genes/`. `convert` keeps all 22,72
 OOV-drop then leaves **20,570** in `.X` (what scGPT embeds), while **`X_pca` is computed on the full
 22,722 convert counts** — a genuine full-transcriptome PCA. So the trainable file is **53,513 ×
 20,570** in `.X`, carrying `X_scGPT` (from the 20,570 in-vocab genes) and `X_pca` (from all 22,722).
-`notebooks/verify_variants.ipynb` checks the gene counts directly and plots the two variants'
+`notebooks/06_verify_variants.ipynb` checks the gene counts directly and plots the two variants'
 UMAPs side by side. Evaluation of the all-genes side is still pending.
 
 ✅ On-plan / closes part of the HVG deviation by enabling the full-transcriptome comparison.
@@ -148,7 +151,7 @@ UMAPs side by side. Evaluation of the all-genes side is still pending.
 
 ## Latent-space validation (UMAP, Fig. 3 / Fig. 4)
 
-`notebooks/verify_variants.ipynb` (§7) is the **standalone validation** (not part of the
+`notebooks/06_verify_variants.ipynb` (§7) is the **standalone validation** (not part of the
 orchestrator): it builds PCA-vs-scGPT UMAPs for **both** variants via `sc.pp.neighbors` + UMAP,
 colored by `Cancer_type` (**Fig. 3**) and `viability_paclitaxel` (**Fig. 4**). It visually confirmed
 the hypothesis: PCA = discrete tissue "islands", scGPT = continuous shared manifold; paclitaxel
@@ -174,10 +177,12 @@ Per variant, three h5ad files in pipeline order: `SCP542_CCLE.h5ad` →
 `..._scGPT_human_embeddings.h5ad` → `..._scGPT_human_embeddings_with_targets.h5ad` (the trainable
 file: `X_scGPT`, `X_pca`, `Y_ctrp`, `M_ctrp`, `split_ctrp`, `split_paclitaxel`).
 
-**Reproduce:**
+**Reproduce** (a documented, runnable walk-through of these commands lives in
+`notebooks/05_preprocessing.ipynb`):
 ```bash
 # From scratch (runs convert+HVG → embeddings → targets → splits → pca).
 # The scgpt step needs the separate scGPT env, hence --scgpt-python.
+# PCA width defaults to 512 (--pca-n-comps) to match the scGPT embedding.
 uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \
     --scgpt-python /path/to/scgpt-venv/bin/python
 
@@ -185,6 +190,10 @@ uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs 
 # (convert/scgpt refuse to overwrite without --overwrite, so resume past them.)
 uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \
     --start-at targets --skip-scgpt
+
+# Recompute only the 512-d PCA baseline in-place (what the 512-d switch needed).
+uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 \
+    --start-at pca --skip-scgpt --force-pca --pca-n-comps 512
 
 # training
 uv run scripts/training/train_multitask.py --use-rep X_scGPT            # all 545 drugs

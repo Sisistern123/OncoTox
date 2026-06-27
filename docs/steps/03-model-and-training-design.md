@@ -45,7 +45,8 @@ and the train/val/test grouping.
 - **Input `X` (per cell):** a single embedding vector, shape `(D,)`, selected with `--use-rep` and
   read from `adata.obsm[use_rep]` by the dataset classes in `scripts/model/dataset.py`:
   `X_scGPT` → **512-dim** scGPT embedding, or `X_pca` → the (HVG-5000 / all-genes) PCA baseline
-  (≈50-dim). The genes themselves are never seen by the network — only these representations.
+  (**512-dim**, matched to the scGPT width via `add_pca.DEFAULT_N_COMPS`). The genes themselves are
+  never seen by the network — only these representations.
 - **Output (per cell):** the final layer is a single `Linear(prev_dim → output_dim)`
   (`OncoMLP.py`). For **single-task** `output_dim = 1` (one drug's viability); for **multi-task**
   `output_dim = K`, so the "`K` drug heads" are literally the **K rows of that one output matrix**
@@ -164,3 +165,10 @@ the end rather than the last-epoch weights. The single entrypoint `train_multita
 as flags (`--use-rep`, `--drugs`, `--batch-size 128`, `--epochs 50`, `--lr`, `--weight-decay`,
 `--dropout`, `--input-dropout`, `--loss {mse,huber}`, `--hidden-dims`, `--seed`); run artifacts are
 written by `create_run_dir`/`save_run` ([Step 05](05-multitask-results.md)).
+
+Both the CLI and `notebooks/07_training.ipynb` drive one training run through the same
+`train_multitask.train_rep(...)` function (datasets → per-drug-mean baseline → `OncoMLP` → `train_model`
+→ `save_run`), returning the run dir, history, and per-drug MSE arrays. The notebook is the
+**reproducible PCA-vs-scGPT comparison**: it trains both reps at the matched 512-d width and writes
+the comparison figures/tables to `notebooks/outputs/`. Because both paths call `train_rep`, the
+notebook and command line cannot diverge.
