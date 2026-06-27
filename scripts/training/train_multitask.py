@@ -439,7 +439,8 @@ def cv_evaluate(
 
         finite = np.isfinite(baseline_mse) & np.isfinite(model_mse)
         n_total = int(finite.sum())
-        n_beats = int((model_mse[finite] < baseline_mse[finite]).sum())
+        delta = model_mse[finite] - baseline_mse[finite]  # per-drug model − baseline MSE
+        n_beats = int((delta < 0).sum())                  # heads where model beats the constant
         be = history.best_epoch
         folds.append({
             "fold": fold,
@@ -451,6 +452,11 @@ def cv_evaluate(
             "gap": float(history.val_mse[be - 1] - history.train_mse[be - 1]),
             "n_beats": n_beats,
             "n_total": n_total,
+            # Continuous counterpart of heads-beating: mean/median per-drug delta.
+            # Negative => model better than the per-drug-mean baseline on average.
+            "mean_delta": float(delta.mean()) if delta.size else float("nan"),
+            "median_delta": float(np.median(delta)) if delta.size else float("nan"),
+            "frac_beat": float((delta < 0).mean()) if delta.size else float("nan"),
             "model_mean_mse": float(np.nanmean(model_mse)),
             "baseline_mean_mse": float(np.nanmean(baseline_mse)),
         })

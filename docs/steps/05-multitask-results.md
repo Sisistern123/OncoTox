@@ -70,6 +70,54 @@ first projection's parameter count — is identical and **only the representatio
 the last comparison confound. (History: the original matrix used a `(64,32)` PCA trunk and a ~50-d PCA,
 both of which handicapped PCA; the numbers below supersede those.)
 
+### Metrics — what each number means
+
+Every result below is one of these. They are reported on the **val** split (single fixed split) or as
+**5-fold CV mean ± std** (test held out); read them together — MSE alone is misleading near a viability
+of 1.0.
+
+- **Masked (val) MSE** — the training objective. Per-cell squared error `(pred − viability)²`, averaged
+  **only over observed `(cell × drug)` entries** (`mask = 1`); missing labels contribute nothing
+  (`_masked_mean` in `training_utils.py`). For a single drug it's plain MSE. **Why ≈ 0.01 is
+  misleading:** viability is per (cell line × drug), broadcast to all the line's cells, and clusters
+  near 1.0 with tiny variance — so even predicting a constant scores ~0.01. Absolute MSE therefore says
+  little; what matters is whether it beats the constant and whether it *ranks* lines (below). *Train*
+  MSE is logged with dropout **active**, so it can sit below or above the dropout-free val MSE.
+
+- **Per-drug-mean baseline** — the null model (`_per_drug_constant_mse`). For each drug it predicts that
+  drug's **train-set mean viability** for every cell, then is scored on val. Because labels are near
+  constant this is already a *strong* predictor, so it's the bar every head must clear; a head only
+  counts as having *learned* response if it beats its own drug's constant.
+
+- **Heads beating baseline (`heads_beat`)** — the **count** of the K = 545 drugs whose model val MSE is
+  below their per-drug-mean baseline. Intuitive, but a **thresholded count of near-ties**: most heads
+  have model ≈ constant (labels ≈ 1.0), so they sit on the decision boundary, and the per-fold baseline
+  is recomputed from that fold's train lines. If a fold's held-out lines are collectively a little
+  above/below the train mean, **hundreds of heads flip together** (common-mode), so the CV std is huge
+  (±73–94; cf. √(K·p(1−p)) ≈ 11 if heads were independent — observed is ~8× that). **Treat as
+  directional, not precise.**
+
+- **Δmse (model − baseline)** — the **continuous** counterpart of heads-beating: the mean over drugs of
+  `model_mse − baseline_mse`. **Negative ⇒ model better** than the constant on average; it is not
+  thresholded, so it doesn't suffer the count's instability (its CV std is small relative to the mean).
+  Reported as CV mean ± std; the per-fold `cv_folds.csv` also carries `median_delta` and `frac_beat`
+  (= `heads_beat / n_total`).
+
+- **Overfitting gap** — `val_mse − train_mse` at the best epoch (single-task). Larger ⇒ more
+  memorization; the core hypothesis predicts scGPT < PCA. Same dropout-in-train caveat as above, so it
+  is indicative, not exact.
+
+- **Per-drug correlation (Spearman / Pearson)** — the metric that actually asks *does the model rank
+  cell lines?* For each drug, predictions are averaged to one value **per held-out cell line** and
+  correlated with the true per-line viability across lines (Spearman = rank, Pearson = linear).
+  Restricted to drugs with **real response variance** (per-line true std ≥ 0.05) and ≥ 5 val lines —
+  otherwise there is nothing to rank. Insensitive to the near-1.0 offset that dominates MSE.
+
+- **5-fold GroupKFold CV (test held out)** — robustness wrapper: `GroupKFold(5)` over `Cell_line`
+  resamples the 153 train+val lines into 5 train/val folds (no line on both sides), each retrained from
+  scratch; we report **mean ± std**. The fixed `test` set is never touched, so **CV numbers are a
+  stability check, not a test-set estimate**.
+
 **The 8-run matrix (512-d, 27.06.2026; all share `split_ctrp`, n_train 34,126 / n_val 7,121).**
 Per-drug-mean baseline: **~0.043** (K=1 paclitaxel, data-derived, rep-independent), **0.0097** (K=545).
 Reproducible in `notebooks/07_training.ipynb`; run dirs `runs/20260627_1913xx_*` (see
@@ -121,14 +169,19 @@ robustness, `cv_evaluate` (`notebooks/07_training.ipynb` §2) runs **5-fold Grou
 holding the fixed `test` set out** and resampling only the 153 train+val lines (~122 train / ~31 val
 per fold). On `hvg5000`:
 
-| Rep | Heads beating baseline (mean ± std) | All-drugs val MSE | Paclitaxel gap (val − train) |
-|---|---|---|---|
-| `X_pca` | **207 ± 73** / 545 | 0.0106 ± 0.0008 | **+0.011 ± 0.020** |
-| `X_scGPT` | **191 ± 94** / 545 | 0.0107 ± 0.0009 | **−0.002 ± 0.014** |
+| Rep | Heads beating baseline (mean ± std) | Δmse model−baseline (mean ± std) | All-drugs val MSE | Paclitaxel gap (val − train) |
+|---|---|---|---|---|
+| `X_pca` | **207 ± 73** / 545 | **+0.00058 ± 0.00040** | 0.0106 ± 0.0008 | **+0.011 ± 0.020** |
+| `X_scGPT` | **191 ± 94** / 545 | **+0.00072 ± 0.00047** | 0.0107 ± 0.0009 | **−0.002 ± 0.014** |
 
-- **The PCA-vs-scGPT heads-beating gap is *not* robust:** the fold std (±73–94) **dwarfs** the
-  PCA−scGPT difference (~16). The single-split "169 vs 147" is within fold noise — don't read it as a
-  real PCA advantage. PCA's mean stays ≥ scGPT's, but not significantly.
+- **The continuous metric is the honest one — and it's negative news:** Δmse is **positive for both
+  reps** (4 of 5 folds), i.e. on average the model is **marginally *worse* than the per-drug-mean
+  constant**. The heads-beating count (~190–207 of 545, i.e. < 40% of heads) said the same thing all
+  along; the continuous Δ just makes it unambiguous and stable (std ≪ the count's). PCA's Δ (+0.00058)
+  is slightly *less bad* than scGPT's (+0.00072) — same direction as heads-beating.
+- **The heads-beating count itself is *not* robust:** the fold std (±73–94) **dwarfs** the PCA−scGPT
+  difference (~16). The single-split "169 vs 147" is within fold noise — don't read it as a real PCA
+  advantage. (See *Metrics* above for why the count swings so hard.)
 - **The overfitting direction survives, weakly:** mean paclitaxel gap is lower for scGPT (−0.002) than
   PCA (+0.011), consistent with the denoised-prior claim, but the spreads overlap.
 
