@@ -82,7 +82,10 @@ per-drug correlation suggests most heads have nothing to learn, dragging the agg
 - [ ] **Presentation slides** (15.06) — outstanding fixes: add a Core-Hypothesis slide before the
       first UMAP; de-duplicate the two UMAP slides; Results slide needs "heads beating baseline
       (out of 545)" + the conclusion line; fix "5.000" → "5,000"; reword target "(AUC)".
-- [ ] Run the **UMAP cells** of `notebooks/06_verify_variants.ipynb` (compute-heavy; not yet run).
+- [x] **Cancer-type UMAPs regenerated** → `06_verify_variants.ipynb` §8: 2-panel PCA-vs-scGPT
+      (`outputs/umap_cancertype_pca_vs_scgpt.png`, dpi 300) + full gene-set sweep grid
+      (`outputs/umap_sweep_cancertype.png`, dpi 200). Confirms tissue islands (PCA) vs continuous
+      manifold (scGPT) at every gene count. (§7's 4-panel cancer+viability grid is still the older run.)
 - [ ] *(Optional)* Regenerate scGPT embeddings from scratch — identical output; only for a
       reproducibility pass.
 - [ ] *(Optional)* Re-run the `split_paclitaxel` single-task to fill
