@@ -50,8 +50,10 @@ sufficient for this task? The steps below are designed to answer it.
 - [ ] **Predicted-vs-true** diagnostics: is the model just predicting the per-cell-line mean? Does
       averaging per-cell predictions back to the line help? Compare single-task paclitaxel (K=1) vs
       the paclitaxel head inside the K=545 run.
-- [ ] **Per-drug response distributions** given viability ≈ 1.0 — quantify *how many* drugs are
-      actually learnable (extends `04_drug_coverage.ipynb`); feeds the learnability definition below.
+- [x] **Per-drug response distributions** given viability ≈ 1.0 → target-distribution section in
+      `04_drug_coverage.ipynb` (`outputs/target_distribution.png`, data only). Median viability 0.91
+      (75% ≥ 0.8); per-drug std median 0.088, only 3% truly flat; a loose cov ≥ 100 & std ≥ 0.05 filter
+      keeps **439/545** → coverage+std alone removes few, so learnability needs a **stricter** rule.
 - [ ] Confirm scGPT input preprocessing in `gen_embeds.py` (raw counts vs CPM) so scGPT isn't handicapped.
 
 **3b. Drug-learnability filtering — NEXT FOCUS (agreed 28.06.2026)**
@@ -62,8 +64,8 @@ per-drug correlation suggests most heads have nothing to learn, dragging the agg
       (enough measured lines, e.g. ≥ ~100) **AND per-line response std ≥ ~0.05** (real variation;
       drop near-flat heads). Optionally also require CV per-drug correlation > 0.
 - [ ] **Exclude** drugs with almost no coverage and/or near-zero std (nothing to beat the mean with).
-- [ ] Produce the **informative vs non-informative drug list**. **Main project = CTRPv2 only.** A GDSC
-      version (by IC50) is needed **only for Hashimoto-san**, not for the modelling work here.
+- [x] Produce the **informative vs non-informative drug list** — an initial CTRPv2 list was derived
+      from `04_drug_coverage.ipynb` and shared(known not-final). A refined list follows once learnability is defined.
 - [ ] **Re-run matrix / CV / sweep on the learnable-drug subset** — test whether PCA-vs-scGPT and the
       absolute metrics separate once unlearnable heads are removed.
 - [ ] (Stretch) cluster cell lines by response and **stratify train/val/test** (high/med/low response
