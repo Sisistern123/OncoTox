@@ -120,89 +120,64 @@ def build_pipeline():
 
 
 # ============================================================ 2) input + model + task
-def _heat_strip(ax, xc, y0, y1, vals, cmap, w=2.4):
-    """Vertical heatmap strip (a 'vector') of len(vals) cells."""
-    ys = np.linspace(y0, y1, len(vals) + 1)
-    cm = plt.colormaps[cmap]
-    for i, v in enumerate(vals):
-        ax.add_patch(Rectangle((xc - w / 2, ys[i]), w, ys[i + 1] - ys[i],
-                     facecolor=cm(v), edgecolor="white", lw=0.4, zorder=3))
-    ax.add_patch(Rectangle((xc - w / 2, ys[0]), w, ys[-1] - ys[0], fill=False,
-                 edgecolor=INK, lw=1.3, zorder=4))
-
-
 def build_architecture():
     fig, ax = plt.subplots(figsize=(16.0, 8.0))
-    ax.set_xlim(0, 100); ax.set_ylim(0, 50); ax.set_aspect("equal"); ax.axis("off")
+    ax.set_xlim(0, 100); ax.set_ylim(0, 100); ax.axis("off")
 
-    ax.text(50, 49, "OncoTox — Input, Model & Task", ha="center", va="top",
-            fontsize=16, fontweight="bold", color=INK)
+    ax.text(50, 97, "OncoTox — Input, Model & Task", ha="center", va="top",
+            fontsize=17, fontweight="bold", color=INK)
 
-    # ---------- INPUT: one cell -> embedding vector ----------
-    ax.add_patch(Circle((6, 37), 2.7, facecolor="#fde0c5", edgecolor="#d2691e", lw=1.8, zorder=3))
-    for dx, dy in [(-0.9, 0.5), (0.7, -0.4), (0.2, 1.0), (-0.3, -0.9)]:
-        ax.add_patch(Circle((6 + dx, 37 + dy), 0.55, facecolor="#d2691e", lw=0, zorder=4))
-    ax.text(6, 32.3, "single cell\n(scRNA-seq)", ha="center", va="top", fontsize=9, color=INK)
-    arrow(ax, 9, 37, 11.3, 37, color=INK)
+    # ---------- one cell feeds the model ----------
+    ax.add_patch(Circle((9.5, 90), 2.4, facecolor="#fde0c5", edgecolor="#d2691e", lw=1.8, zorder=3))
+    for dx, dy in [(-0.8, 0.4), (0.6, -0.4), (0.1, 0.9)]:
+        ax.add_patch(Circle((9.5 + dx, 90 + dy), 0.5, facecolor="#d2691e", lw=0, zorder=4))
+    ax.text(13.2, 90, "one single cell (scRNA-seq) · one prediction per cell",
+            ha="left", va="center", fontsize=9.5, color=INK)
+    arrow(ax, 9.5, 87.5, 9.5, 78.5, color=INK)
 
-    _heat_strip(ax, 14, 30.5, 43.5, np.linspace(0.05, 0.95, 14), "viridis")
-    ax.text(14, 29.6, "512-d embedding", ha="center", va="top", fontsize=9.5, fontweight="bold", color=BLUE)
-    ax.text(14, 26.7, "PCA  or  scGPT", ha="center", va="top", fontsize=9, color=INK)
-    arrow(ax, 15.8, 37, 22.5, 37, color=INK)
+    # ---------- forward block diagram (academic: a box per layer, sizes on arrows) ----------
+    yB, hB = 58, 20
+    blocks = [
+        (2.0, 17.0, "Input", ["cell embedding", "512-d   (PCA or scGPT)"], BLUE, BLUE_FILL, BLUE),
+        (24.0, 16.5, "Hidden layer 1", ["Linear 512 → 128", "LayerNorm · ReLU · dropout"], BLUE, BLUE_FILL, BLUE),
+        (44.5, 15.0, "Hidden layer 2", ["Linear 128 → 64", "LayerNorm · ReLU · dropout"], BLUE, BLUE_FILL, BLUE),
+        (63.0, 15.0, "Output layer", ["Linear 64 → 545", "one head per drug"], BLUE, BLUE_FILL, BLUE),
+        (81.5, 16.5, "Prediction", ["viability / drug", "545 values ∈ [0, 1]"], GREEN, GREEN_FILL, GREEN),
+    ]
+    spans = []
+    for x, w, title, lines, edge, fill, tc in blocks:
+        box(ax, x, yB, w, hB, title, lines, edge, fill, title_color=tc, title_size=10.5, body_size=9.0)
+        spans.append((x, w))
+    dims = ["512", "128", "64", "545"]
+    for (x, w), nx, d in zip(spans[:-1], [s[0] for s in spans[1:]], dims):
+        arrow(ax, x + w, yB + hB / 2, nx, yB + hB / 2, color=INK)
+        ax.text((x + w + nx) / 2, yB + hB / 2 + 2.0, d, ha="center", va="bottom",
+                fontsize=8.5, color=GREY, style="italic")
 
-    # ---------- MODEL: MLP drawn as neurons ----------
-    layers_x = [26, 40, 54, 66]
-    counts = [6, 5, 4, 6]
-    cy, sp, r = 37, 3.0, 1.25
-    pos = [[(lx, cy + (i - (n - 1) / 2) * sp) for i in range(n)] for lx, n in zip(layers_x, counts)]
-    for a, b in zip(pos[:-1], pos[1:]):
-        for (x1, y1) in a:
-            for (x2, y2) in b:
-                ax.plot([x1, x2], [y1, y2], color="#bcd0e6", lw=0.5, zorder=1)
-    for layer in pos:
-        for (x, y) in layer:
-            ax.add_patch(Circle((x, y), r, facecolor=BLUE_FILL, edgecolor=BLUE, lw=1.6, zorder=3))
-    for lx, n in zip(layers_x, counts):
-        ax.text(lx, cy - (n / 2) * sp - 0.6, "⋮", ha="center", va="top", fontsize=12, color=GREY)
-    for lx, t in zip(layers_x, ["input\n512", "hidden\n128", "hidden\n64", "heads\n545 drugs"]):
-        ax.text(lx, 25.5, t, ha="center", va="top", fontsize=9, color=INK)
-    ax.text(46, 47.0, "OncoMLP  ·  LayerNorm + dropout 0.5", ha="center", va="top",
+    # OncoMLP bracket around the three trainable layers
+    ax.add_patch(FancyBboxPatch((23.0, 54.5), 56.5, 27.5, boxstyle="round,pad=0.4,rounding_size=1.4",
+                 fill=False, edgecolor=BLUE, lw=1.3, linestyle="--", zorder=0))
+    ax.text(51.0, 81.0, "OncoMLP  —  MLP, 2 hidden layers", ha="center", va="bottom",
             fontsize=10.5, fontweight="bold", color=BLUE)
-    ax.add_patch(FancyBboxPatch((22.5, 27.5), 47, 19, boxstyle="round,pad=0.3,rounding_size=1.2",
-                 fill=False, edgecolor=BLUE, lw=1.2, linestyle="--", zorder=0))
-    arrow(ax, 68, 37, 75, 37, color=INK)
 
-    # ---------- OUTPUT: predicted viability per drug ----------
-    out_vals = np.array([0.95, 0.4, 0.88, 0.2, 0.7, 0.55, 0.97, 0.35, 0.8, 0.6, 0.9, 0.45, 0.75, 0.3])
-    _heat_strip(ax, 79, 30.5, 43.5, out_vals, "RdYlGn")
-    ax.text(80.8, 43.2, "1 = survives", ha="left", va="center", fontsize=7.5, color=GREY)
-    ax.text(80.8, 30.8, "0 = killed", ha="left", va="center", fontsize=7.5, color=GREY)
-    ax.text(79, 29.6, "viability per drug", ha="center", va="top", fontsize=9.5, fontweight="bold", color=INK)
-    ax.text(79, 26.7, "1 scalar (1 drug) /\n545-vector (all)", ha="center", va="top", fontsize=8.5, color=INK)
+    # ---------- target + loss woven into the diagram ----------
+    yT, hT = 22, 22
+    box(ax, 60.0, yT, 23.5, hT, "Target — CTRPv2 viability",
+        ["cpd_avg_pv  (1.0 = no effect, 0 = killed)", "ONE bulk value per (cell line × drug)",
+         "broadcast to all the line's cells", "→ noisy per-cell labels · ~126 train lines"],
+        AMBER, AMBER_FILL, title_color=AMBER, title_size=10.0, body_size=8.5)
+    box(ax, 86.0, yT + 4, 12.5, hT - 8, "Masked MSE",
+        ["loss on observed", "(cell × drug)", "pairs only"],
+        GREY, GREY_FILL, title_color=INK, title_size=10.0, body_size=8.5)
 
-    # ---------- TASK: why it's hard (bulk label broadcast) ----------
-    ax.add_patch(FancyBboxPatch((3, 2), 94, 17, boxstyle="round,pad=0.3,rounding_size=1.5",
-                 facecolor="#fbf4e6", edgecolor=AMBER, lw=1.6, zorder=0))
-    ax.text(6, 17.2, "The task — and why it is hard", ha="left", va="top",
-            fontsize=11, fontweight="bold", color=AMBER)
+    # prediction (top) and target (left) feed the loss node
+    arrow(ax, 89.75, yB, 92.25, yT + (hT - 8) + 4, color=INK)        # prediction ↓ into loss
+    arrow(ax, 83.5, yT + hT / 2, 86.0, yT + hT / 2, color=INK)        # target → loss
 
-    # bulk value broadcast to a line's cells
-    ax.add_patch(FancyBboxPatch((9, 12.0), 12, 3.2, boxstyle="round,pad=0.2,rounding_size=0.8",
-                 facecolor="white", edgecolor=AMBER, lw=1.4, zorder=3))
-    ax.text(15, 13.6, "bulk viability 0.8", ha="center", va="center", fontsize=8.5, color=INK)
-    cell_x = [10.5, 15, 19.5]
-    for cxp in cell_x:
-        ax.add_patch(Circle((cxp, 7.2), 1.3, facecolor="#fde0c5", edgecolor="#d2691e", lw=1.3, zorder=3))
-        arrow(ax, 15, 11.9, cxp, 8.6, color="#d2691e")
-    ax.text(15, 4.6, "1 cell line (~300 cells)", ha="center", va="top", fontsize=8, color=INK)
-    ax.text(26, 13.2,
-            "One BULK value per (cell line × drug) is copied to every cell of that line\n"
-            "→ noisy per-cell labels; the model can only learn per-LINE signal (~126 train lines).",
-            ha="left", va="top", fontsize=9, color=INK)
-    ax.text(26, 7.4,
-            "Masked MSE: loss only on measured (cell, drug) pairs   ·   split grouped by cell line\n"
-            "(leak-free) — evaluate on unseen lines vs a per-drug-mean baseline + per-drug correlation.",
-            ha="left", va="top", fontsize=9, color=INK)
+    ax.text(50, 9.0,
+            "Trained on a leak-free, cell-line-grouped 70/15/15 split  ·  evaluated on unseen cell lines "
+            "vs a per-drug-mean baseline + per-drug correlation (5-fold CV)",
+            ha="center", va="center", fontsize=9.5, color=GREY, style="italic")
 
     out = HERE / "model_architecture.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
