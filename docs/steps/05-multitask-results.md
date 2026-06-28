@@ -204,24 +204,30 @@ Pearson), restricted to the 461 drugs with real per-line variance (std ≥ 0.05,
   rep yet predicts response variation across lines**. Motivates the better-target / better-metric work
   in [TODO.md](../TODO.md) (correlation-based selection, drugs with real variance).
 
-### HVG sweet spot — heads-beating vs gene count (27.06.2026)
+### Gene-set sweep — heads-beating vs gene count (incl. all_genes, 28.06.2026)
 
-Does scGPT have a preferred HVG count? `notebooks/07_training.ipynb` §4 builds each variant (1k/2k/3k/5k,
-full pipeline incl. scGPT re-embed; `05` §B) and runs the same **5-fold GroupKFold, test held out,
-all 545 drugs**:
+Does either rep have a preferred gene-set size? `notebooks/07_training.ipynb` §4 builds each variant
+(1k/2k/3k/5k **plus `all_genes`**, full pipeline incl. scGPT re-embed; `05` §B) and runs the same
+**5-fold GroupKFold, test held out, all 545 drugs** — so the HVG-vs-all-genes comparison is
+apples-to-apples under identical CV:
 
-| HVG genes | `X_pca` heads-beat (mean ± std) | `X_scGPT` heads-beat (mean ± std) |
-|---|---|---|
-| 1,000 | 201 ± 76 | 193 ± 83 |
-| 2,000 | 203 ± 78 | 185 ± 84 |
-| 3,000 | 216 ± 85 | 190 ± 83 |
-| 5,000 | 210 ± 73 | 189 ± 94 |
+| Gene set | genes | `X_pca` heads-beat | `X_scGPT` heads-beat | Δmse (PCA / scGPT) |
+|---|---|---|---|---|
+| `hvg1000` | 1,000 | 207 ± 75 | 193 ± 83 | +0.00058 / +0.00060 |
+| `hvg2000` | 2,000 | 203 ± 78 | 185 ± 84 | +0.00062 / +0.00064 |
+| `hvg3000` | 3,000 | 216 ± 85 | 190 ± 83 | +0.00053 / +0.00063 |
+| `hvg5000` | 5,000 | 210 ± 73 | 189 ± 94 | +0.00055 / +0.00074 |
+| `all_genes` | 22,722 | 204 ± 86 | 184 ± 90 | +0.00058 / +0.00069 |
 
-- **No sweet spot.** scGPT heads-beating is **flat (~185–193) across all HVG counts** — filtering does
-  not help it here, contrary to the earlier hunch that "scGPT improves with filtering." Val MSE is
-  likewise ~constant (0.0105–0.0107) everywhere.
-- PCA is marginally higher at every count, but the ±73–85 fold spread overlaps scGPT completely — the
-  PCA-vs-scGPT gap is within noise at all HVG counts, consistent with the CV finding above.
+- **No sweet spot, and no all-genes advantage.** Both reps are **flat across the whole axis** (PCA
+  ~203–216, scGPT ~184–193) — filtering does not help scGPT (contrary to the earlier hunch), and
+  `all_genes` is **no better than HVG** for either rep (PCA's `all_genes` 204 sits mid-band, below
+  hvg3000's 216; the earlier "PCA prefers all genes" is not reproduced). Val MSE ~constant
+  (0.0105–0.0107) throughout.
+- PCA is marginally higher than scGPT at every gene count, but the ±73–94 fold spread overlaps
+  completely — within noise at all sizes, consistent with the CV finding above.
+- **Δmse > 0 at every gene-set size** for both reps: the model stays marginally *worse* than the
+  per-drug-mean baseline regardless of how many genes feed it.
 
 ✅ On-plan: masked-loss multi-task, correctly gated behind a working single-task baseline,
 with the cheap sanity baseline the plan's prototyping section calls for.

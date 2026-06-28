@@ -37,9 +37,10 @@ sufficient for this task? The steps below are designed to answer it.
       **Sobering result:** per-drug rank correlation ≈ 0 for *both* reps (mean Spearman PCA −0.02,
       scGPT −0.05; ~4% of 461 drugs ρ > 0.3) — neither rep ranks cell lines; MSE wins are shrinkage to
       the mean, not real predictive power. See [Step 05](./steps/05-multitask-results.md).
-- [x] **HVG-count sweep** (1k/2k/3k/5k) under CV (all drugs, test held out) → `07` §4, variants built in
-      `05` §B. **No sweet spot:** scGPT heads-beating is flat (~185–193) across 1k–5k (filtering doesn't
-      help it); PCA marginally higher everywhere but within fold noise. See [Step 05](./steps/05-multitask-results.md).
+- [x] **Gene-set sweep** (1k/2k/3k/5k **+ all_genes**) under CV (all drugs, test held out) → `07` §4,
+      variants built in `05` §B. **No sweet spot, no all-genes advantage:** both reps flat across the
+      whole axis (PCA ~203–216, scGPT ~184–193); `all_genes` no better than HVG for either; PCA ≥ scGPT
+      everywhere but within fold noise; Δmse > 0 throughout. See [Step 05](./steps/05-multitask-results.md).
 
 **3. Understand the result**
 - [x] Per-drug **coverage & response-distribution** analysis → `notebooks/04_drug_coverage.ipynb`
@@ -49,7 +50,24 @@ sufficient for this task? The steps below are designed to answer it.
 - [ ] **Predicted-vs-true** diagnostics: is the model just predicting the per-cell-line mean? Does
       averaging per-cell predictions back to the line help? Compare single-task paclitaxel (K=1) vs
       the paclitaxel head inside the K=545 run.
+- [ ] **Per-drug response distributions** given viability ≈ 1.0 — quantify *how many* drugs are
+      actually learnable (extends `04_drug_coverage.ipynb`); feeds the learnability definition below.
 - [ ] Confirm scGPT input preprocessing in `gen_embeds.py` (raw counts vs CPM) so scGPT isn't handicapped.
+
+**3b. Drug-learnability filtering — NEXT FOCUS (agreed 28.06.2026)**
+
+Try **filtering drugs by learnability *before* training/eval**, not just at interpretation — the ~0
+per-drug correlation suggests most heads have nothing to learn, dragging the aggregate metrics.
+- [ ] **Define learnability properly.** Candidate rule: keep a drug only if **coverage ≥ threshold**
+      (enough measured lines, e.g. ≥ ~100) **AND per-line response std ≥ ~0.05** (real variation;
+      drop near-flat heads). Optionally also require CV per-drug correlation > 0.
+- [ ] **Exclude** drugs with almost no coverage and/or near-zero std (nothing to beat the mean with).
+- [ ] Produce the **informative vs non-informative drug list**. **Main project = CTRPv2 only.** A GDSC
+      version (by IC50) is needed **only for Hashimoto-san**, not for the modelling work here.
+- [ ] **Re-run matrix / CV / sweep on the learnable-drug subset** — test whether PCA-vs-scGPT and the
+      absolute metrics separate once unlearnable heads are removed.
+- [ ] (Stretch) cluster cell lines by response and **stratify train/val/test** (high/med/low response
+      by IC50) for fairer, lower-variance evaluation.
 
 **4. Levers most likely to move the needle**
 - [ ] **Bulk RNA-seq pretraining / scDEAL-style denoising + domain adaptation** — attacks the
