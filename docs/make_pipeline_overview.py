@@ -175,10 +175,11 @@ def build_architecture():
     # ---------- OUTPUT: predicted viability per drug ----------
     out_vals = np.array([0.95, 0.4, 0.88, 0.2, 0.7, 0.55, 0.97, 0.35, 0.8, 0.6, 0.9, 0.45, 0.75, 0.3])
     _heat_strip(ax, 79, 30.5, 43.5, out_vals, "RdYlGn")
-    ax.text(80.8, 43.2, "1 = survives", ha="left", va="center", fontsize=7.5, color=GREY)
-    ax.text(80.8, 30.8, "0 = killed", ha="left", va="center", fontsize=7.5, color=GREY)
+    ax.text(80.8, 43.2, "green ≈ 1: no effect", ha="left", va="center", fontsize=7.5, color=GREEN)
+    ax.text(80.8, 30.8, "red < 1: killed", ha="left", va="center", fontsize=7.5, color=RED)
     ax.text(79, 29.6, "viability per drug", ha="center", va="top", fontsize=9.5, fontweight="bold", color=INK)
-    ax.text(79, 26.7, "1 scalar (1 drug) /\n545-vector (all)", ha="center", va="top", fontsize=8.5, color=INK)
+    ax.text(79, 26.7, "≈1 = no effect (relative\nto control; can exceed 1)", ha="center", va="top",
+            fontsize=8.0, color=INK)
 
     # ---------- TASK: why it's hard (bulk label broadcast) ----------
     ax.add_patch(FancyBboxPatch((3, 2), 94, 17, boxstyle="round,pad=0.3,rounding_size=1.5",
