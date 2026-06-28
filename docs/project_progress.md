@@ -153,24 +153,29 @@ file passed to training. It contains, together: `X_scGPT`, `X_pca`, `Y_ctrp`, `M
 
 ## Notebooks (`notebooks/`, pipeline order)
 
-Notebooks are **numbered in workflow order** so the pipeline reads top-to-bottom. Exploration /
-decision notebooks come first, then the reproducible **preprocess → train** pipeline. All notebook
-figures and tables are written to **`notebooks/outputs/`** (kept out of the notebook root so the
-directory stays clean).
+Notebooks are **numbered in workflow order** so the pipeline reads top-to-bottom. All notebook figures
+and tables are written to **`notebooks/outputs/`** (kept out of the notebook root). Per-notebook detail
+and the reproduce order live in [`notebooks/README.md`](../notebooks/README.md).
 
-| # | Notebook | Role |
-|---|---|---|
-| 01 | `01_scDAExploration.ipynb` | Initial single-cell (SCP542) data exploration. |
-| 02 | `02_compare_GDSC_CTRP.ipynb` | Cross-database drug-catalog harmonization (CTRP/GDSC/DrugBank). |
-| 03 | `03_analysis.ipynb` | CTRP→PRISM drug-repurposing / clinical-phase mapping. |
-| 04 | `04_drug_coverage.ipynb` | Per-drug coverage & learnability (→ `outputs/*_drug_learnability.csv`, `outputs/drug_coverage.png`). |
-| 05 | `05_preprocessing.ipynb` | **Runnable front-end to `run_preprocessing.py`** — documents the 5-step pipeline and (re-)runs the PCA step at the configured width (512). |
-| 06 | `06_verify_variants.ipynb` | Audits the `hvg5000` vs `all_genes` preprocessing outputs; PCA-vs-scGPT UMAPs (→ `outputs/variants.png`). |
-| 07 | `07_training.ipynb` | **Reproducible multi-task training** — trains `X_pca` + `X_scGPT` via `train_rep()`, plots the PCA-vs-scGPT comparison (→ `outputs/training_*`, `outputs/per_drug_*`). |
+**Only two notebooks are on the results critical path:** `05_preprocessing` (builds the trainable data)
+and `07_training` (all model results). Run **05 → 07** to reproduce everything. The rest
+(`01/02/03/04/06`) are **exploration / harmonization / QC** — they shaped design decisions and help
+interpret results but are **not required** to get the numbers (the preprocessing/training scripts don't
+read any of their outputs).
+
+| # | Notebook | Role | Needed for results? |
+|---|---|---|---|
+| 01 | `01_scDAExploration.ipynb` | Initial single-cell (SCP542) data exploration | No — exploration |
+| 02 | `02_compare_GDSC_CTRP.ipynb` | Cross-database drug-catalog harmonization (CTRP/GDSC/DrugBank → `data/drug/*`) | No — one-off |
+| 03 | `03_analysis.ipynb` | CTRP→PRISM drug-repurposing / clinical-phase mapping | No — metadata |
+| 04 | `04_drug_coverage.ipynb` | Per-drug coverage & learnability (→ `outputs/*_drug_learnability.csv`, `outputs/drug_coverage.png`) | No — informs interpretation |
+| **05** | **`05_preprocessing.ipynb`** | Front-end to `run_preprocessing.py`: §A recompute 512-d `X_pca` (both variants); §B build the HVG-sweep variants (gated, scGPT re-embed) | **Yes — data** |
+| 06 | `06_verify_variants.ipynb` | QC audit of `hvg5000` vs `all_genes` outputs; PCA-vs-scGPT UMAPs (→ `outputs/variants.png`) | No — validation/QC |
+| **07** | **`07_training.ipynb`** | §1 8-run matrix (load-or-train) · §2 GroupKFold CV (test held out, mean±std incl. Δmse) · §3 per-drug correlation · §4 HVG sweet spot. Caching flags `RETRAIN_MATRIX`/`RECOMPUTE_CV`/`RECOMPUTE_SWEEP` | **Yes — results** |
 
 `05_preprocessing.ipynb` and `07_training.ipynb` both call the **same script entry points** the CLI
-uses (`run_preprocessing.py`, `train_multitask.train_rep`), so the notebooks and command line cannot
-drift — they are documentation *and* a re-run, not a fork.
+uses (`run_preprocessing.py`, `train_multitask.train_rep` / `cv_evaluate`), so the notebooks and command
+line cannot drift — they are documentation *and* a re-run, not a fork.
 
 ---
 
