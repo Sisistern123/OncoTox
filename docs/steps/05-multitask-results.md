@@ -207,10 +207,19 @@ Pearson), restricted to the 461 drugs with real per-line variance (std ≥ 0.05,
   rep yet predicts response variation across lines**. Motivates the better-target / better-metric work
   in [TODO.md](../TODO.md) (correlation-based selection, drugs with real variance).
 
-> ⚠️ **Superseded in scope (13.07.2026).** The "≈ 0 correlation" verdict is an **average over 545
-> drugs**, and averaging is what destroys it: on the 5 drugs that carry real signal, the same model
-> reaches Spearman **0.43–0.49** (next section). The conclusion "neither rep predicts response across
-> lines" is true *on this drug set* and **false on a filtered one**.
+> ⚠️ **Superseded (13.07.2026) — and partly an artifact.** Two independent problems with this verdict:
+>
+> 1. **It is an average over 545 drugs**, and averaging destroys it: on the 5 drugs that carry real
+>    signal, the same model reaches Spearman **0.43–0.49** (next sections).
+> 2. **The multi-task loss was unstandardized.** These runs used `mean_pv`, whose per-drug variance is
+>    wildly heterogeneous, so a minority of wide-spread heads monopolized the shared trunk's gradient.
+>    `notebooks/11_auc_vs_aucz.ipynb` **reproduces this failure on demand**: training K=545 on raw `auc`
+>    (also unstandardized) drives per-drug Spearman to **−0.087 (scGPT) / +0.016 (PCA)**, while the
+>    z-scored `auc_z` on the *same* drugs, model and split reaches **+0.430 / +0.378**.
+>
+> ⇒ The "neither rep ranks cell lines" conclusion was **never clean evidence about scGPT vs PCA**. It is
+> substantially an artifact of a variance-dominated loss, and it does not survive per-drug
+> standardization ([Step 03](03-model-and-training-design.md#measured-auc-vs-auc_z-notebooks11_auc_vs_aucz-ipynb-13072026)).
 
 ### Learnability-filtered subset — the signal was there all along (13.07.2026)
 
@@ -253,15 +262,61 @@ readable directly.) Per drug: `ml162` 0.59/**0.65**, `1s,3r-rsl-3` 0.58/**0.59**
   where PCA collapses (`kx2-391`, 0.28 vs 0.11). **Suggestive, not established:** 5 drugs, one seed, and
   §2's fold variance is large enough to swallow a gap this size. Needs repeating over seeds.
 - **Ranking ≫ calibration.** `pred_std` is 0.53 (PCA) / 0.47 (scGPT) against a true spread of 1.0 — both
-  models hedge toward each drug's mean under the heavy dropout + weight decay. Fine for ranking; a
-  problem the moment absolute AUC is needed (cross-drug decisions), where a per-drug recalibration on
-  train lines would be required.
+  models hedge toward each drug's mean. This is **not** an over-regularization artifact: `pred_std ≈ ρ ×
+  true_std` is exactly what an MSE-optimal predictor must do (see the ablations below). Fine for ranking;
+  to report in AUC units, divide by ρ.
+
+**Is it the model? No — four knobs, all flat (`notebooks/10_ablations.ipynb`, 13.07.2026).**
+Regularization (none → heavy), capacity (74,629 → 2,565 params), batch size (32/128/512) and sample
+reweighting (line-balanced, focus-extremes) all leave out-of-fold Spearman within noise of the defaults
+(PCA 0.41–0.44, scGPT 0.44–0.49). With regularization *off*, PCA memorizes the training lines (train MSE
+≈ 0.01) and still reaches only 0.42 out-of-fold — the model is not being suppressed, it is out of signal.
+Full table and reasoning in [Step 03](03-model-and-training-design.md#these-hyperparameters-are-not-worth-tuning-ablated-13072026).
+
+**And the baseline that actually binds:** `RidgeCV` on the **150 cell-line mean embeddings** — no single
+cells, no network — scores **0.428**, *tying* the PCA MLP (0.428) and within 0.06 of the scGPT MLP
+(0.487). The whole deep single-cell apparatus currently buys **+0.06 Spearman, and only for scGPT**
+(whose linear head drops to 0.438 — it *needs* the hidden layer; PCA does not). **Ridge on line means is
+the baseline to beat from now on.** The cause is structural: the label is per cell line, so there are
+~150 independent examples and the 34k cells are an illusion of sample size — which is why the remaining
+levers are **label-side** (more lines, bulk pretraining, denoising), not model-side.
 
 > **Decision — this is a best-case diagnostic, not a headline number.** The 5 drugs were selected using
 > **all 180 lines, val/test included**, so the selection saw the held-out labels. It answers the
 > question it was built to answer ("does *any* cross-line signal exist here?" — yes). Turning it into a
 > reportable result requires selecting the subset **train-only inside each CV fold** and repeating over
 > seeds; that is now the top [TODO](../TODO.md) item.
+
+### Which change actually produced the gain? (decomposition, 13.07.2026)
+
+Three things changed at once between the §3 null result and the 5-drug result: the **target**
+(`mean_pv` → `auc_z`), the **training scope** (K=545 → K=5) and the **measurement** (27 fixed-val lines
+→ ~150 out-of-fold lines). A Spearman over 27 points has a standard error of roughly ±0.2, so the
+measurement change alone could have manufactured the effect. Isolating them — mean per-drug Spearman
+**on the same 5 drugs** throughout:
+
+| Config | PCA | scGPT |
+|---|---|---|
+| **Old** — K=545, `mean_pv`, 27 val lines (`07` §3) | −0.036 | **−0.286** |
+| K=545, **`auc_z`**, 27 val lines | +0.254 | **+0.349** |
+| K=545, `auc_z`, **150 OOF lines** | +0.378 | **+0.430** |
+| **New** — **K=5**, `auc_z`, 150 OOF lines (`09`) | +0.434 | **+0.488** |
+
+Read down the column — each row changes exactly one thing:
+
+- **The target switch is the dominant term: +0.29 (PCA) and +0.64 (scGPT)**, with head count and the
+  27-line measurement held fixed. This is a genuine improvement in the *predictions*, not in the
+  metric: on `mean_pv` the model's ranking of these drugs was **negative** (scGPT −0.29 — worse than a
+  coin flip), and on `auc_z` the same model, same drugs, same 27 lines ranks them at +0.35. The
+  dose-averaged viability target was actively destroying the signal the curve fit preserves.
+- **Honest measurement adds ~+0.1** (27 → 150 held-out lines). Real, but it is a *precision* gain, not
+  a model gain — and it is why the old −0.47-type numbers should never have been read as findings.
+- **Drug filtering adds only ~+0.06.** The learnability filter is the *smallest* of the three effects.
+  Its value is that it identifies *where* the signal lives — at K=545 these drugs already reach 0.430
+  (scGPT), so the filter is not what created the signal.
+
+⇒ **The model is genuinely better than it was this morning, and the credit goes to the target.**
+`auc_z` is not merely a more readable scale; it is a better learning problem.
 
 ### Gene-set sweep — heads-beating vs gene count (incl. all_genes, 28.06.2026)
 

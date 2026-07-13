@@ -5,24 +5,35 @@ per-run model artifacts live under `runs/` (git-ignored) and are indexed in `run
 
 ## TL;DR — what you actually need
 
-Only **two** notebooks are on the critical path for the pipeline:
+> ⚠️ **`07`'s conclusions are superseded (13.07.2026).** They were produced at K=545 on the legacy
+> `mean_pv` target, whose **unstandardized per-drug variance was destroying the signal** — `11`
+> reproduces that failure on demand. Read **`08 → 09 → 10 → 11`** for the current picture, and treat
+> `07`'s 8-run matrix / "ρ ≈ 0" results as pending a re-run on `--score auc_z`.
 
-1. **`05_preprocessing.ipynb`** — builds / refreshes the trainable data.
-2. **`07_training.ipynb`** — produces every model result (matrix, CV, correlation, HVG sweep).
+Critical path for the pipeline:
 
-Everything else (`01`, `02`, `03`, `04`, `06`) is **exploration / harmonization / QC**: it informed
-design decisions and helps interpret the results, but is **not required** to (re)produce the headline
-numbers. Run order for a clean reproduction is simply **05 → 07**.
+1. **`05_preprocessing.ipynb`** — builds / refreshes the trainable data (per `--score`).
+2. **`07_training.ipynb`** — the 8-run matrix, CV, correlation, HVG sweep (**on `mean_pv` — stale**).
+3. **`08` → `09`** — learnability filter → the current headline result (PCA vs scGPT on the learnable
+   drugs).
+4. **`10`, `11`** — why it works: what is *not* the bottleneck (model) and what *is* (the target).
+
+`01`, `02`, `03`, `04`, `06` are **exploration / harmonization / QC** — not required to reproduce the
+numbers.
 
 | # | Notebook | Role | Essential for Pipeline? |
 |---|---|---|---|
 | 01 | `01_scDAExploration.ipynb` | Initial single-cell (SCP542) data exploration | No — exploration |
 | 02 | `02_compare_GDSC_CTRP.ipynb` | Drug-catalog harmonization (CTRP/GDSC/DrugBank); writes `data/drug/*` catalogs | No — one-off harmonization |
 | 03 | `03_analysis.ipynb` | CTRP→PRISM drug-repurposing / clinical-phase mapping | No — metadata enrichment |
-| 04 | `04_drug_coverage.ipynb` | Per-drug coverage & response variance ("which drugs are learnable") | No — informs interpretation/thresholds |
-| **05** | **`05_preprocessing.ipynb`** | **Build the trainable h5ad (incl. 512-d PCA, HVG variants)** | **Yes — data** |
+| 04 | `04_drug_coverage.ipynb` | Per-drug coverage & response variance ("which drugs are learnable") | No — superseded by `08` on the AUC target |
+| **05** | **`05_preprocessing.ipynb`** | **Build the trainable h5ad (incl. 512-d PCA, HVG variants, `--score`)** | **Yes — data** |
 | 06 | `06_verify_variants.ipynb` | QC audit of preprocessing outputs + PCA-vs-scGPT UMAPs | No — validation/QC |
-| **07** | **`07_training.ipynb`** | **All training + evaluation** | **Yes — results** |
+| 07 | `07_training.ipynb` | 8-run matrix, CV, per-drug correlation, HVG sweep | ⚠️ **Stale** (`mean_pv`, K=545) |
+| **08** | **`08_learnability_filter.ipynb`** | **Harsh learnability filter on the AUC target → 5 drugs** | **Yes — drug scope** |
+| **09** | **`09_learnable5_training.ipynb`** | **PCA vs scGPT on the 5 drugs — the current headline** | **Yes — results** |
+| 10 | `10_ablations.ipynb` | Is it the model? (regularization / capacity / batch / weighting + **ridge control**) | Yes — closes model tuning |
+| 11 | `11_auc_vs_aucz.ipynb` | Does the per-drug z-scoring help? (**yes, decisively, at K=545**) | Yes — justifies the target |
 
 The scripts these notebooks call (`scripts/preprocessing/run_preprocessing.py`,
 `scripts/training/train_multitask.py`) do **not** read any output of `02/03/04` — those are analysis
@@ -85,6 +96,33 @@ Run in order; `09` reads `08`'s CSV, so re-running `08` with different gates cha
 
 ⚠️ Both are a **best-case diagnostic**: the 5 drugs are selected using all 180 lines (val/test included).
 Fine for "does any signal exist?", not a generalization estimate — see [TODO](../docs/TODO.md).
+
+### `10_ablations.ipynb` — is it the model? (no)
+
+Four model-side knobs on the 5 learnable drugs, same out-of-fold Spearman metric as `09`: **regularization**
+(none→heavy), **capacity** (74,629→2,565 params, down to a linear head), **batch size** (32/128/512) and
+**sample reweighting** (line-balanced, focus-extremes). **All flat** — the defaults are at/near the best on
+every axis, so **model-side tuning is closed**. Includes the control that now sets the bar: **`RidgeCV` on
+the 150 cell-line mean embeddings** (no cells, no network) scores **0.428**, *tying* the PCA MLP and within
+0.06 of scGPT's — because the label is per cell line, so there are only ~150 independent examples.
+Outputs: `ablation_regularization.csv`, `ablation_capacity.csv`, `ablation_batch_weighting.csv`,
+`ablation_reg_capacity.png`. See [Step 03](../docs/steps/03-model-and-training-design.md#these-hyperparameters-are-not-worth-tuning-ablated-13072026).
+
+### `11_auc_vs_aucz.ipynb` — does the per-drug z-scoring help? (yes, decisively, at K=545)
+
+Trains the identical model on `--score auc` vs `--score auc_z`, at K=5 and K=545. Fair by construction:
+`auc_z` is a per-drug *affine* map of `auc`, and per-drug Spearman is invariant to that — so the true
+ranking is identical and the only channel between the two is the **multi-task coupling**.
+
+| | `auc` | `auc_z` |
+|---|---|---|
+| K=5 (PCA / scGPT) | 0.441 / 0.482 | 0.432 / 0.488 |
+| **K=545** (PCA / scGPT) | **+0.016 / −0.087** | **+0.378 / +0.430** |
+
+**Identical at K=5** (the 5 filtered drugs have near-uniform spread — nothing to equalize), **but raw `auc`
+collapses to zero at K=545**, where spreads span 9× and the wide-spread heads monopolize the shared trunk
+by unit size alone. This also **reproduces the `07` §3 null result on demand**, showing it was substantially
+an artifact of an unstandardized loss. Outputs: `auc_vs_aucz.csv`, `auc_vs_aucz.png`.
 
 ---
 

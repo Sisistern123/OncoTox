@@ -1,0 +1,11 @@
+rep,setting,spearman
+X_pca,batch=32,0.4251343105849988
+X_pca,batch=128 [current],0.43494372227379874
+X_pca,batch=512,0.43192505834057043
+X_pca,line_balanced,0.40705065054654127
+X_pca,focus_extremes,0.43080944090040524
+X_scGPT,batch=32,0.5037965244461039
+X_scGPT,batch=128 [current],0.49095058753183957
+X_scGPT,batch=512,0.46197416231892774
+X_scGPT,line_balanced,0.4864618561399269
+X_scGPT,focus_extremes,0.4815502914717126

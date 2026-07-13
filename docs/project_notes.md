@@ -69,6 +69,74 @@ Two things worth keeping in mind:
 *not* a generalization number. Next step is train-only selection inside each fold. But the question it
 was built to answer is answered: **signal exists**, and the label ceiling is not the whole story.
 
+### It is not the model — and ridge on 150 rows matches it (`10_ablations.ipynb`)
+
+Asked whether the model is over-regularized / too big / needs a smaller batch / needs reweighting.
+Ablated all four on the 5 learnable drugs (out-of-fold Spearman):
+
+| knob | range | PCA | scGPT |
+|---|---|---|---|
+| regularization | none → heavy | 0.42–0.44 | 0.44–**0.49** |
+| capacity | 74,629 → 2,565 params | 0.41–0.43 | 0.44–**0.49** |
+| batch size | 32 / 128 / 512 | 0.43–0.44 | 0.46–**0.49** |
+| reweighting | line-balanced, focus-extremes | 0.41–0.43 | 0.48–0.49 |
+
+**All flat; the current defaults are already at/near the best on every axis. Model-side tuning is closed.**
+
+- **Not over-regularized, the opposite:** with dropout/wd **off**, PCA drives *train* MSE to ≈ 0.01 —
+  memorizes the training lines — and still only reaches 0.42 out-of-fold. It is out of *signal*, not
+  capacity.
+- **I was wrong about the shrinkage.** `pred_std ≈ ρ × true_std` (0.47 vs ρ 0.48) is what an MSE-optimal
+  predictor *must* do — correct calibration, not timidity. The "fix the shrinkage with lighter dropout"
+  TODO is withdrawn; loosening dropout raises MSE. For AUC-unit reporting, divide by ρ.
+- **Line-balanced reweighting** (each cell line counts once, not once per cell — principled, since a
+  500-cell line still carries *one* label) is **empty**: scGPT 0.485 vs 0.488. Forced in hindsight — the
+  ridge control *is* the fully line-balanced limit.
+
+**The result that matters:** `RidgeCV` on the **150 cell-line mean embeddings** — no single cells, no
+network, seconds to fit — scores **0.428**, *tying* the PCA MLP (0.428) and within 0.06 of scGPT's MLP
+(0.487). So the entire deep single-cell apparatus currently buys **+0.06 Spearman, and only for scGPT**.
+The cause is structural: the label is per cell line ⇒ **~150 independent examples**; 34k cells is an
+illusion of sample size.
+
+**Decisions:** (1) **ridge on line means is the baseline to beat**, not the per-drug-mean null — anything
+that doesn't clear it is not a claim about single-cell modelling. (2) **Stop tuning the model**; the
+remaining levers are label-side (more cell lines — CTRPv2 has ~1,100 vs our 180 overlap — bulk
+pretraining, denoising). (3) The single-cell dimension has to justify itself: try MIL/attention pooling
+over a line's cells, since plain averaging loses nothing.
+
+One genuine point for scGPT: its **linear** head drops to 0.438, so scGPT *needs* the hidden layer to
+beat ridge, while PCA gains nothing from one. First concrete evidence the embedding holds something
+nonlinearly extractable that PCA's doesn't.
+
+### `auc` vs `auc_z` measured — z-scoring is load-bearing at K=545 (`11_auc_vs_aucz.ipynb`)
+
+I argued the z-scoring from first principles and set it as the default without testing it. Tested now.
+Out-of-fold Spearman on the 5 learnable drugs (per-drug Spearman is invariant to a per-drug affine map,
+so the two targets are directly comparable — the only channel between them is the multi-task coupling):
+
+| | `auc` | `auc_z` |
+|---|---|---|
+| K=5 · PCA | 0.441 | 0.432 |
+| K=5 · scGPT | 0.482 | 0.488 |
+| **K=545 · PCA** | **0.016** | **0.378** |
+| **K=545 · scGPT** | **−0.087** | **0.430** |
+
+- **K=5: identical** (±0.01). Predicted — those 5 drugs have spread 0.155–0.194, nothing to equalize. On a
+  filtered subset `--score auc` is just as good *and* keeps native AUC units.
+- **K=545: raw `auc` collapses to zero.** Spreads span 9× (0.034–0.302 ⇒ ~80× in squared error), so the
+  wide-spread heads monopolize the shared trunk **by unit size, not by learnability**. Standardization is
+  what makes a 545-head masked MSE trainable at all.
+
+**The big one — this retro-diagnoses our central null result.** `07` §3 ("neither rep ranks cell lines")
+ran at K=545 on `mean_pv`, which has the *same* heterogeneous-variance pathology. The `auc` K=545 row
+above **reproduces that failure on demand**. So the null was never clean evidence about scGPT vs PCA — it
+was substantially an artifact of a variance-dominated loss. Anything resting on it (incl. the 8-run
+matrix conclusions) needs re-running on `auc_z`.
+
+**Decision: `auc_z` stays the default.** Of my three original justifications, only #1 (equalizing heads in
+the shared loss) is doing any work — and it turns out to be doing *all* of it.
+
 ## 29.06.2026
 - UMAP comparison, on what is the pca side done again? check
 - presentation for mathias

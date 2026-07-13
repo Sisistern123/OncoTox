@@ -37,12 +37,19 @@ Action list. Scientific narrative + full numbers live in
       [Step 05](./steps/05-multitask-results.md).
 
 **Net read (revised 13.07.2026):** the old net read — *"the ceiling is the label; the model learns the
-per-drug mean, not cross-line sensitivity; PCA ≈ scGPT"* — is **true on average over 545 drugs and false
-on the drugs that carry signal.** Filtering to the 5 learnable drugs takes per-drug Spearman from ≈ 0 to
-**~0.45**, and scGPT leads PCA on 4/5 (first non-tie in the project). The 545-drug null result was a
-**drug-selection artifact**. The label ceiling is still real (bulk value broadcast to a line's cells →
-~150 independent lines, predictions shrunk to ~half the true spread), but it is **not** the whole story,
-and drug selection is the cheapest available lever.
+per-drug mean, not cross-line sensitivity; PCA ≈ scGPT"* — **does not survive today's work.** Two separate
+defects produced it, and the **target was the bigger one**:
+
+1. **An unstandardized multi-task loss.** With 545 heads of wildly different variance, a few wide-spread
+   drugs monopolized the shared trunk. `11` reproduces the failure on demand (raw `auc` at K=545 → scGPT
+   ρ = **−0.087**) and shows `auc_z` fixes it (**+0.430**, same drugs/model/split).
+2. **A drug set that was mostly unlearnable**, which dragged the *average* to zero even where signal
+   existed.
+
+Decomposed on the 5 learnable drugs (`09`), the gain from ≈0 → 0.49 splits as: **target ≈ +0.64 (scGPT)**,
+honest 150-line measurement ≈ +0.1, drug filtering ≈ +0.06. **The target change is the single biggest
+improvement this project has made.** The label ceiling is still real (~150 independent lines; ridge on
+line means ties the MLP — see below), but "no gene representation can help" was never established.
 
 ## Next focus — make the 5-drug result honest (13.07.2026)
 
@@ -55,11 +62,36 @@ val/test included, so the selection saw held-out labels. Turning it into a repor
       (+0.06 Spearman). Repeat over seeds before claiming scGPT wins.
 - [ ] **Loosen to ~20–50 drugs** — 5 is a diagnostic, not a model. Where does the signal die as the gates
       relax? (`ctrp_drug_learnability_auc.csv` is already ranked for this.)
-- [ ] **Fix the calibration shrinkage** — `pred_std` ≈ 0.5 vs a true spread of 1.0; both reps hedge to
-      the drug mean. Lighter dropout/weight-decay, or a per-drug linear recalibration fit on train lines.
-      Ranking is fine; absolute AUC (needed for cross-drug decisions) is not.
 - [ ] **Re-run the full 8-run matrix + CV on `--score auc_z`** for a like-for-like against the `mean_pv`
-      Steps 04–05 numbers.
+      Steps 04–05 numbers. **Expect this to overturn them:** at K=545 the old unstandardized target was
+      destroying the signal (below), so the 8-run matrix's conclusions are suspect, not just stale.
+- [x] **`auc` vs `auc_z` measured** (13.07.2026) → `11`. **z-scoring is essential at K=545** (raw `auc`:
+      scGPT **−0.087** / PCA +0.016 vs `auc_z` **+0.430** / +0.378) and **irrelevant at K=5** (±0.01 —
+      the 5 filtered drugs have near-identical spread, so there is nothing to equalize). Keep `auc_z` as
+      the default; `--score auc` is fine on a spread-homogeneous subset where native units matter.
+- [x] ~~Fix the calibration shrinkage with lighter regularization~~ — **withdrawn 13.07.2026.** `pred_std ≈
+      ρ × true_std` is what an MSE-optimal predictor *must* do; the shrinkage is correct calibration, not
+      over-regularization, and loosening dropout raises MSE (`10` §1). To report in AUC units, divide by ρ.
+
+## Model-side tuning is closed (13.07.2026)
+
+`notebooks/10_ablations.ipynb`: regularization (none→heavy), capacity (74,629→2,565 params), batch size
+(32/128/512) and reweighting (line-balanced, focus-extremes) **all leave Spearman flat** (PCA 0.41–0.44,
+scGPT 0.44–0.49); the current defaults are already at/near the best on every axis. With regularization
+off, PCA memorizes the train lines (train MSE ≈ 0.01) and still only reaches 0.42 out-of-fold — it is out
+of *signal*, not out of *capacity*. **Don't spend more time on architecture or hyperparameters.**
+
+**New baseline to beat: `RidgeCV` on the 150 cell-line mean embeddings** (ρ = **0.428**) — it *ties* the
+PCA MLP and comes within 0.06 of the scGPT MLP, with no single cells and no network. The per-drug-mean
+null is too weak a bar; report ridge alongside it from now on. scGPT + hidden layer (0.487) is the only
+configuration that clears it — and scGPT's *linear* head drops to 0.438, so it genuinely needs the
+nonlinearity while PCA does not.
+
+- [ ] **Make the single-cell dimension earn itself** — averaging a line's cells into one vector currently
+      loses nothing. Test MIL / attention pooling over a line's cells (predict the line label from a *bag*
+      of cells), which at least matches the true label resolution. If that doesn't beat ridge either, the
+      per-cell framing needs a different justification.
+- [ ] **Add ridge (line-level) to `07`'s comparison tables** so every future claim is scored against it.
 - [ ] *(Optional)* **z-score train-only.** The per-drug mean/std currently use all 180 lines, val/test
       included — mild leakage. Fixing it means computing splits before the targets step.
 - [ ] *(Stretch)* cluster cell lines by response and **stratify train/val/test** (high/med/low) for
@@ -68,7 +100,9 @@ val/test included, so the selection saw held-out labels. Turning it into a repor
 ## Levers / later
 
 - [ ] **Bulk RNA-seq pretraining / scDEAL-style denoising + domain adaptation** — attacks the
-      noisy-label bottleneck (the real ceiling).
+      noisy-label bottleneck (the real ceiling). **Promoted by the `10` ablations:** with model-side
+      tuning closed and ridge-on-150-lines matching the MLP, the only remaining levers are label-side —
+      above all **more independent cell lines** (SCP542×CTRPv2 caps at 180; CTRPv2 itself has ~1,100).
 - [ ] **Cross-database PRISM** (masked multi-task) — [Step 06](./steps/06-cross-database-integration.md).
       (GDSC not a modelling priority; was only for Hashimoto-san's list.)
 - [ ] **XAI** — feature importance → resistance drivers — [Step 07](./steps/07-xai-feature-interpretability.md).

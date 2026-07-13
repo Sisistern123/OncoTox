@@ -8,16 +8,43 @@ complementary dated thought/decision log.*
 Reference plan: `~/Desktop/OncoTox/project_plan/project_planning_v2.pdf`.
 Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition** inside each step file.
 
-> **Scope reality check — read this first.** Everything trained so far (Steps 04–05) uses **one
-> database and one response score**: CTRPv2, and specifically the **legacy `mean_pv`** viability
-> score — the target became **`auc_z`** (per-drug z-scored AUC) on 13.07.2026, so those results
-> predate the current default and are being re-run. The 545-head "multi-task"
-> run is multi-**drug**, *not* multi-database or multi-metric. The project's **ultimate goal is to
-> combine all** — CTRPv2 + PRISM + GDSC, **efficacy and toxicity** — via cross-database masked
-> multi-task ([Step 06](./steps/06-cross-database-integration.md)), then turn the result into a
-> reusable foundation model fine-tunable on clinical outcomes
-> ([Step 08](./steps/08-foundation-model-and-clinical-finetuning.md)). Don't read the current
-> results as the finished goal.
+> ## 🔴 Read this before trusting any Step 04–05 number (13.07.2026)
+>
+> **The multi-task loss was unstandardized, and it was destroying the signal.** Steps 04–05 trained on
+> `mean_pv`, whose per-drug variance is wildly heterogeneous. In a shared 545-head masked MSE, a minority
+> of wide-spread drugs monopolize the trunk's gradient **because of their units, not their learnability**,
+> and the model learns nothing that transfers.
+>
+> `notebooks/11_auc_vs_aucz.ipynb` **reproduces this failure on demand.** Same model, same drugs, same
+> split — only the target scale differs (mean per-drug Spearman on the 5 learnable drugs, out-of-fold):
+>
+> | K=545 | unstandardized (`auc`) | per-drug z-scored (`auc_z`) |
+> |---|---|---|
+> | `X_pca` | +0.016 | **+0.378** |
+> | `X_scGPT` | **−0.087** | **+0.430** |
+>
+> **Consequences — all three matter:**
+>
+> 1. **[Step 05](./steps/05-multitask-results.md)'s headline null result** ("neither rep ranks cell lines",
+>    ρ ≈ 0 over 545 drugs) **was substantially an artifact** of this, *not* clean evidence about scGPT vs
+>    PCA. The **8-run matrix conclusions rest on it and are suspect** — they need re-running on `auc_z`,
+>    and should be expected to change, not merely refresh.
+> 2. **The target is the single biggest improvement the project has made.** Holding head count *and*
+>    evaluation fixed, `mean_pv` → `auc_z` moved per-drug Spearman on the learnable drugs from **−0.29 to
+>    +0.35** (scGPT). Drug filtering (+0.06) and honest out-of-fold measurement (+0.10) are real but
+>    secondary.
+> 3. **Model-side tuning is closed.** Regularization, capacity, batch size and reweighting are **all flat**
+>    (`notebooks/10_ablations.ipynb`), and **`RidgeCV` on 150 cell-line mean embeddings ties the PCA MLP**
+>    (ρ = 0.428) — so the entire deep single-cell apparatus currently buys **+0.06, and only for scGPT**.
+>    Ridge-on-line-means, not the per-drug-mean null, is the baseline to beat from now on.
+>
+> **Scope reality check.** Everything trained so far is **one database, one response score** (CTRPv2). The
+> 545-head "multi-task" run is multi-**drug**, *not* multi-database or multi-metric. The **ultimate goal is
+> to combine all** — CTRPv2 + PRISM + GDSC, **efficacy and toxicity** — via cross-database masked
+> multi-task ([Step 06](./steps/06-cross-database-integration.md)), then turn the result into a reusable
+> foundation model fine-tunable on clinical outcomes
+> ([Step 08](./steps/08-foundation-model-and-clinical-finetuning.md)). Don't read the current results as
+> the finished goal.
 
 ---
 
@@ -257,7 +284,10 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 | Phase 2: single-task continuous regression | ✅ Done (on legacy `mean_pv`) | best scGPT val **0.0336** ([Step 04](./steps/04-single-task-results.md)) |
 | Target score: curve-fit AUC instead of dose-averaged viability | ✅ Done 13.07.2026, **re-runs pending** | `--score auc_z` default ([Step 03](./steps/03-model-and-training-design.md)); Steps 04–05 numbers still `mean_pv` |
 | Core hypothesis: scGPT overfits less than PCA | ✅ Confirmed (generalization only) | 512-d matched: `hvg5000` single-task gap 0.004 (scGPT) vs 0.033 (PCA); but PCA ≈/better on all-drugs accuracy (169 vs 147) ([Step 05](./steps/05-multitask-results.md)) |
-| Does the model rank cell lines at all? | ✅ **Yes — on learnable drugs** (13.07.2026) | ≈ 0 Spearman over 545 drugs, but **0.43 (PCA) / 0.49 (scGPT)** on the 5 drugs passing the learnability filter — the null result was drug selection, not the representation ([Step 05](./steps/05-multitask-results.md)) |
+| Does the model rank cell lines at all? | ✅ **Yes** (13.07.2026) | **0.43 (PCA) / 0.49 (scGPT)** out-of-fold on the 5 learnable drugs — and **0.38 / 0.43 even at K=545** once the target is z-scored. The old ρ ≈ 0 was an unstandardized-loss + unlearnable-drug artifact ([Step 05](./steps/05-multitask-results.md)) |
+| Is the per-drug z-scoring load-bearing? | ✅ **Yes, at K=545** (13.07.2026) | Raw `auc` at K=545 → **−0.087 (scGPT)**; `auc_z` → **+0.430**. Irrelevant at K=5 (±0.01) — see `notebooks/11_auc_vs_aucz.ipynb` |
+| Is the model over-regularized / too big? | ❌ **No — tuning is closed** (13.07.2026) | Regularization, capacity (74,629→2,565 params), batch size, reweighting: **all flat**. **Ridge on 150 line-means ties the PCA MLP** (0.428) → the deep pipeline buys +0.06, scGPT only (`notebooks/10_ablations.ipynb`) |
+| 8-run matrix conclusions (`mean_pv`) | ⚠️ **Suspect — re-run required** | They rest on the K=545 null result, which the unstandardized loss substantially produced. Re-run on `--score auc_z` ([TODO](./TODO.md)) |
 | Phase 3a: multi-task masked loss | ✅ Done **within CTRPv2 only** | [Step 05](./steps/05-multitask-results.md) |
 | Phase 3b: integrate PRISM / GDSC (cross-database, efficacy+toxicity) | ❌ Not started | data downloaded + harmonized only ([Step 06](./steps/06-cross-database-integration.md)) |
 | Stretch: XAI / feature importance | ❌ Not started | [Step 07](./steps/07-xai-feature-interpretability.md) |

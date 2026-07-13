@@ -71,22 +71,110 @@ resistant* line.
 | `auc` | `area_under_curve / conc_pts_fit` — the sigmoid-fit AUC, **normalized** by the size of the concentration grid | `v20.data.curves_post_qc.txt` |
 | `mean_pv` | *legacy:* unweighted mean of `cpd_avg_pv` (percent viability) over the dose grid; clusters near 1.0 | `v20.data.per_cpd_post_qc.txt` |
 
-**Decision (13.07.2026): train on `auc_z`.** Three reasons, each fixing a defect of `mean_pv`:
+### How `auc_z` is computed, step by step
 
-1. **Use the curve fit, not the raw dose grid.** `mean_pv` averaged the measured viability points, so
-   it was dominated by however many concentrations happened to sit in the flat, pre-response part of
-   the curve, and it inherited every noisy well. `area_under_curve` comes from CTRP's post-QC sigmoid
-   fit — the standard target in the field (Rees et al. 2016; DepMap/PharmacoGx), and the same
-   quantity GDSC2 reports, which is what makes the [Step 06](06-cross-database-integration.md) merge
-   possible at all.
-2. **Normalize by the concentration grid.** CTRP's `area_under_curve` is an *integrated* area, so it
-   grows with `conc_pts_fit` (8–29 points, usually 16) and is not comparable across compounds. `auc`
-   divides it out (`_load_score_values`).
-3. **Z-score within each drug** (`_zscore_per_drug`). Standardizing per drug removes the potency
-   offset the model cannot infer from expression anyway, and puts every one of the K heads on the
-   **same scale**, so no single well-covered drug dominates the shared masked loss. The per-drug mean
-   and std are kept in `uns["ctrp_score_center"]` / `["ctrp_score_scale"]`, so predictions can be
-   mapped back to AUC units.
+CTRPv2 screens each (cell line × drug) over a **concentration series** and fits a sigmoid to it. The
+pipeline (`ctrp_to_h5ad.py`) turns that into one number per (cell line × drug) in four steps.
+
+**Step 1 — take the curve fit, not the raw dose points.** Read `area_under_curve` from
+`v20.data.curves_post_qc.txt` (`_load_score_values`), one row per (`experiment_id`, `master_cpd_id`).
+This is the integrated area under the **fitted** sigmoid, in log2-concentration space. It is not a
+percentage and **not bounded by 1** — for a 16-point grid it runs roughly 0–16.
+
+**Step 2 — divide out the concentration grid → `auc`.** CTRP integrates rather than averages, so the
+raw area grows with how many concentration points were fitted. `conc_pts_fit` varies **8–29** (usually
+16), so a raw AUC of 13 means different things for different compounds. Dividing removes it:
+
+```
+auc = area_under_curve / conc_pts_fit        # ~0-1, viability-like: the mean height of the fitted curve
+```
+
+The result reads like an average survival fraction across the tested range: **low `auc` = the drug
+kills that line, high `auc` = the line survives it.** (Observed: median 0.877, p05 0.536, p95 1.071 —
+values slightly above 1 occur where a line grows faster than the vehicle control.)
+
+**Step 3 — one value per (cell line, drug).** Replicate experiments are averaged
+(`_build_drug_table`: `groupby(["ccl_name_norm","cpd_name_norm"]).mean()`), giving the (180 × 545)
+matrix the rest of the pipeline works from.
+
+**Step 4 — z-score *within each drug*, across cell lines** (`_zscore_per_drug`):
+
+```
+center[d] = mean of auc[:, d] over the cell lines screened against drug d   # -> uns["ctrp_score_center"]
+scale[d]  = std  of auc[:, d] over those same lines                         # -> uns["ctrp_score_scale"]
+
+auc_z[l, d] = (auc[l, d] - center[d]) / scale[d]
+```
+
+Note **which axis is standardized**: the statistics are taken **down the cell-line axis, separately
+for every drug** — *not* over the whole matrix, and *not* per cell line. Each drug ends up with mean 0
+and std 1 across the panel, so `auc_z` answers **"how sensitive is this line to this drug, relative to
+the typical line for this drug?"** −1 means one standard deviation more sensitive than that drug's
+average line; +1 means one more resistant.
+
+The statistics are computed **per cell line, not per cell** — a line with 500 cells must not pull the
+mean toward itself more than a line with 50, since both are one measurement. Degenerate drugs (zero
+spread) keep `scale = 1.0` rather than dividing by zero.
+
+*Worked example — `dasatinib`* (`center = 0.631`, `scale = 0.155`): a resistant line with `auc = 0.85`
+becomes `(0.85 − 0.631) / 0.155 = +1.41`; a sensitive line with `auc = 0.40` becomes **−1.49**. Both
+are stored in `Y_ctrp` and broadcast to every cell of the line.
+
+**The map is exactly invertible**, which is why `center`/`scale` are saved: `auc = auc_z * scale +
+center` recovers the original units for any prediction (needed for cross-drug comparisons, which are
+meaningless on the z-scale — see below).
+
+### Why train on `auc_z` rather than `auc`
+
+1. **It equalizes the heads in the shared loss** — the real reason. Per-drug `auc` spread ranges from
+   **0.034 to 0.302** across the 545 drugs (a 9× span, ~80× in squared-error terms). Under a masked
+   MSE on raw `auc`, the wide-spread drugs would supply nearly all the gradient to the shared trunk
+   and the narrow ones almost none — purely because of their *units*, not their learnability.
+   Z-scoring gives every head equal weight.
+2. **It makes the metric readable.** With unit variance, the per-drug-mean null model scores **MSE =
+   1.0** exactly, so any value below 1 is real per-drug signal. On raw `auc` every drug has its own
+   null value and no number is interpretable on its own. (This is presentation, not learning.)
+3. **It removes the per-drug potency offset** — the *weakest* of the three, and worth stating honestly:
+   each drug is its own output row **with its own bias term**, so the head absorbs that offset either
+   way. This argument is close to vacuous; do not lean on it.
+
+### Measured: `auc` vs `auc_z` (`notebooks/11_auc_vs_aucz.ipynb`, 13.07.2026)
+
+The argument above was tested, not assumed. Per-drug Spearman is invariant to a per-drug affine map, and
+`auc_z` *is* one — so the true per-line ranking is identical under both targets and the metric is
+directly comparable. The **only** channel through which the target scale can change a per-drug ranking is
+the multi-task coupling. Out-of-fold Spearman on the 5 learnable drugs, same model throughout:
+
+| | `--score auc` | `--score auc_z` |
+|---|---|---|
+| **K=5** · PCA | 0.441 | 0.432 |
+| **K=5** · scGPT | 0.482 | 0.488 |
+| **K=545** · PCA | **0.016** | **0.378** |
+| **K=545** · scGPT | **−0.087** | **0.430** |
+
+- **At K=5 the two are indistinguishable** (±0.01, both directions) — as predicted, since those five drugs
+  have near-identical spread (0.155–0.194) and there is nothing to equalize. **On a filtered,
+  spread-homogeneous subset, `--score auc` is equally good** and keeps predictions in native AUC units.
+- **At K=545 raw `auc` collapses to zero** while `auc_z` holds. With spreads spanning 9× (0.034 → 0.302,
+  ~80× in squared error), the wide-spread heads monopolize the shared trunk's gradient **because of their
+  units, not their learnability**, and nothing transferable is learned.
+
+> **Decision: keep `auc_z` as the default** (`layout.DEFAULT_CTRP_SCORE`). At the full catalog it is the
+> difference between a model that ranks cell lines and one that does not — reason 1 above is doing all the
+> work, exactly as argued. Reach for `--score auc` only on a small spread-homogeneous subset where native
+> units matter.
+
+**Two consequences, both large:**
+
+1. **Switching `mean_pv` → `auc_z` is the single biggest improvement this project has made.** Holding head
+   count *and* evaluation fixed, it took mean per-drug Spearman on the 5 learnable drugs from
+   **−0.29 → +0.35** (scGPT) and **−0.04 → +0.25** (PCA) — see the decomposition in
+   [Step 05](05-multitask-results.md).
+2. **It retro-diagnoses the project's central null result.** [Step 05](05-multitask-results.md) §3
+   ("neither rep ranks cell lines", ρ ≈ 0 across 545 drugs) was run at **K=545 on `mean_pv`** — a target
+   with the *same* heterogeneous-variance pathology. The `auc` K=545 row above **reproduces that failure
+   on demand**. That null was therefore never clean evidence about scGPT vs PCA; it was substantially an
+   artifact of an **unstandardized multi-task loss**.
 
 > The two scores are **not** interchangeable. Globally they correlate at ρ ≈ 0.97, but that is
 > inflated by between-drug potency differences. *Within* a drug, across cell lines — the only
@@ -218,3 +306,54 @@ Both the CLI and `notebooks/07_training.ipynb` drive one training run through th
 **reproducible PCA-vs-scGPT comparison**: it trains both reps at the matched 512-d width and writes
 the comparison figures/tables to `notebooks/outputs/`. Because both paths call `train_rep`, the
 notebook and command line cannot diverge.
+
+---
+
+## These hyperparameters are not worth tuning (ablated 13.07.2026)
+
+`notebooks/10_ablations.ipynb` sweeps four model-side knobs on the 5 learnable drugs, scored with
+out-of-fold per-drug Spearman (the metric of [Step 05](05-multitask-results.md)). **Every axis is flat,
+and the defaults above are at or within noise of the best setting on all of them:**
+
+| Knob | Range tested | PCA | scGPT |
+|---|---|---|---|
+| Regularization (`dropout`/`input_dropout`/`weight_decay`) | none → (0.7, 0.2, 1e-2) | 0.42–0.44 | 0.44–**0.49** |
+| Capacity (`hidden_dims`) | 74,629 → 2,565 params | 0.41–0.43 | 0.44–**0.49** |
+| `batch_size` | 32 / 128 / 512 | 0.43–0.44 | 0.46–**0.49** |
+| Sample reweighting | line-balanced, focus-extremes | 0.41–0.43 | 0.48–0.49 |
+
+**Decision: stop tuning the model.** At ~150 independent labels, architecture search cannot buy signal.
+Three findings are worth carrying forward, because each kills a plausible-sounding "fix":
+
+1. **Not over-regularized — the opposite.** With regularization *off*, PCA drives **train** MSE to ≈ 0.01
+   (near-perfect memorization of the training lines) and still reaches only 0.42 out-of-fold. A model
+   that can overfit that hard is not being suppressed by its regularizer. Heavy regularization is the
+   only setting that hurts, and it does so via over-shrinkage (`pred_std` 0.33), not lost ranking.
+2. **The prediction shrinkage is correct, not a defect.** `pred_std ≈ ρ × true_std` (scGPT: 0.47 vs
+   ρ = 0.48) is exactly what an MSE-optimal predictor must do — the conditional mean shrinks toward the
+   prior in proportion to how little signal exists. Loosening dropout to "fix" it would *raise* MSE. To
+   report in AUC units, divide by ρ (Spearman is unchanged).
+3. **Line-balanced reweighting is principled but empty.** The entry-pooled loss lets a 500-cell line pull
+   10× harder than a 50-cell line, though both carry exactly **one** independent label — worth fixing on
+   principle, but it changes nothing (scGPT 0.485 vs 0.488). In hindsight this is forced: the ridge
+   control below **is** the fully line-balanced limit.
+
+### The baseline that actually binds: ridge on 150 line-mean embeddings
+
+| Model | PCA | scGPT |
+|---|---|---|
+| `OncoMLP` (128,64) | 0.428 | **0.487** |
+| linear head (`hidden_dims=()`) | 0.412 | 0.438 |
+| **RidgeCV on the 150 cell-line mean embeddings** | **0.428** | **0.428** |
+
+A ridge regression on one mean vector per cell line — **no single cells, no network, seconds to fit** —
+**ties the PCA MLP** and comes within 0.06 of the scGPT MLP. This is the direct consequence of the target
+resolution: the label is per (cell line × drug), so there are **~150 independent training examples**, and
+the 34k cells are an illusion of sample size.
+
+> **Decision: `RidgeCV` on line-mean embeddings is the baseline to beat from now on** — not the
+> per-drug-mean null, which is far too weak a bar. A result that does not clear ridge is not a statement
+> about single-cell modelling. The one thing that currently does clear it is **scGPT + a hidden layer**
+> (+0.06): scGPT's own linear head drops to 0.438, so it genuinely *needs* the nonlinearity, while PCA
+> gains nothing from one. That asymmetry is the strongest evidence to date that the scGPT embedding
+> encodes something PCA's does not.
