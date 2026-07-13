@@ -135,9 +135,6 @@ def build_architecture():
     fig, ax = plt.subplots(figsize=(16.0, 8.0))
     ax.set_xlim(0, 100); ax.set_ylim(0, 50); ax.set_aspect("equal"); ax.axis("off")
 
-    ax.text(50, 49, "OncoTox — Input, Model & Task", ha="center", va="top",
-            fontsize=16, fontweight="bold", color=INK)
-
     # ---------- INPUT: one cell -> embedding vector ----------
     ax.add_patch(Circle((6, 37), 2.7, facecolor="#fde0c5", edgecolor="#d2691e", lw=1.8, zorder=3))
     for dx, dy in [(-0.9, 0.5), (0.7, -0.4), (0.2, 1.0), (-0.3, -0.9)]:
@@ -166,8 +163,6 @@ def build_architecture():
         ax.text(lx, cy - (n / 2) * sp - 0.6, "⋮", ha="center", va="top", fontsize=12, color=GREY)
     for lx, t in zip(layers_x, ["input\n512", "hidden\n128", "hidden\n64", "heads\n545 drugs"]):
         ax.text(lx, 25.5, t, ha="center", va="top", fontsize=9, color=INK)
-    ax.text(46, 47.0, "OncoMLP  ·  LayerNorm + dropout 0.5", ha="center", va="top",
-            fontsize=10.5, fontweight="bold", color=BLUE)
     ax.add_patch(FancyBboxPatch((22.5, 27.5), 47, 19, boxstyle="round,pad=0.3,rounding_size=1.2",
                  fill=False, edgecolor=BLUE, lw=1.2, linestyle="--", zorder=0))
     arrow(ax, 68, 37, 75, 37, color=INK)
