@@ -14,7 +14,7 @@ Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition**.
 | Dataset | Role | Key numbers | Used? |
 |---|---|---|---|
 | **SCP542** scRNA-seq (Kinker et al. 2020; used in PERCEPTION) | single-cell input | **53,513 cells × 22,722 genes**, **198 unique cell lines** | ✅ primary |
-| **CTRPv2** (Cancer Therapeutics Response Portal v2) | viability labels | 1,107 cell lines, **545 compounds**, target `cpd_avg_pv` | ✅ primary |
+| **CTRPv2** (Cancer Therapeutics Response Portal v2) | dose-response labels | 1,107 cell lines, **545 compounds**; training target `auc_z` ([Step 03](03-model-and-training-design.md)) | ✅ primary |
 | **PRISM** Repurposing (Public 24Q2) | multiplexed viability (LFC) | 915 cell lines, 6,575 compounds | downloaded, not used |
 | **GDSC2** | `LN_IC50` / AUC | 967 cell lines, 295 drugs | downloaded, not used |
 
@@ -23,13 +23,18 @@ Single Cell Portal; `.X` stored as **CPM** — counts-per-million, library-size-
 pan-cancer cell-line scRNA-seq atlas capturing **single-cell** heterogeneity. The three response
 datasets are all **bulk, cell-line-level** drug screens:
 
-- **CTRPv2 `cpd_avg_pv`** = *compound average percent viability* — the dose-averaged fraction of a
-  cell population surviving relative to vehicle (DMSO) controls (a CellTiter-Glo-type readout). It
-  is an **efficacy** metric, mostly near 1.0. The raw tables used are
-  `v20.data.per_cpd_post_qc.txt` (the `cpd_avg_pv` values), joined via
-  `v20.meta.per_experiment.txt` to `v20.meta.per_cell_line.txt` (`ccl_name`) and
-  `v20.meta.per_compound.txt` (`cpd_name`).
-- **GDSC2** reports `LN_IC50` (natural-log half-maximal inhibitory concentration) and AUC.
+- **CTRPv2** screens each (cell line × compound) over a **concentration series** (usually 16 points)
+  with a CellTiter-Glo-type readout, and ships it at two levels: the raw per-concentration percent
+  viability `cpd_avg_pv` (fraction surviving vs vehicle/DMSO controls) in
+  `v20.data.per_cpd_post_qc.txt`, and the **post-QC sigmoid fit** of that series —
+  `area_under_curve`, `apparent_ec50_umol`, slope, and per-parameter confidence intervals — in
+  `v20.data.curves_post_qc.txt`. Either is joined to names via `v20.meta.per_experiment.txt` →
+  `v20.meta.per_cell_line.txt` (`ccl_name`) and `v20.meta.per_compound.txt` (`cpd_name`). It is an
+  **efficacy** metric. *Which* of these becomes the label — and why the AUC fit wins — is
+  [Step 03](03-model-and-training-design.md).
+- **GDSC2** reports `LN_IC50` (natural-log half-maximal inhibitory concentration) and AUC — the same
+  curve-fit family as CTRP's `area_under_curve`, which is what makes
+  [Step 06](06-cross-database-integration.md) tractable.
 - **PRISM** is a barcoded, multiplexed viability assay reporting log fold-change vs control — very
   large and very sparse.
 
@@ -98,14 +103,15 @@ heads finally need a unified compound vocabulary.
 Today the trained model depends on Step 01 through exactly **one** thing: the cell-line and drug
 **name normalization inside the pipeline**, `_normalize_cell_line` / `_normalize_drug` in
 `scripts/preprocessing/ctrp_to_h5ad.py` (trim + lowercase + **strip `-`**). These produce the
-`ccl_name_norm` / `cpd_name_norm` join keys that map CTRPv2 viability onto SCP542 cells during the
-**targets** step ([Step 02](02-preprocessing-and-embeddings.md)). At pipeline run time the overlap
+`ccl_name_norm` / `cpd_name_norm` join keys that map CTRPv2 response scores onto SCP542 cells during
+the **targets** step ([Step 02](02-preprocessing-and-embeddings.md)). At pipeline run time the overlap
 is **180**, not the audit's 190 — and the reason is **data availability, not normalization**:
 
 > ✅ **190 vs 180 — resolved (14.06.2026).** Both normalizations (with/without stripping `-`) give
 > **190** SCP542 names that appear in CTRPv2's cell-line roster (`v20.meta.per_cell_line.txt`). But
-> only **180** of those have actual **post-QC viability measurements** (`v20.data.per_cpd_post_qc.txt`,
-> merged through experiment→cell-line) — the table the pipeline builds `Y_ctrp` from. The **10**
+> only **180** of those were actually **screened post-QC** — identical whether counted from the raw
+> dose grid or the curve fits, so the 13.07.2026 switch to `auc_z` did not change the trainable set.
+> The **10**
 > roster-listed-but-unscreened lines are `abc1, hs939t, jhh7, mdamb436, mfe280, ncih1048, ncih2073,
 > ncih2347, rerflckj, ten`. Use **180** (the trainable set); 190 is just the name-match count.
 

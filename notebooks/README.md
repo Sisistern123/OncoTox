@@ -42,9 +42,10 @@ so the notebook and CLI can't drift.
 - **§B — HVG-count sweep data-gen**: build `hvg1000/2000/3000` (full pipeline incl. **scGPT
   re-embedding**, hours + GBs). Gated behind `RUN_HVG_SWEEP` so it doesn't run by accident.
 
-Output per variant: the trainable `…_with_targets.h5ad` carrying `X_scGPT`, `X_pca`, `Y_ctrp`,
-`M_ctrp`, `split_ctrp`. (The core `hvg5000`/`all_genes` data was first built from the CLI; this
-notebook documents and refreshes it.)
+Output per variant **and target score** (`--score {auc_z,auc,mean_pv}`, default `auc_z`): the
+trainable `…_with_targets[_<score>].h5ad` carrying `X_scGPT`, `X_pca`, `Y_ctrp`, `M_ctrp`,
+`split_ctrp`. (The core `hvg5000`/`all_genes` data was first built from the CLI; this notebook
+documents and refreshes it.)
 
 ### `07_training.ipynb` — results
 Everything model-side, all on the matched setup (same `(128,64)` trunk, same 512-d input; only the

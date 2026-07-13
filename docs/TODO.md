@@ -26,16 +26,29 @@ Action list. Scientific narrative + full numbers live in
 - [x] **Initial informative-drug list** (CTRPv2) from `04` shared with Hashimoto-san (known not-final;
       GDSC version was for her only, not the modelling work).
 - [x] **190 vs 180 resolved**: 190 = CTRPv2 roster name-matches, 180 = lines with post-QC measurements.
+- [x] **Target score → `auc_z`** (13.07.2026): curve-fit `area_under_curve / conc_pts_fit`, z-scored per
+      drug; `--score {auc_z,auc,mean_pv}` on every script, one targets h5ad per score →
+      [Step 03](./steps/03-model-and-training-design.md). Within-drug Spearman vs the old `mean_pv` is
+      only **0.72** (median), so this is *not* cosmetic — but nothing is re-trained on it yet.
 
 **Net read:** with a fair 512-d + cross-validated comparison **PCA ≈ scGPT**, and the model learns the
 per-drug mean, not cross-line sensitivity. The ceiling is the **label** (bulk value broadcast to a
 line's cells → ~126 independent lines; viability compressed near 1.0), not the gene representation.
+The `auc_z` switch attacks the compression half of that: on a standardized target, MSE ≈ 1.0 *is* the
+null model, so "learned nothing" can no longer hide behind a tiny absolute MSE.
 
-## Next focus — drug-learnability filtering (28.06.2026)
+## Next focus — re-run on `auc_z`, then drug-learnability filtering (13.07.2026)
+
+- [ ] **Re-run the 8-run matrix + CV on `--score auc_z`** and compare head-to-head against the
+      `mean_pv` results ([Step 05](./steps/05-multitask-results.md)) — does the curve-fit target change
+      heads-beating-baseline or the per-drug correlations at all?
+- [ ] *(Optional)* **z-score train-only.** The per-drug mean/std currently use all 180 lines, val/test
+      included — mild leakage. Fixing it means computing splits before the targets step.
 
 Filter drugs by learnability *before* training/eval, and pin down whether **any** real signal exists.
 - [ ] **Define learnability properly** — stricter than coverage+std (that keeps 439/545). Candidate:
-      coverage ≥ threshold **AND genuine differential response** (e.g. ≥ N lines with viability < 0.7),
+      coverage ≥ threshold **AND genuine differential response** — now naturally expressed on the AUC
+      scale (e.g. ≥ N lines below −1 SD in `auc_z`, replacing the old `viability < 0.7`),
       optionally CV per-drug correlation > 0. Drop near-flat / low-coverage drugs.
 - [ ] **Best-case diagnostic** — per-drug correlation + predicted-vs-true scatter on the *most-responsive,
       well-covered* drugs. Decides whether the ceiling is the data or the model.

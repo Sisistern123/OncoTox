@@ -9,7 +9,9 @@ Reference plan: `~/Desktop/OncoTox/project_plan/project_planning_v2.pdf`.
 Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition** inside each step file.
 
 > **Scope reality check — read this first.** Everything trained so far (Steps 04–05) uses **one
-> database and one response score**: CTRPv2 `cpd_avg_pv` (viability). The 545-head "multi-task"
+> database and one response score**: CTRPv2, and specifically the **legacy `mean_pv`** viability
+> score — the target became **`auc_z`** (per-drug z-scored AUC) on 13.07.2026, so those results
+> predate the current default and are being re-run. The 545-head "multi-task"
 > run is multi-**drug**, *not* multi-database or multi-metric. The project's **ultimate goal is to
 > combine all** — CTRPv2 + PRISM + GDSC, **efficacy and toxicity** — via cross-database masked
 > multi-task ([Step 06](./steps/06-cross-database-integration.md)), then turn the result into a
@@ -49,8 +51,8 @@ work, kept here so the entire project structure is visible end-to-end.
 **Where this is going (the two axes that widen):**
 
 ```
-Step 04   1 database · 1 score · 1 drug        (CTRPv2 cpd_avg_pv, paclitaxel)
-Step 05   1 database · 1 score · K=545 drugs   (CTRPv2 cpd_avg_pv, all drugs)   ← here now
+Step 04   1 database · 1 score · 1 drug        (CTRPv2, paclitaxel)
+Step 05   1 database · 1 score · K=545 drugs   (CTRPv2, all drugs)              ← here now
 Step 06   3 databases · 2 metric types         (CTRPv2+PRISM+GDSC, efficacy+toxicity)
 Step 08   + clinical fine-tuning               (continuous pre-train → binary clinical head)
 ```
@@ -60,8 +62,10 @@ Step 08   + clinical fine-tuning               (continuous pre-train → binary 
 
 - A training example = **one single cell**; input = a 512-dim scGPT embedding (`X_scGPT`) or PCA
   (`X_pca`). Cell line / cancer type / drug are **not** input features.
-- Target = CTRPv2 `cpd_avg_pv` viability, defined per **(cell line × drug)** and broadcast to every
-  cell of that line — so MSE ≈ 0.01 is misleadingly tiny (values cluster near 1.0).
+- Target = a CTRPv2 response score chosen with `--score`, defined per **(cell line × drug)** and
+  broadcast to every cell of that line. Default **`auc_z`** = per-drug z-scored, grid-normalized
+  AUC (13.07.2026), so **MSE ≈ 1.0 means "no better than the drug's mean"**. The legacy `mean_pv`
+  (viability, clusters near 1.0, MSE ≈ 0.01 looks tiny but is meaningless) still backs Steps 04–05.
 - Training is **fully supervised regression** (masked MSE/Huber). scGPT is a **frozen** self-supervised
   feature prior; the mask handles label sparsity but does **not** make it semi-supervised.
 
@@ -129,19 +133,22 @@ one trainable file per variant bundles everything, and the representation / drug
 | Counts (CPM) | **non-filtered** | `all_genes/SCP542_CCLE.h5ad` | `.X` | 53,513 × 22,722 |
 | **scGPT embeddings — filtered HVG** | **filtered** | `hvg5000/SCP542_CCLE_scGPT_human_embeddings.h5ad` | `obsm["X_scGPT"]` | 53,513 × 512 (from 4,576 in-vocab genes) |
 | **scGPT embeddings — non-filtered** | **non-filtered** | `all_genes/SCP542_CCLE_scGPT_human_embeddings.h5ad` | `obsm["X_scGPT"]` | 53,513 × 512 (from 20,570 in-vocab genes) |
-| **PCA — filtered HVG** | **filtered** | `hvg5000/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad` | `obsm["X_pca"]` | 53,513 × **512** (computed on the 5,000 HVG; matches scGPT width) |
-| **PCA — non-filtered** | **non-filtered** | `all_genes/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad` | `obsm["X_pca"]` | 53,513 × **512** (computed on all 22,722; matches scGPT width) |
-| Drug labels — **all 545 drugs** | both | `<variant>/…_with_targets.h5ad` | `obsm["Y_ctrp"]` (+ `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`) | 53,513 × 545 |
-| Drug labels — **one drug (paclitaxel)** | both | same `…_with_targets.h5ad` | one column of `Y_ctrp` selected via `--drugs paclitaxel`; legacy `obs["viability_paclitaxel"]` | 53,513 × 1 |
-| Split — shared, cell-line-grouped | both | same `…_with_targets.h5ad` | `obs["split_ctrp"]` | per-cell |
-| Split — paclitaxel-only (legacy) | both | same `…_with_targets.h5ad` | `obs["split_paclitaxel"]` | per-cell |
+| **PCA — filtered HVG** | **filtered** | `hvg5000/…_with_targets_auc_z.h5ad` | `obsm["X_pca"]` | 53,513 × **512** (computed on the 5,000 HVG; matches scGPT width) |
+| **PCA — non-filtered** | **non-filtered** | `all_genes/…_with_targets_auc_z.h5ad` | `obsm["X_pca"]` | 53,513 × **512** (computed on all 22,722; matches scGPT width) |
+| Drug labels — **all 545 drugs** | both | `<variant>/…_with_targets_auc_z.h5ad` | `obsm["Y_ctrp"]` (+ `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, `uns["ctrp_score"]`) | 53,513 × 545 |
+| Drug labels — **one drug (paclitaxel)** | both | same targets file | one column of `Y_ctrp` selected via `--drugs paclitaxel`; legacy `obs["viability_paclitaxel"]` | 53,513 × 1 |
+| Split — shared, cell-line-grouped | both | same targets file | `obs["split_ctrp"]` | per-cell |
+| Split — paclitaxel-only (legacy) | both | same targets file | `obs["split_paclitaxel"]` | per-cell |
 
-**The trainable file** is `<variant>/SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad` — the only
-file passed to training. It contains, together: `X_scGPT`, `X_pca`, `Y_ctrp`, `M_ctrp`, `split_ctrp`,
-`split_paclitaxel`, `viability_paclitaxel`, and `uns["ctrp_drugs"]`.
+**The trainable file** is `<variant>/SCP542_CCLE_scGPT_human_embeddings_with_targets[_<score>].h5ad` —
+the only file passed to training. It contains, together: `X_scGPT`, `X_pca`, `Y_ctrp`, `M_ctrp`,
+`split_ctrp`, `split_paclitaxel`, `viability_paclitaxel`, and `uns["ctrp_drugs"]`. **One file per
+target score**, so scores can be compared without rebuilding the shared convert/scGPT outputs; the
+Step 04–05 runs read the legacy un-suffixed (`mean_pv`) file.
 
-**How the 8 matrix runs select from these files** (no new files are written for a run's inputs):
+**How the runs select from these files** (no new files are written for a run's inputs):
 - gene set → `--variant {hvg5000, all_genes}` (which folder)
+- target score → `--score {auc_z, auc, mean_pv}` (which targets file in that folder)
 - representation → `--use-rep {X_scGPT, X_pca}` (which `obsm` key)
 - task → `--drugs paclitaxel` (one drug) vs omitted (all 545)
 
@@ -179,6 +186,42 @@ line cannot drift — they are documentation *and* a re-run, not a fork.
 
 ---
 
+## Figures & evaluation outputs (catalog)
+
+Every plot and evaluation artifact produced so far, with what it shows, the headline numbers, and the
+doc/notebook that owns the authoritative discussion. **All files live in `notebooks/outputs/`.**
+Regenerate by re-running the source notebook (see the table above); the **numbers** are owned by the
+step files (mainly [Step 05](./steps/05-multitask-results.md)) — this catalog is a map, not a second
+source of truth.
+
+**Figures (`.png`):**
+
+| Figure | What it shows | Headline | Source · backs |
+|---|---|---|---|
+| `target_distribution.png` | 4-panel "why the task is hard": **A** viability histogram, **B** per-drug response-std histogram, **C** coverage-vs-std filter scatter, **D** per-drug response bands | A: clusters near 1.0 (median **0.91**, 75% ≥ 0.8); B: median per-drug std **0.088**, only **3%** flat; C: filter (cov ≥ 100 & std ≥ 0.05) keeps **439/545**; D: responses squeezed into ~0.8–1.0 | `04_drug_coverage.ipynb` · Step 05 learnability |
+| `drug_coverage.png` | Per-drug coverage (# cell lines) and response variance | No drug covers all 180 lines (max 179, median 171); 382 drugs ≥ 90% coverage | `04_drug_coverage.ipynb` |
+| `per_drug_correlation_cdf.png` | CDF of **per-drug Spearman** (pred vs true across held-out lines), PCA vs scGPT, 461 real-variance drugs | Curves sit on 0: mean Spearman **−0.02 (PCA) / −0.05 (scGPT)**; only ~4% of drugs ρ > 0.3 → model does **not** rank cell lines | `07_training.ipynb` §3 · Step 05 "Better metric" |
+| `per_drug_scatter_pca_vs_scgpt.png` | Per-drug Spearman PCA vs scGPT, point per drug | Both clustered around 0; no rep systematically ranks better | `07_training.ipynb` §3 |
+| `hvg_sweep_curve.png` | Heads-beating-baseline vs gene-set size (1k→all genes), 5-fold CV | **Flat** for both (PCA ~203–216, scGPT ~184–193); no sweet spot, all-genes no better than HVG | `07_training.ipynb` §4 · Step 05 "Gene-set sweep" |
+| `training_curves_pca_vs_scgpt.png` | Train/val MSE vs epoch, PCA vs scGPT (the overfitting gap) | `hvg5000` single-task gap **0.004 (scGPT) vs 0.033 (PCA)** | `07_training.ipynb` §1 · Step 05 single-task |
+| `umap_cancertype_pca_vs_scgpt.png` | Latent-space UMAP coloured by cancer type, PCA vs scGPT | scGPT mixes tissues; PCA keeps tissue-of-origin islands (latent validation) | `06_verify_variants.ipynb` · Step 02 |
+| `umap_sweep_cancertype.png` | UMAP by cancer type across gene-set variants | Latent structure stable across HVG counts | `06_verify_variants.ipynb` |
+| `variants.png` | QC PCA-vs-scGPT UMAP for `hvg5000` vs `all_genes` | Variant outputs agree (sanity QC) | `06_verify_variants.ipynb` · Step 02 |
+
+**Evaluation tables (`.csv`):**
+
+| Table | Contents |
+|---|---|
+| `cv_summary.csv` / `cv_folds.csv` | 5-fold GroupKFold CV (test held out): heads-beating, **Δmse**, all-drugs val MSE, paclitaxel gap — per rep (summary) and per fold (with `median_delta`, `frac_beat`) |
+| `per_drug_correlation_summary.csv` | Per-rep mean/median Spearman, mean Pearson, frac ρ > 0.3 over 461 drugs |
+| `per_drug_correlation_X_pca.csv` / `…_X_scGPT.csv` / `per_drug_pca_vs_scgpt.csv` | Per-drug correlation values (and the PCA-vs-scGPT join) |
+| `hvg_sweep.csv` | Gene-set sweep: heads-beat mean/std, Δmse mean/std, val MSE per (variant × rep) |
+| `matrix_all_drugs.csv` / `matrix_single_paclitaxel.csv` | The 8-run matrix results (all-drugs / single-task paclitaxel) |
+| `training_pca_vs_scgpt_summary.csv` | Single-split per-rep summary (best val MSE, epoch, model vs baseline mean MSE, heads-beating, run dir) |
+| `ctrp_drug_learnability.csv` / `gdsc_drug_learnability.csv` | Per-drug coverage + response-variance learnability scores |
+
+---
+
 ## The plan (for reference)
 
 A staged prototype (from the plan PDF):
@@ -186,7 +229,7 @@ A staged prototype (from the plan PDF):
 1. **Latent-space validation** — generate scGPT embeddings, compare to full-transcriptome
    PCA via UMAP (Fig. 3 by cancer type, Fig. 4 by paclitaxel viability); confirm scGPT
    removes tissue-of-origin bias.
-2. **Single-task baseline** — regress the continuous CTRPv2 `cpd_avg_pv` (viability)
+2. **Single-task baseline** — regress the continuous CTRPv2 response
    score from the embeddings on the **highest-confidence intersection** SCP542×CTRPv2
    (**190 cell lines, 545 compounds, 100 % non-null in overlap**). *Do not start
    multi-task / PRISM / GDSC until this works.*
@@ -211,7 +254,8 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 | Sub-goal 2: masked-loss sparsity handling | ✅ Done (intra-CTRPv2) | [Step 05](./steps/05-multitask-results.md) |
 | Sub-goal 3: baseline on SCP542×CTRPv2 highest-confidence intersection | ✅ Done | [Step 04](./steps/04-single-task-results.md)–[05](./steps/05-multitask-results.md) |
 | Phase 1: scGPT embeddings + UMAP latent validation | ✅ Done | [Step 02](./steps/02-preprocessing-and-embeddings.md); Fig. 3/4 |
-| Phase 2: single-task continuous `cpd_avg_pv` regression | ✅ Done | best scGPT val **0.0336** ([Step 04](./steps/04-single-task-results.md)) |
+| Phase 2: single-task continuous regression | ✅ Done (on legacy `mean_pv`) | best scGPT val **0.0336** ([Step 04](./steps/04-single-task-results.md)) |
+| Target score: curve-fit AUC instead of dose-averaged viability | ✅ Done 13.07.2026, **re-runs pending** | `--score auc_z` default ([Step 03](./steps/03-model-and-training-design.md)); Steps 04–05 numbers still `mean_pv` |
 | Core hypothesis: scGPT overfits less than PCA | ✅ Confirmed (generalization only) | 512-d matched: `hvg5000` single-task gap 0.004 (scGPT) vs 0.033 (PCA); but PCA ≈/better on all-drugs accuracy (169 vs 147) ([Step 05](./steps/05-multitask-results.md)) |
 | Phase 3a: multi-task masked loss | ✅ Done **within CTRPv2 only** | [Step 05](./steps/05-multitask-results.md) |
 | Phase 3b: integrate PRISM / GDSC (cross-database, efficacy+toxicity) | ❌ Not started | data downloaded + harmonized only ([Step 06](./steps/06-cross-database-integration.md)) |

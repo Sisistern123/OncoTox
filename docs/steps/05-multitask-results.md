@@ -10,29 +10,32 @@ K=545) rows of the 8-run experiment matrix**
 ([index](../project_progress.md#experiment-matrix--pca-vs-scgpt)).
 
 > **Scope — still 1 database, 1 score; "multi-task" here = multi-*drug* only.** Every one of the
-> K=545 heads predicts the **same** metric (`cpd_avg_pv` viability) from the **same** database
+> K=545 heads predicts the **same** metric from the **same** database
 > (CTRPv2). This validates the masked-loss machinery on intra-CTRPv2 sparsity, but it is **not**
 > the plan's ultimate multi-task goal, which is **cross-database** (CTRPv2 + PRISM + GDSC) **and
 > multi-metric** (efficacy *and* toxicity). That integration — the real "combine all" — is
 > [Step 06](06-cross-database-integration.md) and is **not yet started**. Do not read the 545-head
 > run as "multi-task complete."
 
+> ⚠️ **Legacy target score.** Every number on this page was trained on **`mean_pv`**, the only target
+> until 13.07.2026; the default is now **`auc_z`** ([Step 03](03-model-and-training-design.md)).
+> Absolute MSEs across the two scores are **not comparable** (a z-scored target has unit variance, so
+> its baseline sits near 1.0 rather than 0.0097) — only *heads beating baseline* and the per-drug
+> correlations transfer. Reproduce this page exactly with `--score mean_pv`.
+
 ---
 
 ## Multi-task masked loss over all 545 CTRPv2 drugs (26.05.2026)
 
-**New target artifacts written by `ctrp_to_h5ad.py`:**
+The target artifacts (`obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, the legacy flat
+`viability_<drug>` columns) are defined once in [Step 03](03-model-and-training-design.md). What this
+run adds is the split and the drug scope:
 
-- `obsm["Y_ctrp"]` — float32 (n_cells, K), per-cell viability, NaN where missing.
-- `obsm["M_ctrp"]` — bool (n_cells, K), True where observed.
-- `uns["ctrp_drugs"]` — ordered length-K drug-name list (column order of Y/M).
 - `obs["split_ctrp"]` — **one drug-agnostic, cell-line-grouped 70/15/15 split** written by
   `create_splits.py` `run_multi()`, shared across all heads (leakage-free for every drug at once;
   a single shared split is only possible *because* the leakage control is at the cell-line level).
-- Legacy flat `viability_<drug>` / `train_mask_<drug>` / `split_<drug>` kept for back-compat.
-
-**Drug-scope filter:** keep a drug only if screened on ≥ `--min-cell-lines` overlapping
-cell lines (default 50). This run used **`--all-drugs` (= min 0) → K = 545 drugs**.
+- **Drug-scope filter:** keep a drug only if screened on ≥ `--min-cell-lines` overlapping cell lines
+  (default 50). This run used **`--all-drugs` (= min 0) → K = 545 drugs**.
 
 **Run-time overlap reported by the pipeline:** **180 / 198** SCP542 cell lines overlap
 CTRPv2 (180 = lines with actual post-QC measurements; the audit's 190 counts roster name-matches — see

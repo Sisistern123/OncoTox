@@ -1,4 +1,19 @@
-"""Map CTRPv2 viability targets onto cells in the embedded SCP542 AnnData.
+"""Map CTRPv2 drug-response targets onto cells in the embedded SCP542 AnnData.
+
+The target score is selected with ``score`` (CLI: ``--score``). In all cases a
+*higher* value means a *less* sensitive (more resistant) cell line:
+
+* ``auc_z``   (default) -- per-drug z-scored ``auc``. Standardizing within each
+  drug puts every multi-task head on the same scale, so the MSE of a
+  well-covered drug does not dominate the loss, and it removes the per-drug
+  potency offset the model cannot infer from expression anyway.
+* ``auc``     -- ``area_under_curve / conc_pts_fit`` from the post-QC sigmoid
+  fits (``v20.data.curves_post_qc.txt``). CTRP's raw AUC is an *integrated*
+  area, so it scales with how many concentration points were fitted (8-29,
+  usually 16); dividing by ``conc_pts_fit`` puts drugs on a common axis.
+* ``mean_pv`` -- legacy score: the unweighted mean of ``cpd_avg_pv`` over the
+  dose grid (``v20.data.per_cpd_post_qc.txt``). Kept so the pre-AUC results
+  stay reproducible; correlates ~0.97 with raw AUC but ignores the curve fit.
 
 Two outputs are written into the AnnData (both happen by default):
 
@@ -7,17 +22,24 @@ Two outputs are written into the AnnData (both happen by default):
     * ``adata.obsm["M_ctrp"]``  : bool    (n_cells, K), True where Y_ctrp is observed.
     * ``adata.uns["ctrp_drugs"]``: list[str] of length K (normalized drug names),
       giving the column order of Y_ctrp / M_ctrp.
+    * ``adata.uns["ctrp_score"]``: which score Y_ctrp holds.
+    * ``adata.uns["ctrp_score_center"]`` / ``["ctrp_score_scale"]``: per-drug mean
+      and std of the pre-z-score ``auc`` (length K, aligned with ``ctrp_drugs``),
+      so predictions can be mapped back to AUC units. Both are 0/1 filler when
+      ``score != "auc_z"``.
 
    Drugs are kept only if at least ``min_cell_lines`` distinct SCP542-overlapping
    cell lines were screened against them (default 50) so we don't add heads with
    too little support.
 
 2. Per-drug flat columns (back-compat with the original single-drug pipeline):
-    * ``adata.obs["viability_<drug>"]``    : per-cell viability, NaN when missing.
+    * ``adata.obs["viability_<drug>"]``    : per-cell target, NaN when missing.
     * ``adata.obs["train_mask_<drug>"]``   : per-cell bool, True when present.
 
-   Controlled by ``extra_single_drug_cols``. Defaults to ("paclitaxel",) so the
-   25.05.2026 baseline remains reproducible without any code changes.
+   The ``viability_`` prefix is historical -- the column holds whichever score
+   was selected, not necessarily a percent viability. Controlled by
+   ``extra_single_drug_cols``. Defaults to ("paclitaxel",) so the 25.05.2026
+   baseline remains reproducible without any code changes.
 """
 
 from __future__ import annotations
@@ -30,7 +52,12 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 
-from scripts.preprocessing.layout import PipelinePaths, add_data_args
+from scripts.preprocessing.layout import (
+    CTRP_SCORES,
+    DEFAULT_CTRP_SCORE,
+    PipelinePaths,
+    add_data_args,
+)
 
 DEFAULT_MIN_CELL_LINES = 50
 DEFAULT_EXTRA_SINGLE_DRUG_COLS: tuple[str, ...] = ("paclitaxel",)
@@ -44,13 +71,43 @@ def _normalize_drug(s: pd.Series) -> pd.Series:
     return s.astype(str).str.strip().str.lower()
 
 
-def _load_ctrp_long(ctrp_dir: Path) -> pd.DataFrame:
-    """Return the merged CTRPv2 long table with normalized name columns."""
-    ctrp_values = pd.read_csv(
-        ctrp_dir / "v20.data.per_cpd_post_qc.txt",
+def _load_score_values(ctrp_dir: Path, score: str) -> pd.DataFrame:
+    """Return one ``score`` value per (experiment_id, master_cpd_id).
+
+    ``auc``/``auc_z`` read the post-QC sigmoid fits and normalize the integrated
+    area by the number of fitted concentration points; ``mean_pv`` averages the
+    raw dose grid (legacy behaviour).
+    """
+    if score == "mean_pv":
+        per_cpd = pd.read_csv(
+            ctrp_dir / "v20.data.per_cpd_post_qc.txt",
+            sep="\t",
+            usecols=["experiment_id", "master_cpd_id", "cpd_avg_pv"],
+        )
+        return (
+            per_cpd.groupby(["experiment_id", "master_cpd_id"], as_index=False)["cpd_avg_pv"]
+            .mean()
+            .rename(columns={"cpd_avg_pv": "score"})
+        )
+
+    curves = pd.read_csv(
+        ctrp_dir / "v20.data.curves_post_qc.txt",
         sep="\t",
-        usecols=["experiment_id", "master_cpd_id", "cpd_avg_pv"],
+        usecols=["experiment_id", "master_cpd_id", "conc_pts_fit", "area_under_curve"],
     )
+    n_bad = int(curves["area_under_curve"].isna().sum())
+    if n_bad:
+        print(f"  Dropping {n_bad} curve fits with no area_under_curve.")
+        curves = curves.dropna(subset=["area_under_curve"])
+    # CTRP's area_under_curve is integrated, not averaged, so it grows with the
+    # size of the concentration grid (conc_pts_fit is 8-29, usually 16).
+    curves["score"] = curves["area_under_curve"] / curves["conc_pts_fit"]
+    return curves[["experiment_id", "master_cpd_id", "score"]]
+
+
+def _load_ctrp_long(ctrp_dir: Path, score: str) -> pd.DataFrame:
+    """Return the merged CTRPv2 long table with normalized name columns."""
+    ctrp_values = _load_score_values(ctrp_dir, score)
     ctrp_exp_meta = pd.read_csv(
         ctrp_dir / "v20.meta.per_experiment.txt",
         sep="\t",
@@ -88,12 +145,13 @@ def _build_drug_table(
     Returns
     -------
     long_overlap : DataFrame with columns ``ccl_name_norm``, ``cpd_name_norm``,
-        ``cpd_avg_pv`` (one row per (cell line, drug) inside the SCP542 overlap).
+        ``score`` (one row per (cell line, drug) inside the SCP542 overlap;
+        replicate experiments are averaged).
     kept_drugs : ordered list of drug names (normalized) to use as Y_ctrp columns.
     """
     long_overlap = (
         ctrp_full[ctrp_full["ccl_name_norm"].isin(overlap_cell_lines_norm)]
-        .groupby(["ccl_name_norm", "cpd_name_norm"], as_index=False)["cpd_avg_pv"]
+        .groupby(["ccl_name_norm", "cpd_name_norm"], as_index=False)["score"]
         .mean()
     )
 
@@ -119,6 +177,38 @@ def _build_drug_table(
     return long_overlap, kept_drugs
 
 
+def _zscore_per_drug(
+    long_overlap: pd.DataFrame, kept_drugs: list[str]
+) -> tuple[pd.DataFrame, np.ndarray, np.ndarray]:
+    """Standardize ``score`` within each drug, over the overlapping cell lines.
+
+    Statistics are computed per cell line (not per cell), so a cell line
+    contributing many cells does not pull the mean toward itself. A drug whose
+    scores have zero spread would blow up, so its scale is left at 1.0 --
+    ``min_cell_lines`` plus the learnability filter should remove those anyway.
+
+    Returns the standardized table plus the per-drug ``center`` and ``scale``
+    arrays (aligned with ``kept_drugs``) needed to map predictions back to AUC.
+    """
+    grouped = long_overlap.groupby("cpd_name_norm")["score"]
+    center = grouped.mean().reindex(kept_drugs)
+    scale = grouped.std(ddof=0).reindex(kept_drugs)
+
+    degenerate = scale[(scale.isna()) | (scale <= 0)].index.tolist()
+    if degenerate:
+        print(
+            f"  Warning: {len(degenerate)} drugs have zero AUC spread across cell lines; "
+            f"leaving their scale at 1.0 (e.g. {degenerate[:5]})."
+        )
+    scale = scale.where(scale > 0, 1.0)
+
+    out = long_overlap.copy()
+    out["score"] = (
+        out["score"] - out["cpd_name_norm"].map(center)
+    ) / out["cpd_name_norm"].map(scale)
+    return out, center.to_numpy(dtype=np.float32), scale.to_numpy(dtype=np.float32)
+
+
 def run(
     input_h5ad: str,
     output_h5ad: str,
@@ -126,11 +216,15 @@ def run(
     min_cell_lines: int = DEFAULT_MIN_CELL_LINES,
     target_drugs: Sequence[str] | None = None,
     extra_single_drug_cols: Sequence[str] = DEFAULT_EXTRA_SINGLE_DRUG_COLS,
+    score: str = DEFAULT_CTRP_SCORE,
 ):
-    """Map CTRPv2 viability scores onto cells in the embedded AnnData.
+    """Map CTRPv2 drug-response scores onto cells in the embedded AnnData.
 
     Parameters
     ----------
+    score:
+        Which CTRPv2 response score to use as the target: ``auc_z`` (default),
+        ``auc``, or the legacy ``mean_pv``. See the module docstring.
     target_drugs:
         If provided, restrict the multi-drug matrix to these drug names (after
         lower-casing). When ``None`` (default), include every CTRPv2 drug that
@@ -143,11 +237,14 @@ def run(
         ``viability_<drug>`` / ``train_mask_<drug>`` so the original single-drug
         training scripts continue to work. Pass ``()`` to disable.
     """
+    if score not in CTRP_SCORES:
+        raise ValueError(f"score must be one of {CTRP_SCORES}, got {score!r}")
+
     print("Loading AnnData...")
     adata = sc.read_h5ad(input_h5ad)
 
-    print("Loading CTRPv2 metadata...")
-    ctrp_full = _load_ctrp_long(Path(ctrp_dir))
+    print(f"Loading CTRPv2 metadata (score={score})...")
+    ctrp_full = _load_ctrp_long(Path(ctrp_dir), score)
 
     cell_line_norm = (
         adata.obs["Cell_line"]
@@ -169,9 +266,16 @@ def run(
         target_drugs=target_drugs,
     )
 
-    print("Building (cell line x drug) viability matrix...")
+    if score == "auc_z":
+        print("Z-scoring AUC within each drug (over overlapping cell lines)...")
+        long_overlap, center, scale = _zscore_per_drug(long_overlap, kept_drugs)
+    else:
+        center = np.zeros(len(kept_drugs), dtype=np.float32)
+        scale = np.ones(len(kept_drugs), dtype=np.float32)
+
+    print(f"Building (cell line x drug) {score} matrix...")
     cl_drug_matrix = long_overlap.pivot(
-        index="ccl_name_norm", columns="cpd_name_norm", values="cpd_avg_pv"
+        index="ccl_name_norm", columns="cpd_name_norm", values="score"
     )
     # Reindex columns so the ordering matches uns["ctrp_drugs"] exactly.
     cl_drug_matrix = cl_drug_matrix.reindex(columns=kept_drugs)
@@ -184,6 +288,9 @@ def run(
     adata.obsm["Y_ctrp"] = Y
     adata.obsm["M_ctrp"] = M.astype(bool)
     adata.uns["ctrp_drugs"] = list(kept_drugs)
+    adata.uns["ctrp_score"] = score
+    adata.uns["ctrp_score_center"] = center
+    adata.uns["ctrp_score_scale"] = scale
 
     has_any_label = M.any(axis=1)
     print(
@@ -235,7 +342,7 @@ def run(
 
 
 def _parse_args():
-    parser = argparse.ArgumentParser(description="Merge CTRPv2 viability targets into embedded AnnData.")
+    parser = argparse.ArgumentParser(description="Merge CTRPv2 response targets into embedded AnnData.")
     add_data_args(parser)
     parser.add_argument(
         "--input",
@@ -283,7 +390,7 @@ def _parse_args():
 
 if __name__ == "__main__":
     args = _parse_args()
-    paths = PipelinePaths.build(args.data_root, args.variant)
+    paths = PipelinePaths.build(args.data_root, args.variant, args.score)
     min_cell_lines = 0 if args.all_drugs else args.min_cell_lines
     run(
         input_h5ad=str(args.input or paths.embed_h5ad),
@@ -292,4 +399,5 @@ if __name__ == "__main__":
         min_cell_lines=min_cell_lines,
         target_drugs=args.drugs,
         extra_single_drug_cols=tuple(args.single_drug_cols),
+        score=args.score,
     )

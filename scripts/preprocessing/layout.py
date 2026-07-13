@@ -14,6 +14,13 @@ DEFAULT_SCGPT_MODEL_DIR = Path("/Users/selin/Desktop/OncoTox/scGPT/scGPT_human")
 VARIANTS = ("hvg1000", "hvg2000", "hvg3000", "hvg5000", "all_genes")
 DEFAULT_VARIANT = "hvg5000"
 
+# CTRPv2 response score used as the training target (see ctrp_to_h5ad.py):
+#   auc_z   : per-drug z-scored normalized AUC  (default; comparable across drug heads)
+#   auc     : normalized AUC, area_under_curve / conc_pts_fit
+#   mean_pv : legacy score -- mean cpd_avg_pv over the dose grid
+CTRP_SCORES = ("auc_z", "auc", "mean_pv")
+DEFAULT_CTRP_SCORE = "auc_z"
+
 # hvg1000/2000/3000 added for the HVG-count sweep (find scGPT's filtering sweet spot).
 VARIANT_N_TOP_GENES: dict[str, int | None] = {
     "hvg1000": 1000,
@@ -26,6 +33,13 @@ VARIANT_N_TOP_GENES: dict[str, int | None] = {
 H5AD_RAW = "SCP542_CCLE.h5ad"
 H5AD_EMBED = "SCP542_CCLE_scGPT_human_embeddings.h5ad"
 H5AD_TARGETS = "SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad"
+
+
+def targets_filename(score: str) -> str:
+    """Targets h5ad name for a CTRP score. ``mean_pv`` keeps the pre-AUC filename."""
+    if score == "mean_pv":
+        return H5AD_TARGETS
+    return H5AD_TARGETS.replace(".h5ad", f"_{score}.h5ad")
 
 
 def resolve_data_root(explicit: Path | str | None = None) -> Path:
@@ -45,10 +59,13 @@ class PipelinePaths:
 
     data_root: Path
     variant: str
+    score: str = DEFAULT_CTRP_SCORE
 
     def __post_init__(self) -> None:
         if self.variant not in VARIANTS:
             raise ValueError(f"variant must be one of {VARIANTS}, got {self.variant!r}")
+        if self.score not in CTRP_SCORES:
+            raise ValueError(f"score must be one of {CTRP_SCORES}, got {self.score!r}")
 
     @property
     def expr_file(self) -> Path:
@@ -76,17 +93,23 @@ class PipelinePaths:
 
     @property
     def targets_h5ad(self) -> Path:
-        return self.processed_dir / H5AD_TARGETS
+        return self.processed_dir / targets_filename(self.score)
 
     @classmethod
-    def build(cls, data_root: Path | str | None, variant: str = DEFAULT_VARIANT) -> PipelinePaths:
-        return cls(resolve_data_root(data_root), variant)
+    def build(
+        cls,
+        data_root: Path | str | None,
+        variant: str = DEFAULT_VARIANT,
+        score: str = DEFAULT_CTRP_SCORE,
+    ) -> PipelinePaths:
+        return cls(resolve_data_root(data_root), variant, score)
 
 
 def add_data_args(
     parser: argparse.ArgumentParser,
     *,
     variant_default: str = DEFAULT_VARIANT,
+    score_default: str = DEFAULT_CTRP_SCORE,
 ) -> None:
     parser.add_argument(
         "--data-root",
@@ -99,6 +122,15 @@ def add_data_args(
         choices=VARIANTS,
         default=variant_default,
         help="Gene-set variant; outputs go to processed/scRNAseq_SCP542/<variant>/.",
+    )
+    parser.add_argument(
+        "--score",
+        choices=CTRP_SCORES,
+        default=score_default,
+        help=(
+            "CTRPv2 response score used as the target. Each score gets its own targets "
+            "h5ad, so auc_z and mean_pv runs can be compared head-to-head."
+        ),
     )
 
 

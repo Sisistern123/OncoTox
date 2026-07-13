@@ -4,8 +4,14 @@
 baseline, the random-split data leak and its grouped-split fix, regularization, and the
 progression of best single-task val MSE through the HVG-5000 + model upgrade.*
 
-This is plan-Phase-2 (single-task continuous `cpd_avg_pv` regression). Model/training design
-is in [Step 03](03-model-and-training-design.md).
+This is plan-Phase-2 (single-task continuous regression). Model/training design is in
+[Step 03](03-model-and-training-design.md).
+
+> ⚠️ **Legacy target score.** Every number on this page was trained on the **`mean_pv`** score (mean
+> percent viability over the dose grid), which was the only target until 13.07.2026. The default is
+> now **`auc_z`** ([Step 03](03-model-and-training-design.md)), on which the same MSEs would be
+> ~100× larger simply because the target is standardized — the two are **not comparable**. Reproduce
+> this page exactly with `--score mean_pv`.
 
 > **Which single-task is this?** The numbers below are the **earlier dedicated-`split_paclitaxel`
 > baseline** (its own split over paclitaxel-labelled lines). The **8-run experiment matrix's**
@@ -13,8 +19,8 @@ is in [Step 03](03-model-and-training-design.md).
 > [Step 05](05-multitask-results.md) (refreshed 13.06.2026, with the corrected `X_pca`). The two are
 > on different splits and are not directly comparable.
 
-> **Scope — 1 database, 1 score.** Everything here predicts the **single** CTRPv2 metric
-> `cpd_avg_pv` (viability) for the **single** drug paclitaxel. This is the narrowest slice of
+> **Scope — 1 database, 1 score.** Everything here predicts a **single** CTRPv2 metric for the
+> **single** drug paclitaxel. This is the narrowest slice of
 > the project: one dataset, one response type, one compound. The widening happens in
 > [Step 05](05-multitask-results.md) (still CTRPv2 only, across drugs) and ultimately in
 > [Step 06](06-cross-database-integration.md) (the true "combine all databases + metrics" goal).
@@ -24,7 +30,7 @@ is in [Step 03](03-model-and-training-design.md).
 ## Single-task paclitaxel baseline + data-leak fix (08.05.2026)
 
 The first predictor regresses per-cell **paclitaxel viability** — the column
-`obs["viability_paclitaxel"]`, i.e. the bulk `cpd_avg_pv` broadcast to every cell of the matching
+`obs["viability_paclitaxel"]`, i.e. the bulk `mean_pv` broadcast to every cell of the matching
 line. It is loaded by `ScGPTDrugDataset` (`scripts/model/dataset.py`, `target_drug="paclitaxel"`)
 and trained with `train_multitask.py --use-rep {X_scGPT|X_pca} --drugs paclitaxel`
 (`output_dim = 1`). This was deliberately built **smallest-first** (plan §Prototyping) and used as

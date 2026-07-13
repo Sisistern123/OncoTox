@@ -13,13 +13,19 @@ Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition**.
 
 One entry point builds a complete, trainable h5ad from raw files:
 `scripts/preprocessing/run_preprocessing.py`. It derives all paths once from
-`(--data-root, --variant)` via `layout.py`, then runs **five steps in a fixed order** —
+`(--data-root, --variant, --score)` via `layout.py`, then runs **five steps in a fixed order** —
 `STEP_ORDER = [convert → scgpt → targets → splits → pca]` — writing only under
 `processed/scRNAseq_SCP542/<variant>/`. You normally never call the individual scripts by hand:
-the gene-set variant is chosen with `--variant {hvg5000,all_genes}`, the drug scope with
+the gene-set variant is chosen with `--variant {hvg5000,all_genes}`, the **response score** with
+`--score {auc_z,auc,mean_pv}` ([Step 03](03-model-and-training-design.md)), the drug scope with
 `--all-drugs` / `--min-cell-lines`, `--start-at <step>` resumes mid-pipeline, `--skip-scgpt` reuses
 existing embeddings, and `--overwrite` is required to replace the guarded `convert`/`scgpt` outputs
 (everything is seeded via `--seed`, default 42).
+
+`--variant` and `--score` are the **two axes of the output layout**: the variant picks the folder,
+the score picks the targets filename. Every script that touches a targets file takes both flags
+(`layout.add_data_args`), so a `mean_pv` run and an `auc_z` run can coexist and be compared without
+rebuilding the expensive `convert`/`scgpt` outputs, which they **share**.
 
 ### What each step reads and writes (in order)
 
@@ -27,7 +33,7 @@ existing embeddings, and `--overwrite` is required to replace the guarded `conve
 |---|---|---|---|
 | 1 | **convert** — `scp542_conversion.py` | `expression/CPM_data.txt` (genes×cells) + `metadata/Metadata.txt` | `SCP542_CCLE.h5ad`: cells×genes, `.X` = **CPM**. **HVG filtering happens here** (see below); records `uns["hvg_n_top_genes"]`. |
 | 2 | **scgpt** — external `gen_embeds.py` (separate scGPT venv) | the **convert output** `SCP542_CCLE.h5ad` | `..._scGPT_human_embeddings.h5ad`: adds `obsm["X_scGPT"]` (**512-dim**) **and drops scGPT-OOV genes from `.X`** (hvg5000: 5,000→4,576). |
-| 3 | **targets** — `ctrp_to_h5ad.py` | the embeddings h5ad + the 4 CTRPv2 tables | `..._with_targets.h5ad`: adds `obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]` ([Step 03](03-model-and-training-design.md) for mechanics). |
+| 3 | **targets** — `ctrp_to_h5ad.py` | the embeddings h5ad + the CTRPv2 tables (curve fits for `auc`/`auc_z`, dose grid for `mean_pv`) | `..._with_targets[_<score>].h5ad`: adds `obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, `uns["ctrp_score"]` + the de-standardization stats ([Step 03](03-model-and-training-design.md) for mechanics). |
 | 4 | **splits** — `create_splits.py` | the targets h5ad (in place) | `obs["split_paclitaxel"]` (`run`) + `obs["split_ctrp"]` (`run_multi`) — cell-line-grouped. |
 | 5 | **pca** — `add_pca.py` | the targets h5ad + the **convert counts** `SCP542_CCLE.h5ad` | `obsm["X_pca"]`: `normalize_total(1e4)` → `log1p` → `sc.pp.pca` (**512 comps**, matching the scGPT width) computed on the **HVG-filtered convert counts** (5,000 genes), *not* the targets `.X`. Targets `.X` left unchanged. |
 
@@ -173,29 +179,34 @@ data/
   processed/scRNAseq_SCP542/all_genes/   # full transcriptome variant
 ```
 
-Per variant, three h5ad files in pipeline order: `SCP542_CCLE.h5ad` →
-`..._scGPT_human_embeddings.h5ad` → `..._scGPT_human_embeddings_with_targets.h5ad` (the trainable
-file: `X_scGPT`, `X_pca`, `Y_ctrp`, `M_ctrp`, `split_ctrp`, `split_paclitaxel`).
+Per variant, the two expensive files are built **once** and shared by every score:
+`SCP542_CCLE.h5ad` → `..._scGPT_human_embeddings.h5ad`. The targets step then forks per score into
+the trainable file (`X_scGPT`, `X_pca`, `Y_ctrp`, `M_ctrp`, `split_ctrp`, `split_paclitaxel`):
+
+- `..._with_targets_auc_z.h5ad` — **default** (`--score auc_z`)
+- `..._with_targets_auc.h5ad` — `--score auc`
+- `..._with_targets.h5ad` — `--score mean_pv` (legacy name kept, so the Step 04–05 runs still resolve)
 
 **Reproduce** (a documented, runnable walk-through of these commands lives in
-`notebooks/05_preprocessing.ipynb`):
+`notebooks/05_preprocessing.ipynb`). `--score` defaults to `auc_z`; passing it explicitly is what
+makes a comparison run unambiguous:
 ```bash
 # From scratch (runs convert+HVG → embeddings → targets → splits → pca).
 # The scgpt step needs the separate scGPT env, hence --scgpt-python.
 # PCA width defaults to 512 (--pca-n-comps) to match the scGPT embedding.
 uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \
-    --scgpt-python /path/to/scgpt-venv/bin/python
+    --score auc_z --scgpt-python /path/to/scgpt-venv/bin/python
 
-# Re-derive only targets/splits/pca when convert + embeddings already exist.
-# (convert/scgpt refuse to overwrite without --overwrite, so resume past them.)
+# Add a second target score on top of existing convert+embeddings (this is the
+# score-comparison build; convert/scgpt are untouched and reused).
 uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \
-    --start-at targets --skip-scgpt
+    --score mean_pv --start-at targets --skip-scgpt
 
 # Recompute only the 512-d PCA baseline in-place (what the 512-d switch needed).
 uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 \
     --start-at pca --skip-scgpt --force-pca --pca-n-comps 512
 
-# training
-uv run scripts/training/train_multitask.py --use-rep X_scGPT            # all 545 drugs
-uv run scripts/training/train_multitask.py --use-rep X_pca --drugs paclitaxel  # single-task PCA
+# training (--score selects which targets file to train on)
+uv run scripts/training/train_multitask.py --use-rep X_scGPT --score auc_z   # all 545 drugs
+uv run scripts/training/train_multitask.py --use-rep X_pca --score auc_z --drugs paclitaxel
 ```

@@ -101,6 +101,6 @@ def _parse_args():
 
 if __name__ == "__main__":
     args = _parse_args()
-    paths = PipelinePaths.build(args.data_root, args.variant)
+    paths = PipelinePaths.build(args.data_root, args.variant, args.score)
     counts = args.counts or paths.raw_h5ad
     run(str(args.path or paths.targets_h5ad), args.force, counts_h5ad=str(counts), n_comps=args.n_comps)

@@ -1,7 +1,7 @@
 # OncoTox
 
-Predicting pharmacological response (drug viability/toxicity) from single-cell RNA-seq by
-mapping bulk CTRPv2 viability labels onto SCP542 cells, using **scGPT** foundation-model
+Predicting pharmacological response (drug efficacy/toxicity) from single-cell RNA-seq by
+mapping bulk CTRPv2 dose-response labels onto SCP542 cells, using **scGPT** foundation-model
 embeddings as a denoised biological prior and comparing against a PCA baseline.
 
 ## Documentation
@@ -37,12 +37,15 @@ docs/                    # project_progress.md (index) + steps/ (01-08), project
 ## Quickstart
 
 ```bash
-# Preprocess (HVG-5000 variant, all CTRPv2 drugs; skips the external scGPT step if embeddings exist)
-uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --start-at targets --skip-scgpt --all-drugs
+# Preprocess (HVG-5000 variant, all CTRPv2 drugs; skips the external scGPT step if embeddings exist).
+# --score picks the CTRPv2 response target: auc_z (default, per-drug z-scored AUC), auc, or the
+# legacy mean_pv (dose-averaged viability). Each score writes its own targets h5ad.
+uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --score auc_z \
+    --start-at targets --skip-scgpt --all-drugs
 
-# Train multi-task (all 545 CTRPv2 drugs)
-uv run scripts/training/train_multitask.py --use-rep X_scGPT     # scGPT embeddings
-uv run scripts/training/train_multitask.py --use-rep X_pca       # PCA baseline
+# Train multi-task (all 545 CTRPv2 drugs). MSE ≈ 1.0 on auc_z = no better than the drug's mean.
+uv run scripts/training/train_multitask.py --use-rep X_scGPT --score auc_z   # scGPT embeddings
+uv run scripts/training/train_multitask.py --use-rep X_pca   --score auc_z   # PCA baseline
 ```
 
 See [docs/project_progress.md](docs/project_progress.md) for full commands, data layout, and results.

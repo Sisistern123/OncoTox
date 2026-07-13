@@ -146,7 +146,7 @@ def main():
     parser.add_argument("--start-at", choices=STEP_ORDER, default="convert")
 
     args = parser.parse_args()
-    paths = PipelinePaths.build(args.data_root, args.variant)
+    paths = PipelinePaths.build(args.data_root, args.variant, args.score)
     paths.processed_dir.mkdir(parents=True, exist_ok=True)
 
     default_hvg = VARIANT_N_TOP_GENES[args.variant]
@@ -158,6 +158,7 @@ def main():
 
     print(f"data_root : {paths.data_root}")
     print(f"variant   : {paths.variant} -> {paths.processed_dir}")
+    print(f"score     : {paths.score} -> {paths.targets_h5ad.name}")
 
     if start_idx <= STEP_ORDER.index("convert"):
         hvg_label = f"top-{hvg} HVGs" if hvg else "no HVG filter"
@@ -187,7 +188,7 @@ def main():
             )
 
     if start_idx <= STEP_ORDER.index("targets"):
-        _print_step(3, total, f"ctrp_to_h5ad (min_cell_lines={min_cell_lines})")
+        _print_step(3, total, f"ctrp_to_h5ad (score={args.score}, min_cell_lines={min_cell_lines})")
         if not paths.embed_h5ad.exists():
             raise RuntimeError(f"Missing embeddings input:\n  {paths.embed_h5ad}")
         ctrp_to_h5ad.run(
@@ -196,6 +197,7 @@ def main():
             str(paths.ctrp_dir),
             min_cell_lines=min_cell_lines,
             extra_single_drug_cols=(args.target_drug,) if args.target_drug else (),
+            score=args.score,
         )
 
     if start_idx <= STEP_ORDER.index("splits"):

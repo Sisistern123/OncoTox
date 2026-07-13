@@ -48,36 +48,76 @@ and the train/val/test grouping.
   (**512-dim**, matched to the scGPT width via `add_pca.DEFAULT_N_COMPS`). The genes themselves are
   never seen by the network — only these representations.
 - **Output (per cell):** the final layer is a single `Linear(prev_dim → output_dim)`
-  (`OncoMLP.py`). For **single-task** `output_dim = 1` (one drug's viability); for **multi-task**
+  (`OncoMLP.py`). For **single-task** `output_dim = 1` (one drug's response score); for **multi-task**
   `output_dim = K`, so the "`K` drug heads" are literally the **K rows of that one output matrix**
   over a shared trunk — there are no separate per-drug sub-networks. The default catalog is
   **K = 545** CTRPv2 drugs.
 
 ---
 
-## Target `y` — what "viability" is and at what resolution it is defined
+## Target `y` — the response score, and at what resolution it is defined
 
-The label is CTRPv2 **`cpd_avg_pv`** (compound average percent viability): the dose-averaged
-fraction of cells surviving relative to vehicle controls, so **most values sit near 1.0** (a fully
-resistant line ≈ 1, a sensitive one < 1). It is a **bulk, per-(cell line × drug)** quantity — *not*
-measured per single cell.
+**This section is the canonical definition of the target; the other steps refer back to it.**
 
-`scripts/preprocessing/ctrp_to_h5ad.py` turns this into per-cell labels in three steps, all visible
-in the code:
+The label is a CTRPv2 **drug-response score**, always a **bulk, per-(cell line × drug)** quantity —
+*not* measured per single cell. Which score is selected with `--score`
+(`layout.CTRP_SCORES`), and every score is written to its **own** targets h5ad, so two scores can be
+trained head-to-head without rebuilding anything. In **all** of them a *higher* value = a *more
+resistant* line.
 
-1. **Aggregate** every CTRPv2 measurement to one value per (cell line, drug) by mean —
+| `--score` | Definition | Source table |
+|---|---|---|
+| **`auc_z`** (default, 13.07.2026) | per-drug **z-score** of `auc`, over the 180 overlapping cell lines | ⟵ derived |
+| `auc` | `area_under_curve / conc_pts_fit` — the sigmoid-fit AUC, **normalized** by the size of the concentration grid | `v20.data.curves_post_qc.txt` |
+| `mean_pv` | *legacy:* unweighted mean of `cpd_avg_pv` (percent viability) over the dose grid; clusters near 1.0 | `v20.data.per_cpd_post_qc.txt` |
+
+**Decision (13.07.2026): train on `auc_z`.** Three reasons, each fixing a defect of `mean_pv`:
+
+1. **Use the curve fit, not the raw dose grid.** `mean_pv` averaged the measured viability points, so
+   it was dominated by however many concentrations happened to sit in the flat, pre-response part of
+   the curve, and it inherited every noisy well. `area_under_curve` comes from CTRP's post-QC sigmoid
+   fit — the standard target in the field (Rees et al. 2016; DepMap/PharmacoGx), and the same
+   quantity GDSC2 reports, which is what makes the [Step 06](06-cross-database-integration.md) merge
+   possible at all.
+2. **Normalize by the concentration grid.** CTRP's `area_under_curve` is an *integrated* area, so it
+   grows with `conc_pts_fit` (8–29 points, usually 16) and is not comparable across compounds. `auc`
+   divides it out (`_load_score_values`).
+3. **Z-score within each drug** (`_zscore_per_drug`). Standardizing per drug removes the potency
+   offset the model cannot infer from expression anyway, and puts every one of the K heads on the
+   **same scale**, so no single well-covered drug dominates the shared masked loss. The per-drug mean
+   and std are kept in `uns["ctrp_score_center"]` / `["ctrp_score_scale"]`, so predictions can be
+   mapped back to AUC units.
+
+> The two scores are **not** interchangeable. Globally they correlate at ρ ≈ 0.97, but that is
+> inflated by between-drug potency differences. *Within* a drug, across cell lines — the only
+> variation the model must actually predict — the median Spearman between `auc_z` and `mean_pv` is
+> only **0.72** (min 0.42). Steps 04–05 were trained on `mean_pv` and are **not** directly comparable
+> to `auc_z` numbers.
+>
+> **Known caveat:** the z-score statistics are computed over *all* overlapping lines, including those
+> that later land in val/test. This is standard practice, but it is technically mild leakage (the
+> held-out labels' mean/spread inform the normalization). Making it train-only requires computing the
+> splits before the targets step.
+
+`scripts/preprocessing/ctrp_to_h5ad.py` turns the chosen score into per-cell labels:
+
+1. **Aggregate** to one value per (cell line, drug), averaging replicate experiments —
    `groupby(["ccl_name_norm","cpd_name_norm"]).mean()` in `_build_drug_table`.
-2. **Pivot** to a (cell line × drug) matrix, column order pinned to `uns["ctrp_drugs"]`.
-3. **Broadcast** each bulk value to every cell of the matching line —
+2. **Standardize** per drug if `--score auc_z` (statistics computed per *cell line*, so a line with
+   many cells does not pull its own mean).
+3. **Pivot** to a (cell line × drug) matrix, column order pinned to `uns["ctrp_drugs"]`.
+4. **Broadcast** each bulk value to every cell of the matching line —
    `Y_full = cl_drug_matrix.reindex(cell_line_norm.values)`.
 
 ⇒ **every cell of a line carries the identical label vector.** Two consequences follow: grouped
-splitting becomes mandatory (below), and the absolute MSE is small (next section).
+splitting becomes mandatory (below), and per-cell MSE is not the honest metric (next section).
 
 The result is stored as `obsm["Y_ctrp"]` `(n_cells, K)` float32, NaN where unscreened, with the
-length-K column→drug map in `uns["ctrp_drugs"]`. A drug column is kept only if screened on
-≥ `--min-cell-lines` overlapping lines (default 50; the K=545 run used `--all-drugs`, i.e. min 0).
-Cancer type is never a label or a feature — it only colors the UMAPs in
+length-K column→drug map in `uns["ctrp_drugs"]` and the score name in `uns["ctrp_score"]`. A drug
+column is kept only if screened on ≥ `--min-cell-lines` overlapping lines (default 50; the K=545 runs
+used `--all-drugs`, i.e. min 0). The legacy flat columns `obs["viability_<drug>"]` /
+`obs["train_mask_<drug>"]` hold **whichever score was selected** — the `viability_` prefix is
+historical. Cancer type is never a label or a feature — it only colors the UMAPs in
 [Step 02](02-preprocessing-and-embeddings.md).
 
 ---
@@ -112,20 +152,26 @@ the cross-database block-sparse matrix in [Step 06](06-cross-database-integratio
 
 **Two aggregations are reported — do not conflate them:**
 
-| Name | Where | Definition | K=545 scGPT |
+| Name | Where | Definition | K=545 scGPT (`mean_pv`) |
 |---|---|---|---|
 | **Entry-pooled MSE** | `best_val_mse`, `history.csv` | `Σ sq·M / Σ M` over all observed entries | **0.0105** |
 | **Macro per-drug MSE** | `model_mean_mse` / `baseline_mean_mse` | per-drug `Σ_cells sq_k / n_k`, then `np.nanmean` over drugs (equal weight per drug) | **0.0103** |
 
 Only the **macro per-drug** numbers feed the **per-drug-mean baseline** comparison
 (`train_multitask._per_drug_constant_mse`). That baseline is a null model: for each drug it predicts
-the constant train-set mean viability over that drug's observed cells. "**Heads beating baseline**"
+the constant train-set mean score over that drug's observed cells. "**Heads beating baseline**"
 then counts drugs whose model per-drug val MSE beats that constant (scGPT 142/545, PCA 97/545 —
 [Step 05](05-multitask-results.md)).
 
-**This is the honest metric.** Absolute MSE ≈ 0.01 is misleadingly tiny: because `cpd_avg_pv`
-clusters near 1.0, the constant baseline already reaches ≈ 0.0097. So *beating the baseline*, not the
-raw MSE, is what shows a head actually learned response.
+**Beating that baseline, not the raw MSE, is the honest metric** — and the target scale decides how
+obvious that is:
+
+- On the legacy `mean_pv`, absolute MSE ≈ 0.01 looked impressively tiny but was meaningless: labels
+  cluster near 1.0, so the constant baseline already reached ≈ 0.0097.
+- On **`auc_z` the two coincide by construction**: a z-scored target has unit variance, so predicting
+  a drug's mean scores **MSE ≈ 1.0** and any MSE below 1 is real per-drug signal. (Observed: 0.92 for
+  the val baseline, since val holds only 27 lines.) This readability is a direct benefit of the
+  z-scoring.
 
 ---
 

@@ -465,7 +465,7 @@ def cv_evaluate(
 
 def main():
     args = _parse_args()
-    paths = PipelinePaths.build(args.data_root, args.variant)
+    paths = PipelinePaths.build(args.data_root, args.variant, args.score)
     h5ad_path = args.path or str(paths.targets_h5ad)
 
     config = TrainConfig(

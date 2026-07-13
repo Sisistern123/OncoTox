@@ -159,7 +159,7 @@ def _parse_args():
 
 if __name__ == "__main__":
     args = _parse_args()
-    paths = PipelinePaths.build(args.data_root, args.variant)
+    paths = PipelinePaths.build(args.data_root, args.variant, args.score)
     h5ad_path = str(args.path or paths.targets_h5ad)
     if args.mode == "multi":
         run_multi(

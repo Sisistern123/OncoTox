@@ -1,5 +1,46 @@
 
 # OncoTox Project Notes
+## 13.07.2026
+
+### Target score: `cpd_avg_pv` → per-drug z-scored AUC (`auc_z`)
+
+**Decision:** the CTRPv2 training target is now `auc_z` — `area_under_curve / conc_pts_fit` from the
+post-QC sigmoid fits (`v20.data.curves_post_qc.txt`), z-scored within each drug. `--score
+{auc_z,auc,mean_pv}` selects it on every script and each score gets its own targets h5ad, so the old
+score stays reproducible (`--score mean_pv`) and the two can be trained head-to-head. Full rationale
+in [Step 03](./steps/03-model-and-training-design.md).
+
+Why, in order of how much each mattered:
+- **The old score never used the curve fit.** `cpd_avg_pv` is *per concentration point*; we averaged it
+  over the dose grid, so the label was dominated by however many concentrations sat in the flat
+  pre-response region and inherited every noisy well. AUC is the field standard (Rees 2016, DepMap,
+  PharmacoGx) and is what GDSC2 reports — Step 06 needs both sides on the same metric.
+- **CTRP's AUC is integrated, not averaged.** `conc_pts_fit` ranges 8–29 (usually 16), so raw AUC is
+  partly a function of the concentration grid; dividing it out is required before comparing drugs.
+- **Z-scoring per drug** removes the potency offset expression can't explain and puts all 545 heads on
+  one scale, so no well-covered drug dominates the masked loss.
+
+**The number that justified the switch:** globally the old and new scores correlate at ρ ≈ 0.97, which
+made the change look cosmetic. But that is driven by *between-drug* potency spread. Within a drug,
+across cell lines — the only variation the model has to predict — the median Spearman is **0.72**
+(min 0.42). The scores genuinely rank cell lines differently.
+
+**Bonus, and the reason this may matter for the learnability question:** on a z-scored target the
+per-drug-mean null model scores MSE ≈ 1.0 by construction. The "MSE ≈ 0.01 but the baseline is 0.0097"
+trap from the `mean_pv` runs is gone — any MSE < 1 is real per-drug signal.
+
+**Caveat to fix later:** the z-score mean/std are computed over all 180 overlapping lines, val/test
+included. Standard practice, mild leakage; train-only would need splits computed before targets.
+
+**Verified:** per-drug mean 0.0000 / sd 1.0000 across cell lines; drug list (545), mask, and the 180-line
+overlap identical to the `mean_pv` file. Nothing re-trained on it yet.
+
+## 29.06.2026
+- UMAP comparison, on what is the pca side done again? check
+- presentation for mathias
+- double check whole pipeline
+
+
 ## 27.06.2026
 
 ### PCA width raised to 512 (match scGPT)

@@ -80,7 +80,7 @@ def _parse_args():
         help="Replace output h5ad if it already exists.",
     )
     args = parser.parse_args()
-    paths = PipelinePaths.build(args.data_root, args.variant)
+    paths = PipelinePaths.build(args.data_root, args.variant, args.score)
     n_top = args.n_top_genes
     if n_top is None:
         n_top = VARIANT_N_TOP_GENES[args.variant]
