@@ -15,25 +15,34 @@ Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition** inside
 > of wide-spread drugs monopolize the trunk's gradient **because of their units, not their learnability**,
 > and the model learns nothing that transfers.
 >
-> `notebooks/11_auc_vs_aucz.ipynb` **reproduces this failure on demand.** Same model, same drugs, same
-> split — only the target scale differs (mean per-drug Spearman on the 5 learnable drugs, out-of-fold):
+> `notebooks/11_auc_vs_aucz.ipynb` **reproduces this failure on demand.** All three CTRPv2 targets, same
+> model, same drugs, same split — out-of-fold Spearman on the 5 learnable drugs, scored on one common
+> yardstick (the curve-fit AUC ranking), ±95% bootstrap CI over the ~150 held-out lines:
 >
-> | K=545 | unstandardized (`auc`) | per-drug z-scored (`auc_z`) |
-> |---|---|---|
-> | `X_pca` | +0.016 | **+0.378** |
-> | `X_scGPT` | **−0.087** | **+0.430** |
+> | K=545 | `mean_pv` (Steps 04–05) | `auc` (curve fit) | **`auc_z`** (per-drug z) |
+> |---|---|---|---|
+> | `X_pca` | +0.027 [−0.04, 0.10] | +0.016 [−0.06, 0.09] | **+0.378** [0.31, 0.44] |
+> | `X_scGPT` | **−0.070** [−0.14, 0.00] | **−0.087** [−0.15, −0.02] | **+0.430** [0.37, 0.48] |
 >
-> **Consequences — all three matter:**
+> **The fix is the per-drug standardization — nothing else.** The curve fit buys **no accuracy**:
+> `mean_pv` and raw `auc` are statistically identical at K=545 *and* at K=5 (where **all three targets
+> tie**, ρ ≈ 0.42–0.49). Keep the curve fit for principled reasons (post-QC fit; the metric family GDSC2
+> reports), not for performance.
+>
+> **Consequences — all four matter:**
 >
 > 1. **[Step 05](./steps/05-multitask-results.md)'s headline null result** ("neither rep ranks cell lines",
 >    ρ ≈ 0 over 545 drugs) **was substantially an artifact** of this, *not* clean evidence about scGPT vs
 >    PCA. The **8-run matrix conclusions rest on it and are suspect** — they need re-running on `auc_z`,
 >    and should be expected to change, not merely refresh.
-> 2. **The target is the single biggest improvement the project has made.** Holding head count *and*
+> 2. **Fixing the loss is the single biggest improvement the project has made.** Holding head count *and*
 >    evaluation fixed, `mean_pv` → `auc_z` moved per-drug Spearman on the learnable drugs from **−0.29 to
 >    +0.35** (scGPT). Drug filtering (+0.06) and honest out-of-fold measurement (+0.10) are real but
 >    secondary.
-> 3. **Model-side tuning is closed.** Regularization, capacity, batch size and reweighting are **all flat**
+> 3. **scGPT > PCA is now sign-consistent across 3 seeds** (gap **+0.075 ± 0.038** at K=545 `auc_z`) —
+>    consistent evidence, **not** a proven margin. Needs more seeds and a wider drug set before it is a
+>    headline claim.
+> 4. **Model-side tuning is closed.** Regularization, capacity, batch size and reweighting are **all flat**
 >    (`notebooks/10_ablations.ipynb`), and **`RidgeCV` on 150 cell-line mean embeddings ties the PCA MLP**
 >    (ρ = 0.428) — so the entire deep single-cell apparatus currently buys **+0.06, and only for scGPT**.
 >    Ridge-on-line-means, not the per-drug-mean null, is the baseline to beat from now on.
@@ -285,7 +294,8 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 | Target score: curve-fit AUC instead of dose-averaged viability | ✅ Done 13.07.2026, **re-runs pending** | `--score auc_z` default ([Step 03](./steps/03-model-and-training-design.md)); Steps 04–05 numbers still `mean_pv` |
 | Core hypothesis: scGPT overfits less than PCA | ✅ Confirmed (generalization only) | 512-d matched: `hvg5000` single-task gap 0.004 (scGPT) vs 0.033 (PCA); but PCA ≈/better on all-drugs accuracy (169 vs 147) ([Step 05](./steps/05-multitask-results.md)) |
 | Does the model rank cell lines at all? | ✅ **Yes** (13.07.2026) | **0.43 (PCA) / 0.49 (scGPT)** out-of-fold on the 5 learnable drugs — and **0.38 / 0.43 even at K=545** once the target is z-scored. The old ρ ≈ 0 was an unstandardized-loss + unlearnable-drug artifact ([Step 05](./steps/05-multitask-results.md)) |
-| Is the per-drug z-scoring load-bearing? | ✅ **Yes, at K=545** (13.07.2026) | Raw `auc` at K=545 → **−0.087 (scGPT)**; `auc_z` → **+0.430**. Irrelevant at K=5 (±0.01) — see `notebooks/11_auc_vs_aucz.ipynb` |
+| Is the per-drug z-scoring load-bearing? | ✅ **Yes — it is the whole effect** (13.07.2026) | K=545: `mean_pv` −0.070 / `auc` −0.087 / **`auc_z` +0.430** (scGPT). At K=5 all three tie. The **curve fit buys no accuracy**; the standardization does everything (`notebooks/11`) |
+| Is scGPT's lead over PCA real? | 🟡 **Sign-consistent over 3 seeds** (13.07.2026) | K=545 `auc_z` gap **+0.075 ± 0.038** (seeds 42/1/7, all positive). Consistent evidence, **not** a proven margin — needs more seeds + a wider drug set |
 | Is the model over-regularized / too big? | ❌ **No — tuning is closed** (13.07.2026) | Regularization, capacity (74,629→2,565 params), batch size, reweighting: **all flat**. **Ridge on 150 line-means ties the PCA MLP** (0.428) → the deep pipeline buys +0.06, scGPT only (`notebooks/10_ablations.ipynb`) |
 | 8-run matrix conclusions (`mean_pv`) | ⚠️ **Suspect — re-run required** | They rest on the K=545 null result, which the unstandardized loss substantially produced. Re-run on `--score auc_z` ([TODO](./TODO.md)) |
 | Phase 3a: multi-task masked loss | ✅ Done **within CTRPv2 only** | [Step 05](./steps/05-multitask-results.md) |

@@ -138,43 +138,48 @@ meaningless on the z-scale — see below).
    each drug is its own output row **with its own bias term**, so the head absorbs that offset either
    way. This argument is close to vacuous; do not lean on it.
 
-### Measured: `auc` vs `auc_z` (`notebooks/11_auc_vs_aucz.ipynb`, 13.07.2026)
+### Measured: all three targets head-to-head (`notebooks/11_auc_vs_aucz.ipynb`, 13.07.2026)
 
-The argument above was tested, not assumed. Per-drug Spearman is invariant to a per-drug affine map, and
-`auc_z` *is* one — so the true per-line ranking is identical under both targets and the metric is
-directly comparable. The **only** channel through which the target scale can change a per-drug ranking is
-the multi-task coupling. Out-of-fold Spearman on the 5 learnable drugs, same model throughout:
+The argument above was tested, not assumed. All three scores were trained with the identical model and
+scored on **one common yardstick — the curve-fit `auc` ranking of cell lines** (`mean_pv` is *not* an
+affine map of `auc` — within a drug they agree only ρ ≈ 0.72 — so scoring each model against its own
+target would make the columns answer different questions; `auc`/`auc_z` *do* share a ranking exactly).
+Out-of-fold Spearman on the 5 learnable drugs, ±95% bootstrap CI over the ~150 held-out lines:
 
-| | `--score auc` | `--score auc_z` |
-|---|---|---|
-| **K=5** · PCA | 0.441 | 0.432 |
-| **K=5** · scGPT | 0.482 | 0.488 |
-| **K=545** · PCA | **0.016** | **0.378** |
-| **K=545** · scGPT | **−0.087** | **0.430** |
+| | `mean_pv` (legacy) | `auc` (curve fit) | `auc_z` (z-scored) |
+|---|---|---|---|
+| **K=5** · PCA | 0.450 [0.39, 0.50] | 0.439 [0.38, 0.49] | 0.424 [0.36, 0.48] |
+| **K=5** · scGPT | 0.481 [0.42, 0.53] | 0.482 [0.42, 0.53] | **0.488** [0.43, 0.54] |
+| **K=545** · PCA | **+0.027** [−0.04, 0.10] | **+0.016** [−0.06, 0.09] | **+0.378** [0.31, 0.44] |
+| **K=545** · scGPT | **−0.070** [−0.14, 0.00] | **−0.087** [−0.15, −0.02] | **+0.430** [0.37, 0.48] |
 
-- **At K=5 the two are indistinguishable** (±0.01, both directions) — as predicted, since those five drugs
-  have near-identical spread (0.155–0.194) and there is nothing to equalize. **On a filtered,
-  spread-homogeneous subset, `--score auc` is equally good** and keeps predictions in native AUC units.
-- **At K=545 raw `auc` collapses to zero** while `auc_z` holds. With spreads spanning 9× (0.034 → 0.302,
-  ~80× in squared error), the wide-spread heads monopolize the shared trunk's gradient **because of their
-  units, not their learnability**, and nothing transferable is learned.
+(Pearson agrees throughout, within ±0.02 — neither metric is doing anything special. Per-drug spread is
+wide, 0.10–0.65, so the dots in the notebook figure matter as much as the bars.)
+
+**Two results, one of which corrects an earlier claim in these docs:**
+
+1. **The z-scoring is load-bearing — and it is the *whole* effect.** At K=545 both unstandardized targets
+   collapse to zero (or below) while `auc_z` holds at ~0.4. With per-drug spreads spanning 9× (0.034 →
+   0.302, ~80× in squared error), the wide-spread heads monopolize the shared trunk's gradient **because
+   of their units, not their learnability**, and nothing transferable is learned.
+2. ⚠️ **The curve fit buys no measurable accuracy.** An earlier version of this section credited
+   `area_under_curve` over the dose-averaged `mean_pv`. **That is falsified:** trained head-to-head,
+   `mean_pv` and raw `auc` are statistically identical at *both* K (0.450 vs 0.439 at K=5; +0.027 vs
+   +0.016 at K=545 — CIs fully overlapping). Reason 1 in the list above is **principled, not empirical**:
+   keep the curve fit for the post-QC sigmoid, the confidence intervals, and because it is the metric
+   family GDSC2 reports (which [Step 06](06-cross-database-integration.md) needs) — but do **not** claim
+   it improves accuracy. It does not.
 
 > **Decision: keep `auc_z` as the default** (`layout.DEFAULT_CTRP_SCORE`). At the full catalog it is the
-> difference between a model that ranks cell lines and one that does not — reason 1 above is doing all the
-> work, exactly as argued. Reach for `--score auc` only on a small spread-homogeneous subset where native
-> units matter.
+> difference between a model that ranks cell lines and one that does not. **At K=5 all three targets tie**
+> — on a small, spread-homogeneous subset `--score auc` is equally good and keeps predictions in native,
+> interpretable AUC units.
 
-**Two consequences, both large:**
-
-1. **Switching `mean_pv` → `auc_z` is the single biggest improvement this project has made.** Holding head
-   count *and* evaluation fixed, it took mean per-drug Spearman on the 5 learnable drugs from
-   **−0.29 → +0.35** (scGPT) and **−0.04 → +0.25** (PCA) — see the decomposition in
-   [Step 05](05-multitask-results.md).
-2. **It retro-diagnoses the project's central null result.** [Step 05](05-multitask-results.md) §3
-   ("neither rep ranks cell lines", ρ ≈ 0 across 545 drugs) was run at **K=545 on `mean_pv`** — a target
-   with the *same* heterogeneous-variance pathology. The `auc` K=545 row above **reproduces that failure
-   on demand**. That null was therefore never clean evidence about scGPT vs PCA; it was substantially an
-   artifact of an **unstandardized multi-task loss**.
+**And it retro-diagnoses the project's central null result.** [Step 05](05-multitask-results.md) §3
+("neither rep ranks cell lines", ρ ≈ 0 across 545 drugs) ran at **K=545 on `mean_pv`** — the grey column
+above, which sits at **−0.070 / +0.027**. The table **reproduces that null on demand**, and shows it
+vanishes the moment the heads are standardized. It was never clean evidence about scGPT vs PCA; it was
+substantially an artifact of an **unstandardized multi-task loss**.
 
 > The two scores are **not** interchangeable. Globally they correlate at ρ ≈ 0.97, but that is
 > inflated by between-drug potency differences. *Within* a drug, across cell lines — the only

@@ -137,6 +137,32 @@ matrix conclusions) needs re-running on `auc_z`.
 **Decision: `auc_z` stays the default.** Of my three original justifications, only #1 (equalizing heads in
 the shared loss) is doing any work — and it turns out to be doing *all* of it.
 
+### Follow-up (same day): added `mean_pv` + error bars + seeds → one of my claims was WRONG
+
+Re-ran `11` with all three targets, 95% bootstrap CIs over cell lines, per-drug dots, Pearson alongside
+Spearman, and a 3-seed check. Two corrections and one confirmation.
+
+**❌ WRONG — "the curve fit preserves signal the dose-average destroys."** I wrote that in Step 05 this
+morning. **Falsified.** Trained head-to-head, `mean_pv` and raw `auc` are statistically identical
+*everywhere*: K=5 → 0.450 vs 0.439 (PCA), 0.481 vs 0.482 (scGPT); K=545 → both collapse (+0.027/−0.070 vs
++0.016/−0.087). CIs fully overlap. **The curve fit buys no measurable accuracy.** Keep it for principled
+reasons (post-QC sigmoid, confidence intervals, the metric family GDSC2 reports → Step 06), but never
+claim it improves prediction. **The per-drug standardization is the entire effect** — the whole +0.64 came
+from fixing the *loss*, not from a better label.
+
+**✅ Confirmed — z-scoring is load-bearing, and only at K=545.** At K=5 all three targets tie (ρ ≈
+0.42–0.49; the 5 drugs have near-uniform spread, nothing to equalize). At K=545 both unstandardized
+targets collapse to ≈0 or below. So the target choice matters **exclusively through the multi-task
+coupling** — a sharper and more specific claim than "AUC is a better target".
+
+**🟡 scGPT vs PCA — now sign-consistent.** K=545 `auc_z` over 3 seeds: gaps +0.043 / +0.066 / +0.117 →
+**+0.075 ± 0.038, all positive**. No longer a one-seed accident, but 3 seeds × 5 drugs is *consistent
+evidence, not a proven margin*. Don't headline it yet.
+
+Also: Pearson tracks Spearman within ±0.02 throughout, so the metric choice was never load-bearing. And
+the per-drug spread is wide (ρ 0.10–0.65 across the 5 drugs) — the dots on the figure matter as much as
+the bars.
+
 ## 29.06.2026
 - UMAP comparison, on what is the pca side done again? check
 - presentation for mathias

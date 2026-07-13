@@ -58,17 +58,22 @@ val/test included, so the selection saw held-out labels. Turning it into a repor
 
 - [ ] **Train-only selection** — run the learnability gates *inside each CV fold* (train lines only) and
       re-measure. If the effect survives, it is real; this is the blocking item.
-- [ ] **Multiple seeds** — `07` §2 showed fold variance big enough to swallow the scGPT−PCA gap
-      (+0.06 Spearman). Repeat over seeds before claiming scGPT wins.
+- [x] **Multiple seeds** (13.07.2026) — done for K=545 `auc_z`: gap **+0.075 ± 0.038**, sign-consistent
+      over 3 seeds. Still thin; see the "more seeds + wider drug set" item above.
 - [ ] **Loosen to ~20–50 drugs** — 5 is a diagnostic, not a model. Where does the signal die as the gates
       relax? (`ctrp_drug_learnability_auc.csv` is already ranked for this.)
 - [ ] **Re-run the full 8-run matrix + CV on `--score auc_z`** for a like-for-like against the `mean_pv`
       Steps 04–05 numbers. **Expect this to overturn them:** at K=545 the old unstandardized target was
       destroying the signal (below), so the 8-run matrix's conclusions are suspect, not just stale.
-- [x] **`auc` vs `auc_z` measured** (13.07.2026) → `11`. **z-scoring is essential at K=545** (raw `auc`:
-      scGPT **−0.087** / PCA +0.016 vs `auc_z` **+0.430** / +0.378) and **irrelevant at K=5** (±0.01 —
-      the 5 filtered drugs have near-identical spread, so there is nothing to equalize). Keep `auc_z` as
-      the default; `--score auc` is fine on a spread-homogeneous subset where native units matter.
+- [x] **All 3 targets measured head-to-head** (13.07.2026) → `11`, with bootstrap CIs, Pearson, and per-drug
+      dots. **z-scoring is essential at K=545** (`mean_pv` −0.070 / `auc` −0.087 / **`auc_z` +0.430**,
+      scGPT) and **irrelevant at K=5** (all three tie, ρ ≈ 0.42–0.49). ⚠️ **The curve fit buys no
+      accuracy** — `mean_pv` ≈ `auc` everywhere; keep it for GDSC comparability, not performance. Keep
+      `auc_z` as the default; `--score auc` is fine on a spread-homogeneous subset (native units).
+- [x] **Seed check on scGPT vs PCA** (13.07.2026) → `11`. K=545 `auc_z` gap **+0.075 ± 0.038**, sign-
+      consistent over seeds 42/1/7. Consistent evidence, **not** a proven margin.
+- [ ] **More seeds + a wider drug set** before scGPT > PCA becomes a headline claim (3 seeds, 5 drugs is
+      thin). Pair it with the train-only selection below.
 - [x] ~~Fix the calibration shrinkage with lighter regularization~~ — **withdrawn 13.07.2026.** `pred_std ≈
       ρ × true_std` is what an MSE-optimal predictor *must* do; the shrinkage is correct calibration, not
       over-regularization, and loosening dropout raises MSE (`10` §1). To report in AUC units, divide by ρ.

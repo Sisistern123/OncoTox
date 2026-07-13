@@ -108,21 +108,27 @@ the 150 cell-line mean embeddings** (no cells, no network) scores **0.428**, *ty
 Outputs: `ablation_regularization.csv`, `ablation_capacity.csv`, `ablation_batch_weighting.csv`,
 `ablation_reg_capacity.png`. See [Step 03](../docs/steps/03-model-and-training-design.md#these-hyperparameters-are-not-worth-tuning-ablated-13072026).
 
-### `11_auc_vs_aucz.ipynb` — does the per-drug z-scoring help? (yes, decisively, at K=545)
+### `11_auc_vs_aucz.ipynb` — which target? (`mean_pv` vs `auc` vs `auc_z`)
 
-Trains the identical model on `--score auc` vs `--score auc_z`, at K=5 and K=545. Fair by construction:
-`auc_z` is a per-drug *affine* map of `auc`, and per-drug Spearman is invariant to that — so the true
-ranking is identical and the only channel between the two is the **multi-task coupling**.
+All three CTRPv2 scores, identical model, K=5 and K=545, scored **out-of-fold** on one common yardstick
+(the curve-fit AUC ranking — `mean_pv` is *not* an affine map of `auc`, so scoring each against its own
+target would make the columns answer different questions). Reports **Spearman + Pearson**, a **95%
+bootstrap CI over the ~150 held-out lines**, per-drug dots, and a **3-seed stability check**.
 
-| | `auc` | `auc_z` |
-|---|---|---|
-| K=5 (PCA / scGPT) | 0.441 / 0.482 | 0.432 / 0.488 |
-| **K=545** (PCA / scGPT) | **+0.016 / −0.087** | **+0.378 / +0.430** |
+| | `mean_pv` | `auc` | `auc_z` |
+|---|---|---|---|
+| K=5 (PCA / scGPT) | 0.450 / 0.481 | 0.439 / 0.482 | 0.424 / **0.488** |
+| **K=545** (PCA / scGPT) | **+0.027 / −0.070** | **+0.016 / −0.087** | **+0.378 / +0.430** |
 
-**Identical at K=5** (the 5 filtered drugs have near-uniform spread — nothing to equalize), **but raw `auc`
-collapses to zero at K=545**, where spreads span 9× and the wide-spread heads monopolize the shared trunk
-by unit size alone. This also **reproduces the `07` §3 null result on demand**, showing it was substantially
-an artifact of an unstandardized loss. Outputs: `auc_vs_aucz.csv`, `auc_vs_aucz.png`.
+- **At K=5 all three tie** (CIs overlap) — nothing to equalize, so on a spread-homogeneous subset
+  `--score auc` is equally good *and* keeps native AUC units.
+- **At K=545 both unstandardized targets collapse** while `auc_z` holds → per-drug standardization is what
+  makes a 545-head masked MSE trainable, and this **reproduces the `07` §3 null result on demand**.
+- ⚠️ **The curve fit buys no accuracy** (`mean_pv` ≈ `auc` everywhere) — keep it for GDSC comparability,
+  not performance.
+- **scGPT − PCA = +0.075 ± 0.038**, sign-consistent over 3 seeds (`seed_stability.csv`).
+
+Outputs: `target_comparison.csv`, `target_comparison_ci.csv`, `seed_stability.csv`, `target_comparison.png`.
 
 ---
 

@@ -258,9 +258,19 @@ readable directly.) Per drug: `ml162` 0.59/**0.65**, `1s,3r-rsl-3` 0.58/**0.59**
   `1s,3r-rsl-3`): ferroptosis sensitivity tracks a cell's lipid-peroxidation/redox state, which is a
   *transcriptional* state. `dasatinib` (SRC/ABL) follows target addiction. The filter selected drugs
   whose variance has a transcriptional cause, not merely high-variance drugs.
-- **First non-tie between the reps.** scGPT leads on every aggregate and on 4/5 drugs, most clearly
-  where PCA collapses (`kx2-391`, 0.28 vs 0.11). **Suggestive, not established:** 5 drugs, one seed, and
-  §2's fold variance is large enough to swallow a gap this size. Needs repeating over seeds.
+- **First non-tie between the reps — and it survives a seed check (13.07.2026).** scGPT leads on every
+  aggregate and on 4/5 drugs, most clearly where PCA collapses (`kx2-391`, 0.28 vs 0.11). Repeating the
+  **K=545 `auc_z`** configuration over **3 seeds** (`notebooks/11`, `outputs/seed_stability.csv`):
+
+  | seed | PCA | scGPT | gap |
+  |---|---|---|---|
+  | 42 | 0.388 | 0.430 | +0.043 |
+  | 1 | 0.367 | 0.434 | +0.066 |
+  | 7 | 0.355 | 0.472 | +0.117 |
+
+  **Gap = +0.075 ± 0.038, sign-consistent across all three seeds.** No longer a one-seed accident — but
+  3 seeds × 5 evaluation drugs is **consistent evidence, not a proven margin**. Do not upgrade it to a
+  headline claim without more seeds and a wider drug set.
 - **Ranking ≫ calibration.** `pred_std` is 0.53 (PCA) / 0.47 (scGPT) against a true spread of 1.0 — both
   models hedge toward each drug's mean. This is **not** an over-regularization artifact: `pred_std ≈ ρ ×
   true_std` is exactly what an MSE-optimal predictor must do (see the ablations below). Fine for ranking;
@@ -307,16 +317,25 @@ Read down the column — each row changes exactly one thing:
 - **The target switch is the dominant term: +0.29 (PCA) and +0.64 (scGPT)**, with head count and the
   27-line measurement held fixed. This is a genuine improvement in the *predictions*, not in the
   metric: on `mean_pv` the model's ranking of these drugs was **negative** (scGPT −0.29 — worse than a
-  coin flip), and on `auc_z` the same model, same drugs, same 27 lines ranks them at +0.35. The
-  dose-averaged viability target was actively destroying the signal the curve fit preserves.
+  coin flip), and on `auc_z` the same model, same drugs, same 27 lines ranks them at +0.35.
 - **Honest measurement adds ~+0.1** (27 → 150 held-out lines). Real, but it is a *precision* gain, not
   a model gain — and it is why the old −0.47-type numbers should never have been read as findings.
 - **Drug filtering adds only ~+0.06.** The learnability filter is the *smallest* of the three effects.
   Its value is that it identifies *where* the signal lives — at K=545 these drugs already reach 0.430
   (scGPT), so the filter is not what created the signal.
 
-⇒ **The model is genuinely better than it was this morning, and the credit goes to the target.**
-`auc_z` is not merely a more readable scale; it is a better learning problem.
+> ⚠️ **Which part of the target switch did the work? The z-scoring — *not* the curve fit.** An earlier
+> version of this section credited the curve-fit AUC ("the dose-averaged viability target was destroying
+> the signal the curve fit preserves"). `notebooks/11` **falsifies that**: trained head-to-head, the
+> legacy `mean_pv` and the raw curve-fit `auc` behave *identically* — at K=5 they tie
+> (0.450 / 0.481 vs 0.439 / 0.482, CIs fully overlapping), and at K=545 they **both collapse**
+> (+0.027 / −0.070 vs +0.016 / −0.087). The curve fit is worth keeping for principled reasons (post-QC
+> fitting, and the same metric family GDSC2 reports — [Step 06](06-cross-database-integration.md)), but
+> it buys **no measurable accuracy**. **Every bit of the +0.64 comes from standardizing the per-drug
+> variance**, i.e. from fixing the multi-task loss.
+
+⇒ **The model is genuinely better than it was this morning, and the credit goes to one thing: per-drug
+standardization of a 545-head shared loss.**
 
 ### Gene-set sweep — heads-beating vs gene count (incl. all_genes, 28.06.2026)
 
