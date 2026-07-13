@@ -67,6 +67,25 @@ CLI uses).
 Set a flag `True` to recompute that section. Metric definitions are in
 [`docs/steps/05`](../docs/steps/05-multitask-results.md#metrics--what-each-number-means).
 
+### `08_learnability_filter.ipynb` → `09_learnable5_training.ipynb` — the learnable-drug pair (13.07.2026)
+
+Run in order; `09` reads `08`'s CSV, so re-running `08` with different gates changes what `09` trains.
+
+- **`08`** — harsh learnability filter on the `auc_z` target. The `04` score (`resp_std × cov_frac`) is
+  **degenerate** here (z-scoring makes every drug's std 1.0), so spread is read off the raw `auc` scale
+  via `uns["ctrp_score_scale"]`. Adds the condition the loose filter lacked — a drug must **kill** a real
+  population of lines *and* **leave one alive**. **5 / 545 survive** → `outputs/ctrp_drug_learnability_auc.csv`,
+  `outputs/learnability_filter_auc.png`.
+- **`09`** — PCA vs scGPT trained on those 5 (via `train_rep`, matched trunk). Headline metric is per-drug
+  Spearman on **cross-validated out-of-fold predictions** (5-fold GroupKFold over the 153 train+val lines,
+  ~150 lines/drug — the fixed val split only has 27). **Mean Spearman 0.43 (PCA) / 0.49 (scGPT)** vs ≈ 0
+  over all 545 drugs → the 545-drug null result was a **drug-selection artifact**
+  ([Step 05](../docs/steps/05-multitask-results.md)). Outputs: `learnable5_per_drug_correlation.csv`,
+  `learnable5_fixed_split_mse.csv`, `learnable5_pred_vs_true.png`, `learnable5_pca_vs_scgpt.png`.
+
+⚠️ Both are a **best-case diagnostic**: the 5 drugs are selected using all 180 lines (val/test included).
+Fine for "does any signal exist?", not a generalization estimate — see [TODO](../docs/TODO.md).
+
 ---
 
 ## Supporting notebooks (understanding / data exploration)

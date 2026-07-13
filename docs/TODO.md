@@ -31,31 +31,37 @@ Action list. Scientific narrative + full numbers live in
       [Step 03](./steps/03-model-and-training-design.md). Within-drug Spearman vs the old `mean_pv` is
       only **0.72** (median), so this is *not* cosmetic — but nothing is re-trained on it yet.
 
-**Net read:** with a fair 512-d + cross-validated comparison **PCA ≈ scGPT**, and the model learns the
-per-drug mean, not cross-line sensitivity. The ceiling is the **label** (bulk value broadcast to a
-line's cells → ~126 independent lines; viability compressed near 1.0), not the gene representation.
-The `auc_z` switch attacks the compression half of that: on a standardized target, MSE ≈ 1.0 *is* the
-null model, so "learned nothing" can no longer hide behind a tiny absolute MSE.
+- [x] **Learnability filter + best-case diagnostic** (13.07.2026) → `08` + `09`. Harsh gates (coverage,
+      AUC spread, **and** a real killed *and* surviving population) keep **5/545**. Trained on those:
+      out-of-fold per-drug Spearman **0.43 (PCA) / 0.49 (scGPT)** vs ≈ 0 over all 545 →
+      [Step 05](./steps/05-multitask-results.md).
 
-## Next focus — re-run on `auc_z`, then drug-learnability filtering (13.07.2026)
+**Net read (revised 13.07.2026):** the old net read — *"the ceiling is the label; the model learns the
+per-drug mean, not cross-line sensitivity; PCA ≈ scGPT"* — is **true on average over 545 drugs and false
+on the drugs that carry signal.** Filtering to the 5 learnable drugs takes per-drug Spearman from ≈ 0 to
+**~0.45**, and scGPT leads PCA on 4/5 (first non-tie in the project). The 545-drug null result was a
+**drug-selection artifact**. The label ceiling is still real (bulk value broadcast to a line's cells →
+~150 independent lines, predictions shrunk to ~half the true spread), but it is **not** the whole story,
+and drug selection is the cheapest available lever.
 
-- [ ] **Re-run the 8-run matrix + CV on `--score auc_z`** and compare head-to-head against the
-      `mean_pv` results ([Step 05](./steps/05-multitask-results.md)) — does the curve-fit target change
-      heads-beating-baseline or the per-drug correlations at all?
+## Next focus — make the 5-drug result honest (13.07.2026)
+
+The `08`/`09` numbers are a **best-case diagnostic**: the 5 drugs were selected using all 180 lines,
+val/test included, so the selection saw held-out labels. Turning it into a reportable result:
+
+- [ ] **Train-only selection** — run the learnability gates *inside each CV fold* (train lines only) and
+      re-measure. If the effect survives, it is real; this is the blocking item.
+- [ ] **Multiple seeds** — `07` §2 showed fold variance big enough to swallow the scGPT−PCA gap
+      (+0.06 Spearman). Repeat over seeds before claiming scGPT wins.
+- [ ] **Loosen to ~20–50 drugs** — 5 is a diagnostic, not a model. Where does the signal die as the gates
+      relax? (`ctrp_drug_learnability_auc.csv` is already ranked for this.)
+- [ ] **Fix the calibration shrinkage** — `pred_std` ≈ 0.5 vs a true spread of 1.0; both reps hedge to
+      the drug mean. Lighter dropout/weight-decay, or a per-drug linear recalibration fit on train lines.
+      Ranking is fine; absolute AUC (needed for cross-drug decisions) is not.
+- [ ] **Re-run the full 8-run matrix + CV on `--score auc_z`** for a like-for-like against the `mean_pv`
+      Steps 04–05 numbers.
 - [ ] *(Optional)* **z-score train-only.** The per-drug mean/std currently use all 180 lines, val/test
       included — mild leakage. Fixing it means computing splits before the targets step.
-
-Filter drugs by learnability *before* training/eval, and pin down whether **any** real signal exists.
-- [ ] **Define learnability properly** — stricter than coverage+std (that keeps 439/545). Candidate:
-      coverage ≥ threshold **AND genuine differential response** — now naturally expressed on the AUC
-      scale (e.g. ≥ N lines below −1 SD in `auc_z`, replacing the old `viability < 0.7`),
-      optionally CV per-drug correlation > 0. Drop near-flat / low-coverage drugs.
-- [ ] **Best-case diagnostic** — per-drug correlation + predicted-vs-true scatter on the *most-responsive,
-      well-covered* drugs. Decides whether the ceiling is the data or the model.
-- [ ] **Predicted-vs-true diagnostic** — is the model just predicting the per-cell-line mean? Does
-      averaging per-cell predictions back to the line help?
-- [ ] **Filter → re-run** matrix / CV / sweep on the learnable subset; do PCA-vs-scGPT and the absolute
-      metrics separate once dead heads are removed?
 - [ ] *(Stretch)* cluster cell lines by response and **stratify train/val/test** (high/med/low) for
       lower-variance evaluation.
 

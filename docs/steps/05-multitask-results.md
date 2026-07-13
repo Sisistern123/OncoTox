@@ -207,6 +207,62 @@ Pearson), restricted to the 461 drugs with real per-line variance (std ≥ 0.05,
   rep yet predicts response variation across lines**. Motivates the better-target / better-metric work
   in [TODO.md](../TODO.md) (correlation-based selection, drugs with real variance).
 
+> ⚠️ **Superseded in scope (13.07.2026).** The "≈ 0 correlation" verdict is an **average over 545
+> drugs**, and averaging is what destroys it: on the 5 drugs that carry real signal, the same model
+> reaches Spearman **0.43–0.49** (next section). The conclusion "neither rep predicts response across
+> lines" is true *on this drug set* and **false on a filtered one**.
+
+### Learnability-filtered subset — the signal was there all along (13.07.2026)
+
+`notebooks/08_learnability_filter.ipynb` → `notebooks/09_learnable5_training.ipynb`. The §3 null result
+above pooled a few learnable heads with hundreds of flat, inert ones. **Filter first, then ask.**
+
+**The filter (`08`).** The learnability score of [`04`](../../notebooks/04_drug_coverage.ipynb)
+(`resp_std × cov_frac`) is **degenerate on `auc_z`** — the target is z-scored per drug, so every drug
+has std exactly 1.0 and all 545 tie. Spread is therefore measured on the **raw `auc` scale**, recovered
+exactly via `uns["ctrp_score_scale"]`/`["ctrp_score_center"]` (and that `scale` vector *is* the per-drug
+std of `auc`). The loose `04` gates (`cov ≥ 100 & std ≥ 0.05`) kept 439/545 and so never bit; the
+missing condition is **differential response** — a drug must both **kill** a real population of lines
+(`n_sens`: `auc ≤ 0.5`) and **leave one alive** (`n_res`: `auc ≥ 0.8`). A uniformly inert or uniformly
+toxic drug has no cross-line ranking to learn, however well covered it is. **6 / 545 pass; the top 5 by
+learnability are trained.**
+
+**The result (`09`).** Both reps trained on those 5 heads (matched trunk, `--score auc_z`); the honest
+metric is per-drug Spearman on **cross-validated out-of-fold predictions** — 5-fold GroupKFold over the
+153 train+val lines, so every line is ranked by a model that never saw it (~150 lines per drug, versus
+the 27 the fixed val split would allow):
+
+| Rep | mean Spearman | mean Pearson | heads beating baseline | best val MSE |
+|---|---|---|---|---|
+| `X_pca` | **0.432** | 0.416 | 3 / 5 | 0.925 |
+| `X_scGPT` | **0.488** | 0.482 | 4 / 5 | 0.777 |
+
+(On `auc_z` the per-drug-mean null model scores MSE = **1.0** by construction, so these MSEs are
+readable directly.) Per drug: `ml162` 0.59/**0.65**, `1s,3r-rsl-3` 0.58/**0.59**, `dasatinib`
+0.52/**0.56**, `cay10618` **0.36**/0.35, `kx2-391` 0.11/**0.28** (PCA / scGPT).
+
+- **Signal exists.** Against −0.02 / −0.05 over 545 drugs, the same architecture reaches ~0.45 here.
+  **The 545-drug null result was a drug-selection artifact, not a representation failure.** The
+  standing conclusion "the ceiling is the label, no gene representation can help" is *true on average
+  and false on the drugs that matter* — **drug selection is a first-class lever**, and a cheap one.
+- **The biology checks out.** The two strongest drugs are the **GPX4 inhibitors** (`ml162`,
+  `1s,3r-rsl-3`): ferroptosis sensitivity tracks a cell's lipid-peroxidation/redox state, which is a
+  *transcriptional* state. `dasatinib` (SRC/ABL) follows target addiction. The filter selected drugs
+  whose variance has a transcriptional cause, not merely high-variance drugs.
+- **First non-tie between the reps.** scGPT leads on every aggregate and on 4/5 drugs, most clearly
+  where PCA collapses (`kx2-391`, 0.28 vs 0.11). **Suggestive, not established:** 5 drugs, one seed, and
+  §2's fold variance is large enough to swallow a gap this size. Needs repeating over seeds.
+- **Ranking ≫ calibration.** `pred_std` is 0.53 (PCA) / 0.47 (scGPT) against a true spread of 1.0 — both
+  models hedge toward each drug's mean under the heavy dropout + weight decay. Fine for ranking; a
+  problem the moment absolute AUC is needed (cross-drug decisions), where a per-drug recalibration on
+  train lines would be required.
+
+> **Decision — this is a best-case diagnostic, not a headline number.** The 5 drugs were selected using
+> **all 180 lines, val/test included**, so the selection saw the held-out labels. It answers the
+> question it was built to answer ("does *any* cross-line signal exist here?" — yes). Turning it into a
+> reportable result requires selecting the subset **train-only inside each CV fold** and repeating over
+> seeds; that is now the top [TODO](../TODO.md) item.
+
 ### Gene-set sweep — heads-beating vs gene count (incl. all_genes, 28.06.2026)
 
 Does either rep have a preferred gene-set size? `notebooks/07_training.ipynb` §4 builds each variant

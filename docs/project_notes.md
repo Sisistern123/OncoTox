@@ -35,6 +35,40 @@ included. Standard practice, mild leakage; train-only would need splits computed
 **Verified:** per-drug mean 0.0000 / sd 1.0000 across cell lines; drug list (545), mask, and the 180-line
 overlap identical to the `mean_pv` file. Nothing re-trained on it yet.
 
+### The 545-drug null result was a drug-selection artifact
+
+`08_learnability_filter.ipynb` + `09_learnable5_training.ipynb`. Filtered 545 → **5 drugs** (harsh gates:
+coverage ≥ 95%, `auc_std` ≥ 0.15, dynamic range ≥ 0.4, **and** ≥ 20 lines killed *and* ≥ 20 lines
+surviving — the differential-response condition that the old loose filter lacked, which is why it kept
+439/545 and never bit). Trained PCA vs scGPT on those 5, out-of-fold over 5 GroupKFold folds:
+
+| Rep | mean per-drug Spearman | heads beating baseline | best val MSE |
+|---|---|---|---|
+| `X_pca` | 0.432 | 3/5 | 0.925 |
+| `X_scGPT` | **0.488** | 4/5 | **0.777** |
+
+Against **−0.02 / −0.05** over all 545 drugs (`07` §3). Same model, same trunk, same split — **only the
+drug set changed.** So "neither rep ranks cell lines" was never a statement about the representation; it
+was an artifact of averaging a few learnable heads with hundreds of inert ones.
+
+Note on the filter: the `04` learnability score (`resp_std × cov_frac`) is **degenerate on `auc_z`** —
+z-scoring makes every drug's std exactly 1.0, so all 545 tie. Spread has to be read off the raw `auc`
+scale, which `uns["ctrp_score_scale"]` stores exactly (it *is* the per-drug std of `auc`).
+
+Two things worth keeping in mind:
+- **scGPT finally leads** (4/5 drugs, +0.06 Spearman, clearest on `kx2-391`: 0.28 vs 0.11). First
+  non-tie in the project — but 5 drugs, one seed, and `07` §2's fold variance could swallow this. Not a
+  claim yet.
+- **The strongest drugs are the two GPX4/ferroptosis inducers** (`ml162`, `1s,3r-rsl-3`), then
+  `dasatinib`. Ferroptosis sensitivity is a redox/lipid-peroxidation state — genuinely transcriptional.
+  The filter found drugs whose variance has a transcriptional *cause*, not just drugs with high variance.
+- **Predictions are shrunk** (`pred_std` ≈ 0.5 vs true 1.0): the model hedges to the drug mean. Ranking
+  works, calibration does not.
+
+**Caveat (loudly):** the 5 drugs were selected on all 180 lines incl. val/test → best-case diagnostic,
+*not* a generalization number. Next step is train-only selection inside each fold. But the question it
+was built to answer is answered: **signal exists**, and the label ceiling is not the whole story.
+
 ## 29.06.2026
 - UMAP comparison, on what is the pca side done again? check
 - presentation for mathias

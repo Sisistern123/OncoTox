@@ -257,6 +257,7 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 | Phase 2: single-task continuous regression | ✅ Done (on legacy `mean_pv`) | best scGPT val **0.0336** ([Step 04](./steps/04-single-task-results.md)) |
 | Target score: curve-fit AUC instead of dose-averaged viability | ✅ Done 13.07.2026, **re-runs pending** | `--score auc_z` default ([Step 03](./steps/03-model-and-training-design.md)); Steps 04–05 numbers still `mean_pv` |
 | Core hypothesis: scGPT overfits less than PCA | ✅ Confirmed (generalization only) | 512-d matched: `hvg5000` single-task gap 0.004 (scGPT) vs 0.033 (PCA); but PCA ≈/better on all-drugs accuracy (169 vs 147) ([Step 05](./steps/05-multitask-results.md)) |
+| Does the model rank cell lines at all? | ✅ **Yes — on learnable drugs** (13.07.2026) | ≈ 0 Spearman over 545 drugs, but **0.43 (PCA) / 0.49 (scGPT)** on the 5 drugs passing the learnability filter — the null result was drug selection, not the representation ([Step 05](./steps/05-multitask-results.md)) |
 | Phase 3a: multi-task masked loss | ✅ Done **within CTRPv2 only** | [Step 05](./steps/05-multitask-results.md) |
 | Phase 3b: integrate PRISM / GDSC (cross-database, efficacy+toxicity) | ❌ Not started | data downloaded + harmonized only ([Step 06](./steps/06-cross-database-integration.md)) |
 | Stretch: XAI / feature importance | ❌ Not started | [Step 07](./steps/07-xai-feature-interpretability.md) |
