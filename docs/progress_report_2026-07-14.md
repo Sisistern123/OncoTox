@@ -272,13 +272,13 @@ LCO, 5-fold, **normalized** (mean ± std), on our 10 drugs / 179 lines:
 | | Spearman | R² |
 |---|---|---|
 | `NaiveMeanEffectsPredictor` — *the bar* | 0.000 | 0.000 |
-| their `SingleDrugRandomForest` (our scGPT features) | 0.340 ± 0.065 | 0.099 |
-| our `OncoMLP` (PCA) | 0.345 ± 0.050 | 0.087 |
+| their `SingleDrugRandomForest` (our scGPT features) | 0.339 ± 0.065 | 0.098 |
+| our `OncoMLP` (PCA) | 0.340 ± 0.048 | 0.086 |
 | our `OncoMLP` (scGPT) | **0.357 ± 0.070** | **0.114** |
 
 **Supported:** we clear `NaiveMeanEffects` — the bar **~half the published field fails**.
 **Not supported:** we are at R² = 11 % vs **19 %** for their best LCO model; the scGPT–PCA gap
-(0.357 vs 0.345) is **within fold spread**; we do **not** significantly beat their Random Forest.
+(0.357 vs 0.340) is **within fold spread**; we do **not** significantly beat their Random Forest.
 
 ---
 
