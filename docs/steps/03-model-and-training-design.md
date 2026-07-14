@@ -316,7 +316,7 @@ notebook and command line cannot diverge.
 
 ## These hyperparameters are not worth tuning (ablated 13.07.2026)
 
-`notebooks/10_ablations.ipynb` sweeps four model-side knobs on the 5 learnable drugs, scored with
+`notebooks/10_diagnosis.ipynb` sweeps four model-side knobs on the 5 learnable drugs, scored with
 out-of-fold per-drug Spearman (the metric of [Step 05](05-multitask-results.md)). **Every axis is flat,
 and the defaults above are at or within noise of the best setting on all of them:**
 

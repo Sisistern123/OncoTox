@@ -276,7 +276,7 @@ readable directly.) Per drug: `ml162` 0.59/**0.65**, `1s,3r-rsl-3` 0.58/**0.59**
   true_std` is exactly what an MSE-optimal predictor must do (see the ablations below). Fine for ranking;
   to report in AUC units, divide by ρ.
 
-**Is it the model? No — four knobs, all flat (`notebooks/10_ablations.ipynb`, 13.07.2026).**
+**Is it the model? No — four knobs, all flat (`notebooks/10_diagnosis.ipynb`, 13.07.2026).**
 Regularization (none → heavy), capacity (74,629 → 2,565 params), batch size (32/128/512) and sample
 reweighting (line-balanced, focus-extremes) all leave out-of-fold Spearman within noise of the defaults
 (PCA 0.41–0.44, scGPT 0.44–0.49). With regularization *off*, PCA memorizes the training lines (train MSE

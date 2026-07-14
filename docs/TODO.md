@@ -80,7 +80,7 @@ val/test included, so the selection saw held-out labels. Turning it into a repor
 
 ## Model-side tuning is closed (13.07.2026)
 
-`notebooks/10_ablations.ipynb`: regularization (none→heavy), capacity (74,629→2,565 params), batch size
+`notebooks/10_diagnosis.ipynb`: regularization (none→heavy), capacity (74,629→2,565 params), batch size
 (32/128/512) and reweighting (line-balanced, focus-extremes) **all leave Spearman flat** (PCA 0.41–0.44,
 scGPT 0.44–0.49); the current defaults are already at/near the best on every axis. With regularization
 off, PCA memorizes the train lines (train MSE ≈ 0.01) and still only reaches 0.42 out-of-fold — it is out

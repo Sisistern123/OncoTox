@@ -69,7 +69,7 @@ Two things worth keeping in mind:
 *not* a generalization number. Next step is train-only selection inside each fold. But the question it
 was built to answer is answered: **signal exists**, and the label ceiling is not the whole story.
 
-### It is not the model — and ridge on 150 rows matches it (`10_ablations.ipynb`)
+### It is not the model — and ridge on 150 rows matches it (`10_diagnosis.ipynb`)
 
 Asked whether the model is over-regularized / too big / needs a smaller batch / needs reweighting.
 Ablated all four on the 5 learnable drugs (out-of-fold Spearman):

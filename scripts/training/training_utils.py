@@ -33,7 +33,9 @@ from torch.utils.data import DataLoader
 
 @dataclass
 class TrainConfig:
-    epochs: int = 50
+    # 25 is a safe cap: over 36 recorded runs the best epoch was median 6, max 11, and
+    # early stopping (patience 10) has never reached 25. 50 only cost wall-clock.
+    epochs: int = 25
     lr: float = 1e-3
     weight_decay: float = 1e-3
     grad_clip: float | None = 1.0
