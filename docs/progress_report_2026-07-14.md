@@ -2,6 +2,7 @@
 ### 14 July 2026 · Selin Tuerkoglu
 
 Slide text + figure references. Same structure as the previous decks.
+`docs/pipeline_overview.png` is **internal only** — it is not part of the talk.
 Backing facts, parameters and CSV paths: `docs/progress_report_2026-07-14_notes.md`.
 
 ---
@@ -32,13 +33,7 @@ Prediction of Anti-Cancer Drug Efficacy/Toxicity Scores
 
 ---
 
-## Slide 4 — Pipeline
-
-**Figure:** `docs/pipeline_overview.png` (full width, no text)
-
----
-
-## Slide 5 — Data
+## Slide 4 — Data
 
 - Single-cell input: **SCP542** (Broad Single Cell Portal) — 53,513 cells × 22,722 genes, ~198 pan-cancer
   cell lines
@@ -46,11 +41,11 @@ Prediction of Anti-Cancer Drug Efficacy/Toxicity Scores
 - Working set: 190 lines match CTRPv2's roster, **180 have post-QC viability** → the trainable set
 - Bulk cell-line labels are broadcast to all of a line's cells
 - **New:** we now read CTRPv2's **post-QC curve fits**, not only the raw dose measurements
-  → three selectable targets (slide 9)
+  → three selectable targets (slide 8)
 
 ---
 
-## Slide 6 — Preprocessing (unchanged since June)
+## Slide 5 — Preprocessing (unchanged since June)
 
 - Gene-set variant used throughout: **5,000 HVG** (Seurat-style, on log1p; CPM kept)
 - scGPT embeds in-vocab genes only; **OOV dropped: 5,000 → 4,576**
@@ -59,7 +54,7 @@ Prediction of Anti-Cancer Drug Efficacy/Toxicity Scores
 
 ---
 
-## Slide 7 — Model Architecture & Task
+## Slide 6 — Model Architecture & Task
 
 **Figure:** `docs/model_architecture.png`
 
@@ -70,7 +65,7 @@ Prediction of Anti-Cancer Drug Efficacy/Toxicity Scores
 
 ---
 
-## Slide 8 — Training & Evaluation (what changed)
+## Slide 7 — Training & Evaluation (what changed)
 
 | | June | Now |
 |---|---|---|
@@ -86,7 +81,7 @@ Prediction of Anti-Cancer Drug Efficacy/Toxicity Scores
 
 ---
 
-## Slide 9 — Action item: *"try out AUC"*
+## Slide 8 — Action item: *"try out AUC"*
 
 **Figure:** `outputs/data/target_biology.png` — all three targets on one CTRPv2 dose–response curve
 
@@ -103,7 +98,7 @@ Prediction of Anti-Cancer Drug Efficacy/Toxicity Scores
 
 ---
 
-## Slide 10 — Action item: *"define learnability properly"*
+## Slide 9 — Action item: *"define learnability properly"*
 
 **Figure:** `outputs/learnability/learnability_filter_auc.png`
 
@@ -117,12 +112,12 @@ gate:          coverage ≥ 90 % of the 180 labelled lines      → top 10 drugs
 
 - A drug is only rankable across lines if it **separates** them — kills a real set, spares a real set
 - **This is a simplification for diagnosis, not a result.** It is *not* the claim that only 10 drugs are
-  learnable (slide 14)
+  learnable (slide 13)
 - ⚠️ The filter sees all 180 lines (incl. val/test) → **best-case subset**
 
 ---
 
-## Slide 11 — Results: per-drug variance mis-scales the loss
+## Slide 10 — Results: per-drug variance mis-scales the loss
 
 **Figure:** `outputs/target/loss_weighting_bug.png`
 
@@ -144,7 +139,7 @@ gate:          coverage ≥ 90 % of the 180 labelled lines      → top 10 drugs
 
 ---
 
-## Slide 12 — Results: the fix — two routes, one cause
+## Slide 11 — Results: the fix — two routes, one cause
 
 **Figure:** `outputs/target/target_comparison.png` (3 targets × K=10 / K=545, bootstrap CIs)
 
@@ -177,7 +172,7 @@ were right, **and they turn out to be the same hypothesis**.
 
 ---
 
-## Slide 13 — Results: what did *not* fix it
+## Slide 12 — Results: what did *not* fix it
 
 **Figure:** `outputs/ablations/rescue_k545.png`
 
@@ -205,7 +200,7 @@ baseline ρ = **−0.084**), one change at a time:
 
 ---
 
-## Slide 14 — Results: how many drugs are learnable?
+## Slide 13 — Results: how many drugs are learnable?
 
 Out-of-fold ρ for **all 537 scorable drugs**, K=545, `auc_z`
 *(8 of 545 have < 20 labelled lines → no correlation computable)*
@@ -231,7 +226,7 @@ sensitive lines instead of 1.5 by chance** (≈ 3× enrichment).
 
 ---
 
-## Slide 15 — Results: PCA vs scGPT
+## Slide 14 — Results: PCA vs scGPT
 
 **Figure:** `outputs/learnability/pca_vs_scgpt.png`
 
@@ -257,7 +252,7 @@ single-cell resolution.**
 
 ---
 
-## Slide 16 — External benchmark: DrEval  *(preliminary)*
+## Slide 15 — External benchmark: DrEval  *(preliminary)*
 
 **Figure:** `outputs/dreval/dreval_lco.png` · notebook `12_dreval_benchmark.ipynb`
 
@@ -287,7 +282,7 @@ LCO, 5-fold, **normalized** (mean ± std), on our 10 drugs / 179 lines:
 
 ---
 
-## Slide 17 — Discussion
+## Slide 16 — Discussion
 
 **What fixed it — as suspected in June**
 - **Drug filtering** and **(indirect) loss reweighting via the target.** Both remove the same pathology:
@@ -311,7 +306,7 @@ LCO, 5-fold, **normalized** (mean ± std), on our 10 drugs / 179 lines:
 
 ---
 
-## Slide 18 — Limitations
+## Slide 17 — Limitations
 
 - **Drug selection saw val/test lines** → the 10 drugs are a **best-case subset**, not a random one.
   This licenses a diagnosis, not a generalization estimate. **(blocking)**
@@ -327,7 +322,7 @@ LCO, 5-fold, **normalized** (mean ± std), on our 10 drugs / 179 lines:
 
 ---
 
-## Slide 19 — Next Steps
+## Slide 18 — Next Steps
 
 **1. Replace my filter with a literature-driven drug selection**
 - Pick the compounds from the **current research landscape** (known biomarker-driven responders, drugs the
