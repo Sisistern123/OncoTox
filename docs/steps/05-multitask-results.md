@@ -260,7 +260,7 @@ readable directly.) Per drug: `ml162` 0.59/**0.65**, `1s,3r-rsl-3` 0.58/**0.59**
   whose variance has a transcriptional cause, not merely high-variance drugs.
 - **First non-tie between the reps — and it survives a seed check (13.07.2026).** scGPT leads on every
   aggregate and on 4/5 drugs, most clearly where PCA collapses (`kx2-391`, 0.28 vs 0.11). Repeating the
-  **K=545 `auc_z`** configuration over **3 seeds** (`notebooks/11`, `outputs/05_target/seed_stability.csv`):
+  **K=545 `auc_z`** configuration over **3 seeds** (`notebooks/11`, `outputs/target/seed_stability.csv`):
 
   | seed | PCA | scGPT | gap |
   |---|---|---|---|
@@ -345,7 +345,7 @@ mean. Some lines are simply sensitive to everything (σ of the line effect = **0
 score a good per-drug correlation by learning *"this line is fragile"* — with zero drug-specific biology.
 DrEval's normalized metric subtracts the mean-effects predictor from **prediction and truth**, then
 correlates; what remains is **differential sensitivity only**. Mean effects are fit on **train lines
-only**, inside each fold (`notebooks/outputs/07_dreval/dreval_normalized.csv`):
+only**, inside each fold (`notebooks/outputs/dreval/dreval_normalized.csv`):
 
 | | raw ρ | **normalized ρ** | naive baseline |
 |---|---|---|---|

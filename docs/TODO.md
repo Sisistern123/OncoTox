@@ -16,12 +16,12 @@ Action list. Scientific narrative + full numbers live in
       **≈ 0 for both** (mean Spearman PCA −0.02, scGPT −0.05; ~4% ρ > 0.3) — neither ranks cell lines.
 - [x] **Gene-set sweep** 1k/2k/3k/5k **+ all_genes** under CV → `07` §4, variants built in `05` §B.
       **No sweet spot, no all-genes advantage** — flat across the axis, within noise.
-- [x] **Target distribution** (data only) → `04` (`outputs/01_data/target_distribution.png`): viability clusters
+- [x] **Target distribution** (data only) → `04` (`outputs/data/target_distribution.png`): viability clusters
       near 1.0 (median 0.91; 75% ≥ 0.8); per-drug std median 0.088, only 3% truly flat; a loose
       cov ≥ 100 & std ≥ 0.05 filter keeps **439/545** → coverage+std alone removes few.
-- [x] **Coverage & learnability** analysis → `04` (`outputs/*_drug_learnability.csv`, `01_data/drug_coverage.png`).
-- [x] **Cancer-type UMAPs** → `06` §8: 2-panel PCA-vs-scGPT (`outputs/02_embeddings/umap_cancertype_pca_vs_scgpt.png`,
-      dpi 300) + full gene-set sweep grid (`outputs/02_embeddings/umap_sweep_cancertype.png`, dpi 200). Tissue islands
+- [x] **Coverage & learnability** analysis → `04` (`outputs/*_drug_learnability.csv`, `data/drug_coverage.png`).
+- [x] **Cancer-type UMAPs** → `06` §8: 2-panel PCA-vs-scGPT (`outputs/embeddings/umap_cancertype_pca_vs_scgpt.png`,
+      dpi 300) + full gene-set sweep grid (`outputs/embeddings/umap_sweep_cancertype.png`, dpi 200). Tissue islands
       (PCA) vs continuous manifold (scGPT) at every gene count.
 - [x] **Initial informative-drug list** (CTRPv2) from `04` shared with Hashimoto-san (known not-final;
       GDSC version was for her only, not the modelling work).
@@ -61,7 +61,7 @@ val/test included, so the selection saw held-out labels. Turning it into a repor
 - [x] **Multiple seeds** (13.07.2026) — done for K=545 `auc_z`: gap **+0.075 ± 0.038**, sign-consistent
       over 3 seeds. Still thin; see the "more seeds + wider drug set" item above.
 - [ ] **Loosen to ~20–50 drugs** — 5 is a diagnostic, not a model. Where does the signal die as the gates
-      relax? (`04_learnability/ctrp_drug_learnability_auc.csv` is already ranked for this.)
+      relax? (`learnability/ctrp_drug_learnability_auc.csv` is already ranked for this.)
 - [ ] **Re-run the full 8-run matrix + CV on `--score auc_z`** for a like-for-like against the `mean_pv`
       Steps 04–05 numbers. **Expect this to overturn them:** at K=545 the old unstandardized target was
       destroying the signal (below), so the 8-run matrix's conclusions are suspect, not just stale.
@@ -110,12 +110,12 @@ drug-mean + cell-line-mean predictor. **Our ridge ≈ MLP finding is the field's
 reproduced.** Our split *is* their LCO.
 
 - [x] **Benchmarked with the REAL package** (`pip install drevalpy` 1.5.1) → `notebooks/12_dreval_benchmark.ipynb`,
-      `outputs/07_dreval/dreval_lco_results.csv`. Their `DrugResponseDataset` + LCO splits + baselines + `evaluate()`.
+      `outputs/dreval/dreval_lco_results.csv`. Their `DrugResponseDataset` + LCO splits + baselines + `evaluate()`.
       **OncoMLP (scGPT) clears `NaiveMeanEffects`: normalized ρ = 0.511 ± 0.085, normalized R² = 0.224** —
       vs the 11% (DIPK) / 19% (RF) the paper reports for its best LCO models. **scGPT > PCA confirmed
       externally** (+0.07). And our per-cell MLP **beats their `SingleDrugRandomForest` on the same
       embeddings** (0.511 vs 0.438) → qualifies the ridge≈MLP result.
-- [x] **Own-implementation check** (`outputs/07_dreval/dreval_normalized.csv`): additionally removing the *cell-line*
+- [x] **Own-implementation check** (`outputs/dreval/dreval_normalized.csv`): additionally removing the *cell-line*
       effect (which LCO's naive predictor cannot know) still leaves scGPT at ρ = 0.396. ⚠️ **`kx2-391`
       collapses to 0.006** — its signal was entirely the cell-line effect.
 - [ ] **Make `NaiveMeanEffects` the default baseline** in `train_multitask.py` (currently: per-drug mean,

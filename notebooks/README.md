@@ -29,9 +29,25 @@ Model artifacts live in `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 | 06 | `06_verify_variants` | Preprocessing QC + the PCA-vs-scGPT UMAPs. |
 | 07 | `07_training` | The 8-run matrix / CV / HVG sweep. ⚠️ **Superseded** (see banner). |
 
-`archive/` holds notebooks no longer referenced by anything: `01` (first data look), `03` (CTRP→PRISM
-repurposing map, never consumed), `05` (a front-end to the preprocessing CLI — duplicated by
-[Step 02](../docs/steps/02-preprocessing-and-embeddings.md#reproduce)).
+### Why the numbering has gaps
+
+**01, 03, 05 are missing on purpose** — they were moved to `archive/` and their numbers are *not*
+reused: `07` and `04` are cited by name in the docs, the commit history and the progress reports, so
+renumbering would break every reference to buy nothing. Treat the numbers as **stable identifiers, not
+a sequence**.
+
+| Archived | Why |
+|---|---|
+| `01_scDAExploration` | first look at the SCP542 data; superseded by everything after it |
+| `03_analysis` | CTRP→PRISM repurposing map; never consumed by the pipeline |
+| `05_preprocessing` | a front-end to the preprocessing CLI — duplicated by [Step 02](../docs/steps/02-preprocessing-and-embeddings.md#reproduce) |
+
+`10_diagnosis` also absorbed a `13` that existed only briefly (it asked the same question as `10` on a
+different setting); its number is retired.
+
+The directories under [`outputs/`](outputs/) are **not** numbered, precisely because they do not map
+one-to-one onto notebook numbers (`data/` is written by `04` *and* `10`; `target/` by `11` *and* `10`).
+They are named for what they contain.
 
 ## Re-running
 

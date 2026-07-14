@@ -330,7 +330,7 @@ and the defaults above are at or within noise of the best setting on all of them
 > ⚠️ **Scope correction (14.07.2026).** The four ablations above were run on the **K=5** setup. They show
 > the knobs do not *improve* the corrected model — they do **not** show that the knobs could not have
 > *fixed* the K=545 collapse. That claim was tested separately, and **one of them partially does**
-> (`notebooks/outputs/06_ablations/rescue_k545.csv`). Applied to the **broken** setting (K=545, raw `auc`,
+> (`notebooks/outputs/ablations/rescue_k545.csv`). Applied to the **broken** setting (K=545, raw `auc`,
 > scGPT, ρ = −0.063):
 >
 > | Intervention | ρ |
