@@ -41,3 +41,6 @@ htmlcov/
 # Training run artifacts (checkpoints, configs, histories, per-drug results).
 # The runs_index.csv ledger is committed by hand if you ever want to share it.
 runs/
+
+# personal presentation material (speaker notes + evidence appendix)
+docs/progress_report_*.md
