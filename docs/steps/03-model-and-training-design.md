@@ -327,8 +327,35 @@ and the defaults above are at or within noise of the best setting on all of them
 | `batch_size` | 32 / 128 / 512 | 0.43–0.44 | 0.46–**0.49** |
 | Sample reweighting | line-balanced, focus-extremes | 0.41–0.43 | 0.48–0.49 |
 
-**Decision: stop tuning the model.** At ~150 independent labels, architecture search cannot buy signal.
-Three findings are worth carrying forward, because each kills a plausible-sounding "fix":
+> ⚠️ **Scope correction (14.07.2026).** The four ablations above were run on the **K=5** setup. They show
+> the knobs do not *improve* the corrected model — they do **not** show that the knobs could not have
+> *fixed* the K=545 collapse. That claim was tested separately, and **one of them partially does**
+> (`notebooks/outputs/06_ablations/rescue_k545.csv`). Applied to the **broken** setting (K=545, raw `auc`,
+> scGPT, ρ = −0.063):
+>
+> | Intervention | ρ |
+> |---|---|
+> | heavy regularization | −0.091 |
+> | line-balanced **sample** reweighting | −0.078 |
+> | smaller model (74,629 → 16,645 params) | −0.053 |
+> | batch size 32 | +0.027 |
+> | **no regularization** | **+0.234** |
+> | **per-drug (task) reweighting = `auc_z`** | **+0.433** |
+>
+> **Removing regularization recovers ~70% of the collapse.** This is mechanistically consistent: the
+> failure is a **capacity competition** between heads — with dropout 0.5 the trunk cannot serve both the
+> loud noisy drugs and the learnable ones, so the loud ones win. Adding capacity (dropping the
+> regularizer) lets it fit both.
+>
+> **But it is a symptom fix, not a cause fix**, and the interaction proves it: on the **corrected**
+> (`auc_z`) setting the *same* regularization is **optimal** (K=5: current 0.488 vs none 0.456). The model
+> was never over-regularized in absolute terms — it was **over-regularized relative to a mis-weighted
+> loss**. And the price is steep: without regularization the network memorizes the training lines (train
+> MSE ≈ 0.01) and still reaches only half of what the weighting fix delivers.
+
+**Decision: stop tuning the model** *(on the corrected loss)*. At ~150 independent labels, architecture
+search cannot buy signal. Three findings are worth carrying forward, because each kills a
+plausible-sounding "fix":
 
 1. **Not over-regularized — the opposite.** With regularization *off*, PCA drives **train** MSE to ≈ 0.01
    (near-perfect memorization of the training lines) and still reaches only 0.42 out-of-fold. A model

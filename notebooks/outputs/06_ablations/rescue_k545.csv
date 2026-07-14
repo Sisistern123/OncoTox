@@ -1,0 +1,8 @@
+score,fix_attempt,spearman
+auc,baseline (broken),-0.06287010010220674
+auc,heavy regularization,-0.09086255840877902
+auc,no regularization,0.2338122040274906
+auc,"small model (32,)",-0.052544649890734464
+auc,batch size 32,0.02680345730177766
+auc,line-balanced weights,-0.07836975118838403
+auc_z,baseline (broken),0.43288556616153906
