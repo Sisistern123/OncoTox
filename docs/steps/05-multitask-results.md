@@ -291,7 +291,48 @@ the baseline to beat from now on.** The cause is structural: the label is per ce
 ~150 independent examples and the 34k cells are an illusion of sample size — which is why the remaining
 levers are **label-side** (more lines, bulk pretraining, denoising), not model-side.
 
-### DrEval check — does the signal survive removing the mean effects? (14.07.2026)
+### Benchmarked with the real DrEval package (`notebooks/12_dreval_benchmark.ipynb`, 14.07.2026)
+
+Not a re-implementation: `pip install drevalpy` (v1.5.1, <https://github.com/daisybio/drevalpy>), and our
+data/model run through **their** `DrugResponseDataset`, **their** `split_dataset(mode="LCO")`, **their**
+baselines and **their** `evaluate()`. `OncoMLP` is trained on the single cells of each fold's train lines
+and predicts the held-out lines' cells, averaged back per cell line — scored on exactly the same pairs.
+
+**LCO, 5-fold CV, the 5 learnable drugs, native `auc` units** (mean over folds; *normalized* = their
+recipe: subtract the `NaiveMeanEffects` prediction from `y_true` **and** `y_pred`, then re-evaluate):
+
+| Model | Spearman (raw) | **Spearman (norm.)** | **R² (norm.)** |
+|---|---|---|---|
+| `NaivePredictor` | 0.000 | 0.020 | −0.052 |
+| `NaiveDrugMeanPredictor` | 0.197 | 0.000 | −0.002 |
+| `NaiveCellLineMeanPredictor` | 0.000 | 0.020 | −0.052 |
+| **`NaiveMeanEffectsPredictor`** | 0.197 | **0.000** | −0.002 |
+| their `SingleDrugElasticNet` (scGPT) | 0.197 | **0.000** ❌ | −0.002 |
+| their `SingleDrugRandomForest` (PCA) | 0.245 | 0.148 | 0.022 |
+| their `SingleDrugElasticNet` (PCA) | 0.320 | 0.300 | 0.056 |
+| their `SingleDrugRandomForest` (scGPT) | 0.468 | 0.438 | 0.178 |
+| **`OncoMLP` (X_pca)** | 0.481 | **0.442 ± 0.071** | 0.178 |
+| **`OncoMLP` (X_scGPT)** | **0.549** | **0.511 ± 0.085** | **0.224** |
+
+1. **OncoMLP clears `NaiveMeanEffects` decisively** (normalized ρ = 0.511 vs 0.000) — the bar **half the
+   published models in the DrEval paper fail**. Our normalized **R² = 0.224** is directly comparable to
+   the numbers they report for their best models in LCO (**DIPK 11%**, **Random Forest 19%**).
+2. **scGPT > PCA is confirmed externally** (+0.07 normalized, on *their* splits with *their* metrics) —
+   an independent replication of the +0.075 ± 0.038 we measured ourselves.
+3. **The single-cell MLP beats their line-level reference models on the same embeddings** (0.511 vs 0.438
+   for `SingleDrugRandomForest` on scGPT; 0.442 vs 0.148 on PCA). This **qualifies the ridge result**
+   above: against a *stronger* per-drug regressor on line-mean embeddings, the per-cell model does add
+   something — small (+0.07) but consistent across both representations.
+
+> **Note on LCO:** a held-out line is unseen, so `NaiveMeanEffectsPredictor` sets its cell-line effect to
+> **0** and reduces to *global mean + drug effect* (hence it ties `NaiveDrugMean` here). Their normalized
+> metric therefore removes the **drug** mean — the fix for the Simpson's-paradox artifact they describe.
+> It does *not* remove the cell-line effect, because in LCO no honest predictor can know it.
+
+⚠️ Still a **best-case subset**: the 5 drugs were selected by a filter that saw all 180 lines
+(`notebooks/08`). DrEval fixes the *evaluation*, not our *selection*.
+
+### Own-implementation check: what if the cell-line effect is also removed? (14.07.2026)
 
 **Reference:** Bernett, Iversen, Picciani, **Wilhelm**, Baum, List — *Critical evaluation of drug response
 prediction models with DrEval*, **Nat. Commun. (2026)**. Their headline: *"deep learning models barely

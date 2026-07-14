@@ -5,10 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "drevalpy>=1.5.1",
     "jupyter>=1.1.1",
     "lxml>=6.0.2",
     "openpyxl>=3.1.5",
     "pandas>=3.0.1",
+    "pypdf>=6.1.3",
     "pytdc>=0.3.6",
     "scanpy>=1.12",
     "torch>=2.11.0",

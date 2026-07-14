@@ -109,13 +109,19 @@ prediction models with DrEval*, Nat. Commun. 2026. Half of published models don'
 drug-mean + cell-line-mean predictor. **Our ridge ≈ MLP finding is the field's norm, independently
 reproduced.** Our split *is* their LCO.
 
-- [x] **Normalized evaluation** → `outputs/dreval_normalized.csv`. After subtracting mean effects from
-      prediction *and* truth: **scGPT K=5 ρ = 0.396** (raw 0.488), naive baseline 0.291 → **~80% of the
-      signal is genuine differential sensitivity.** ⚠️ **`kx2-391` collapses to 0.006** — its signal was
-      entirely the cell-line effect. The other 4 drugs survive.
+- [x] **Benchmarked with the REAL package** (`pip install drevalpy` 1.5.1) → `notebooks/12_dreval_benchmark.ipynb`,
+      `outputs/dreval_lco_results.csv`. Their `DrugResponseDataset` + LCO splits + baselines + `evaluate()`.
+      **OncoMLP (scGPT) clears `NaiveMeanEffects`: normalized ρ = 0.511 ± 0.085, normalized R² = 0.224** —
+      vs the 11% (DIPK) / 19% (RF) the paper reports for its best LCO models. **scGPT > PCA confirmed
+      externally** (+0.07). And our per-cell MLP **beats their `SingleDrugRandomForest` on the same
+      embeddings** (0.511 vs 0.438) → qualifies the ridge≈MLP result.
+- [x] **Own-implementation check** (`outputs/dreval_normalized.csv`): additionally removing the *cell-line*
+      effect (which LCO's naive predictor cannot know) still leaves scGPT at ρ = 0.396. ⚠️ **`kx2-391`
+      collapses to 0.006** — its signal was entirely the cell-line effect.
 - [ ] **Make `NaiveMeanEffects` the default baseline** in `train_multitask.py` (currently: per-drug mean,
-      too weak — it does not control for the cell-line effect at all).
+      too weak).
 - [ ] **Report raw + normalized** correlations everywhere from now on.
+- [ ] **Run DrEval on all 545 drugs**, not just the best-case 5 — and with their LTO / LDO settings.
 - [ ] *(Consider)* their other splits — LTO (leave-tissue-out) and LDO (leave-drug-out). LDO would test
       whether anything generalizes across chemical space; DrEval found **no model** beats naive there.
 - [ ] *(Consider)* **CurveCurator** for standardized dose-response fitting, as they recommend.
