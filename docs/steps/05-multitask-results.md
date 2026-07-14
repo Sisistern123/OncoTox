@@ -103,7 +103,7 @@ of 1.0.
 - **Δmse (model − baseline)** — the **continuous** counterpart of heads-beating: the mean over drugs of
   `model_mse − baseline_mse`. **Negative ⇒ model better** than the constant on average; it is not
   thresholded, so it doesn't suffer the count's instability (its CV std is small relative to the mean).
-  Reported as CV mean ± std; the per-fold `03_training_545/cv_folds.csv` also carries `median_delta` and `frac_beat`
+  Reported as CV mean ± std; the per-fold `legacy/training_545_mean_pv/cv_folds.csv` also carries `median_delta` and `frac_beat`
   (= `heads_beat / n_total`).
 
 - **Overfitting gap** — `val_mse − train_mse` at the best epoch (single-task). Larger ⇒ more
