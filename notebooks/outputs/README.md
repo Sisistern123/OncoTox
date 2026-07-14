@@ -8,7 +8,7 @@ they live in `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 
 | Directory | Written by | Contents |
 |---|---|---|
-| **`data/`** | `04_drug_coverage`, `10_diagnosis` §1 | Target distribution and per-drug coverage on the raw CTRPv2 labels; `target_biology.png` = what the targets measure on a real dose–response curve. |
+| **`data/`** | `04_drug_coverage` | Target distribution and per-drug coverage on the raw CTRPv2 labels. |
 | **`embeddings/`** | `06_verify_variants` | Latent-space validation: PCA-vs-scGPT UMAPs, gene-set variants. |
 | **`learnability/`** | `08_learnability_filter`, `09_learnable5_training` | The drug filter (545 → 10, `learnability = min(#killed, #spared)`) and the PCA-vs-scGPT result on that subset. `pca_vs_scgpt.png` also carries the line-level ridge control. |
 | **`target/`** | `11_auc_vs_aucz`, `10_diagnosis` §2 | Which target to train on; the per-drug **loss-weighting bug**; seed stability. |
@@ -19,7 +19,6 @@ they live in `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 
 | Figure | What it shows |
 |---|---|
-| `data/target_biology.png` | On one real CTRPv2 curve: `mean_pv` averages the measured points, `auc` integrates the fitted sigmoid. They land within ~0.03 of each other — *why* the curve fit alone buys no accuracy. |
 | `target/loss_weighting_bug.png` | An unweighted MSE weights each drug by σ². The widest 10% of drugs carry **30%** of the loss — and the very widest (`ifosfamide`, `ciclopirox`) kill **zero** cell lines. |
 | `target/target_comparison.png` | `mean_pv` / `auc` / `auc_z` at K=5 and K=545, with bootstrap CIs. Both unstandardized targets collapse at K=545; `auc_z` holds. |
 | `ablations/rescue_k545.png` | Every June hypothesis applied to the **broken** setting. Only *task* reweighting fixes it (+0.43); removing regularization partially rescues (+0.23) — the symptom, not the cause. |
