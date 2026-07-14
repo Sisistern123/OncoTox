@@ -102,6 +102,24 @@ nonlinearity while PCA does not.
 - [ ] *(Stretch)* cluster cell lines by response and **stratify train/val/test** (high/med/low) for
       lower-variance evaluation.
 
+## DrEval alignment (14.07.2026)
+
+Paper: Bernett, Iversen, Picciani, **Wilhelm**, Baum, List — *Critical evaluation of drug response
+prediction models with DrEval*, Nat. Commun. 2026. Half of published models don't beat a naive
+drug-mean + cell-line-mean predictor. **Our ridge ≈ MLP finding is the field's norm, independently
+reproduced.** Our split *is* their LCO.
+
+- [x] **Normalized evaluation** → `outputs/dreval_normalized.csv`. After subtracting mean effects from
+      prediction *and* truth: **scGPT K=5 ρ = 0.396** (raw 0.488), naive baseline 0.291 → **~80% of the
+      signal is genuine differential sensitivity.** ⚠️ **`kx2-391` collapses to 0.006** — its signal was
+      entirely the cell-line effect. The other 4 drugs survive.
+- [ ] **Make `NaiveMeanEffects` the default baseline** in `train_multitask.py` (currently: per-drug mean,
+      too weak — it does not control for the cell-line effect at all).
+- [ ] **Report raw + normalized** correlations everywhere from now on.
+- [ ] *(Consider)* their other splits — LTO (leave-tissue-out) and LDO (leave-drug-out). LDO would test
+      whether anything generalizes across chemical space; DrEval found **no model** beats naive there.
+- [ ] *(Consider)* **CurveCurator** for standardized dose-response fitting, as they recommend.
+
 ## Levers / later
 
 - [ ] **Bulk RNA-seq pretraining / scDEAL-style denoising + domain adaptation** — attacks the

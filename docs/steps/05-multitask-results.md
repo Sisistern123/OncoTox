@@ -291,6 +291,53 @@ the baseline to beat from now on.** The cause is structural: the label is per ce
 ~150 independent examples and the 34k cells are an illusion of sample size — which is why the remaining
 levers are **label-side** (more lines, bulk pretraining, denoising), not model-side.
 
+### DrEval check — does the signal survive removing the mean effects? (14.07.2026)
+
+**Reference:** Bernett, Iversen, Picciani, **Wilhelm**, Baum, List — *Critical evaluation of drug response
+prediction models with DrEval*, **Nat. Commun. (2026)**. Their headline: *"deep learning models barely
+outperform a naive model that predicts only the mean drug and cell line effects"* — about **half** of
+published models fail to beat their `NaiveMeanEffectsPredictor`. Our setting **is** their **LCO**
+(leave-cell-line-out) with per-drug evaluation, i.e. the split they recommend.
+
+**The gap this exposed in our metric.** `auc_z` removes the **drug** mean but *not* the **cell-line**
+mean. Some lines are simply sensitive to everything (σ of the line effect = **0.40**), so a model can
+score a good per-drug correlation by learning *"this line is fragile"* — with zero drug-specific biology.
+DrEval's normalized metric subtracts the mean-effects predictor from **prediction and truth**, then
+correlates; what remains is **differential sensitivity only**. Mean effects are fit on **train lines
+only**, inside each fold (`notebooks/outputs/dreval_normalized.csv`):
+
+| | raw ρ | **normalized ρ** | naive baseline |
+|---|---|---|---|
+| K=5 · PCA | 0.427 | **0.368** | 0.291 |
+| K=5 · scGPT | 0.488 | **0.396** | 0.291 |
+| K=545 · PCA | 0.378 | **0.297** | 0.291 |
+| K=545 · scGPT | 0.430 | **0.323** | 0.291 |
+
+✅ **~80% of the effect survives** — it is genuine drug-specific signal, not the cell-line effect. For
+scale, DrEval report their best models (DIPK, Random Forest) explaining **11–19%** of differential
+sensitivity in LCO; ours is ρ² ≈ **0.16**, the same ballpark, on the filtered subset.
+
+**Per drug (K=5, scGPT) — one of our five is an artifact:**
+
+| drug | raw | **normalized** | naive baseline |
+|---|---|---|---|
+| `ml162` | 0.655 | **0.587** | 0.196 |
+| `1s,3r-rsl-3` | 0.591 | **0.530** | 0.178 |
+| `dasatinib` | 0.563 | **0.548** | 0.269 |
+| `cay10618` | 0.347 | **0.306** | 0.226 |
+| `kx2-391` | 0.283 | **0.006** ⚠️ | **0.584** |
+
+⚠️ **`kx2-391` collapses to zero**: its entire apparent signal *was* the cell-line effect — exactly the
+artifact class DrEval describes, found in our own results. The other four (both GPX4/ferroptosis
+inducers, dasatinib, CAY10618) are real.
+
+> **Decision (14.07.2026): adopt `NaiveMeanEffects` (drug mean + cell-line mean) as the standard
+> baseline, and report raw *and* normalized correlations.** The per-drug-mean null is too weak; even
+> ridge-on-line-means does not control for the cell-line effect. Any future claim must clear the
+> normalized bar.
+
+---
+
 > **Decision — this is a best-case diagnostic, not a headline number.** The 5 drugs were selected using
 > **all 180 lines, val/test included**, so the selection saw the held-out labels. It answers the
 > question it was built to answer ("does *any* cross-line signal exist here?" — yes). Turning it into a
