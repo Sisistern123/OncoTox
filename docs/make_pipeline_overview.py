@@ -133,8 +133,8 @@ def _heat_strip(ax, xc, y0, y1, vals, cmap, w=2.4):
 
 
 def build_architecture():
-    fig, ax = plt.subplots(figsize=(16.0, 8.0))
-    ax.set_xlim(0, 100); ax.set_ylim(0, 50); ax.set_aspect("equal"); ax.axis("off")
+    fig, ax = plt.subplots(figsize=(16.0, 5.2))
+    ax.set_xlim(0, 100); ax.set_ylim(22, 50); ax.set_aspect("equal"); ax.axis("off")
 
     # ---------- INPUT: one cell -> embedding vector ----------
     ax.add_patch(Circle((6, 37), 2.7, facecolor="#fde0c5", edgecolor="#d2691e", lw=1.8, zorder=3))
@@ -181,33 +181,6 @@ def build_architecture():
     ax.text(79, 29.6, "auc_z per drug", ha="center", va="top", fontsize=9.5, fontweight="bold", color=INK)
     ax.text(79, 26.7, "per-drug z-score:  is THIS line\nmore sensitive than average?", ha="center",
             va="top", fontsize=8.0, color=INK)
-
-    # ---------- TASK: why it's hard (bulk label broadcast + the loss scaling) ----------
-    ax.add_patch(FancyBboxPatch((3, 2), 94, 17, boxstyle="round,pad=0.3,rounding_size=1.5",
-                 facecolor="#fbf4e6", edgecolor=AMBER, lw=1.6, zorder=0))
-    ax.text(6, 17.2, "The task — and why it is hard", ha="left", va="top",
-            fontsize=11, fontweight="bold", color=AMBER)
-
-    # bulk value broadcast to a line's cells
-    ax.add_patch(FancyBboxPatch((9, 12.0), 12, 3.2, boxstyle="round,pad=0.2,rounding_size=0.8",
-                 facecolor="white", edgecolor=AMBER, lw=1.4, zorder=3))
-    ax.text(15, 13.6, "1 bulk label", ha="center", va="center", fontsize=8.5, color=INK)
-    cell_x = [10.5, 15, 19.5]
-    for cxp in cell_x:
-        ax.add_patch(Circle((cxp, 7.2), 1.3, facecolor="#fde0c5", edgecolor="#d2691e", lw=1.3, zorder=3))
-        arrow(ax, 15, 11.9, cxp, 8.6, color="#d2691e")
-    ax.text(15, 4.6, "1 cell line (~300 cells)", ha="center", va="top", fontsize=8, color=INK)
-    ax.text(26, 13.4,
-            "1) One BULK value per (cell line × drug) is copied to every cell of that line\n"
-            "     → the cells are pseudo-replicates: ~150 independent examples per drug, not 53k.",
-            ha="left", va="top", fontsize=9, color=INK)
-    ax.text(26, 8.9,
-            "2) An unweighted masked MSE weights each of the 545 heads by its variance σ²\n"
-            "     (σ spans 0.03–0.30 ≈ 80× in squared error) → z-score per drug ≡ weight each head by 1/σ².",
-            ha="left", va="top", fontsize=9, color=INK)
-    ax.text(26, 4.4,
-            "3) Evaluate out-of-fold on unseen cell lines — average cells → line, then correlate.",
-            ha="left", va="top", fontsize=9, color=INK)
 
     out = HERE / "model_architecture.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
