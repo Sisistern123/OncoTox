@@ -10,7 +10,7 @@ they live in `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 |---|---|---|
 | **`data/`** | `04_drug_coverage`, `10_diagnosis` §1 | Target distribution and per-drug coverage on the raw CTRPv2 labels; `target_biology.png` = what the targets measure on a real dose–response curve. |
 | **`embeddings/`** | `06_verify_variants` | Latent-space validation: PCA-vs-scGPT UMAPs, gene-set variants. |
-| **`learnability/`** | `08_learnability_filter`, `09_learnable5_training` | The drug filter (545 → 5) and the PCA-vs-scGPT result on that subset. |
+| **`learnability/`** | `08_learnability_filter`, `09_learnable5_training` | The drug filter (545 → 10, `learnability = min(#killed, #spared)`) and the PCA-vs-scGPT result on that subset. `pca_vs_scgpt.png` also carries the line-level ridge control. |
 | **`target/`** | `11_auc_vs_aucz`, `10_diagnosis` §2 | Which target to train on; the per-drug **loss-weighting bug**; seed stability. |
 | **`ablations/`** | `10_diagnosis` §3–§5 | The **causal rescue test** on the broken K=545 setting, the model-knob ablations on the corrected one, and the ridge control. |
 | **`dreval/`** | `12_dreval_benchmark` | External benchmark against **DrEval** (`drevalpy` 1.5.1): their LCO splits, baselines, metrics. |

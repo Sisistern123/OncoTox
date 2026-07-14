@@ -14,10 +14,10 @@ Model artifacts live in `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 
 | # | Notebook | Question it answers |
 |---|---|---|
-| **08** | `08_learnability_filter` | **Which drugs *can* be learned?** A drug is only rankable across cell lines if it separates them — it must **kill** a real set and **spare** a real set. **5 / 545 pass.** *(A diagnostic simplification, not a result.)* |
-| **09** | `09_learnable5_training` | **Does the pipeline learn anything at all?** PCA vs scGPT on those 5, out-of-fold on ~150 held-out lines: **ρ = 0.43 / 0.49** — against ≈ 0 in June. |
+| **08** | `08_learnability_filter` | **Which drugs *can* be learned?** `learnability = min(#killed, #spared)`, coverage ≥ 90 % → **top 10 of 545**. *(A diagnostic simplification, not a result — see `10` §on validity: the score correlates only +0.36 with the ρ the model actually reaches.)* |
+| **09** | `09_learnable5_training` | **Does the pipeline learn anything at all?** PCA vs scGPT on those 10, out-of-fold on ~150 held-out lines: **ρ = 0.360 / 0.396** — against ≈ 0 in June. |
 | **10** | `10_diagnosis` | **Why did the 545-head model fail, and what fixes it?** The targets' biology, the implicit σ²-weighting of the loss, **the causal rescue test on the broken setting**, the model-knob ablations on the corrected one, and the ridge control. |
-| **11** | `11_auc_vs_aucz` | **Which target?** `mean_pv` vs `auc` vs `auc_z`, at K=5 and K=545, with bootstrap CIs, Pearson, and seed stability. |
+| **11** | `11_auc_vs_aucz` | **Which target?** `mean_pv` vs `auc` vs `auc_z`, at K=10 and K=545, with bootstrap CIs, Pearson, and seed stability. |
 | **12** | `12_dreval_benchmark` | **How strong is this by the field's standard?** Our data + model through the real **DrEval** package (`drevalpy` 1.5.1): their LCO splits, their baselines, their metrics. |
 
 **Supporting (not on the critical path):**

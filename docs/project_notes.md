@@ -37,7 +37,7 @@ overlap identical to the `mean_pv` file. Nothing re-trained on it yet.
 
 ### The 545-drug null result was a drug-selection artifact
 
-`08_learnability_filter.ipynb` + `09_learnable5_training.ipynb`. Filtered 545 → **5 drugs** (harsh gates:
+`08_learnability_filter.ipynb` + `09_learnable5_training.ipynb`. Filtered 545 → **10 drugs** (`learnability = min(#killed, #spared)`, coverage ≥ 90 %; old harsh gates:
 coverage ≥ 95%, `auc_std` ≥ 0.15, dynamic range ≥ 0.4, **and** ≥ 20 lines killed *and* ≥ 20 lines
 surviving — the differential-response condition that the old loose filter lacked, which is why it kept
 439/545 and never bit). Trained PCA vs scGPT on those 5, out-of-fold over 5 GroupKFold folds:

@@ -57,7 +57,7 @@ def build_pipeline():
 
     ax.text(50, 98, "OncoTox Pipeline — Status Overview", ha="center", va="top",
             fontsize=17, fontweight="bold", color=INK)
-    ax.text(50, 93.5, "as of 2026-06-28   ·   reference: project_planning_v2.pdf   ·   steps: docs/steps/",
+    ax.text(50, 93.5, "as of 2026-07-14   ·   reference: project_planning_v2.pdf   ·   steps: docs/steps/",
             ha="center", va="top", fontsize=9.5, color=GREY)
     handles = [
         mpatches.Patch(facecolor=GREEN_FILL, edgecolor=GREEN, label="Done / on-plan"),
@@ -68,7 +68,7 @@ def build_pipeline():
               ncol=3, fontsize=9.5, frameon=True, framealpha=0.9)
 
     box(ax, XS[0], ROW_A, W, H, "01 · Datasets & harmonization",
-        ["SCP542 53,513 cells x 22,722 g", "CTRPv2 545 drugs (cpd_avg_pv)",
+        ["SCP542 53,513 cells x 22,722 g", "CTRPv2 545 drugs · target: auc_z",
          "overlap 190* lines · 180 trainable"], GREEN, GREEN_FILL)
     box(ax, XS[1], ROW_A, W, H, "02 · Preprocessing & embeddings",
         ["scGPT X_scGPT = 512-d", "gene-set sweep 1k-5k + all_genes",
@@ -81,8 +81,8 @@ def build_pipeline():
          "1 DB · 1 score · 1 drug"], GREEN, GREEN_FILL)
 
     box(ax, XS[0], ROW_B, W, H, "05 · Multi-task + fair eval",
-        ["K=545 drugs · 5-fold GroupKFold CV", "PCA ~ scGPT (within noise)",
-         "per-drug rho ~ 0 · 1 DB·1 score"], GREEN, GREEN_FILL)
+        ["K=545 · out-of-fold over 153 lines", "target fix (auc_z): rho ~0 -> ~0.4",
+         "scGPT >= PCA · benchmarked (DrEval)"], GREEN, GREEN_FILL)
     box(ax, XS[1], ROW_B, W, H, "06 · Cross-database  (MISSING)",
         ["CTRPv2 + PRISM + GDSC", "efficacy + toxicity heads",
          "the 'combine all' goal"], RED, RED_FILL, title_color=RED, dashed=True)
@@ -95,9 +95,10 @@ def build_pipeline():
 
     BAND_Y, BAND_H = 5, 13
     box(ax, XS[0], BAND_Y, 94, BAND_H, "Additions beyond the written plan",
-        ["512-d PCA (matched to scGPT)  ·  5-fold GroupKFold CV  ·  per-drug correlation metric  ·  "
-         "gene-set sweep (1k-5k + all_genes)  ·  cancer-type UMAPs  ·  cell-line-grouped split (leak fix)  ·  "
-         "per-drug-mean baseline + run versioning"],
+        ["512-d PCA (matched to scGPT)  ·  out-of-fold CV over 153 lines  ·  per-drug correlation metric  ·  "
+         "gene-set sweep  ·  cancer-type UMAPs  ·  cell-line-grouped split (leak fix)  ·  run versioning\n"
+         "per-drug z-scored target (auc_z = 1/sigma^2 head weighting)  ·  learnability filter  ·  "
+         "ridge line-level control  ·  external benchmark against DrEval (drevalpy)"],
         AMBER, AMBER_FILL, title_color=AMBER)
 
     for i in range(3):
@@ -161,22 +162,27 @@ def build_architecture():
             ax.add_patch(Circle((x, y), r, facecolor=BLUE_FILL, edgecolor=BLUE, lw=1.6, zorder=3))
     for lx, n in zip(layers_x, counts):
         ax.text(lx, cy - (n / 2) * sp - 0.6, "⋮", ha="center", va="top", fontsize=12, color=GREY)
-    for lx, t in zip(layers_x, ["input\n512", "hidden\n128", "hidden\n64", "heads\n545 drugs"]):
+    for lx, t in zip(layers_x, ["input\n512", "hidden\n128", "hidden\n64", "heads\n10 drugs\n(545 = all)"]):
         ax.text(lx, 25.5, t, ha="center", va="top", fontsize=9, color=INK)
     ax.add_patch(FancyBboxPatch((22.5, 27.5), 47, 19, boxstyle="round,pad=0.3,rounding_size=1.2",
                  fill=False, edgecolor=BLUE, lw=1.2, linestyle="--", zorder=0))
     arrow(ax, 68, 37, 75, 37, color=INK)
 
-    # ---------- OUTPUT: predicted viability per drug ----------
-    out_vals = np.array([0.95, 0.4, 0.88, 0.2, 0.7, 0.55, 0.97, 0.35, 0.8, 0.6, 0.9, 0.45, 0.75, 0.3])
-    _heat_strip(ax, 79, 30.5, 43.5, out_vals, "RdYlGn")
-    ax.text(80.8, 43.2, "green ≈ 1: no effect", ha="left", va="center", fontsize=7.5, color=GREEN)
-    ax.text(80.8, 30.8, "red < 1: killed", ha="left", va="center", fontsize=7.5, color=RED)
-    ax.text(79, 29.6, "viability per drug", ha="center", va="top", fontsize=9.5, fontweight="bold", color=INK)
-    ax.text(79, 26.7, "≈1 = no effect (relative\nto control; can exceed 1)", ha="center", va="top",
-            fontsize=8.0, color=INK)
+    # ---------- OUTPUT: predicted auc_z per drug ----------
+    # auc_z is per-drug standardized: <0 = more sensitive than the average line, >0 = more resistant.
+    out_vals = np.array([0.85, 0.2, 0.75, 0.05, 0.6, 0.45, 0.9, 0.15, 0.7, 0.5, 0.8, 0.3, 0.65, 0.1])
+    _heat_strip(ax, 79, 30.5, 43.5, out_vals, "coolwarm")
+    # swatch legend (the strip is an unsorted prediction vector, so labels must not sit at its ends)
+    cm = plt.colormaps["coolwarm"]
+    for i, (v, lab, col) in enumerate([(0.95, "z > 0: resistant", RED), (0.05, "z < 0: sensitive", BLUE)]):
+        yy = 42.0 - i * 2.6
+        ax.add_patch(Rectangle((81.2, yy - 0.7), 1.5, 1.4, facecolor=cm(v), edgecolor=INK, lw=0.7, zorder=4))
+        ax.text(83.2, yy, lab, ha="left", va="center", fontsize=7.5, color=col)
+    ax.text(79, 29.6, "auc_z per drug", ha="center", va="top", fontsize=9.5, fontweight="bold", color=INK)
+    ax.text(79, 26.7, "per-drug z-score:  is THIS line\nmore sensitive than average?", ha="center",
+            va="top", fontsize=8.0, color=INK)
 
-    # ---------- TASK: why it's hard (bulk label broadcast) ----------
+    # ---------- TASK: why it's hard (bulk label broadcast + the loss scaling) ----------
     ax.add_patch(FancyBboxPatch((3, 2), 94, 17, boxstyle="round,pad=0.3,rounding_size=1.5",
                  facecolor="#fbf4e6", edgecolor=AMBER, lw=1.6, zorder=0))
     ax.text(6, 17.2, "The task — and why it is hard", ha="left", va="top",
@@ -185,19 +191,22 @@ def build_architecture():
     # bulk value broadcast to a line's cells
     ax.add_patch(FancyBboxPatch((9, 12.0), 12, 3.2, boxstyle="round,pad=0.2,rounding_size=0.8",
                  facecolor="white", edgecolor=AMBER, lw=1.4, zorder=3))
-    ax.text(15, 13.6, "bulk viability 0.8", ha="center", va="center", fontsize=8.5, color=INK)
+    ax.text(15, 13.6, "1 bulk label", ha="center", va="center", fontsize=8.5, color=INK)
     cell_x = [10.5, 15, 19.5]
     for cxp in cell_x:
         ax.add_patch(Circle((cxp, 7.2), 1.3, facecolor="#fde0c5", edgecolor="#d2691e", lw=1.3, zorder=3))
         arrow(ax, 15, 11.9, cxp, 8.6, color="#d2691e")
     ax.text(15, 4.6, "1 cell line (~300 cells)", ha="center", va="top", fontsize=8, color=INK)
-    ax.text(26, 13.2,
-            "One BULK value per (cell line × drug) is copied to every cell of that line\n"
-            "→ noisy per-cell labels; the model can only learn per-LINE signal (~126 train lines).",
+    ax.text(26, 13.4,
+            "1) One BULK value per (cell line × drug) is copied to every cell of that line\n"
+            "     → the cells are pseudo-replicates: ~150 independent examples per drug, not 53k.",
             ha="left", va="top", fontsize=9, color=INK)
-    ax.text(26, 7.4,
-            "Masked MSE: loss only on measured (cell, drug) pairs   ·   split grouped by cell line\n"
-            "(leak-free) — evaluate on unseen lines vs a per-drug-mean baseline + per-drug correlation.",
+    ax.text(26, 8.9,
+            "2) An unweighted masked MSE weights each of the 545 heads by its variance σ²\n"
+            "     (σ spans 0.03–0.30 ≈ 80× in squared error) → z-score per drug ≡ weight each head by 1/σ².",
+            ha="left", va="top", fontsize=9, color=INK)
+    ax.text(26, 4.4,
+            "3) Evaluate out-of-fold on unseen cell lines — average cells → line, then correlate.",
             ha="left", va="top", fontsize=9, color=INK)
 
     out = HERE / "model_architecture.png"
