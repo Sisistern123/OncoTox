@@ -59,7 +59,7 @@ Prediction of Anti-Cancer Drug Efficacy/Toxicity Scores
 **Figure:** `docs/model_architecture.png`
 
 - 2 MLPs: **PCA vs scGPT**, both 512-d in, **same trunk** (128 → 64), one head per drug
-- Output: **K = 545** heads (all drugs), or **K = 10** (learnable subset, slide 10)
+- Output: **K = 545** heads (all drugs), or **K = 10** (learnable subset, slide 9)
 - Masked MSE: `Σ(sq·M)/ΣM` — only observed (cell, drug) pairs contribute
 - 74,954 params at K=10 · 109,729 at K=545
 
