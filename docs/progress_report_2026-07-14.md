@@ -144,7 +144,7 @@ gate:          coverage ≥ 90 % of the 180 labelled lines      → top 10 drugs
 
 ---
 
-## Slide 12 — Results: the target comparison
+## Slide 12 — Results: the fix — two routes, one cause
 
 **Figure:** `outputs/target/target_comparison.png` (3 targets × K=10 / K=545, bootstrap CIs)
 
@@ -163,8 +163,17 @@ Out-of-fold ρ, **evaluated on the same 10 drugs in every row**:
 
 - Per-drug z-scoring ≡ **weighting each head by 1/σ²** — the regression analogue of class-imbalance
   reweighting (Kendall et al. 2018). Changes **no per-drug metric**, only the loss.
-- ⇒ This is the *"try reweighting to focus the model"* item — **and it is the one that works**
-- ⇒ **The head count was never the problem.** Same 545 heads, same ~150 lines/drug, same model.
+**Both fixes attack the same cause:** high-variance drugs that do *not* separate the panel dominate the
+shared multi-task loss.
+
+- **Drug filtering removes them.**
+- **Per-drug z-scoring rescales them** (`auc_z` ≡ weighting each head by 1/σ²; the regression analogue of
+  class-imbalance reweighting, Kendall et al. 2018 — it changes no per-drug metric, only the loss).
+- **They do not stack** — either one is enough. That is why K=10 works even with the old June target.
+
+⇒ Both items from the June action list — *"filter harshly"* and *"try reweighting to focus the model"* —
+were right, **and they turn out to be the same hypothesis**.
+⇒ **The head count was never the problem.** Same 545 heads, same ~150 lines/drug, same model.
 
 ---
 
@@ -248,7 +257,7 @@ single-cell resolution.**
 
 ---
 
-## Slide 16 — External benchmark: DrEval
+## Slide 16 — External benchmark: DrEval  *(preliminary)*
 
 **Figure:** `outputs/dreval/dreval_lco.png` · notebook `12_dreval_benchmark.ipynb`
 
@@ -278,38 +287,62 @@ LCO, 5-fold, **normalized** (mean ± std), on our 10 drugs / 179 lines:
 
 ---
 
-## Slide 17 — Discussion & Limitations
+## Slide 17 — Discussion
 
-- **The June null was substantially an artifact of a mis-scaled multi-task loss**, not a property of the
-  data. June's *"the bottleneck is the label"* was right — but the mechanism was the label's **variance**,
-  not its compression near 1.0. **No new data was needed.**
-- **Model-side tuning is closed** — regularization, capacity, batch size, sample reweighting: all flat.
-- **scGPT > PCA** in our metric, but **not** under DrEval's normalized metric ⇒ the core hypothesis is
-  **supported, not proven**.
-- **Ridge on line-means ties the PCA MLP** ⇒ the single-cell resolution pays off *only* with scGPT.
-  This is the same result DrEval reports for the whole field.
+**What fixed it — as suspected in June**
+- **Drug filtering** and **(indirect) loss reweighting via the target.** Both remove the same pathology:
+  high-σ, non-separating drugs dominating a shared multi-task loss.
+- June's *"the bottleneck is the label"* was right — but the mechanism was the label's **variance**, not
+  its compression near 1.0. **No new data was needed.**
 
-**Limitations:**
-1. **Drug selection saw val/test lines** → best-case subset. **Blocking.**
-2. `learnability` correlates only **+0.36** with achieved ρ; under bootstrap the passing set is unstable
-   (median 9 drugs, range 2–17)
-3. DrEval numbers before 14.07 were inflated (test fold used for early stopping) — **corrected**
-4. ~20 % of the DrEval signal is a pure **cell-line effect**; for `kx2-391` it is *all* of it
+**How to read the size of the effect**
+- DrEval (Wilhelm et al., 2026): about **half** of published models do not significantly beat a naive
+  mean-effects predictor; in LCO *"no model surpasses a tuned Random Forest"* (best normalized R² = **19 %**);
+  in LDO **none** beat the baseline at all.
+- Much of the apparent performance in this field comes from **biases the normalization removes** (drug
+  identity, cell-line effects). Modest normalized numbers are **the norm**, not a failure of this project.
+- ⇒ **It is not as bad as we feared in June — but it is not good either.** That is the honest position,
+  and it is the field's position.
+
+**Uncomfortable controls we keep in view**
+- `RidgeCV` on cell-line **mean** embeddings (0.342) ties the PCA MLP (0.356) — the single-cell resolution
+  pays off **only** with scGPT (0.402).
+- ~20 % of the DrEval signal is a pure **cell-line effect** ("this line is sensitive to everything").
 
 ---
 
-## Slide 18 — Next Steps
+## Slide 18 — Limitations
 
-**Immediate**
-- **Train-only drug selection inside each CV fold** — turns the best-case diagnosis into a
-  generalization estimate *(blocking)*
-- Re-run DrEval on **all 545 drugs**, and on **LTO / LDO**
+- **Drug selection saw val/test lines** → the 10 drugs are a **best-case subset**, not a random one.
+  This licenses a diagnosis, not a generalization estimate. **(blocking)**
+- **My learnability score is weak** — it correlates only **+0.36** with the ρ the model actually reaches.
+  It *enriches* (selected 0.40 vs rejected 0.12), but it is **not a measure of learnability**.
+  - 9 of the 12 drugs with ρ > 0.4 were rejected by the first version of the filter; `ml210` — the best
+    drug in the panel (ρ = 0.516) — failed a coverage gate at 0.94 vs 0.95.
+  - Under bootstrap resampling of the cell lines the passing set is unstable (median 9 drugs, range 2–17).
+- ⇒ **"10 / 545 pass the gates" is NOT "only 10 drugs are learnable"**: 76 % of all 537 scorable drugs
+  reach ρ > 0, and 10 % reach ρ > 0.3 (June reported ~4 %).
+- The **DrEval numbers are preliminary** — the paper has not been fully worked through.
+- scGPT's margin over PCA (+0.04) is the size of the **seed spread** (±0.03).
 
-**Model**
-- **scDEAL** — still not attempted *(June: "if nothing works" — something now works, so it becomes a
-  genuine comparison, not a fallback)*
-- Learned task weights (Kendall) instead of fixed z-scoring
-- Attention pooling per cell line *(June "Further Ideas")* — uses tumor heterogeneity as a feature
+---
 
-**Data**
-- Cross-database PRISM + GDSC (masked multi-task)
+## Slide 19 — Next Steps
+
+**1. Replace my filter with a literature-driven drug selection**
+- Pick the compounds from the **current research landscape** (known biomarker-driven responders, drugs the
+  field actually models) instead of a self-made statistic. This removes **both** the weak-ranker problem
+  **and** the best-case-subset bias.
+
+**2. Finish the DrEval validation**
+- Work through the paper properly; run **all 545 drugs** and the **LTO / LDO** settings, not just LCO.
+
+**3. Incorporate scDEAL — the actual next model step**
+- **Bulk RNA-seq pretraining** + denoising autoencoder to attack the bulk→single-cell label gap, instead of
+  broadcasting one bulk value onto ~300 cells.
+- June listed scDEAL as the *"if nothing works"* fallback. **Something now works** — so it becomes a
+  genuine comparison, not a rescue.
+
+**Later**
+- Learned task weights (Kendall) instead of fixed z-scoring · attention pooling per cell line ·
+  cross-database PRISM + GDSC.
