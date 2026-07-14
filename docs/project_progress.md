@@ -211,9 +211,9 @@ read any of their outputs).
 | 01 | `01_scDAExploration.ipynb` | Initial single-cell (SCP542) data exploration | No — exploration |
 | 02 | `02_compare_GDSC_CTRP.ipynb` | Cross-database drug-catalog harmonization (CTRP/GDSC/DrugBank → `data/drug/*`) | No — one-off |
 | 03 | `03_analysis.ipynb` | CTRP→PRISM drug-repurposing / clinical-phase mapping | No — metadata |
-| 04 | `04_drug_coverage.ipynb` | Per-drug coverage & learnability (→ `outputs/*_drug_learnability.csv`, `outputs/drug_coverage.png`) | No — informs interpretation |
+| 04 | `04_drug_coverage.ipynb` | Per-drug coverage & learnability (→ `outputs/*_drug_learnability.csv`, `outputs/01_data/drug_coverage.png`) | No — informs interpretation |
 | **05** | **`05_preprocessing.ipynb`** | Front-end to `run_preprocessing.py`: §A recompute 512-d `X_pca` (both variants); §B build the HVG-sweep variants (gated, scGPT re-embed) | **Yes — data** |
-| 06 | `06_verify_variants.ipynb` | QC audit of `hvg5000` vs `all_genes` outputs; PCA-vs-scGPT UMAPs (→ `outputs/variants.png`) | No — validation/QC |
+| 06 | `06_verify_variants.ipynb` | QC audit of `hvg5000` vs `all_genes` outputs; PCA-vs-scGPT UMAPs (→ `outputs/02_embeddings/variants.png`) | No — validation/QC |
 | **07** | **`07_training.ipynb`** | §1 8-run matrix (load-or-train) · §2 GroupKFold CV (test held out, mean±std incl. Δmse) · §3 per-drug correlation · §4 HVG sweet spot. Caching flags `RETRAIN_MATRIX`/`RECOMPUTE_CV`/`RECOMPUTE_SWEEP` | **Yes — results** |
 
 `05_preprocessing.ipynb` and `07_training.ipynb` both call the **same script entry points** the CLI
@@ -234,27 +234,27 @@ source of truth.
 
 | Figure | What it shows | Headline | Source · backs |
 |---|---|---|---|
-| `target_distribution.png` | 4-panel "why the task is hard": **A** viability histogram, **B** per-drug response-std histogram, **C** coverage-vs-std filter scatter, **D** per-drug response bands | A: clusters near 1.0 (median **0.91**, 75% ≥ 0.8); B: median per-drug std **0.088**, only **3%** flat; C: filter (cov ≥ 100 & std ≥ 0.05) keeps **439/545**; D: responses squeezed into ~0.8–1.0 | `04_drug_coverage.ipynb` · Step 05 learnability |
-| `drug_coverage.png` | Per-drug coverage (# cell lines) and response variance | No drug covers all 180 lines (max 179, median 171); 382 drugs ≥ 90% coverage | `04_drug_coverage.ipynb` |
-| `per_drug_correlation_cdf.png` | CDF of **per-drug Spearman** (pred vs true across held-out lines), PCA vs scGPT, 461 real-variance drugs | Curves sit on 0: mean Spearman **−0.02 (PCA) / −0.05 (scGPT)**; only ~4% of drugs ρ > 0.3 → model does **not** rank cell lines | `07_training.ipynb` §3 · Step 05 "Better metric" |
-| `per_drug_scatter_pca_vs_scgpt.png` | Per-drug Spearman PCA vs scGPT, point per drug | Both clustered around 0; no rep systematically ranks better | `07_training.ipynb` §3 |
-| `hvg_sweep_curve.png` | Heads-beating-baseline vs gene-set size (1k→all genes), 5-fold CV | **Flat** for both (PCA ~203–216, scGPT ~184–193); no sweet spot, all-genes no better than HVG | `07_training.ipynb` §4 · Step 05 "Gene-set sweep" |
-| `training_curves_pca_vs_scgpt.png` | Train/val MSE vs epoch, PCA vs scGPT (the overfitting gap) | `hvg5000` single-task gap **0.004 (scGPT) vs 0.033 (PCA)** | `07_training.ipynb` §1 · Step 05 single-task |
-| `umap_cancertype_pca_vs_scgpt.png` | Latent-space UMAP coloured by cancer type, PCA vs scGPT | scGPT mixes tissues; PCA keeps tissue-of-origin islands (latent validation) | `06_verify_variants.ipynb` · Step 02 |
-| `umap_sweep_cancertype.png` | UMAP by cancer type across gene-set variants | Latent structure stable across HVG counts | `06_verify_variants.ipynb` |
-| `variants.png` | QC PCA-vs-scGPT UMAP for `hvg5000` vs `all_genes` | Variant outputs agree (sanity QC) | `06_verify_variants.ipynb` · Step 02 |
+| `01_data/target_distribution.png` | 4-panel "why the task is hard": **A** viability histogram, **B** per-drug response-std histogram, **C** coverage-vs-std filter scatter, **D** per-drug response bands | A: clusters near 1.0 (median **0.91**, 75% ≥ 0.8); B: median per-drug std **0.088**, only **3%** flat; C: filter (cov ≥ 100 & std ≥ 0.05) keeps **439/545**; D: responses squeezed into ~0.8–1.0 | `04_drug_coverage.ipynb` · Step 05 learnability |
+| `01_data/drug_coverage.png` | Per-drug coverage (# cell lines) and response variance | No drug covers all 180 lines (max 179, median 171); 382 drugs ≥ 90% coverage | `04_drug_coverage.ipynb` |
+| `03_training_545/per_drug_correlation_cdf.png` | CDF of **per-drug Spearman** (pred vs true across held-out lines), PCA vs scGPT, 461 real-variance drugs | Curves sit on 0: mean Spearman **−0.02 (PCA) / −0.05 (scGPT)**; only ~4% of drugs ρ > 0.3 → model does **not** rank cell lines | `07_training.ipynb` §3 · Step 05 "Better metric" |
+| `03_training_545/per_drug_scatter_pca_vs_scgpt.png` | Per-drug Spearman PCA vs scGPT, point per drug | Both clustered around 0; no rep systematically ranks better | `07_training.ipynb` §3 |
+| `03_training_545/hvg_sweep_curve.png` | Heads-beating-baseline vs gene-set size (1k→all genes), 5-fold CV | **Flat** for both (PCA ~203–216, scGPT ~184–193); no sweet spot, all-genes no better than HVG | `07_training.ipynb` §4 · Step 05 "Gene-set sweep" |
+| `03_training_545/training_curves_pca_vs_scgpt.png` | Train/val MSE vs epoch, PCA vs scGPT (the overfitting gap) | `hvg5000` single-task gap **0.004 (scGPT) vs 0.033 (PCA)** | `07_training.ipynb` §1 · Step 05 single-task |
+| `02_embeddings/umap_cancertype_pca_vs_scgpt.png` | Latent-space UMAP coloured by cancer type, PCA vs scGPT | scGPT mixes tissues; PCA keeps tissue-of-origin islands (latent validation) | `06_verify_variants.ipynb` · Step 02 |
+| `02_embeddings/umap_sweep_cancertype.png` | UMAP by cancer type across gene-set variants | Latent structure stable across HVG counts | `06_verify_variants.ipynb` |
+| `02_embeddings/variants.png` | QC PCA-vs-scGPT UMAP for `hvg5000` vs `all_genes` | Variant outputs agree (sanity QC) | `06_verify_variants.ipynb` · Step 02 |
 
 **Evaluation tables (`.csv`):**
 
 | Table | Contents |
 |---|---|
-| `cv_summary.csv` / `cv_folds.csv` | 5-fold GroupKFold CV (test held out): heads-beating, **Δmse**, all-drugs val MSE, paclitaxel gap — per rep (summary) and per fold (with `median_delta`, `frac_beat`) |
-| `per_drug_correlation_summary.csv` | Per-rep mean/median Spearman, mean Pearson, frac ρ > 0.3 over 461 drugs |
-| `per_drug_correlation_X_pca.csv` / `…_X_scGPT.csv` / `per_drug_pca_vs_scgpt.csv` | Per-drug correlation values (and the PCA-vs-scGPT join) |
-| `hvg_sweep.csv` | Gene-set sweep: heads-beat mean/std, Δmse mean/std, val MSE per (variant × rep) |
-| `matrix_all_drugs.csv` / `matrix_single_paclitaxel.csv` | The 8-run matrix results (all-drugs / single-task paclitaxel) |
-| `training_pca_vs_scgpt_summary.csv` | Single-split per-rep summary (best val MSE, epoch, model vs baseline mean MSE, heads-beating, run dir) |
-| `ctrp_drug_learnability.csv` / `gdsc_drug_learnability.csv` | Per-drug coverage + response-variance learnability scores |
+| `03_training_545/cv_summary.csv` / `03_training_545/cv_folds.csv` | 5-fold GroupKFold CV (test held out): heads-beating, **Δmse**, all-drugs val MSE, paclitaxel gap — per rep (summary) and per fold (with `median_delta`, `frac_beat`) |
+| `03_training_545/per_drug_correlation_summary.csv` | Per-rep mean/median Spearman, mean Pearson, frac ρ > 0.3 over 461 drugs |
+| `03_training_545/per_drug_correlation_X_pca.csv` / `…_X_scGPT.csv` / `03_training_545/per_drug_pca_vs_scgpt.csv` | Per-drug correlation values (and the PCA-vs-scGPT join) |
+| `03_training_545/hvg_sweep.csv` | Gene-set sweep: heads-beat mean/std, Δmse mean/std, val MSE per (variant × rep) |
+| `03_training_545/matrix_all_drugs.csv` / `03_training_545/matrix_single_paclitaxel.csv` | The 8-run matrix results (all-drugs / single-task paclitaxel) |
+| `03_training_545/training_pca_vs_scgpt_summary.csv` | Single-split per-rep summary (best val MSE, epoch, model vs baseline mean MSE, heads-beating, run dir) |
+| `01_data/ctrp_drug_learnability.csv` / `01_data/gdsc_drug_learnability.csv` | Per-drug coverage + response-variance learnability scores |
 
 ---
 

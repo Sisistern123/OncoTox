@@ -74,7 +74,7 @@ CLI uses).
 - **§4 — HVG sweet spot**: heads-beating vs HVG count (1k/2k/3k/5k) under CV, all drugs.
 
 **Caching flags** (default `False` = load saved results, fast re-run): `RETRAIN_MATRIX` (§1),
-`RECOMPUTE_CV` (§2, uses `outputs/cv_folds.csv`), `RECOMPUTE_SWEEP` (§4, uses `outputs/hvg_sweep.csv`).
+`RECOMPUTE_CV` (§2, uses `outputs/03_training_545/cv_folds.csv`), `RECOMPUTE_SWEEP` (§4, uses `outputs/03_training_545/hvg_sweep.csv`).
 Set a flag `True` to recompute that section. Metric definitions are in
 [`docs/steps/05`](../docs/steps/05-multitask-results.md#metrics--what-each-number-means).
 
@@ -85,14 +85,14 @@ Run in order; `09` reads `08`'s CSV, so re-running `08` with different gates cha
 - **`08`** — harsh learnability filter on the `auc_z` target. The `04` score (`resp_std × cov_frac`) is
   **degenerate** here (z-scoring makes every drug's std 1.0), so spread is read off the raw `auc` scale
   via `uns["ctrp_score_scale"]`. Adds the condition the loose filter lacked — a drug must **kill** a real
-  population of lines *and* **leave one alive**. **5 / 545 survive** → `outputs/ctrp_drug_learnability_auc.csv`,
-  `outputs/learnability_filter_auc.png`.
+  population of lines *and* **leave one alive**. **5 / 545 survive** → `outputs/04_learnability/ctrp_drug_learnability_auc.csv`,
+  `outputs/04_learnability/learnability_filter_auc.png`.
 - **`09`** — PCA vs scGPT trained on those 5 (via `train_rep`, matched trunk). Headline metric is per-drug
   Spearman on **cross-validated out-of-fold predictions** (5-fold GroupKFold over the 153 train+val lines,
   ~150 lines/drug — the fixed val split only has 27). **Mean Spearman 0.43 (PCA) / 0.49 (scGPT)** vs ≈ 0
   over all 545 drugs → the 545-drug null result was a **drug-selection artifact**
-  ([Step 05](../docs/steps/05-multitask-results.md)). Outputs: `learnable5_per_drug_correlation.csv`,
-  `learnable5_fixed_split_mse.csv`, `learnable5_pred_vs_true.png`, `learnable5_pca_vs_scgpt.png`.
+  ([Step 05](../docs/steps/05-multitask-results.md)). Outputs: `04_learnability/learnable5_per_drug_correlation.csv`,
+  `04_learnability/learnable5_fixed_split_mse.csv`, `04_learnability/learnable5_pred_vs_true.png`, `04_learnability/learnable5_pca_vs_scgpt.png`.
 
 ⚠️ Both are a **best-case diagnostic**: the 5 drugs are selected using all 180 lines (val/test included).
 Fine for "does any signal exist?", not a generalization estimate — see [TODO](../docs/TODO.md).
@@ -105,8 +105,8 @@ Four model-side knobs on the 5 learnable drugs, same out-of-fold Spearman metric
 every axis, so **model-side tuning is closed**. Includes the control that now sets the bar: **`RidgeCV` on
 the 150 cell-line mean embeddings** (no cells, no network) scores **0.428**, *tying* the PCA MLP and within
 0.06 of scGPT's — because the label is per cell line, so there are only ~150 independent examples.
-Outputs: `ablation_regularization.csv`, `ablation_capacity.csv`, `ablation_batch_weighting.csv`,
-`ablation_reg_capacity.png`. See [Step 03](../docs/steps/03-model-and-training-design.md#these-hyperparameters-are-not-worth-tuning-ablated-13072026).
+Outputs: `06_ablations/ablation_regularization.csv`, `06_ablations/ablation_capacity.csv`, `06_ablations/ablation_batch_weighting.csv`,
+`06_ablations/ablation_reg_capacity.png`. See [Step 03](../docs/steps/03-model-and-training-design.md#these-hyperparameters-are-not-worth-tuning-ablated-13072026).
 
 ### `11_auc_vs_aucz.ipynb` — which target? (`mean_pv` vs `auc` vs `auc_z`)
 
@@ -126,9 +126,9 @@ bootstrap CI over the ~150 held-out lines**, per-drug dots, and a **3-seed stabi
   makes a 545-head masked MSE trainable, and this **reproduces the `07` §3 null result on demand**.
 - ⚠️ **The curve fit buys no accuracy** (`mean_pv` ≈ `auc` everywhere) — keep it for GDSC comparability,
   not performance.
-- **scGPT − PCA = +0.075 ± 0.038**, sign-consistent over 3 seeds (`seed_stability.csv`).
+- **scGPT − PCA = +0.075 ± 0.038**, sign-consistent over 3 seeds (`05_target/seed_stability.csv`).
 
-Outputs: `target_comparison.csv`, `target_comparison_ci.csv`, `seed_stability.csv`, `target_comparison.png`.
+Outputs: `05_target/target_comparison.csv`, `05_target/target_comparison_ci.csv`, `05_target/seed_stability.csv`, `05_target/target_comparison.png`.
 
 ---
 
