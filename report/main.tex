@@ -1,0 +1,39 @@
+\documentclass[a4paper,11pt]{article}
+
+% --- packages (all in BasicTeX or a single tlmgr install; see README) --------
+\usepackage[left=2.4cm,right=2.4cm,top=2.2cm,bottom=2.2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage[table]{xcolor}
+\usepackage{booktabs}
+\usepackage[colorlinks=true,urlcolor=blue,linkcolor=black,citecolor=black]{hyperref}
+
+\graphicspath{{figures/}}
+\setlength{\parskip}{0.4em}
+\setlength{\parindent}{0pt}
+
+% inline monospace for code / notebook / variable references
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+% single source of truth for the headline numbers (see results_numbers.tex)
+\input{results_numbers}
+
+\title{\textbf{Prediction of Anti-Cancer Drug Efficacy Scores}\\[0.4em]
+\large Single-Cell Drug-Response Prediction with Foundation-Model Embeddings\\[0.4em]
+\normalsize Preliminary Report}
+\author{Selin Türko\u{g}lu}
+\date{15 July 2026}
+
+\begin{document}
+\maketitle
+
+% ---- sections (edit these files, not main.tex) ------------------------------
+\input{sections/01_abstract}
+\input{sections/02_introduction}
+\input{sections/03_methods}
+\input{sections/04_results}
+\input{sections/05_discussion}
+\input{sections/06_limitations_and_outlook}
+\input{sections/07_bibliography}
+
+\end{document}

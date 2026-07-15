@@ -1,0 +1,63 @@
+% =============================================================================
+% results_numbers.tex -- single source of truth for the headline numbers.
+% =============================================================================
+%
+% WHERE THE NUMBERS COME FROM
+%   Every value below is transcribed from a committed CSV under
+%   notebooks/outputs/ (14.07.2026, 10-drug re-run). The source file and, where
+%   a value is an aggregate, the exact reduction are noted per block. This file
+%   is maintained BY HAND: unlike the ToxFam manuscript (whose results_numbers
+%   is auto-generated from a JSON manifest), this repo has no extraction script
+%   yet, so when a notebook is re-run these macros must be updated here.
+%
+% HOW THEY ARE USED
+%   main.tex does \input{results_numbers} in the preamble, which defines the
+%   \newcommand macros below. The section files then cite a number as the macro,
+%   e.g. "\rhoFullScgpt{}" or "$\rho=\ridgePca$", never as a literal digit. So a
+%   number appears in exactly one place; editing it here updates every mention.
+%   (The two results tables in 04_results carry the full per-cell values inline,
+%   since a table is itself a single location; the macros cover the prose.)
+%
+% HOW TO UPDATE
+%   1. Re-run the relevant notebook -> refreshed CSV in notebooks/outputs/.
+%   2. Read the value from that CSV (means over per-drug / per-fold rows where
+%      noted) and edit the matching macro below.
+%   3. Recompile (pdflatex main.tex, twice). No section file needs touching.
+% =============================================================================
+
+% --- dataset (docs/project_progress.md, notebooks/04) ----------------------
+\newcommand{\NLines}{180}          % SCP542 x CTRPv2 lines with post-QC labels
+\newcommand{\NDrugs}{545}          % CTRPv2 compounds in the overlap
+\newcommand{\NCells}{53{,}513}     % single cells
+\newcommand{\NIndep}{150}          % ~independent examples after held-out splits
+\newcommand{\NHvg}{5{,}000}        % highly variable genes (hvg5000 variant)
+\newcommand{\NVocab}{4{,}576}      % of those, in scGPT's vocabulary
+\newcommand{\NLearn}{10}           % learnable-drug subset size
+
+% --- out-of-fold Spearman on auc_z, mean over the 10 learnable drugs -------
+% source: target/target_comparison.csv (mean of the per-drug `spearman` rows,
+%         filtered by score=auc_z, heads, rep)
+\newcommand{\rhoTenPca}{0.360}     % heads=K=10,  X_pca
+\newcommand{\rhoTenScgpt}{0.396}   % heads=K=10,  X_scGPT
+\newcommand{\rhoFullPca}{0.316}    % heads=K=545, X_pca
+\newcommand{\rhoFullScgpt}{0.328}  % heads=K=545, X_scGPT
+
+% --- baselines / capacity: ablations/ablation_capacity.csv (`spearman`) -----
+\newcommand{\ridgePca}{0.343}      % ridge (line-level), X_pca
+\newcommand{\mlpPcaR}{0.356}       % MLP (128,64) current, X_pca
+\newcommand{\mlpScgptR}{0.402}     % MLP (128,64) current, X_scGPT
+\newcommand{\linScgptR}{0.292}     % linear head, X_scGPT
+\newcommand{\ParamsHi}{74{,}954}   % params, MLP (128,64)
+\newcommand{\ParamsLo}{5{,}130}    % params, linear head
+% train-to-val MSE gap on auc_z, MLP (128,64): val_mse - train_mse
+\newcommand{\gapScgpt}{0.098}      % 0.8267 - 0.7290 (X_scGPT)
+\newcommand{\gapPca}{0.464}        % 0.9639 - 0.4995 (X_pca)
+
+% --- DrEval LCO, normalized, mean over folds 1-5 ---------------------------
+% source: dreval/dreval_lco_results.csv (`Spearman: normalized`, `R^2: normalized`)
+\newcommand{\drScgptSp}{0.357}     % OncoMLP (X_scGPT)
+\newcommand{\drScgptRsq}{0.114}    % OncoMLP (X_scGPT)
+\newcommand{\drPcaSp}{0.340}       % OncoMLP (X_pca)
+\newcommand{\drPcaRsq}{0.086}      % OncoMLP (X_pca)
+\newcommand{\drRfSp}{0.339}        % SingleDrugRF (scgpt)
+\newcommand{\drPaperRsq}{19\%}     % paper's best LCO model, normalized R^2

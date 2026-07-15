@@ -1,0 +1,68 @@
+\section{Methods}
+
+\subsection{Data}
+
+All experiments use the highest-confidence intersection of SCP542 \cite{scp542} and CTRPv2 \cite{ctrp}. This intersection comprises \NLines{} cell lines with
+post-quality-control measurements (190 roster name matches, of which 10 are unscreened), \NDrugs{}
+compounds and \NCells{} cells, with effectively complete viability coverage inside the overlap. Genes are
+reduced to the \NHvg{} most highly variable; scGPT embeds the \NVocab{} of these that lie in its
+vocabulary, while PCA is computed on all \NHvg{}. The gene-set size is not critical: an earlier sweep from
+1{,}000 genes to the full transcriptome showed no advantage for any particular count
+(\code{notebooks/07}), so the \NHvg-gene selection is used throughout.
+
+A property of the data governs every error estimate in this report. The label is defined per cell line and
+drug, not per cell, so all cells of a line share the same broadcast bulk value and act as
+pseudo-replicates. The effective sample size is therefore the number of cell lines, approximately
+\NIndep{} after the held-out splits are removed, not the \NCells{} cells. Treating cells as independent
+would understate the uncertainty by roughly the square root of the number of cells per line.
+
+\subsection{Representation and model}
+
+The comparison between representations is controlled so that only the content of the embedding differs.
+Both the PCA baseline (\code{X\_pca}) and the scGPT embedding (\code{X\_scGPT}) are 512-dimensional and are
+fed into the same multi-head perceptron, with hidden dimensions 128 and 64, layer normalization, GELU
+activations and dropout. The network has one output head per drug and is trained with a masked
+mean-squared-error loss that is evaluated only on observed cell-drug pairs. The model and training code are
+defined in \code{scripts/model/OncoMLP.py} and \code{scripts/training/train\_multitask.py}.
+
+\subsection{Response target and per-drug standardization}
+\label{sec:target}
+
+The choice of training target requires care. CTRPv2 provides a dose-averaged percent-viability score,
+denoted \code{mean\_pv}, and an integrated area under the fitted dose-response curve, \code{auc}. The
+initial experiments used \code{mean\_pv}; the final target is the curve-fit AUC standardized per drug
+across cell lines, \code{auc\_z}, defined for cell line $i$ and drug $j$ as
+$\mathrm{auc\_z}_{ij} = (\mathrm{auc}_{ij} - \mu_j)/\sigma_j$, where $\mu_j$ and $\sigma_j$ are the mean and
+standard deviation of that drug's AUC over the cell lines.
+
+Two considerations motivate the standardization. First, the per-drug response variance is highly
+heterogeneous across the \NDrugs{} compounds, with the per-drug standard deviation ranging from 0.034 to
+0.302, a factor of roughly 80 in squared error. In a shared multi-task objective with one masked
+squared-error term per drug, the contribution of a drug scales with its variance, so a small number of
+high-variance compounds dominate the shared representation irrespective of whether that variance carries
+any learnable signal; the three drugs with the largest spread (\code{ifosfamide}, \code{fqi-2} and
+\code{bafilomycin a1}) in fact fail to separate the cell lines at all. Standardizing each drug to unit
+variance is algebraically equivalent to weighting each head by $1/\sigma_j^2$, which removes this
+imbalance and is the regression analogue of loss reweighting under class imbalance \cite{kendall}. Second,
+per-drug standardization changes the question from absolute potency, which is a property of the drug, to
+the relative sensitivity of a cell line for a given drug, which is the quantity of interest for
+personalized prediction. Because the Spearman correlation within a drug is invariant to an affine per-drug
+transform, the standardization does not alter any single-drug evaluation metric; its only effect is on the
+multi-task coupling. The target is implemented in \code{scripts/preprocessing/ctrp\_to\_h5ad.py}.
+
+\subsection{Evaluation}
+
+Cell lines are evaluated out of fold. A 5-fold group $k$-fold split, grouped by cell line, is applied to
+the 153 training and validation lines, so that no cell of a test line is seen during training. Each line
+is predicted exactly once, the per-cell predictions of a line are averaged to the line level, and the
+Spearman correlation between predicted and true values across the roughly \NIndep{} lines is computed per
+drug and averaged over drugs. This protocol replaces an earlier fixed 27-line validation split, on which
+the standard error of a correlation is approximately 0.2 and effects below 0.4 are not measurable. The
+Pearson correlation tracks the Spearman value within 0.02 throughout.
+
+For external comparison, the model is additionally evaluated with the DrEval package \cite{dreval}
+(version 1.5.1), using its leave-cell-line-out splits, its baselines and its evaluation routine without
+reimplementation. As recommended by the framework, metrics are reported after the mean drug and cell-line
+effects have been removed from both the true and predicted responses, and they are pooled over all
+cell-line-drug pairs rather than averaged per drug, so they are not directly comparable to the per-drug
+correlations above.

@@ -1,0 +1,115 @@
+\section{Results}
+\label{sec:results}
+
+\subsection{Per-drug standardization is what makes the multi-task objective learnable}
+
+Table~\ref{tab:target} compares the three targets across representations and head counts, with all other
+settings fixed. On the subset of \NLearn{} learnable drugs the three targets are statistically
+indistinguishable, which shows that the curve fit itself buys no accuracy over the dose average. The
+difference appears only at the full \NDrugs-head scale: both unstandardized targets collapse to
+approximately zero, with scGPT turning negative, whereas the standardized target retains
+$\rho=\rhoFullScgpt{}$ (scGPT). Per-drug standardization is therefore a prerequisite for a learnable
+large multi-task objective rather than a change to the information content of the label.
+
+\begin{table}[t]
+\centering
+\caption{Out-of-fold Spearman correlation, averaged over the \NLearn{} learnable drugs, seed 42. The three
+targets tie at K\,$=$\,\NLearn{}, but only the standardized \code{auc\_z} survives at K\,$=$\,\NDrugs{}.
+Values are means of the per-drug rows in \code{outputs/target/target\_comparison.csv}
+(\code{notebooks/11}).}
+\label{tab:target}
+\begin{tabular}{llccc}
+\toprule
+Heads & Representation & \code{mean\_pv} & \code{auc} & \code{auc\_z} \\
+\midrule
+\NLearn{} & PCA   & 0.370 & 0.360 & \rhoTenPca{} \\
+\NLearn{} & scGPT & 0.396 & 0.405 & \rhoTenScgpt{} \\
+\NDrugs{} & PCA   & $+0.073$ & $-0.012$ & \rhoFullPca{} \\
+\NDrugs{} & scGPT & $-0.078$ & $-0.069$ & \rhoFullScgpt{} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A set of single-parameter interventions on the unstandardized \NDrugs-head configuration locates the cause
+(Figure~\ref{fig:rescue}). Starting from the broken baseline ($\rho=-0.08$), heavier regularization, a
+smaller model, a different batch size and sample reweighting all leave the result unchanged or make it
+worse. Two changes help. Removing the regularization recovers most of the gap (to $\rho=+0.21$), which
+shows that the dropout had been interacting with the mis-scaled loss by starving the learnable heads of
+shared capacity. Standardizing the target recovers the signal fully (to $\rho=+0.33$) without weakening the
+regularization, which is why, once the target is corrected, regularization is flat and no longer a useful
+lever.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.78\textwidth]{fig_rescue.png}
+\caption{\textbf{On the broken \NDrugs-head configuration, only removing regularization or standardizing
+the target recovers the signal.} Each bar applies a single change to the same unstandardized setting (raw
+\code{auc}, scGPT). Heavier regularization, a smaller model, a different batch size and reweighting (grey)
+do not help; removing regularization (orange) recovers most of the gap; per-drug standardization (blue)
+recovers it fully and addresses the cause. Source:
+\code{outputs/ablations/rescue\_k545.png} (\code{notebooks/10}).}
+\label{fig:rescue}
+\end{figure}
+
+\subsection{The corrected model ranks unseen cell lines at full head count}
+
+With the standardized target the model ranks unseen cell lines well above chance. On the learnable subset
+it reaches $\rho=\rhoTenScgpt{}$ (scGPT) and $\rho=\rhoTenPca{}$ (PCA), and it holds at
+$\rho=\rhoFullScgpt{}$ and $\rho=\rhoFullPca{}$ even when all \NDrugs{} heads are trained jointly, which
+shows that the large multi-task objective is trainable once the target is standardized.
+
+\subsection{Model capacity is exhausted; the ceiling is the number of independent cell lines}
+
+On the corrected setting, model-side tuning yields nothing further: regularization, capacity (from
+\ParamsHi{} down to \ParamsLo{} parameters) and batch size all leave the correlation flat. The decisive
+control is a ridge regression fitted to the \NIndep{} cell-line mean embeddings, with no single cells and
+no network, which reaches $\rho=\ridgePca{}$ (PCA) and essentially ties the PCA multi-layer perceptron
+($\rho=\mlpPcaR{}$). The deep single-cell apparatus adds a measurable margin only through scGPT
+($\rho=\mlpScgptR{}$), and even there the scGPT signal is nonlinear, since a linear head on scGPT drops to
+$\rho=\linScgptR{}$. The scGPT representation does, however, generalize better than PCA in the way the
+guiding hypothesis predicts: sharing an identical trunk, its training-to-validation gap on the corrected
+target is \gapScgpt{}, against \gapPca{} for PCA, so the foundation-model embedding overfits far less. The
+limiting factor is thus the small number of independent cell lines and the noise of the broadcast labels,
+not the representation or the architecture.
+
+\subsection{Against the field, the model clears the naive baseline but not the best-in-class model}
+
+Under the DrEval leave-cell-line-out protocol and its normalized metric (Table~\ref{tab:dreval},
+Figure~\ref{fig:dreval}), our model exceeds the NaiveMeanEffects baseline that half of the published field
+fails to beat, reaching a normalized Spearman correlation of \drScgptSp{} for scGPT against 0.000 for the
+baseline, and it slightly exceeds DrEval's own SingleDrug reference models on identical features
+($\rho=\drRfSp{}$ for their random forest). It remains below the best model the DrEval study reports, whose
+normalized coefficient of determination reaches about \drPaperRsq{} against our \drScgptRsq{}. The
+scGPT-over-PCA advantage seen in the internal evaluation shrinks to near noise once the mean effects are
+removed (normalized Spearman \drScgptSp{} versus \drPcaSp{}). Consistent with the ridge control above, this
+reproduces the study's central finding that most of the apparent performance in this field is the
+cell-line and drug mean effect rather than differential response.
+
+\begin{table}[t]
+\centering
+\caption{DrEval leave-cell-line-out benchmark, normalized metrics, mean over five folds. The model clears
+the NaiveMeanEffects baseline and edges DrEval's reference models on identical features. Data source:
+\code{outputs/dreval/dreval\_lco\_results.csv} (\code{notebooks/12}).}
+\label{tab:dreval}
+\begin{tabular}{lcc}
+\toprule
+Model & norm.\ Spearman & norm.\ $R^2$ \\
+\midrule
+NaiveMeanEffects (baseline) & 0.000 & 0.000 \\
+SingleDrugRandomForest (scGPT) & \drRfSp{} & 0.098 \\
+OncoMLP (X\_pca) & \drPcaSp{} & \drPcaRsq{} \\
+OncoMLP (X\_scGPT) & \drScgptSp{} & \drScgptRsq{} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{fig_dreval.png}
+\caption{\textbf{The naive predictors' raw performance is bias that the normalization removes.} DrEval
+leave-cell-line-out results, raw pooled correlation (left) and normalized (right). The naive predictors sit
+above zero on the left and collapse to zero on the right, which shows that their raw performance was the
+mean effect; the model remains above the baseline after normalization. Source:
+\code{outputs/dreval/dreval\_lco.png} (\code{notebooks/12}).}
+\label{fig:dreval}
+\end{figure}

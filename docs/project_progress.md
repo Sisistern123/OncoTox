@@ -7,6 +7,30 @@ complementary dated thought/decision log.*
 
 Reference plan: `~/Desktop/OncoTox/project_plan/project_planning_v2.pdf`.
 Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition** inside each step file.
+A standalone LaTeX write-up of the current state lives in [`../report/`](../report/) (→ `main.pdf`).
+
+> ## 🟢 Current numbers (14.07.2026) — supersedes the 13.07 box below
+>
+> Everything below dated 13.07 was **re-run** after two corrections: the drug filter was widened from
+> **5 → 10 drugs** (`learnability = min(#killed, #spared)`, coverage ≥ 90 %), and a **DrEval val-split
+> leak was fixed** (`ee07b00`). The 13.07 box and scorecard stay as history; the authoritative numbers
+> are these, read from `notebooks/outputs/*.csv`:
+>
+> | | 13.07 (5 drugs, best-case) | **14.07 (10 drugs)** | Source |
+> |---|---|---|---|
+> | K=10 out-of-fold `auc_z` (PCA / scGPT) | 0.42 / 0.49 | **0.360 / 0.396** | `target/target_comparison.csv` |
+> | K=545 `auc_z` (PCA / scGPT) | 0.378 / 0.430 | **0.316 / 0.328** | `target/target_comparison.csv` |
+> | Ridge line-level (PCA) | 0.428 | **0.343** (MLP 0.356 → ties) | `ablations/ablation_capacity.csv` |
+> | scGPT − PCA gap | +0.075 | **+0.036 (K=10) / +0.012 (K=545)** | derived |
+> | **DrEval LCO, norm. ρ / R² (scGPT)** | 0.511 / 0.224 | **0.357 / 0.114** | `dreval/dreval_lco_results.csv` |
+>
+> **The conclusions are unchanged; the margins are smaller.** `auc_z` still holds at K=545 while the
+> unstandardized targets collapse; the curve fit still buys no accuracy; ridge-on-line-means still ties
+> the PCA MLP. New at 14.07: **DrEval places us above `NaiveMeanEffects` but below the field's best LCO
+> model** (~19 % norm. R² vs our 11 %), and the scGPT-over-PCA edge is faint once normalized. The
+> "5/545 pass the filter" line must **not** be read as "only 5 drugs are learnable": the filter is a
+> label-statistics heuristic, not a measured ranking of learnability (its all-drug validation figures lived
+> in a non-retained scratchpad CSV and are not reproducible). Full 14.07 record: `project_notes.md`.
 
 > ## 🔴 Read this before trusting any Step 04–05 number (13.07.2026)
 >
@@ -256,6 +280,18 @@ source of truth.
 | `legacy/training_545_mean_pv/training_pca_vs_scgpt_summary.csv` | Single-split per-rep summary (best val MSE, epoch, model vs baseline mean MSE, heads-beating, run dir) |
 | `data/ctrp_drug_learnability.csv` / `data/gdsc_drug_learnability.csv` | Per-drug coverage + response-variance learnability scores |
 
+**14.07 outputs (10-drug re-run + DrEval) — added since the legacy `mean_pv` catalog above:**
+
+| Artifact | What it shows | Source · owns the numbers |
+|---|---|---|
+| `target/target_comparison.png` / `.csv` | 3 targets × 2 reps × K=10/545, bootstrap CIs; per-drug rows | `notebooks/11` · the 14.07 top box |
+| `target/loss_weighting_bug.png` | Cumulative loss share vs drug spread; spread ≠ #killed | `notebooks/10` §2 |
+| `ablations/rescue_k545.png` / `.csv` | One-knob-at-a-time rescue on the broken K=545 setting | `notebooks/10` §3 |
+| `ablations/ablation_reg_capacity.png` / `ablation_capacity.csv` etc. | Reg / capacity / batch flat on the corrected setting; ridge line-level | `notebooks/10` §4–5 |
+| `dreval/dreval_lco.png` / `dreval_lco_results.csv` | DrEval LCO raw vs normalized, OncoMLP vs baselines | `notebooks/12` · the 14.07 top box |
+| `dreval/dreval_normalized.csv` | Own extra normalization (also removes cell-line effect); ~20 % is cell-line bias | `notebooks/12` |
+| `learnability/learnability_filter_auc.png`, `learnable5_pca_vs_scgpt.png`, `learnable5_per_drug_correlation.csv` | The filter (killed vs spared) and the trained-subset per-drug ρ | `notebooks/08`, `09` |
+
 ---
 
 ## The plan (for reference)
@@ -293,10 +329,11 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 | Phase 2: single-task continuous regression | ✅ Done (on legacy `mean_pv`) | best scGPT val **0.0336** ([Step 04](./steps/04-single-task-results.md)) |
 | Target score: curve-fit AUC instead of dose-averaged viability | ✅ Done 13.07.2026, **re-runs pending** | `--score auc_z` default ([Step 03](./steps/03-model-and-training-design.md)); Steps 04–05 numbers still `mean_pv` |
 | Core hypothesis: scGPT overfits less than PCA | ✅ Confirmed (generalization only) | 512-d matched: `hvg5000` single-task gap 0.004 (scGPT) vs 0.033 (PCA); but PCA ≈/better on all-drugs accuracy (169 vs 147) ([Step 05](./steps/05-multitask-results.md)) |
-| Does the model rank cell lines at all? | ✅ **Yes** (13.07.2026) | **0.43 (PCA) / 0.49 (scGPT)** out-of-fold on the 5 learnable drugs — and **0.38 / 0.43 even at K=545** once the target is z-scored. The old ρ ≈ 0 was an unstandardized-loss + unlearnable-drug artifact ([Step 05](./steps/05-multitask-results.md)) |
-| Is the per-drug z-scoring load-bearing? | ✅ **Yes — it is the whole effect** (13.07.2026) | K=545: `mean_pv` −0.070 / `auc` −0.087 / **`auc_z` +0.430** (scGPT). At K=5 all three tie. The **curve fit buys no accuracy**; the standardization does everything (`notebooks/11`) |
-| Is scGPT's lead over PCA real? | 🟡 **Sign-consistent over 3 seeds** (13.07.2026) | K=545 `auc_z` gap **+0.075 ± 0.038** (seeds 42/1/7, all positive). Consistent evidence, **not** a proven margin — needs more seeds + a wider drug set |
-| Is the model over-regularized / too big? | ❌ **No — tuning is closed** (13.07.2026) | Regularization, capacity (74,629→2,565 params), batch size, reweighting: **all flat**. **Ridge on 150 line-means ties the PCA MLP** (0.428) → the deep pipeline buys +0.06, scGPT only (`notebooks/10_diagnosis.ipynb`) |
+| Does the model rank cell lines at all? | ✅ **Yes** (13.07.2026) | **0.43 (PCA) / 0.49 (scGPT)** out-of-fold on the 5 learnable drugs — and **0.38 / 0.43 even at K=545** once the target is z-scored. The old ρ ≈ 0 was an unstandardized-loss + unlearnable-drug artifact ([Step 05](./steps/05-multitask-results.md)). **14.07 (10-drug re-run): 0.36 / 0.40, K=545 0.32 / 0.33** — same conclusion, smaller margins |
+| Is the per-drug z-scoring load-bearing? | ✅ **Yes — it is the whole effect** (13.07.2026) | K=545: `mean_pv` −0.070 / `auc` −0.087 / **`auc_z` +0.430** (scGPT). At K=5 all three tie. The **curve fit buys no accuracy**; the standardization does everything (`notebooks/11`). **14.07 (10 drugs) confirms:** K=545 `mean_pv` −0.078 / `auc` −0.069 / **`auc_z` +0.328** |
+| Is scGPT's lead over PCA real? | 🟡 **Sign-consistent over 3 seeds** (13.07.2026) | K=545 `auc_z` gap **+0.075 ± 0.038** (seeds 42/1/7, all positive) on the 5-drug set. Consistent evidence, **not** a proven margin. **14.07 (10 drugs): gap shrank to +0.036 (K=10) / +0.012 (K=545)** — now near seed-noise size, do not headline |
+| Is the model over-regularized / too big? | ❌ **No — tuning is closed** (13.07.2026) | Regularization, capacity (74,629→2,565 params), batch size, reweighting: **all flat**. **Ridge on 150 line-means ties the PCA MLP** (0.428) → the deep pipeline buys +0.06, scGPT only (`notebooks/10_diagnosis.ipynb`). **14.07 (10 drugs): ridge 0.343 vs PCA MLP 0.356** — still ties; capacity flat 74,954→5,130 params |
+| External benchmark (DrEval LCO, normalized) | ✅ **Above naive, below best-in-class** (14.07.2026) | `drevalpy` 1.5.1, mean over 5 folds: `NaiveMeanEffects` 0.000 → **`OncoMLP` scGPT norm. ρ 0.357 / R² 0.114**, PCA 0.340 / 0.086, their `SingleDrugRF` (scgpt) 0.339. Clears the naive bar, below the paper's ~19 % R² best LCO model (`notebooks/12`, `dreval/dreval_lco_results.csv`) |
 | 8-run matrix conclusions (`mean_pv`) | ⚠️ **Suspect — re-run required** | They rest on the K=545 null result, which the unstandardized loss substantially produced. Re-run on `--score auc_z` ([TODO](./TODO.md)) |
 | Phase 3a: multi-task masked loss | ✅ Done **within CTRPv2 only** | [Step 05](./steps/05-multitask-results.md) |
 | Phase 3b: integrate PRISM / GDSC (cross-database, efficacy+toxicity) | ❌ Not started | data downloaded + harmonized only ([Step 06](./steps/06-cross-database-integration.md)) |

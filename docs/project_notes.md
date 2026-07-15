@@ -1,5 +1,69 @@
 
 # OncoTox Project Notes
+
+## 14.07.2026
+
+Everything from 13.07 was re-run after two corrections; the 13.07 entries below stay as the record of
+where those (now-superseded) numbers came from. **Authoritative numbers here are read straight from
+`notebooks/outputs/*.csv`.**
+
+### Re-filter to 10 drugs + all experiments re-run
+The learnability filter was corrected (`learnability = min(#killed, #spared)`, coverage ≥ 90 %, **top 10**
+instead of top 5) and every experiment repeated on the 10-drug set. The best-case 5-drug numbers drop, as
+expected for a larger, less hand-picked subset:
+
+| | 13.07 (5 drugs, best-case) | **14.07 (10 drugs)** | Source CSV |
+|---|---|---|---|
+| K=10 out-of-fold `auc_z` (PCA / scGPT) | 0.42 / 0.49 | **0.360 / 0.396** | `target/target_comparison.csv` |
+| K=545 `auc_z` (PCA / scGPT) | 0.378 / 0.430 | **0.316 / 0.328** | `target/target_comparison.csv` |
+| Ridge line-level (PCA / scGPT) | 0.428 / 0.428 | **0.343 / 0.320** | `ablations/ablation_capacity.csv` |
+| MLP (128,64) current (PCA / scGPT) | 0.428 / 0.487 | **0.356 / 0.402** | `ablations/ablation_capacity.csv` |
+| scGPT − PCA gap | +0.075 | **+0.036 (K=10) / +0.012 (K=545)** | derived |
+
+**The story is unchanged, the margins are smaller.** `auc_z` still holds at K=545 while `mean_pv`/`auc`
+collapse (K=545 `mean_pv` scGPT −0.078, `auc` −0.069, **`auc_z` +0.328**); the curve fit still buys no
+accuracy (K=10 `mean_pv` 0.396 ≈ `auc` 0.405 ≈ `auc_z` 0.396, scGPT); ridge on 150 line-means still
+essentially ties the PCA MLP (0.343 vs 0.356). Capacity flat across 74,954 → 5,130 params. **But scGPT's
+edge over PCA shrank to roughly seed-noise size on the wider set** — do not headline it.
+
+### DrEval benchmark with the real package (`12_dreval_benchmark.ipynb`)
+Benchmarked with `drevalpy` 1.5.1 (Bernett et al., Nat. Commun. 2026 — Mathias's group), LCO split,
+**normalized** metric (drug + cell-line mean effects removed). Mean over 5 folds
+(`dreval/dreval_lco_results.csv`):
+
+| Model | norm. Spearman | norm. R² |
+|---|---|---|
+| `NaiveMeanEffects` (the bar) | 0.000 | 0.000 |
+| `SingleDrugRF` (scgpt) | 0.339 | 0.098 |
+| `OncoMLP` (X_pca) | 0.340 | 0.086 |
+| **`OncoMLP` (X_scGPT)** | **0.357** | **0.114** |
+
+We clear `NaiveMeanEffects` (the bar half the published field fails) and edge their SingleDrug reference
+models on identical features, but sit below the paper's best LCO model (~19 % norm. R² vs our 11 %), and
+the scGPT-over-PCA edge is faint under normalization (0.357 vs 0.340). *(13.07's 0.511 / 0.224 was the
+5-drug best-case **with** the val-leak below — both fixed here, hence the drop.)*
+
+### Val-split leak fixed (`ee07b00`)
+`run_oncomlp` was passing the **test fold** as the validation loader, so early-stopping / best-epoch
+selection ran on the test fold → optimistically biased OncoMLP rows only. Fixed to use DrEval's real
+`sp['validation']` split (`split_validation=True`). The baselines were never affected.
+
+### Learnability filter — a label-statistics heuristic, treat as diagnostic only
+The filter selects drugs purely from label statistics (coverage, spread, killed/spared counts). Two things
+to keep straight:
+- It was **not** validated against achieved per-drug ρ in any *retained* artifact. The earlier
+  `scratchpad/learnability_validity.py` output (`learnability_vs_achieved.csv`) was never committed and is
+  gone, so figures once quoted from it — a "+0.357" rank-correlation with achieved ρ, and "ρ > 0 on 76 % /
+  median 0.12" across all drugs — are **not reproducible from a committed CSV** and are therefore dropped.
+- **Correction:** an earlier note claimed `ml210` was rejected on coverage. That is wrong. In the committed
+  10-drug filter (`notebooks/outputs/learnability/ctrp_drug_learnability_auc.csv`) `ml210` has
+  coverage 0.944 ≥ the 0.90 gate and is `passes_gate=True, selected=True` — it **passes and is one of the
+  10 selected drugs**.
+
+The filter also saw all 180 lines (val/test included), so it is a **best-case diagnostic**; select inside
+each CV fold to remove that leak. Net: it is a legitimate diagnostic device, not a measured ranking of
+learnability.
+
 ## 13.07.2026
 
 ### Target score: `cpd_avg_pv` → per-drug z-scored AUC (`auc_z`)

@@ -1,0 +1,35 @@
+\section{Discussion}
+
+The results reframe an earlier, apparently negative finding. A first pass of this work had reported that
+neither representation could rank cell lines, with out-of-fold correlations near zero over the full drug
+panel. That outcome was substantially an artifact of the training target rather than a statement about the
+data or the representation. The initial score, a dose-averaged viability, left the per-drug variances
+untouched, so in the shared multi-task loss a handful of high-variance and largely uninformative
+compounds dominated the representation. Standardizing the target per drug removes this imbalance, and with
+it the model ranks unseen cell lines at correlations of \rhoFullScgpt{} across the panel and up to
+\rhoTenScgpt{} on a learnable subset. The standardization is best understood as a necessary preprocessing
+choice for a heterogeneous multi-task objective, not as a scientific result in itself; a head-to-head
+comparison of the candidate scores is informative mainly because it shows that the curve fit alone changes
+nothing and the standardization changes everything. The dominance of the target change is direct: on the
+unstandardized targets the same model collapses at full head count (Table~\ref{tab:target}), and no other
+single intervention on the broken configuration approaches it (Figure~\ref{fig:rescue}).
+
+The corrected picture is modest but genuine, and it is best read against the standards the DrEval study
+sets for the field. The model clears the NaiveMeanEffects baseline that about half of published models
+fail to beat, and it edges DrEval's own reference models on identical features, but it remains below the best
+model that study reports and shows only a faint representation advantage once the mean effects are
+normalized away. The most informative internal result points the same way: a ridge regression on
+cell-line mean embeddings matches the deep model, so the information the current pipeline exploits is
+largely captured by a per-line average. This is the cell-line-effect bias that DrEval was designed to
+expose, reproduced here independently. The single-cell resolution and the scGPT embedding together add a
+small margin over that average, and scGPT needs a nonlinear head to realize it, which is the first
+concrete evidence that the embedding carries structure a linear model cannot reach. This lower reliance on
+memorization is the effect the guiding hypothesis anticipated, and it persists on the corrected target,
+where the scGPT model's training-to-validation gap (\gapScgpt{}) is far smaller than that of PCA
+(\gapPca{}) under an identical trunk.
+
+Taken together, the evidence indicates that the limiting factor at this stage is the label side rather
+than the model side. The task is defined on roughly \NIndep{} independent cell lines, each carrying one
+bulk value broadcast onto hundreds of cells, and model-side tuning is exhausted across regularization,
+capacity and batch size. Improving performance therefore requires acting on the labels and the data, not
+on the architecture.

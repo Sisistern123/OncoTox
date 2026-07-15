@@ -1,0 +1,20 @@
+\begin{abstract}
+\noindent
+This report investigates whether single-cell RNA-seq, combined with foundation-model embeddings, can
+predict pharmacological response, as a first step toward a reusable pan-cancer single-cell foundation
+model. On
+the highest-confidence intersection of the SCP542 single-cell atlas and the CTRPv2 drug-response database
+(\NLines{} cell lines, \NDrugs{} compounds), we train a shared-trunk multi-task regressor on individual
+cells and evaluate it under a leave-cell-line-out protocol, comparing scGPT embeddings against a matched
+principal component analysis (PCA) baseline. The guiding hypothesis is that the foundation model provides a
+denoised, tissue-agnostic representation of cellular state. With a per-drug-standardized
+area-under-the-curve target, which is required for the \NDrugs-head objective to be learnable, the model
+ranks unseen cell lines at a Spearman correlation of \rhoFullScgpt{} across all drugs and up to
+\rhoTenScgpt{} on a learnable subset, and it exceeds the field-standard NaiveMeanEffects baseline under the
+DrEval benchmark (normalized Spearman \drScgptSp{} for scGPT). Model capacity is not the limiting factor: a
+ridge regression on cell-line mean embeddings ($\rho=\ridgePca$) matches the deep model, which indicates
+that the ceiling is the small number of independent cell lines and the noise of the broadcast bulk labels
+rather than the representation or the architecture. The scGPT embeddings provide a small advantage over
+PCA that largely fades under DrEval's normalized metric. We conclude that the approach is viable but
+currently label-limited, and we outline label- and data-side directions for the next phase.
+\end{abstract}

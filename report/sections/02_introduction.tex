@@ -1,0 +1,51 @@
+\section{Introduction}
+
+The overarching goal of this project is to develop a domain-specific, pan-cancer single-cell foundation
+model capable of predicting pharmacological response, both efficacy and toxicity, that can subsequently be
+fine-tuned for specific cancer types or for clinical datasets with binary outcomes. Tumor heterogeneity is
+a major driver of drug resistance and treatment failure, yet this resolution is obscured whenever drug
+response is modeled from bulk RNA-seq. Predicting response at the single-cell level would allow a model to
+report a distribution of sensitivities within a sample and, in principle, to identify rare, naturally
+resistant subclones before selection pressure acts on them. The immediate obstacle is that single-cell
+drug-screening data does not exist at scale.
+
+To make progress despite this, the project adopts a weakly supervised strategy in which bulk
+pharmacological labels are mapped onto the individual cells of the corresponding \emph{in vitro} cell
+lines, and the model is trained to map heterogeneous single-cell inputs to the average bulk response.
+Laboratory cell lines do not fully recapitulate clinical tumors, but they provide the high-volume,
+continuous labels required to train a robust representation that can later be fine-tuned on scarcer
+clinical data. The central methodological difficulty in this setup is a resolution mismatch: standard
+pharmacological labels, including those of CTRPv2 \cite{ctrp}, PRISM \cite{prism} and GDSC \cite{gdsc}, are
+derived from bulk cell populations, whereas the transcriptomic data from SCP542 \cite{scp542} captures
+individual cellular heterogeneity. Mapping one average bulk score onto hundreds of heterogeneous cells
+introduces substantial label noise, and regressing raw, sparse single-cell counts directly onto these
+labels is unstable.
+
+This motivates the use of a foundation-model representation as an intermediate prior. An exploratory
+latent-space analysis illustrates the effect (Figure~\ref{fig:umap}). When cells are colored by cancer
+type, full-transcriptome PCA is dominated by tissue-specific markers and separates the data into distinct
+lineage clusters, so that a downstream model could achieve low error simply by classifying the cell line.
+The scGPT embeddings \cite{scgpt} instead project the same cells onto a continuous, shared manifold in
+which tissues are intermixed. The project therefore diverges from prior work such as PERCEPTION
+\cite{perception}, which pre-trained on bulk data to predict PRISM response, by focusing on reusable
+representation learning: it evaluates whether transformer-based single-cell embeddings improve
+drug-response prediction over a standard PCA baseline, and it is designed to extend to multi-task learning
+across several databases. The central hypothesis is that scGPT embeddings act as a denoised biological
+prior that aligns functional cellular states across tissues, so that a regressor trained on this
+representation is encouraged to learn transcriptomic drivers of sensitivity rather than to memorize the
+tissue of origin.
+
+This report covers only the initial phase of the work: a single database (CTRPv2), a single continuous
+response score, single-cell inputs and a supervised regressor. The multi-task run reported here spans
+\NDrugs{} drugs but a single database and metric; cross-database integration, toxicity and clinical
+fine-tuning are left to later work.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{fig_umap.png}
+\caption{\textbf{scGPT removes the tissue-of-origin bias that dominates a PCA baseline.} Cells are embedded
+by full-transcriptome PCA (left) and by scGPT (right), reduced to two dimensions by UMAP and colored by
+cancer type. PCA separates the data into tissue-specific clusters, whereas scGPT projects the cells onto a
+continuous, shared manifold. Produced by \code{notebooks/06\_verify\_variants.ipynb}.}
+\label{fig:umap}
+\end{figure}

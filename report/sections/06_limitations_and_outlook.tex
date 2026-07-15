@@ -1,0 +1,34 @@
+\section{Limitations and Future Work}
+
+Several limitations bound the strength of the present claims, and each points to a concrete next step.
+
+The most serious is that the learnable-drug subset was selected using all \NLines{} cell lines, including
+the validation and test lines, so any number reported on that subset is a best-case diagnostic rather than
+a generalization estimate; the selection should instead be performed inside each cross-validation fold,
+using only the training lines. The subset is moreover chosen from label statistics alone and was not
+validated in this report against the per-drug performance the model actually achieves, so it should be
+read as a diagnostic device rather than a claim that only ten drugs are learnable.
+
+The scGPT advantage over PCA is small: a Spearman gap of $+0.036$ at K\,$=$\,\NLearn{} and $+0.012$ at
+K\,$=$\,\NDrugs{}, of the same order as the seed-to-seed variation. Across three seeds the gap averages
+$+0.04$ and is not sign-consistent, ranging from $-0.00$ to $+0.09$, and it does not survive DrEval's
+normalized metric, so it should not be presented as an established margin until it has been reproduced over
+more seeds and a wider drug set. The external benchmark is itself preliminary, covering only the
+leave-cell-line-out split on the learnable subset rather than the leave-tissue-out and leave-drug-out
+settings or the full panel.
+
+The clearest opportunities for improvement follow from the diagnosis that the task is label-limited. First,
+the training target can be aligned with the evaluation by regressing on the doubly normalized residual, in
+which both the drug and the cell-line mean effects are removed, with the means estimated only on the
+training lines of each fold; this matches the quantity DrEval rewards, and an initial check
+(\code{outputs/dreval/dreval\_normalized.csv}) indicates that about a fifth of the current signal is the
+cell-line effect alone. Second, the single-cell resolution has
+yet to justify itself, since averaging a line's cells loses nothing measurable; a pooling model that
+predicts the line label from a bag of cells, for example through attention, is the natural test and must
+beat the ridge control to be worthwhile. Third, and most directly, the ceiling can be raised by adding
+independent cell lines, as CTRPv2 alone screens roughly 1{,}100 against the \NLines{} in the current
+overlap. Beyond these, a diagnostic error analysis of where the model fails is low-risk and immediately
+useful, whereas gene-level interpretation to surface transcriptomic drivers of resistance is worthwhile
+only once per-drug performance is substantially higher and stable, so that the interpretation does not
+merely describe noise. The longer horizon remains a cross-database, multi-task model spanning
+efficacy and toxicity, fine-tunable on clinical outcomes.

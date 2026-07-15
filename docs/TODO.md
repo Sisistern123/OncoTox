@@ -2,6 +2,37 @@
 
 Action list. Scientific narrative + full numbers live in
 [project_progress.md](./project_progress.md) and [`docs/steps/`](./steps/); this is the running tasks.
+A standalone write-up of the current state is `../report/` (LaTeX → `main.pdf`).
+
+## Next up — prioritized (15.07.2026, from the progress-report feedback)
+
+> **Framing that governs this list:** *more performance ≠ a bigger model.* Model-side tuning is
+> demonstrably closed (see "Model-side tuning is closed" below); the levers are label-/data-side.
+> The audience's "bigger MLP / more capacity" suggestion was already tested and is flat — only MIL
+> (S2) is a genuinely untested capacity lever.
+
+1. **S1 — DrEval-aligned target (the top performance lever).** Train on the double-normalized residual
+   `resid[i,j] = auc[i,j] − (μ_drug[j] + μ_line[i] − μ_global)`, means computed **train-only per fold**,
+   so the objective matches DrEval's normalized metric. Motivated by `dreval/dreval_normalized.csv`
+   (~20% of the signal is pure cell-line effect; `kx2-391` is entirely that artifact). New `--score`
+   option in `ctrp_to_h5ad.py` (pattern: `_zscore_per_drug`, `DEFAULT_CTRP_SCORE`); compare in `12`.
+   Success = normalized DrEval ρ rises above 0.357 (scGPT) without inflating the raw correlation.
+2. **S2 — MIL / attention pooling over a line's cells** — the only untested capacity lever (bag of cells
+   → line label). Must beat the ridge baseline (0.342 PCA). *(Detailed item under "Model-side tuning".)*
+3. **S3 — More independent cell lines** — SCP542×CTRPv2 caps at 180; CTRPv2 has ~1,100. Attacks the
+   real ceiling. *(Overlaps the scDEAL/label-side lever under "Levers / later".)*
+4. **S4 — Diagnostic explainability (now, low-risk)** — where errors concentrate (drugs/tissues/lines
+   with ρ<0) and how much residual error is the cell-line effect. Uses existing per-drug-ρ CSVs.
+5. **Later — Discovery explainability (gated)** — gene-level XAI only once per-drug ρ is substantially
+   higher and stable, else it interprets noise. *(Project-plan stretch goal; see Step 07.)*
+
+**Communication fixes:** rebuild the single overview image (data → rep → shared trunk → K heads →
+out-of-fold eval); make the rescue figure show the **ceiling** (ridge = MLP, no-reg memorizes), because
+the "model-side is closed" message did not land in the talk.
+
+**Working agreement:** for any analysis beyond the explicitly agreed fix — *especially how a plot is
+computed/displayed* — confirm first, don't decide silently. (Unasked decisions produced process bugs and
+undefendable slides last round.)
 
 ## Done
 
@@ -35,6 +66,8 @@ Action list. Scientific narrative + full numbers live in
       AUC spread, **and** a real killed *and* surviving population) keep **5/545**. Trained on those:
       out-of-fold per-drug Spearman **0.43 (PCA) / 0.49 (scGPT)** vs ≈ 0 over all 545 →
       [Step 05](./steps/05-multitask-results.md).
+      *(14.07.2026: filter widened to **10 drugs** (coverage ≥ 90 %); re-run gives **0.360 / 0.396** —
+      see "Next up" above.)*
 
 **Net read (revised 13.07.2026):** the old net read — *"the ceiling is the label; the model learns the
 per-drug mean, not cross-line sensitivity; PCA ≈ scGPT"* — **does not survive today's work.** Two separate
@@ -91,6 +124,8 @@ PCA MLP and comes within 0.06 of the scGPT MLP, with no single cells and no netw
 null is too weak a bar; report ridge alongside it from now on. scGPT + hidden layer (0.487) is the only
 configuration that clears it — and scGPT's *linear* head drops to 0.438, so it genuinely needs the
 nonlinearity while PCA does not.
+*(14.07.2026, 10-drug re-run — same conclusion, smaller numbers: ridge **0.343** ties the PCA MLP
+**0.356**; scGPT MLP **0.402**, scGPT linear **0.292**; `ablations/ablation_capacity.csv`.)*
 
 - [ ] **Make the single-cell dimension earn itself** — averaging a line's cells into one vector currently
       loses nothing. Test MIL / attention pooling over a line's cells (predict the line label from a *bag*
@@ -115,6 +150,10 @@ reproduced.** Our split *is* their LCO.
       vs the 11% (DIPK) / 19% (RF) the paper reports for its best LCO models. **scGPT > PCA confirmed
       externally** (+0.07). And our per-cell MLP **beats their `SingleDrugRandomForest` on the same
       embeddings** (0.511 vs 0.438) → qualifies the ridge≈MLP result.
+      *(⚠️ 14.07.2026 — the 0.511/0.224 above was the 5-drug best-case **with** a val-split leak. After
+      fixing the leak (`ee07b00`, test fold was the val loader) and re-running on the 10-drug set, the
+      mean over 5 folds is **scGPT ρ 0.357 / R² 0.114**, PCA 0.340 / 0.086, their `SingleDrugRF` (scgpt)
+      0.339 — still above naive, but only faintly above PCA and their RF. Use these.)*
 - [x] **Own-implementation check** (`outputs/dreval/dreval_normalized.csv`): additionally removing the *cell-line*
       effect (which LCO's naive predictor cannot know) still leaves scGPT at ρ = 0.396. ⚠️ **`kx2-391`
       collapses to 0.006** — its signal was entirely the cell-line effect.
