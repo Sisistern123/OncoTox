@@ -44,3 +44,12 @@ runs/
 
 # personal presentation material (speaker notes + evidence appendix)
 docs/progress_report_*.md
+
+# LaTeX build artifacts (report/main.pdf is committed by hand)
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.fls
+report/*.fdb_latexmk
+report/*.synctex.gz
