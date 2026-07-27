@@ -1,0 +1,6 @@
+,spearman,spearman,mse,mse
+rep,X_pca,X_scGPT,X_pca,X_scGPT
+model,,,,
+MLP unweighted,0.3133,0.3765,0.0266,0.0254
+MLP weighted,0.3076,0.369,0.0274,0.0254
+ridge (line means),0.3061,0.2994,0.027,0.0268
