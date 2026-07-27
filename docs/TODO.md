@@ -10,6 +10,11 @@ A standalone write-up of the current state is `../report/` (LaTeX → `main.pdf`
 > demonstrably closed (see "Model-side tuning is closed" below); the levers are label-/data-side.
 > The audience's "bigger MLP / more capacity" suggestion was already tested and is flat — only MIL
 > (S2) is a genuinely untested capacity lever.
+>
+> **Update 25.07.2026:** the report's first next-step — *drug selection from the literature instead of my
+> filter* — is **done as a definition** (8-drug panel, see "Next focus" below); the training run on it is
+> pending and should be paired with S1. The panel is literature-anchored but **not yet label-blind**, so
+> train-only selection remains blocking for any headline number.
 
 1. **S1 — DrEval-aligned target (the top performance lever).** Train on the double-normalized residual
    `resid[i,j] = auc[i,j] − (μ_drug[j] + μ_line[i] − μ_global)`, means computed **train-only per fold**,
@@ -33,6 +38,106 @@ the "model-side is closed" message did not land in the talk.
 **Working agreement:** for any analysis beyond the explicitly agreed fix — *especially how a plot is
 computed/displayed* — confirm first, don't decide silently. (Unasked decisions produced process bugs and
 undefendable slides last round.)
+
+## Agreed plan — order of work (27.07.2026)
+
+**Governing rule: never change the target and the architecture in the same run.** The June result took
+weeks to unpick precisely because two changes landed together; if MIL and a new target arrive at once and
+the number moves, the cause is unattributable.
+
+**Step 1 — target + loss weighting, on the existing per-cell MLP.** Everything else unchanged
+(architecture, splits, optimizer, batching), so the change is attributable.
+
+**Decision (27.07.2026): `auc_z` is retired as the target.** Its centering is inert (the per-drug head
+bias absorbs it) and its scaling is the defect. Target becomes raw `auc`; the scaling moves into the loss
+as an explicit per-drug weight, where it can be estimated per fold and combined with other factors.
+
+- **1.0 — prerequisite:** estimate `σ_noise` pooled from the 7,708 replicated curve fits in
+  `v20.data.curves_post_qc.txt` (2.0 % of 387,130). Per-drug is not feasible; the pooled estimate assumes
+  homoscedastic assay noise — state that, and sanity-check whether replicate discrepancy tracks a drug's
+  mean AUC.
+- **1.1 — refactor, no scientific change.** Target = raw `auc`; per-drug weight `w_j = 1/σ_j²` with σ
+  estimated **per fold on training lines only** (this also retires the standing z-score leak, since the
+  statistics are no longer baked into the targets h5ad). Three traps, all verified in the code and all
+  silent if missed:
+  1. `optim.Adam(model.parameters(), ..., weight_decay=1e-3)` (`training_utils.py:179`) decays **all**
+     parameters including head biases. On `auc_z` the optimal bias was 0 so decay was free; on raw `auc`
+     the bias must sit near 0.7 and is actively pulled to 0. Put biases + LayerNorm params in a
+     `weight_decay=0` group.
+  2. `nn.Linear` initializes head biases at ±0.125 against a target near 0.7 — initialize them to the
+     train-fold per-drug means instead.
+  3. Per-drug Spearman is invariant to within-drug affine transforms, so for a *fixed* model this setup
+     and the old `auc_z` score identically.
+  > **Pass/fail:** must reproduce the current `auc_z` numbers. Any gap is either an implementation bug or
+  > the size of the leak — both worth knowing before measuring anything new.
+- **1.2 — the experiment:** change the weight from `1/σ_j²` to `r_j/σ_j²`, `r_j = (σ_j² − σ_noise²)/σ_j²`.
+  Exactly one change, against a verified baseline. Rationale: the metric averages per-drug Spearman with
+  equal weight per drug, so the loss should too — discounted by the share of each drug's variance that is
+  real rather than assay noise.
+
+> **Superseded 27.07.2026 — 1.0/1.1/1.2 above were never needed.** Per-drug variance weighting is a
+> *K=545* problem; on the 8-drug panel the variance ratio is 2.5× and the raw target works unweighted
+> (confirmed empirically: raw `auc` scores −0.069 at 545 heads and **+0.377** at 8). `σ_noise` was
+> therefore never estimated. Kept above only so the reasoning is not re-derived from scratch.
+
+### Step 1 — DONE (27.07.2026), `notebooks/14_panel_training.ipynb`
+
+Raw `auc` winsorized at 1.1, 8-drug panel, per-sample inverse-density weights fitted per fold on training
+lines only, output layer excluded from weight decay (`TrainConfig.exclude_output_from_decay`, default off
+so old runs are unchanged), head biases initialized to train-fold per-drug means. One seed.
+
+- [x] **Confirmed:** the June collapse was a K=545 effect, not a target property → retiring `auc_z` is free.
+- [x] **Confirmed (replication):** PCA MLP ties its ridge (0.313 vs 0.306); scGPT MLP clears its ridge by
+      **+0.077**, against +0.082 on the 14.07 panel — now on a drug set chosen without our labels.
+- [x] **Refuted:** inverse-density loss weighting (−0.006 / −0.008). Mechanism fired (pred_std 0.062 →
+      0.08) but ranking did not follow — after winsorizing, |skew| ≤ 0.47, so there was no imbalance left
+      to correct. **Do not carry into Step 2.**
+- [ ] **Seeds.** Everything above is one seed against ±0.04 documented seed variation. Repeat over ≥3
+      seeds before scGPT − PCA (+0.063) or scGPT − ridge (+0.077) is quoted as a margin. **Blocking for
+      any headline number.**
+- [ ] **Report raw + normalized** (DrEval) on this panel, once seeds are in.
+
+**Step 2 — MIL / attention pooling, against the target fixed in Step 1.** Controls that must both be
+beaten: the per-cell MLP and RidgeCV on cell-line mean embeddings. If MIL beats neither, the single-cell
+resolution has again failed to justify itself and that is the reportable result.
+
+- MIL makes the per-line weighting problem disappear structurally (one bag = one example), so the
+  82× cells×labels imbalance needs no separate fix under it.
+- Open design decisions, to settle before building: fixed bag size with per-epoch subsampling (acts as
+  augmentation) vs. padding + mask, given 56–1,990 cells per line; and the optimizer regime, since an
+  epoch becomes ~120 bags instead of ~34,000 cells so the current epoch/LR/early-stop settings do not
+  carry over.
+- Attention weights are the readout for *which subpopulation drives response* — the link to the relapse
+  motivation and to the annotated heterogeneity programs.
+
+**Not in scope for either step:** the base-quantity question (AUC vs EC50/Emax, T3) and learned/adaptive
+task weights. Both are deferred deliberately; adaptive weights estimate *residual* variance, which mixes
+label noise with model error and risks a self-reinforcing loop, especially at 545 tasks over ~120 bags.
+
+## Target & drug-selection defects found 27.07.2026 (do these before any new headline number)
+
+Both found by asking why `nutlin-3` was rejected by the filter. Write-ups:
+[Step 03](./steps/03-model-and-training-design.md#known-problems-with-auc_z--the-scaling-is-not-yet-right-27072026),
+[Step 05](./steps/05-multitask-results.md#the-learnability-gate-measured-the-wrong-quantity-27072026).
+
+- [ ] **T1 — Replace the kill/spare gate with `auc_std` + coverage.** The gate filters on absolute
+      potency; `auc_z` subtracts the per-drug mean and Spearman reads only the ordering, so we selected
+      on a quantity the model never sees. `nutlin-3` σ = 0.147 vs `dasatinib` σ = 0.155 — same spread,
+      rejected only because it is cytostatic. **116/545** drugs have zero kills but σ ≥ 0.10 and
+      coverage ≥ 90 %. Everything downstream (10-drug panel, 8-drug literature panel, all K=10 numbers)
+      rests on the old gate and must be re-derived.
+- [ ] **T2 — Fix the `auc_z` denominator.** Dividing by `auc_std` forces noise-floor drugs to variance 1
+      and hands them full weight in the shared loss — the mirror of the June σ² bug. Use
+      `sqrt(auc_std² + σ_noise²)`, or weight each drug by its reliable variance fraction.
+      `σ_noise` is estimable **pooled** from the 7,708 replicated (line × compound) fits (2.0 % of
+      387,130) in `v20.data.curves_post_qc.txt`; per-drug is not feasible.
+- [ ] **T3 — Reconsider AUC as the target** (raised by Selin's supervisor, DrEval co-author; DrEval lists
+      inconsistent viability data as an obstacle and recommends **CurveCurator**). AUC conflates potency
+      with efficacy, and CTRP's own fit already separates them in the file we parse:
+      `apparent_ec50_umol`, `pred_pv_high_conc` (≈ Emax), `p3_total_decline`. Top test concentration
+      spans **0.13–600 µM** across the 545 — harmless across drugs (z-scoring is within-drug) but it
+      compresses spread *within* a drug, so it is a **cause of T2**, not a separate issue.
+      Interacts with S1 — decide the target once, for both.
 
 ## Done
 
@@ -89,8 +194,28 @@ line means ties the MLP — see below), but "no gene representation can help" wa
 The `08`/`09` numbers are a **best-case diagnostic**: the 5 drugs were selected using all 180 lines,
 val/test included, so the selection saw held-out labels. Turning it into a reportable result:
 
+- [x] **Literature-anchored panel defined** (25.07.2026) — 8 drugs chosen from *published* cell-line
+      sensitivity determinants instead of my gates, so selection never sees our labels:
+      `methotrexate`, `dasatinib`, `paclitaxel`, `vincristine`, `afatinib`, `topotecan`, `tanespimycin`,
+      `selumetinib`. Rule = CTRPv2 ∩ `compound_status ∈ {FDA, clinical}` (173/545) ∩ published
+      determinant. **All eight already pass the `08` gate**, so it is a re-ranking inside the
+      gate-passing set, not a loosening; only 2 overlap the old ten. Table + citations in
+      [Step 05](./steps/05-multitask-results.md#literature-anchored-drug-panel--selecting-without-looking-at-our-labels-25072026),
+      decision log in [project_notes](./project_notes.md). **Not trained yet — that is the next run.**
+      Six of the eight are expression-determined and two (`selumetinib`, `afatinib`) are
+      mutation-determined, so the panel doubles as a hypothesis test on the representation.
+      ⚠ **Literature-anchored, spread-verified — not label-blind:** the candidate list was ranked by
+      `min(kill, spare)` on our own AUCs before the literature criterion was applied, so drugs with
+      published determinants but little spread here dropped out (`sirolimus`, `neratinib`,
+      `clofarabine`, `cytarabine hydrochloride`, `gdc-0941`). Fixed: arbitrariness of *which* drugs +
+      threshold instability. Not fixed: the optimistic component in per-drug ρ.
 - [ ] **Train-only selection** — run the learnability gates *inside each CV fold* (train lines only) and
-      re-measure. If the effect survives, it is real; this is the blocking item.
+      re-measure. If the effect survives, it is real; **this is still the blocking item**, including for
+      the literature panel (see the caveat above).
+- [ ] **Externalize the spread requirement** — re-derive the panel with the kill/spare condition measured
+      on **GDSC2** (`data/GDSC2_fitted_dose_response_27Oct23.xlsx`) or PRISM instead of on the CTRP labels
+      we train on. Keeps "the drug must actually kill something" while removing the leak; cheaper than
+      the fold-internal selection above and would make the panel genuinely label-blind.
 - [x] **Multiple seeds** (13.07.2026) — done for K=545 `auc_z`: gap **+0.075 ± 0.038**, sign-consistent
       over 3 seeds. Still thin; see the "more seeds + wider drug set" item above.
 - [ ] **Loosen to ~20–50 drugs** — 5 is a diagnostic, not a model. Where does the signal die as the gates

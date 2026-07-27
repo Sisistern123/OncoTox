@@ -1,6 +1,131 @@
 
 # OncoTox Project Notes
 
+## 27.07.2026
+
+### The learnability gate was measuring potency, not rankability
+Came out of asking why `nutlin-3` — the textbook TP53 example and the strongest association in GDSC —
+was rejected by the filter. It is not a weak drug here: `auc_std` **0.147**, versus `dasatinib` **0.155**.
+Same spread; the distribution just sits higher (mean 0.87 vs 0.63) because nutlin-3 is **cytostatic** —
+p53 → arrest/senescence, so viability never crosses the 50 % line no matter how sensitive the cell is.
+
+The gate (`kill` = `auc ≤ 0.5`) therefore filters on **absolute potency**, while the target `auc_z`
+*subtracts* the per-drug mean and the metric (Spearman) reads only the **ordering**. We were selecting
+on the one quantity the model is neither given nor scored on. **116 of 545** drugs have zero kills but
+`auc_std ≥ 0.10` and coverage ≥ 90 % — `oxaliplatin` included. All silently discarded.
+
+Fix: select on **`auc_std`** (raw scale, = `uns["ctrp_score_scale"]`) + coverage. Everything built on the
+old gate — the 10-drug panel, the 8-drug literature panel, the K=10 numbers — inherits the error.
+
+### `auc_z`'s scale is the mirror of the bug it fixed
+`auc_z = (auc − mean) / std`. Dividing by the per-drug std forces every drug to variance 1 — including
+drugs whose true spread is at the assay noise floor, whose **noise then gets amplified to variance 1**
+and enters the shared loss at full weight. The June defect over-weighted wide drugs; `auc_z`
+over-weights narrow ones. Right answer is signal-to-noise weighting, e.g. dividing by
+`sqrt(auc_std² + σ_noise²)`.
+
+`σ_noise` is estimable **pooled but not per drug**: `v20.data.curves_post_qc.txt` has 387,130 (line ×
+compound) fits, of which only **7,708 (2.0 %)** are replicated, max 3-fold. Per-curve confidence
+intervals (`p1_conf_int_*`) are available as an alternative route.
+
+### AUC as target — the supervisor's objection, checked
+Two concrete problems, both verified in our own files:
+- **AUC conflates potency and efficacy.** CTRP's fit already separates them and we already parse the
+  file: `apparent_ec50_umol`, `pred_pv_high_conc` (≈ Emax), `p3_total_decline`.
+- **Dose grids are not standardized** — top test concentration spans **0.13 µM to 600 µM** across the
+  545 (283 compounds at 66 µM, 113 at 33 µM, rest scattered). Important nuance: this does *not* break
+  cross-drug comparability, because `auc_z` standardizes within drug. It breaks things *within* a drug —
+  a mismatched range compresses all lines toward one end and drives `auc_std` down to the noise floor.
+  **So the dose grid is a cause of the scaling problem above, not a separate complaint.**
+
+Full write-up in [Step 03](steps/03-model-and-training-design.md#known-problems-with-auc_z--the-scaling-is-not-yet-right-27072026)
+and [Step 05](steps/05-multitask-results.md#the-learnability-gate-measured-the-wrong-quantity-27072026).
+
+### Step 1 run — what it settles, and what the new setup is actually worth
+`notebooks/14_panel_training.ipynb`, one seed. Numbers in
+[Step 05](steps/05-multitask-results.md#step-1-executed--raw-auc--density-weighting-on-the-panel-notebooks14_panel_trainingipynb-27072026).
+
+**Settled:**
+- **The June collapse was a K=545 effect.** Raw `auc` scored −0.069 at 545 heads and **+0.377** at 8. The
+  z-scoring was compensating for pooling incomparable drugs, not fixing the target. Retiring it costs
+  nothing once the panel is comparable.
+- **Density weighting is dead as a lever** (−0.006 / −0.008). The mechanism fired — predicted spread rose
+  0.062 → 0.08 — the ranking just did not follow. Do not carry it into Step 2. Two reasons this is worth
+  keeping rather than deleting: the rising `pred_std` is what rules out an implementation error (a
+  weighting that never reached the loss would leave predictions identical, and they are not), and the
+  null **removes a candidate explanation for the shrinkage** — it is not that the objective favours the
+  crowded middle, so what remains is too little signal over ~150 lines. That points at the label side,
+  not at more objective engineering.
+- **Ridge tie for PCA and the scGPT margin over ridge both replicate** on an independently chosen drug
+  set: +0.077 here vs +0.082 on 14.07. Correction to an earlier claim of mine: this is a **replication,
+  not a first**.
+
+**Why the new setup is better, beyond the numbers.** Worth having straight for the thesis:
+- *Interpretability:* error is in AUC units. MSE 0.0254 against a null of 0.030 → ~15 % of variance, RMSE
+  0.16 viability. Previously MSE was 1.0-by-construction on `auc_z` and had to be divided by ρ to be read
+  in real units.
+- *Reproducibility:* every label statistic is now computed per fold from training lines only, so the
+  standing z-score leak is gone. The weighting is an explicit object, not a transform baked into an h5ad,
+  so it can be changed without regenerating data.
+- *Interoperability:* raw AUC is what CTRPv2 publishes and what DrEval, GDSC and PRISM comparisons are
+  expressed in. `auc_z` was a project-internal quantity. Cross-database work no longer needs a
+  back-transform.
+- *Provenance:* the drug set is defined by citation rather than by a threshold that was demonstrably
+  unstable (0.5/0.8 → 0.7/0.8 gave a different ten).
+
+**What it is not worth:** absolute ρ is *lower* than the 14.07 panel (0.377 vs 0.402 scGPT). Expected —
+that panel was selected on all 180 lines including val/test. Lower and defensible was the deliberate
+trade. And research question 2 is untouched: a constant-within-line label still penalizes exactly the
+heterogeneity the project exists to study.
+
+## 25.07.2026
+
+### Decision: drug selection moves from my filter to the literature
+The 15.07 progress report flagged the drug selection as the blocking limitation — the `08` gates saw
+val/test labels (best-case subset), and shifting the kill/spare thresholds 0.5/0.8 → 0.7/0.8 gives a
+completely different ten drugs at the same quality, so *which* ten was arbitrary. Fix: anchor the panel
+in **published** cell-line sensitivity determinants instead, so the drugs are named by citation rather
+than by a threshold we picked.
+
+**Rule:** CTRPv2 rows of `data/drug/all_sources_drug_catalog.csv` → single agents with
+`compound_status ∈ {FDA, clinical}` (173 of 545 — real therapeutics, not Broad probes) → keep those with
+an independently published sensitivity determinant in cancer cell lines.
+
+**Panel (8):** `methotrexate` (SLC19A1), `dasatinib` (6-gene signature / LYN), `paclitaxel` +
+`vincristine` (ABCB1 / TUBB3), `afatinib` (EGFR+ERBB2 amplification), `topotecan` (SLFN11),
+`tanespimycin` (NQO1), `selumetinib` (BRAF/RAS). Full table with per-drug kill/spare counts, coverage
+and citations in [Step 05](steps/05-multitask-results.md#literature-anchored-drug-panel--selecting-without-looking-at-our-labels-25072026).
+
+Three things worth recording:
+- **All eight already pass the `08` gate unchanged** — a re-ranking *inside* the gate-passing set, not a
+  loosening of it.
+- **Only `dasatinib` and `methotrexate` overlap the old ten** → six drugs the old filter never named.
+- ⚠ **The panel is not label-blind, and the docs must not claim it is.** The candidate list was ranked
+  by `min(kill, spare)` — computed on our own AUCs over all 180 lines — before the literature criterion
+  was applied, so compounds with published determinants but little spread in *our* data fell out
+  (`sirolimus` 6/63, `neratinib` 12/75, `clofarabine` 15/68, `cytarabine hydrochloride` 5/109,
+  `gdc-0941` 5/45). Correct wording: **literature-anchored, spread-verified**. What *is* fixed is the
+  arbitrariness of which drugs and the threshold instability; what is not is the optimistic component in
+  per-drug ρ. Train-only selection therefore stays blocking. Cleaner follow-up: measure the kill/spare
+  requirement on **GDSC2/PRISM** rather than on the CTRP labels we train on.
+- **The determinants split by modality**, and this makes the panel a hypothesis test: six are
+  *expression*-determined (the causal variable is in `X` → should be learnable), while `selumetinib`
+  (BRAF/RAS point mutations) and `afatinib` (amplification; expression explicitly failed to predict it
+  in the pancreatic panel, [*Br J Cancer* 2011](https://www.nature.com/articles/bjc2011396)) are
+  *mutation*-determined, so weak ρ there is expected rather than damning.
+
+**Rejected candidates and why:** `kx2-391` — `outputs/dreval/dreval_normalized.csv` shows its signal is
+pure cell-line effect (ρ collapses to 0.006 once that is removed); `trametinib`, `at13387` — coverage
+only 0.46; `gemcitabine` — mechanistically apt (RRM1/TYMS) but coverage 0.86.
+
+**Dead end worth not repeating:** the two associations named in the SCP542 source paper
+([Kinker et al., *Nat Genet* 2020](https://www.nature.com/articles/s41588-020-00726-6)) do not transfer.
+γ-secretase/NOTCH inhibitors (`mk-0752`, `semagacestat`, `l-685458`) and MDM2 inhibitors (`nutlin-3`,
+`hli 373`, `sj-172550`, `serdemetan`) all have excellent coverage (~0.96–0.98) but kill **0–1** of ~175
+lines — no cross-line ranking exists to learn. Reason: Kinker associated the *variability* of a
+heterogeneity program within a line with response, which is a different quantity from the mean AUC
+level across lines that we regress on. Only `rita` (10 kill / 125 spare) is marginally usable.
+
 ## 14.07.2026
 
 Everything from 13.07 was re-run after two corrections; the 13.07 entries below stay as the record of

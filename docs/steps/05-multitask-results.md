@@ -291,6 +291,187 @@ the baseline to beat from now on.** The cause is structural: the label is per ce
 ~150 independent examples and the 34k cells are an illusion of sample size — which is why the remaining
 levers are **label-side** (more lines, bulk pretraining, denoising), not model-side.
 
+### The learnability gate measured the wrong quantity (27.07.2026)
+
+The gate defined above — a drug must **kill** (`auc ≤ 0.5`) and **spare** (`auc ≥ 0.8`) a real population
+— is not the right criterion for this project, and the 10-drug panel inherits the error.
+
+**The mismatch.** `auc ≤ 0.5` asks *does the line die?*, i.e. it filters on absolute potency, which is
+essentially the per-drug mean. But the target is `auc_z`, which **subtracts that mean**
+([Step 03](03-model-and-training-design.md#known-problems-with-auc_z--the-scaling-is-not-yet-right-27072026)),
+and the evaluation metric is **Spearman**, which only reads the *ordering* of lines. Whether a drug's
+values sit around 0.4 or around 0.9 is irrelevant to both. The gate optimizes for a property the model
+is neither given nor scored on.
+
+**What it costs — `nutlin-3` as the clean example.** Raw-scale spread across the panel:
+
+| drug | `auc_mean` | `auc_std` | kill (`≤0.5`) | gate verdict |
+|---|---|---|---|---|
+| `dasatinib` | 0.631 | **0.155** | 35 | selected |
+| `nutlin-3` | 0.874 | **0.147** | **0** | rejected |
+
+**Nutlin-3 has essentially the same spread as dasatinib** — its lines differ just as much, the whole
+distribution simply sits higher (~0.6–1.0 instead of ~0.3–0.9). The reason is pharmacological, not
+technical: nutlin-3 is **cytostatic**, not cytotoxic. p53 activation drives arrest and senescence, so
+viability never falls below 50 % however sensitive the line is. Any threshold phrased as "does it kill"
+is structurally blind to every cytostatic agent — which is a large fraction of targeted therapy.
+
+This is not one unlucky drug: **116 of the 545** have zero kills yet `auc_std ≥ 0.10` and coverage
+≥ 90 % (`oxaliplatin` among them). The gate discarded all of them silently.
+
+**Why it matters beyond drug choice.** `nutlin-3`/TP53 is the single strongest association in the GDSC
+pharmacogenomic screen, and it is *expression*-readable, not only genomic: `MDM2`, `CDKN1A` and
+`RPL22L1` — p53 target genes — are selected in ~90–100 % of published gene sets predicting nutlin-3a
+sensitivity. It is close to a best case for this model, and the filter threw it out.
+
+**Correction to adopt:** replace kill/spare with **spread on the raw AUC scale** (`auc_std`, recoverable
+exactly via `uns["ctrp_score_scale"]`, which *is* the per-drug std) plus coverage. This is the same
+quantity that governs the noise-amplification problem in Step 03, so one criterion fixes both: high
+`auc_std` = real signal to rank *and* a safe denominator for the z-score. Not yet re-run — the 10-drug
+results above and the 8-drug panel below both still rest on the old gate.
+
+### Literature-anchored drug panel — selecting without looking at our labels (25.07.2026)
+
+**Why replace the filter.** The 10-drug set above is a *best-case* subset: the `08` gates were computed
+on all 180 lines, val/test included, so selection saw held-out labels — the blocking limitation of the
+15.07 progress report. Worse, the gates are not stable: shifting the kill/spare thresholds from
+0.5/0.8 to 0.7/0.8 yields a completely **different** ten drugs of the same quality, so the filter
+enriches reliably but *which* drugs it names is arbitrary. A panel anchored in **published** evidence
+fixes the second problem outright — the drugs are named by citation, not by a threshold we chose — and
+substantially reduces the first. It does **not** fully eliminate the first; see "Residual selection
+effect" below, which is why the train-only check stays on the list.
+
+**Selection rule.** Restrict `data/drug/all_sources_drug_catalog.csv` (`dataset == "CTRPv2"`) to single
+agents with `compound_status ∈ {FDA, clinical}` — 173 of the 545, i.e. real therapeutics rather than
+Broad screening probes — and keep those with an **independently published sensitivity determinant in
+cancer cell lines**. The scientific rationale: where sensitivity is a documented, mechanistically
+understood function of cell state, a transcriptome-based model *ought* to work; a failure there is a
+model result, not a label artifact. This inverts the previous logic — the old filter asked "which drugs
+have spread in *our* labels", which is unanswerable without peeking.
+
+The catalog itself is built in `notebooks/02_compare_GDSC_CTRP.ipynb` from CTRP's official
+`v20.meta.per_compound.txt`, with `gene_symbol_of_protein_target` → `target`,
+`target_or_activity_of_compound` → `moa_or_pathway`, `cpd_status` → `compound_status`
+([Step 01](01-datasets-and-harmonization.md)). Note this promotes the catalog from the "exploratory,
+not consumed by any model" status recorded there to a **selection input**.
+
+**Decision (25.07.2026) — the 8-drug panel.** `kill` = lines with raw `auc ≤ 0.5`, `spare` = `auc ≥ 0.8`,
+`cov` = fraction of the 180 trainable lines, rank = position in
+`outputs/learnability/ctrp_drug_learnability_auc.csv`:
+
+| drug | target | kill / spare | cov | `08` rank | published determinant |
+|---|---|---|---|---|---|
+| `methotrexate` | DHFR | 52 / 31 | 0.94 | 6 | **`SLC19A1`** (reduced folate carrier) governs uptake; its loss is a classical resistance mechanism in cell lines — [Zhao & Goldman 2014](https://pubmed.ncbi.nlm.nih.gov/24396145/), [Wright et al., *Nature* 2022](https://www.nature.com/articles/s41586-022-05168-0) |
+| `dasatinib` | SRC/ABL, EPHA2, KIT | 35 / 27 | 0.98 | 9 | six-gene **expression** model predicts sensitivity in 92 % of held-out breast and 83 % of lung lines — [Huang et al., *Cancer Res* 2007](https://aacrjournals.org/cancerres/article/67/5/2226/534297/Identification-of-Candidate-Molecular-Markers); `LYN` in lung ADC — [*Oncotarget* 2016](https://www.oncotarget.com/article/12657/text/) |
+| `paclitaxel` | tubulin | 66 / 25 | 0.94 | 12 | **`ABCB1`** efflux + **`TUBB3`** — [*Oncotarget* 2016](https://www.oncotarget.com/article/9118/text/), [*Br J Cancer* 2016](https://www.nature.com/articles/bjc2016203) |
+| `vincristine` | tubulin | 61 / 19 | 0.99 | 17 | same `ABCB1`/`TUBB3` axis (shared microtubule-disruptor resistance mechanism) |
+| `afatinib` | EGFR, ERBB2 | 19 / 26 | 0.91 | 19 | `EGFR`+`ERBB2` co-amplification — [*Cancer Discov* 2019](https://aacrjournals.org/cancerdiscovery/article/9/2/199/10771/EGFR-and-MET-Amplifications-Determine-Response-to). ⚠ receptor *expression* alone did **not** correlate in pancreatic lines — [*Br J Cancer* 2011](https://www.nature.com/articles/bjc2011396) |
+| `topotecan` | TOP1 | 37 / 18 | 0.97 | 21 | **`SLFN11`** expression, the canonical topoisomerase-inhibitor marker — Zoppoli et al., *PNAS* 2012 (NCI-60 + CCLE), pan-cancer replication [*PLOS One* 2019](https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0224267), [review](https://www.sciencedirect.com/science/article/pii/S1359644625002922) |
+| `tanespimycin` (17-AAG) | HSP90 | 14 / 44 | 0.96 | 30 | **`NQO1`** expression bioactivates the benzoquinone to its potent hydroquinone form; correlation confirmed in CCLE *and* GDSC across 7 cancer types — [*PLOS One* 2016](https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0153181), [*Br J Cancer* 2014](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4032580/) |
+| `selumetinib` | MAP2K1/2 (MEK) | 12 / 80 | 0.97 | 43 | `BRAF` / `RAS` mutation — [*Mol Cancer Ther* 2010](https://pmc.ncbi.nlm.nih.gov/articles/PMC2939826/) |
+
+**All eight pass the `08` gate unchanged** (coverage ≥ 90 %, a real killed *and* a real spared
+population), so this is a **re-ranking inside the gate-passing set, not a relaxation of it**. Only
+`dasatinib` and `methotrexate` overlap the old ten — six of the eight are new drugs the previous filter
+never named.
+
+**Residual selection effect — what this panel does and does not fix.** As executed, the candidate list
+was produced by ranking the 173 clinical/FDA compounds by `min(kill, spare)` and *then* applying the
+literature criterion. Those counts come from our own `auc` values over all 180 lines, val/test included.
+Concretely, several compounds with a published determinant dropped out because of **our label
+statistics**, not because of the literature: `sirolimus` (6 kill / 63 spare), `neratinib` (12 / 75),
+`clofarabine` (15 / 68), `cytarabine hydrochloride` (5 / 109), `gdc-0941` (5 / 45). So:
+
+- **Fixed:** the arbitrariness of *which* drugs (they are now named by citation, and the choice is
+  reproducible by someone who never sees our AUCs) and the threshold instability (0.5/0.8 → 0.7/0.8 no
+  longer changes the panel).
+- **Not fixed:** the panel is still enriched for drugs that happen to separate *our* 180 lines, so
+  per-drug ρ measured on it retains an optimistic component. Honest description: **literature-anchored,
+  spread-verified** — not label-blind.
+- **Consequence:** the train-only-selection check ([TODO](../TODO.md)) stays **blocking** for any
+  headline number computed on this panel. A cleaner variant — measure the kill/spare requirement on
+  **GDSC2/PRISM** instead of on our CTRP labels — is recorded there as the follow-up.
+
+**The panel is a hypothesis test, not a grab bag.** The determinants split by *data modality*, and our
+input is expression only:
+
+- **Expression-determined** — `methotrexate` (`SLC19A1`), `paclitaxel`/`vincristine` (`ABCB1`/`TUBB3`),
+  `topotecan` (`SLFN11`), `tanespimycin` (`NQO1`), `dasatinib` (six-gene signature). The causal variable
+  is *in* `X`, so these should be learnable.
+- **Mutation-determined** — `selumetinib` (`BRAF`/`RAS` point mutations), `afatinib` (amplification;
+  and expression explicitly failed to predict it in the pancreatic panel). The causal variable is
+  **not** in `X` except through downstream expression, so weak per-drug ρ here is *expected* and is not
+  evidence against the representation.
+
+**Prediction to check:** ρ should be systematically higher in the first group. If it is, that is a
+mechanistic validation of the whole approach; if `selumetinib`/`afatinib` also score well, the model is
+picking up lineage rather than the stated mechanism and needs scrutiny.
+
+**Caveat on the annotation gate.** CTRP's `target` column is **empty** for `paclitaxel` and
+`vincristine` (and for `ml210`/`ml162`), which are annotated only via `moa_or_pathway`. A naive "keep
+rows with a validated target" filter silently drops four of the most informative compounds — selection
+must read `moa_or_pathway` as well. Not yet trained on this panel.
+
+### Step 1 executed — raw AUC + density weighting on the panel (`notebooks/14_panel_training.ipynb`, 27.07.2026)
+
+First run of the retired-`auc_z` setup: target raw `auc` winsorized at 1.1, the 8-drug literature panel,
+per-sample inverse-density weights fitted **per fold on training lines only**, output layer excluded from
+weight decay, head biases initialized to the train-fold per-drug means. Architecture, splits, optimizer
+and batching unchanged, so the change is attributable. 5-fold GroupKFold over the 153 train+val lines,
+**one seed (42)**.
+
+| model | ρ `X_pca` | ρ `X_scGPT` | MSE `X_pca` | MSE `X_scGPT` |
+|---|---|---|---|---|
+| MLP, unweighted | 0.313 | **0.377** | 0.0266 | 0.0254 |
+| MLP, density-weighted | 0.308 | 0.369 | 0.0274 | 0.0254 |
+| `RidgeCV` on line means | 0.306 | 0.299 | 0.0270 | 0.0268 |
+
+Null (per-drug mean) MSE is 0.030, so the numbers are readable directly: the scGPT model explains ~15 %
+of the variance **in AUC units**, RMSE ≈ 0.16 viability.
+
+**Confirmed — the June collapse was a K=545 effect, not a property of the target.** `auc_z` was adopted
+because raw `auc` at 545 heads scored **−0.069** (scGPT). The same raw target on 8 comparable heads scores
+**+0.377**. So the standardization was never fixing the *target*; it was compensating for pooling drugs
+whose variances differ by 81×. Removing the cause (the panel) works at least as well as compensating for
+it, without the side effect of amplifying noise-dominated drugs.
+
+**Confirmed — the ridge tie for PCA, and the scGPT margin over it, both replicate.** PCA MLP 0.313 vs its
+ridge 0.306 is the third independent panel on which averaging a line's cells into one vector loses
+nothing. scGPT MLP 0.377 vs its ridge 0.299 is **+0.077**, against **+0.082** on the 14.07 10-drug panel
+(0.402 vs 0.320, `ablations/ablation_capacity.csv`). This is a **replication on an independently chosen
+drug set**, not a new result — which is the stronger claim of the two, since the earlier panel was
+selected on our own labels and this one was not.
+
+**Refuted — inverse-density loss weighting is not a lever here.** −0.006 (PCA) / −0.008 (scGPT) mean
+Spearman; per drug a wash (`selumetinib` +0.09/+0.06, `tanespimycin` −0.06/−0.06). The mechanism did fire:
+predicted spread rose 0.062 → 0.082 (PCA) and 0.062 → 0.080 (scGPT), the reduced shrinkage the method is
+designed to produce. So the objective was reweighted as intended and the ranking did not follow. Coherent
+with [`13`](../../notebooks/13_panel_distributions.ipynb): after winsorizing the artifacts above `auc` 1.1
+every drug has |skew| ≤ 0.47, so there was little imbalance left for an imbalance correction to act on.
+**Decision: do not carry the weighting into Step 2.** The pre-registered expectation ("MSE worse, Spearman
+better") also failed — both stayed flat — which is what a null intervention looks like.
+
+Two points worth stating explicitly, because they are what make this a usable result rather than a shrug:
+
+- **The rising `pred_std` is the evidence that this is a null, not a bug.** A weighting that never reached
+  the loss — wrong sign, weights dropped by the mask, an indexing slip — would leave the predictions
+  numerically identical to the unweighted run. They are not: the model demonstrably hedges less. So the
+  objective was changed as designed and the ranking still did not move. "Did not work" and "was broken"
+  are different claims, and only the first is supported here.
+- **It removes a candidate explanation for the shrinkage.** Predictions span 0.08 against a true spread of
+  0.171, and one standing hypothesis was that the objective is dominated by the crowded middle of each
+  drug's response range. That hypothesis is now tested and rejected: pointing the loss at the sparse
+  extremes does not close the gap. What remains is that there is too little signal for ~150 independent
+  cell lines to support — which is a label-side problem, not a loss-side one, and it is the direct
+  argument for Step 2 and for more lines rather than for further objective engineering.
+
+**Absolute numbers are lower than the 14.07 panel (0.356 / 0.402), and that is the expected direction.**
+Those drugs were selected using all 180 lines including val/test; these were not chosen for spread on our
+labels at all. Lower and more defensible is the trade that was made deliberately.
+
+**Not addressed by this run.** Research question 2 — whether heterogeneity is learned implicitly — is
+untouched and remains structurally untestable under a constant-within-line label. That is Step 2.
+
 ### Benchmarked with the real DrEval package (`notebooks/12_dreval_benchmark.ipynb`, 14.07.2026)
 
 Not a re-implementation: `pip install drevalpy` (v1.5.1, <https://github.com/daisybio/drevalpy>), and our
