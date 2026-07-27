@@ -23,7 +23,9 @@ A standalone write-up of the current state is `../report/` (LaTeX → `main.pdf`
    option in `ctrp_to_h5ad.py` (pattern: `_zscore_per_drug`, `DEFAULT_CTRP_SCORE`); compare in `12`.
    Success = normalized DrEval ρ rises above 0.357 (scGPT) without inflating the raw correlation.
 2. **S2 — MIL / attention pooling over a line's cells** — the only untested capacity lever (bag of cells
-   → line label). Must beat the ridge baseline (0.342 PCA). *(Detailed item under "Model-side tuning".)*
+   → line label). Must beat the ridge baseline **and** the per-cell MLP. On the literature panel
+   (27.07.2026) that is ridge 0.306 / 0.299 and MLP 0.316 / 0.377 for PCA / scGPT — the 0.342 quoted
+   here previously was the old 10-drug panel. *(Detailed item under "Model-side tuning".)*
 3. **S3 — More independent cell lines** — SCP542×CTRPv2 caps at 180; CTRPv2 has ~1,100. Attacks the
    real ceiling. *(Overlaps the scDEAL/label-side lever under "Levers / later".)*
 4. **S4 — Diagnostic explainability (now, low-risk)** — where errors concentrate (drugs/tissues/lines
@@ -232,6 +234,7 @@ val/test included, so the selection saw held-out labels. Turning it into a repor
       scGPT) and **irrelevant at K=5** (all three tie, ρ ≈ 0.42–0.49). ⚠️ **The curve fit buys no
       accuracy** — `mean_pv` ≈ `auc` everywhere; keep it for GDSC comparability, not performance. Keep
       `auc_z` as the default; `--score auc` is fine on a spread-homogeneous subset (native units).
+      *(Superseded 27.07.2026: the panel **is** spread-homogeneous, so raw `auc` is now the default.)*
 - [x] **Seed check on scGPT vs PCA** (13.07.2026) → `11`. K=545 `auc_z` gap **+0.075 ± 0.038**, sign-
       consistent over seeds 42/1/7. Consistent evidence, **not** a proven margin.
 - [ ] **More seeds + a wider drug set** before scGPT > PCA becomes a headline claim (3 seeds, 5 drugs is

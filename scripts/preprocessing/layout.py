@@ -15,11 +15,15 @@ VARIANTS = ("hvg1000", "hvg2000", "hvg3000", "hvg5000", "all_genes")
 DEFAULT_VARIANT = "hvg5000"
 
 # CTRPv2 response score used as the training target (see ctrp_to_h5ad.py):
-#   auc_z   : per-drug z-scored normalized AUC  (default; comparable across drug heads)
-#   auc     : normalized AUC, area_under_curve / conc_pts_fit
+#   auc     : normalized AUC, area_under_curve / conc_pts_fit  (default since 27.07.2026)
+#   auc_z   : per-drug z-scored normalized AUC  (retired -- see below)
 #   mean_pv : legacy score -- mean cpd_avg_pv over the dose grid
-CTRP_SCORES = ("auc_z", "auc", "mean_pv")
-DEFAULT_CTRP_SCORE = "auc_z"
+CTRP_SCORES = ("auc", "auc_z", "mean_pv")
+# Raw curve-fit AUC, 27.07.2026. `auc_z` was the default from 13.07 and is retired: its centering is
+# inert (the per-drug head bias absorbs it) and its scaling amplified noise-dominated drugs in the
+# shared loss. The standardization it provided is unnecessary on a variance-homogeneous drug panel and
+# belongs in the loss, not the target, where it can be estimated per fold. See Step 03.
+DEFAULT_CTRP_SCORE = "auc"
 
 # hvg1000/2000/3000 added for the HVG-count sweep (find scGPT's filtering sweet spot).
 VARIANT_N_TOP_GENES: dict[str, int | None] = {

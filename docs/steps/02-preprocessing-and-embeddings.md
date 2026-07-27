@@ -183,19 +183,21 @@ Per variant, the two expensive files are built **once** and shared by every scor
 `SCP542_CCLE.h5ad` → `..._scGPT_human_embeddings.h5ad`. The targets step then forks per score into
 the trainable file (`X_scGPT`, `X_pca`, `Y_ctrp`, `M_ctrp`, `split_ctrp`, `split_paclitaxel`):
 
-- `..._with_targets_auc_z.h5ad` — **default** (`--score auc_z`)
+- `..._with_targets_auc.h5ad` — **default since 27.07.2026** (`--score auc`), raw curve-fit AUC
+- `..._with_targets_auc_z.h5ad` — `--score auc_z`, **retired** as the default on 27.07.2026 (its
+  scaling amplified noise-dominated drugs in the shared loss; see [Step 03](03-model-and-training-design.md))
 - `..._with_targets_auc.h5ad` — `--score auc`
 - `..._with_targets.h5ad` — `--score mean_pv` (legacy name kept, so the Step 04–05 runs still resolve)
 
 **Reproduce** (a documented, runnable walk-through of these commands lives in
-`notebooks/05_preprocessing.ipynb`). `--score` defaults to `auc_z`; passing it explicitly is what
+`notebooks/05_preprocessing.ipynb`). `--score` defaults to `auc`; passing it explicitly is what
 makes a comparison run unambiguous:
 ```bash
 # From scratch (runs convert+HVG → embeddings → targets → splits → pca).
 # The scgpt step needs the separate scGPT env, hence --scgpt-python.
 # PCA width defaults to 512 (--pca-n-comps) to match the scGPT embedding.
 uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \
-    --score auc_z --scgpt-python /path/to/scgpt-venv/bin/python
+    --score auc --scgpt-python /path/to/scgpt-venv/bin/python
 
 # Add a second target score on top of existing convert+embeddings (this is the
 # score-comparison build; convert/scgpt are untouched and reused).
@@ -207,6 +209,6 @@ uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 \
     --start-at pca --skip-scgpt --force-pca --pca-n-comps 512
 
 # training (--score selects which targets file to train on)
-uv run scripts/training/train_multitask.py --use-rep X_scGPT --score auc_z   # all 545 drugs
+uv run scripts/training/train_multitask.py --use-rep X_scGPT --score auc     # all 545 drugs
 uv run scripts/training/train_multitask.py --use-rep X_pca --score auc_z --drugs paclitaxel
 ```

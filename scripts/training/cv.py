@@ -23,7 +23,7 @@ from sklearn.model_selection import GroupKFold
 from torch.utils.data import DataLoader
 
 from scripts.model.dataset import MultiDrugDataset
-from scripts.model.OncoMLP import OncoMLP
+from scripts.model.OncoMLP import DEFAULT_HIDDEN_DIMS, OncoMLP
 from scripts.training.density_weighting import (
     DEFAULT_ALPHA,
     DEFAULT_CAP,
@@ -31,7 +31,6 @@ from scripts.training.density_weighting import (
     line_level,
     weight_matrix,
 )
-from scripts.training.train_multitask import DEFAULT_HIDDEN_DIMS
 from scripts.training.training_utils import TrainConfig, train_model
 
 

@@ -3,7 +3,7 @@
 The target score is selected with ``score`` (CLI: ``--score``). In all cases a
 *higher* value means a *less* sensitive (more resistant) cell line:
 
-* ``auc_z``   (default) -- per-drug z-scored ``auc``. Standardizing within each
+* ``auc_z``   -- per-drug z-scored ``auc`` (**retired as the default 27.07.2026**). Standardizing within each
   drug puts every multi-task head on the same scale, so the MSE of a
   well-covered drug does not dominate the loss, and it removes the per-drug
   potency offset the model cannot infer from expression anyway.
@@ -223,7 +223,7 @@ def run(
     Parameters
     ----------
     score:
-        Which CTRPv2 response score to use as the target: ``auc_z`` (default),
+        Which CTRPv2 response score to use as the target: ``auc`` (default since 27.07.2026),
         ``auc``, or the legacy ``mean_pv``. See the module docstring.
     target_drugs:
         If provided, restrict the multi-drug matrix to these drug names (after

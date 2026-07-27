@@ -4,6 +4,14 @@ from collections.abc import Sequence
 
 import torch.nn as nn
 
+# Matched trunk for a fair PCA-vs-scGPT comparison: both reps use the same hidden layers, so only the
+# input representation (and its first projection) differs. Defined here rather than in the training
+# module so that scripts.training.cv can read it without importing train_multitask, which imports cv.
+DEFAULT_HIDDEN_DIMS = {
+    "X_pca": (128, 64),
+    "X_scGPT": (128, 64),
+}
+
 
 class OncoMLP(nn.Module):
     """Small regression MLP for cell-level viability prediction.

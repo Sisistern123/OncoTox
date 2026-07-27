@@ -18,7 +18,8 @@ K=545) rows of the 8-run experiment matrix**
 > run as "multi-task complete."
 
 > ⚠️ **Legacy target score.** Every number on this page was trained on **`mean_pv`**, the only target
-> until 13.07.2026; the default is now **`auc_z`** ([Step 03](03-model-and-training-design.md)).
+> until 13.07.2026; the default is now raw **`auc`** ([Step 03](03-model-and-training-design.md)),
+> via `auc_z`, which was the default 13.07–27.07 and is retired.
 > Absolute MSEs across the two scores are **not comparable** (a z-scored target has unit variance, so
 > its baseline sits near 1.0 rather than 0.0097) — only *heads beating baseline* and the per-drug
 > correlations transfer. Reproduce this page exactly with `--score mean_pv`.

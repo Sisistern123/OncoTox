@@ -37,6 +37,7 @@ from torch.utils.data import DataLoader
 import scanpy as sc
 from sklearn.model_selection import GroupKFold
 
+from scripts.model.OncoMLP import DEFAULT_HIDDEN_DIMS as OncoMLP_DEFAULT_HIDDEN_DIMS
 from scripts.model.OncoMLP import OncoMLP
 from scripts.model.dataset import MultiDrugDataset
 from scripts.training.training_utils import (
@@ -50,12 +51,10 @@ from scripts.training.training_utils import (
 
 from scripts.preprocessing.layout import PipelinePaths, add_data_args
 
-# Matched trunk for a fair PCA-vs-scGPT comparison: both reps use the same hidden
-# layers, so only the input representation (and its first projection) differs.
-DEFAULT_HIDDEN_DIMS = {
-    "X_pca": (128, 64),
-    "X_scGPT": (128, 64),
-}
+# DEFAULT_HIDDEN_DIMS now lives in scripts/model/OncoMLP.py (it is a property of the architecture, and
+# putting it there lets scripts.training.cv read it without an import cycle). Re-exported so the many
+# notebooks that import it from here keep working.
+DEFAULT_HIDDEN_DIMS = OncoMLP_DEFAULT_HIDDEN_DIMS
 
 
 def _parse_args():
@@ -401,14 +400,19 @@ def cv_evaluate(
 
     if group_col not in adata.obs.columns:
         raise ValueError(f"group_col '{group_col}' not in adata.obs.")
-    eligible = adata.obs["split_ctrp"].isin(eligible_splits).to_numpy()
     groups_all = adata.obs[group_col].astype(str).to_numpy()
-    idx = np.flatnonzero(eligible)
     device = pick_device()
 
-    gkf = GroupKFold(n_splits=n_splits)
+    # Same partition helper as scripts.training.cv.oof_predictions, so metrics computed here and
+    # predictions produced there refer to identical folds. Imported inside the function because cv
+    # imports this module for nothing else -- see DEFAULT_HIDDEN_DIMS above.
+    from scripts.training.cv import grouped_folds
+
+    idx, fold_split = grouped_folds(
+        adata, n_splits=n_splits, group_col=group_col, eligible_splits=eligible_splits
+    )
     folds: list[dict] = []
-    for fold, (tr, va) in enumerate(gkf.split(idx, groups=groups_all[idx]), start=1):
+    for fold, (tr, va) in enumerate(fold_split, start=1):
         train_cells = np.zeros(adata.n_obs, dtype=bool)
         val_cells = np.zeros(adata.n_obs, dtype=bool)
         train_cells[idx[tr]] = True
