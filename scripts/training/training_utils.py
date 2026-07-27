@@ -46,6 +46,11 @@ class TrainConfig:
     seed: int = 42
     loss: str = "mse"  # "mse" or "huber"
     huber_beta: float = 0.05
+    # Exclude the output layer (the per-drug heads) from weight decay. Needed on an
+    # uncentred target: on raw AUC each head bias must sit near the drug's mean (~0.7)
+    # and decay actively pulls it to 0, whereas on a per-drug z-scored target the
+    # optimum is 0 and decay is free. Off by default so existing runs are unchanged.
+    exclude_output_from_decay: bool = False
     log_per_drug_topk: int = 5  # how many best/worst per-drug val MSEs to print
 
 
@@ -176,7 +181,19 @@ def train_model(
         print(f"[{tag}] Multi-task mode detected (masked {config.loss.upper()}).")
 
     loss_fn = _make_loss_fn(config, multitask=multitask)
-    optimizer = optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
+    if config.exclude_output_from_decay:
+        head = [m for m in model.modules() if isinstance(m, nn.Linear)][-1]
+        head_ids = {id(p) for p in head.parameters()}
+        groups = [
+            {"params": [p for p in model.parameters() if id(p) not in head_ids],
+             "weight_decay": config.weight_decay},
+            {"params": list(head.parameters()), "weight_decay": 0.0},
+        ]
+        print(f"[{tag}] Output layer excluded from weight decay "
+              f"({sum(p.numel() for p in head.parameters())} params).")
+        optimizer = optim.Adam(groups, lr=config.lr)
+    else:
+        optimizer = optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         mode="min",
