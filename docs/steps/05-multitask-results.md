@@ -333,6 +333,11 @@ results above and the 8-drug panel below both still rest on the old gate.
 
 ### Literature-anchored drug panel — selecting without looking at our labels (25.07.2026)
 
+> ⛔ **VOID as of 28.07.2026.** This panel is discarded: the candidate list was ranked on our own
+> response values before the literature criterion was applied. Kept as the record of how it was built
+> and why it failed. Rebuild is [TODO](../TODO.md) item 6.
+
+
 **Why replace the filter.** The 10-drug set above is a *best-case* subset: the `08` gates were computed
 on all 180 lines, val/test included, so selection saw held-out labels — the blocking limitation of the
 15.07 progress report. Worse, the gates are not stable: shifting the kill/spare thresholds from
@@ -433,6 +438,11 @@ rows with a validated target" filter silently drops four of the most informative
 must read `moa_or_pathway` as well. Not yet trained on this panel.
 
 ### Step 1 executed — raw AUC + density weighting on the panel (`notebooks/14_panel_training.ipynb`, 27.07.2026)
+
+> ⛔ **Provisional as of 28.07.2026** — computed on the discarded panel above. The *methodological*
+> findings hold (the collapse was a head-count effect; density weighting is a null; the ridge tie
+> replicates). The *numbers* must be re-derived on the rebuilt panel.
+
 
 First run of the retired-`auc_z` setup: target raw `auc` winsorized at 1.1, the 8-drug literature panel,
 per-sample inverse-density weights fitted **per fold on training lines only**, output layer excluded from

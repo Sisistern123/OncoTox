@@ -1,5 +1,59 @@
 # OncoTox — TODO
 
+> # ⛔ 28.07.2026 — THE CURRENT DRUG PANEL IS VOID
+>
+> **The 8-drug literature panel is discarded.** Its candidate list was ranked by `min(kill, spare)` on
+> our own response values before the literature criterion was applied, so the selection inherited the
+> label dependency it was built to remove — and 32 approved or clinical compounds, `nutlin-3` among them,
+> were excluded for the wrong reason.
+>
+> **Everything computed on it is therefore provisional:** the step-1 run (`notebooks/14`), the
+> distributions and weighting design (`13`), the dispersion figures (`15` §5), the panel rows in
+> [Step 05](./steps/05-multitask-results.md), and the corresponding numbers in the report. Do not quote
+> any of them, and do not build on them, until the panel is rebuilt.
+>
+> **Nothing new is started before the review below is done.** The 15.07 progress report was postponed
+> rather than presented on a panel we knew to be flawed; the point of that decision is lost if we patch
+> around it.
+
+## 🔍 28.07.2026 — full pipeline review, data download to evaluation
+
+Walk the whole thing once, in order, deciding three things at each stage: **what is settled**, **what is
+open**, **what has never actually been verified**. The last column is where today's problems came from —
+every one of them was a step that looked settled and had never been checked.
+
+- [ ] **1 · Data acquisition** — SCP542, CTRPv2 (and GDSC / PRISM for later). Which release, which files,
+      downloaded when, from where. Is the provenance written down anywhere reproducible?
+- [ ] **2 · Harmonization** — cell-line and compound name matching, the 190 vs 180 discrepancy, duplicate
+      experiments averaged. Verify the join has not silently dropped lines.
+- [ ] **3 · Preprocessing** — CPM, log1p, HVG selection and count, what `.X` holds at each stage, scGPT
+      out-of-vocabulary genes. Does the HVG set depend on all cells including test?
+- [ ] **4 · Representations** — PCA components, scGPT embedding generation and its input format
+      (raw counts vs CPM — never confirmed), and **the ~78× input-scale asymmetry between the two under
+      one shared learning rate**, which is untested and qualifies every PCA-vs-scGPT claim we have made.
+- [ ] **5 · Target** — AUC vs EC50 vs Emax: AUC conflates potency with efficacy and the tested
+      concentration range spans 0.13–600 µM. Winsorizing threshold. Are all statistics per fold?
+- [ ] **6 · Drug selection — REBUILD, this is the main deliverable.** Pool on coverage and spread only,
+      **no kill counts at any point**, then apply the literature criterion to that pool. Decide the
+      spread threshold explicitly. Expect `nutlin-3`, `oxaliplatin`, `bortezomib` and others to re-enter.
+- [ ] **7 · Splits** — grouped by cell line, test held out, folds shared between model and baselines.
+      Confirm nothing leaks through statistics computed outside the fold.
+- [ ] **8 · Model** — architecture, capacity, and whether the shared-trunk multi-head design is still the
+      right one for a small panel.
+- [ ] **9 · Loss** — masking, per-sample weighting (the density weighting was a null — drop or keep?),
+      per-line weighting (the 82× artifact), and what the objective actually rewards.
+- [ ] **10 · Training** — optimizer, weight decay groups, epochs, early stopping, and the `mps`
+      nondeterminism that moves the PCA arm across identical runs.
+- [ ] **11 · Evaluation** — metric, cell→line aggregation, baselines (ridge, `NaiveMeanEffects`),
+      dispersion across folds *and* drugs, raw vs normalized.
+- [ ] **12 · Reproducibility** — seeds, determinism, what is derived in code versus typed by hand.
+      Anything that exists only as a shell command is not a result.
+
+**Working agreement for the session, restated because it was broken today:** no step of the analysis gets
+decided silently. If a choice affects what enters the model or how a number is computed, it is proposed
+first and agreed before it is executed.
+
+
 Action list. Scientific narrative + full numbers live in
 [project_progress.md](./project_progress.md) and [`docs/steps/`](./steps/); this is the running tasks.
 A standalone write-up of the current state is `../report/` (LaTeX → `main.pdf`).
