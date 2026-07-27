@@ -4,6 +4,15 @@ Action list. Scientific narrative + full numbers live in
 [project_progress.md](./project_progress.md) and [`docs/steps/`](./steps/); this is the running tasks.
 A standalone write-up of the current state is `../report/` (LaTeX → `main.pdf`).
 
+> **What every item here is ultimately for.** Two questions, and each task should be traceable to one:
+> **Q1 — is scGPT a viable representation for drug-response prediction at all**, against the standard
+> dimensionality reduction? **Q2 — does a model trained on single cells learn cellular heterogeneity
+> *implicitly*?** Q2 is the clinically consequential one, because relapse is driven by rare surviving
+> subpopulations rather than by the average cell. As of 27.07.2026 Q1 has evidence (scGPT clears the
+> ridge control, replicated on an independently chosen drug panel) and **Q2 has none — the current
+> objective penalizes the within-line variation it would have to express**, which is why MIL is next
+> and not one of the several cheaper items below.
+
 ## Next up — prioritized (15.07.2026, from the progress-report feedback)
 
 > **Framing that governs this list:** *more performance ≠ a bigger model.* Model-side tuning is

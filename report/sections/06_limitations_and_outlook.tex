@@ -62,3 +62,27 @@ useful, whereas gene-level interpretation to surface transcriptomic drivers of r
 only once per-drug performance is substantially higher and stable, so that the interpretation does not
 merely describe noise. The longer horizon remains a cross-database, multi-task model spanning
 efficacy and toxicity, fine-tunable on clinical outcomes.
+
+\begin{suggestionblock}
+The order of the next two steps is deliberate rather than a matter of convenience. \textbf{Multiple-instance
+learning} comes first because it is the only untested capacity lever and, more importantly, the minimal
+change that makes the second research question answerable at all: under the present objective every cell
+of a line is regressed onto the same scalar, so within-line variation is scored as error rather than as
+the quantity of interest. Predicting a line's response from a bag of its cells constrains only the
+aggregate, and the resulting attention weights identify which subpopulation drives the response, which is
+the readout the clinical motivation calls for. It requires no additional data, and it is falsifiable: it
+must exceed both the per-cell model and the ridge control, and failing both would establish that
+single-cell resolution does not pay for itself here.
+
+\textbf{Bulk pretraining in the manner of scDEAL} follows. Every remaining lever is on the label side:
+model-side tuning is exhausted, a ridge regression on cell-line means matches the deep model, and the
+density weighting reported above was a null. What binds is the small number of independent cell lines,
+each carrying a single broadcast value. The screens themselves are far larger --- CTRPv2 covers roughly
+1{,}100 lines against the \NLines{} in the present intersection --- so the labels exist and it is the
+single-cell expression that is missing. Pretraining a denoising autoencoder on bulk expression and
+aligning the bulk and single-cell latent spaces by domain adaptation addresses that gap directly, rather
+than accepting the noise introduced by copying one bulk value onto several hundred cells. It is second
+because it changes where the representation originates while multiple-instance learning changes how cells
+map to a line-level prediction; introducing both at once would leave the outcome unattributable, which is
+the error that made the earlier target defect so costly to diagnose.
+\end{suggestionblock}
