@@ -1,18 +1,24 @@
-"""Generate the OncoTox slide/doc graphics:
+"""Generate the OncoTox slide/doc graphics into ``docs/figures/``:
 
-  1. docs/pipeline_overview.png   — status overview of the whole pipeline (steps 01-08)
-  2. docs/model_architecture.png  — input + model + task on one figure (to merge slides)
-  3. docs/pipeline_full.png       — the pipeline as a data flow: data -> split -> representation
-                                    (PCA vs scGPT) -> drug panel -> model+loss -> evaluation
-  4. docs/loss_function.png       — anatomy of the density-weighted masked MSE (reweighted
-                                    regression), with the real weight curve of one panel drug
+  pipeline_overview.png    status of the whole project against the plan (steps 01-08)
+  pipeline.png             the pipeline as a picture: data -> drug panel -> split ->
+                           representation -> model -> loss -> evaluation -> result
+  model_architecture.png   one cell in, one AUC per panel drug out
+  loss_01_objective.png    what the objective is made of
+  loss_02_weights.png      where the weights come from — one drug's label density and weight curve
+  loss_03_effect.png       what the weighting did, per drug: spread up, ranking flat
 
-Figures 2-4 describe the setup as of 27.07.2026: target = raw AUC (winsorized at 1.1), no per-drug
-z-score, the per-drug scaling moved into the loss as an inverse-label-density sample weight.
+The figures carry a caption at most; the argument behind them lives in the prose --
+``docs/progress_report_2026-07-27.md`` (§4 the weighting, §9 the Step-1 result) and
+``docs/steps/03-model-and-training-design.md`` (architecture, loss, target).
 
-Green = done / on-plan · Amber = addition beyond plan · Red (dashed) = not started.
+Setup as of 27.07.2026: target = raw AUC winsorized at 1.1, no per-drug z-score; the per-drug
+scaling moved out of the target and into the loss as an inverse-label-density sample weight.
 
-Run:  uv run docs/make_pipeline_overview.py
+Panels drawn from real data read ``docs/figures/figure_data.npz`` (rebuilt from the targets h5ad
+on first run) and the CSVs in ``notebooks/outputs/panel/``.
+
+Run:  uv run docs/make_figures.py
 """
 from __future__ import annotations
 
@@ -28,6 +34,7 @@ import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
+FIG = HERE / "figures"
 PANEL_OUT = ROOT / "notebooks" / "outputs" / "panel"
 
 GREEN = "#2e7d32"; GREEN_FILL = "#c8e6c9"
@@ -128,7 +135,7 @@ def build_pipeline():
     ax.text(99.5, 1.2, "* 190 = name-matches in CTRPv2's roster; 180 = lines with actual post-QC measurements",
             ha="right", va="bottom", fontsize=8, color=GREY, style="italic")
 
-    out = HERE / "pipeline_overview.png"
+    out = FIG / "pipeline_overview.png"
     fig.savefig(out, dpi=160, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     print(f"wrote {out}")
@@ -155,34 +162,49 @@ EXAMPLE_PRED = [0.438, 0.663, 0.384, 0.372, 0.748, 0.545, 0.666, 0.739]
 EXAMPLE_TRUE = [0.511, 0.797, 0.122, 0.036, 0.692, 0.177, 0.655, 0.908]
 
 
-def build_architecture():
-    fig, ax = plt.subplots(figsize=(17.0, 6.6))
-    ax.set_xlim(0, 100); ax.set_ylim(14, 52); ax.set_aspect("equal"); ax.axis("off")
+def draw_architecture(ax, *, compact: bool = False):
+    """Draw the architecture into ``ax``.
 
-    ax.text(0, 51, "Model architecture — one cell in, one AUC per panel drug out",
-            ha="left", va="top", fontsize=13, fontweight="bold", color=INK)
-    ax.text(0, 48.0, "per-cell MLP · target = raw AUC (winsorized at 1.1) · 8-drug literature panel · "
-                     "trained with the density-weighted masked MSE (see loss_function.png)",
-            ha="left", va="top", fontsize=8.5, color=GREY)
+    One drawing, two sizes: the standalone ``model_architecture.png`` uses ``compact=False``
+    (with the mechanics spelled out underneath), stage 5 of ``pipeline.png`` uses ``compact=True``
+    (the same picture, without the paragraphs that would be unreadable at panel size). Nothing is
+    redrawn by hand for the small version, so the two cannot diverge.
+    """
+    # compact = a genuinely tighter drawing (layers closer, bars shorter, type scaled down),
+    # not the same geometry shrunk -- otherwise the panel eats half the pipeline figure.
+    fs = 0.70 if compact else 1.0
+    xc, xe, lx, x0, span = ((4.5, 9.5, [16, 23, 29, 35], 49.0, 10.5) if compact else
+                            (6.0, 14.0, [26, 39, 51, 62], 76.0, 17.0))
+    ax.set_xlim(0, 62 if compact else 100); ax.set_ylim(23 if compact else 14, 47 if compact else 52)
+    ax.set_aspect("equal"); ax.axis("off")
+
+    if not compact:
+        ax.text(0, 51, "Model architecture — one cell in, one AUC per panel drug out",
+                ha="left", va="top", fontsize=13, fontweight="bold", color=INK)
+        ax.text(0, 48.0, "per-cell MLP · target = raw AUC (winsorized at 1.1) · 8-drug literature "
+                         "panel · trained with the density-weighted masked MSE (loss_01–03)",
+                ha="left", va="top", fontsize=8.5, color=GREY)
 
     # ---------- INPUT: one cell -> embedding vector ----------
-    ax.add_patch(Circle((6, 37), 2.7, facecolor="#fde0c5", edgecolor="#d2691e", lw=1.8, zorder=3))
-    for dx, dy in [(-0.9, 0.5), (0.7, -0.4), (0.2, 1.0), (-0.3, -0.9)]:
-        ax.add_patch(Circle((6 + dx, 37 + dy), 0.55, facecolor="#d2691e", lw=0, zorder=4))
-    ax.text(6, 32.3, "single cell\n(scRNA-seq)", ha="center", va="top", fontsize=9, color=INK)
-    arrow(ax, 9, 37, 11.3, 37, color=INK)
+    ax.add_patch(Circle((xc, 37), 2.4 * (0.85 if compact else 1), facecolor="#fde0c5", edgecolor="#d2691e", lw=1.8, zorder=3))
+    for dx, dy in [(-0.8, 0.45), (0.6, -0.35), (0.15, 0.9), (-0.25, -0.8)]:
+        ax.add_patch(Circle((xc + dx, 37 + dy), 0.5, facecolor="#d2691e", lw=0, zorder=4))
+    ax.text(xc, 32.6, "single cell\n(scRNA-seq)", ha="center", va="top", fontsize=9 * fs, color=INK)
+    arrow(ax, xc + 2.8, 37, xe - 2.0, 37, color=INK)
 
-    _heat_strip(ax, 14, 30.5, 43.5, np.linspace(0.05, 0.95, 14), "viridis")
-    ax.text(14, 29.6, "512-d embedding", ha="center", va="top", fontsize=9.5, fontweight="bold", color=BLUE)
-    ax.text(14, 26.9, "PCA  or  scGPT\n(frozen — never fine-tuned)", ha="center", va="top",
-            fontsize=8.2, color=INK)
-    arrow(ax, 15.8, 37, 22.5, 37, color=INK)
+    _heat_strip(ax, xe, 30.5, 43.5, np.linspace(0.05, 0.95, 14), "viridis", w=2.4 * (0.8 if compact else 1))
+    ax.text(xe, 29.6, "512-d embedding", ha="center", va="top", fontsize=9.5 * fs,
+            fontweight="bold", color=BLUE)
+    ax.text(xe, 26.9, "PCA  or  scGPT" + ("" if compact else "\n(frozen — never fine-tuned)"),
+            ha="center", va="top", fontsize=8.2 * fs, color=INK)
+    arrow(ax, xe + 1.6, 37, lx[0] - 3.5, 37, color=INK)
 
     # ---------- MODEL: MLP drawn as neurons ----------
-    layers_x = [26, 39, 51, 62]
+    layers_x = lx
     counts = [6, 5, 4, 8]
-    cy, sp, r = 37, 3.0, 1.25
-    head_sp = 2.05  # 8 heads are drawn in full, so they need tighter spacing than the trunk
+    cy, r = 37, 1.25 * (0.72 if compact else 1)
+    sp = 3.0 if not compact else 2.3
+    head_sp = 2.05 if not compact else 1.62  # 8 heads drawn in full need tighter spacing
     pos = []
     for lx, n in zip(layers_x, counts):
         s = head_sp if n == 8 else sp
@@ -192,45 +214,53 @@ def build_architecture():
             for (x2, y2) in b:
                 ax.plot([x1, x2], [y1, y2], color="#bcd0e6", lw=0.5, zorder=1)
     for li, layer in enumerate(pos):
-        rr = 0.85 if li == 3 else r
+        rr = (0.85 if not compact else 0.55) if li == 3 else r
         for (x, y) in layer:
             ax.add_patch(Circle((x, y), rr, facecolor=BLUE_FILL, edgecolor=BLUE, lw=1.5, zorder=3))
     for lx, n in zip(layers_x[:3], counts[:3]):  # '...' only where neurons are omitted
-        ax.text(lx, cy - (n / 2) * sp - 0.6, "⋮", ha="center", va="top", fontsize=12, color=GREY)
-    for lx, t in zip(layers_x, ["input\n512", "hidden\n128", "hidden\n64", "heads\n8 drugs"]):
-        ax.text(lx, 25.5, t, ha="center", va="top", fontsize=9, color=INK)
-    ax.add_patch(FancyBboxPatch((22.5, 27.5), 42.5, 19, boxstyle="round,pad=0.3,rounding_size=1.2",
+        ax.text(lx, cy - ((n - 1) / 2) * sp - r - 0.5, "⋮", ha="center", va="top",
+                fontsize=12 * fs, color=GREY)
+    for lxx, t in zip(layers_x, ["input\n512", "hidden\n128", "hidden\n64", "heads\n8 drugs"]):
+        ax.text(lxx, 25.8, t, ha="center", va="top", fontsize=9 * fs, color=INK)
+    ax.add_patch(FancyBboxPatch((layers_x[0] - 3.5, 27.5), layers_x[3] - layers_x[0] + 7, 19,
+                 boxstyle="round,pad=0.3,rounding_size=1.2",
                  fill=False, edgecolor=BLUE, lw=1.2, linestyle="--", zorder=0))
-    ax.text(43.7, 21.4, "hidden block  =  Linear → LayerNorm → GELU → Dropout 0.5      ·      "
-                        "input dropout 0.1      ·      Adam, 25 epochs, early stopping",
-            ha="center", va="top", fontsize=8.2, color=INK)
-    ax.text(43.7, 18.3, "the 8 heads are the 8 rows of one Linear(64 → 8) over a shared trunk — "
-                        "there is no per-drug sub-network",
-            ha="center", va="top", fontsize=8.2, color=GREY, style="italic")
+    if not compact:
+        ax.text(43.2, 22.6, "hidden block  =  Linear → LayerNorm → GELU → Dropout 0.5      ·      "
+                            "input dropout 0.1      ·      Adam, 25 epochs, early stopping",
+                ha="center", va="top", fontsize=8.2, color=INK)
+        ax.text(43.2, 19.8, "the 8 heads are the 8 rows of one Linear(64 → 8) over a shared trunk — "
+                            "there is no per-drug sub-network",
+                ha="center", va="top", fontsize=8.2, color=GREY, style="italic")
 
     # ---------- OUTPUT: predicted raw AUC per drug ----------
-    x0, span, amax = 71.5, 20.0, 1.15          # AUC 0 .. 1.15 maps to x0 .. x0+span
-    cm = plt.colormaps["coolwarm_r"]           # low AUC = sensitive (blue) .. high = resistant (red)
+    amax = 1.15                                # AUC 0 .. 1.15 maps to x0 .. x0+span
+    cm = plt.colormaps["coolwarm"]             # low AUC = sensitive (blue) .. high = resistant (red)
+    shade = lambda v: cm(np.clip(0.5 + (v - 0.5) / 1.2, 0, 1))  # white anchored at AUC 0.5
     ys = [cy + (i - 3.5) * head_sp for i in range(8)][::-1]
     for j, (yy, p, t) in enumerate(zip(ys, EXAMPLE_PRED, EXAMPLE_TRUE)):
-        arrow(ax, 63.2, cy + (j - 3.5) * head_sp, 66.0, cy + (j - 3.5) * head_sp, color="#9db6cf")
+        arrow(ax, layers_x[3] + 1.0, yy, x0 - (5.5 if compact else 6.5), yy, color="#9db6cf")
         ax.plot([x0, x0 + span], [yy, yy], color="#e4e4e0", lw=0.8, zorder=1)
-        ax.add_patch(Rectangle((x0, yy - 0.62), p / amax * span, 1.24, facecolor=cm(p / amax),
+        ax.add_patch(Rectangle((x0, yy - 0.62), p / amax * span, 1.24, facecolor=shade(p),
                                edgecolor="white", lw=0.6, zorder=3))
         ax.plot([x0 + t / amax * span], [yy], marker="D", ms=3.4, color=INK, zorder=4)
-        ax.text(x0 - 0.8, yy, PANEL[j], ha="right", va="center", fontsize=8, color=INK)
+        ax.text(x0 - 0.8, yy, PANEL[j], ha="right", va="center", fontsize=8 * fs, color=INK)
     for v in (0.0, 0.5, 1.0):
-        ax.plot([x0 + v / amax * span] * 2, [ys[-1] + 1.2, ys[0] - 1.2], color=GREY, lw=0.6,
+        ax.plot([x0 + v / amax * span] * 2, [ys[-1] - 0.9, ys[0] + 0.9], color=GREY, lw=0.6,
                 linestyle=":", zorder=1)
-        ax.text(x0 + v / amax * span, ys[0] - 1.8, f"{v:.1f}", ha="center", va="top",
-                fontsize=7.5, color=GREY)
-    ax.text(x0 + span / 2, 29.6, "predicted AUC per drug", ha="center", va="top",
-            fontsize=9.5, fontweight="bold", color=INK)
-    ax.text(x0, 27.0, "low AUC = sensitive (the drug kills this line)", ha="left", va="top",
+        ax.text(x0 + v / amax * span, ys[-1] - 1.4, f"{v:.1f}", ha="center", va="top",
+                fontsize=7.5 * fs, color=GREY)
+    ax.text(x0 + span / 2, 26.6, "predicted AUC per drug", ha="center", va="top",
+            fontsize=9.5 * fs, fontweight="bold", color=INK)
+    if compact:
+        ax.text(x0 + span / 2, 24.3, "low = sensitive · high = resistant",
+                ha="center", va="top", fontsize=6.6, color=GREY)
+        return
+    ax.text(x0 - 4.5, 24.0, "low AUC = sensitive (the drug kills this line)", ha="left", va="top",
             fontsize=8, color=BLUE)
-    ax.text(x0, 24.6, "high AUC = resistant", ha="left", va="top", fontsize=8, color=RED)
-    ax.text(x0, 22.2, f"bars: out-of-fold prediction for {EXAMPLE_LINE}\n"
-                      "◆ = the measured CTRPv2 value (never seen in training)",
+    ax.text(x0 - 4.5, 21.8, "high AUC = resistant", ha="left", va="top", fontsize=8, color=RED)
+    ax.text(x0 - 4.5, 19.6, f"bars: out-of-fold prediction for {EXAMPLE_LINE}\n"
+                            "◆ = the measured CTRPv2 value (never seen in training)",
             ha="left", va="top", fontsize=7.6, color=GREY)
 
     ax.text(0, 16.0,
@@ -240,12 +270,516 @@ def build_architecture():
             "used to apply now lives in the loss.",
             ha="left", va="top", fontsize=8.2, color=INK)
 
-    out = HERE / "model_architecture.png"
+
+def build_architecture():
+    fig, ax = plt.subplots(figsize=(17.0, 6.6))
+    draw_architecture(ax)
+    out = FIG / "model_architecture.png"
+    fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
+
+# ============================================================ shared data for the drawn-from-data panels
+#: Line-level quantities the figures need, cached so nothing here depends on the 2.4 GB targets h5ad
+#: (which lives outside the repo).  Everything is per *cell line* over the train+val split, which is
+#: the population every fold's statistics are estimated from.
+CACHE = FIG / "figure_data.npz"
+
+
+def figure_data() -> dict:
+    """``{line_mask, panel_auc, n_cells, fold, n_by_split, pca2}`` — from the targets h5ad once."""
+    if CACHE.exists():
+        with np.load(CACHE) as z:
+            return {k: z[k] for k in z.files}
+
+    import sys
+
+    sys.path.insert(0, str(ROOT))
+    import anndata as ad
+    from sklearn.model_selection import GroupKFold
+
+    from scripts.preprocessing.layout import PipelinePaths
+    from scripts.training.density_weighting import DEFAULT_WINSOR
+
+    src = ad.read_h5ad(PipelinePaths.build(None, "hvg5000", "auc").targets_h5ad, backed="r")
+    all_drugs = list(src.uns["ctrp_drugs"])
+    kcol = [all_drugs.index(d) for d in PANEL]
+    Y = np.clip(np.asarray(src.obsm["Y_ctrp"], dtype=float), None, DEFAULT_WINSOR)
+    M = np.asarray(src.obsm["M_ctrp"], dtype=bool)
+    groups = src.obs["Cell_line"].astype(str).to_numpy()
+    split = src.obs["split_ctrp"].astype(str).to_numpy()
+    eligible = np.isin(split, ["train", "val"])
+    # how many *cell lines* sit in each split -- the numbers the split panel has to be honest about
+    first = {ln: split[groups == ln][0] for ln in np.unique(groups)}
+    n_by_split = np.array([sum(v == s for v in first.values())
+                           for s in ("train", "val", "test", "unassigned")], dtype=int)
+    # a 2-d view of the PCA space, subsampled -- the icon for "linear, unsupervised" in stage 4
+    rs = np.random.default_rng(0)
+    take = np.sort(rs.choice(src.n_obs, size=min(4000, src.n_obs), replace=False))
+    pca2 = np.asarray(src.obsm["X_pca"], dtype=float)[take][:, :2]
+    src.file.close()
+
+    lines = np.unique(groups[eligible])
+    line_mask = np.zeros((len(lines), M.shape[1]), dtype=bool)
+    panel_auc = np.full((len(lines), len(PANEL)), np.nan)
+    n_cells = np.zeros(len(lines), dtype=int)
+    for i, ln in enumerate(lines):
+        ci = np.flatnonzero((groups == ln) & eligible)
+        n_cells[i] = ci.size
+        line_mask[i] = M[ci].any(0)
+        obs = line_mask[i][kcol]
+        panel_auc[i, obs] = Y[ci][:, np.array(kcol)[obs]][0]
+
+    # the project's fold partition (scripts.training.cv.grouped_folds), collapsed to one id per line
+    idx = np.flatnonzero(eligible)
+    pos = {ln: i for i, ln in enumerate(lines)}
+    fold = np.zeros(len(lines), dtype=int)
+    for f, (_, va) in enumerate(GroupKFold(n_splits=5).split(idx, groups=groups[idx]), start=1):
+        for ln in np.unique(groups[idx[va]]):
+            fold[pos[ln]] = f
+
+    FIG.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(CACHE, n_by_split=n_by_split, pca2=pca2, line_mask=line_mask, panel_auc=panel_auc,
+                        n_cells=n_cells, fold=fold)
+    return figure_data()
+
+
+def panel_corr():
+    """``notebooks/outputs/panel/panel_per_drug_correlation.csv`` as a DataFrame."""
+    import pandas as pd
+
+    return pd.read_csv(PANEL_OUT / "panel_per_drug_correlation.csv")
+
+
+def _tidy(ax, *, grid="", ticks=True):
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.spines[["left", "bottom"]].set_color("#bdbdb8")
+    ax.tick_params(colors=MUTED, labelsize=7.5, length=3)
+    if grid:
+        ax.grid(axis=grid, color="#ecece8", lw=0.6)
+        ax.set_axisbelow(True)
+    if not ticks:
+        ax.set_xticks([]); ax.set_yticks([])
+
+
+# ============================================================ 3) the pipeline, drawn
+FOLD_COLORS = ["#1f6fb2", "#4b9cd3", "#8fbfe0", "#c3dcef", "#e3eef7"]
+
+
+def build_pipeline_flow():
+    """Eight panels on two rows — a picture per stage, a caption of at most two short lines.
+
+    Stages 5 and 6 call the same drawing functions as ``model_architecture.png`` and
+    ``loss_01_objective.png`` with ``compact=True``, so the pipeline cannot drift away from the
+    standalone figures. Everything that needs a sentence lives in the docs, not on the slide.
+    """
+    d = figure_data()
+    corr = panel_corr()
+    import pandas as pd
+
+    fig = plt.figure(figsize=(16.0, 8.2))
+    bg = fig.add_axes([0, 0, 1, 1]); bg.set_xlim(0, 100); bg.set_ylim(0, 100); bg.axis("off")
+    bg.text(1.5, 99.0, "OncoTox — the pipeline", ha="left", va="top",
+            fontsize=17, fontweight="bold", color=INK)
+    bg.text(1.5, 94.0, "one cell in, one AUC per drug out  ·  everything grouped by cell line",
+            ha="left", va="top", fontsize=9.5, color=GREY)
+
+    ROW1_TITLE, ROW1_CAP = 86.5, 58.5
+    ROW2_TITLE, ROW2_CAP = 46.0, 8.5
+
+    def stage(x, y, n, title, caption, cap_y):
+        bg.text(x, y, f"{n}", ha="left", va="bottom", fontsize=12, fontweight="bold", color="#c3c3bd")
+        bg.text(x + 2.4, y, title, ha="left", va="bottom", fontsize=10.5, fontweight="bold", color=INK)
+        if caption:
+            bg.text(x, cap_y, caption, ha="left", va="top", fontsize=8.2, color=MUTED)
+
+    # ================================================== 1 · data
+    stage(1.5, ROW1_TITLE, "1", "Data",
+          "one AUC per (cell line, drug) — and that one\nvalue labels every cell of the line",
+          ROW1_CAP)
+    ax = fig.add_axes([0.015, 0.625, 0.20, 0.215]); ax.set_xlim(0, 34); ax.set_ylim(0, 14)
+    ax.axis("off")
+
+    rs = np.random.default_rng(3)
+    for _ in range(22):                                  # a bounded blob, so nothing leaves the panel
+        r, th = 2.0 * np.sqrt(rs.random()), 2 * np.pi * rs.random()
+        ax.add_patch(Circle((5.0 + r * np.cos(th) * 1.15, 9.8 + r * np.sin(th)), 0.40,
+                            facecolor="#fde0c5", edgecolor="#d2691e", lw=0.7))
+    ax.text(5.0, 6.6, "one cell line\n= 56–1,990 cells", ha="center", va="top", fontsize=7.5,
+            color=INK)
+    arrow(ax, 8.2, 9.8, 11.0, 9.8, color=MUTED)
+
+    x0, y0, cw, ch = 12.2, 3.2, 1.75, 1.15
+    sub = d["line_mask"][:6, :10]
+    for i in range(6):
+        for j in range(10):
+            ax.add_patch(Rectangle((x0 + j * cw, y0 + (5 - i) * ch), cw * 0.9, ch * 0.85,
+                                   facecolor=BLUE if bool(sub[i, j]) else "#efefeb", lw=0))
+    ax.add_patch(Rectangle((x0 - 0.35, y0 + 5 * ch - 0.2), 10 * cw + 0.4, ch * 1.25, fill=False,
+                           edgecolor="#d2691e", lw=1.4))
+    ax.text(x0 + 10 * cw + 0.9, y0 + 5 * ch + 0.45, "= this line's row", ha="left", va="center",
+            fontsize=7.6, color="#d2691e")
+    ax.text(x0 + 5 * cw, y0 + 6 * ch + 0.5, "545 drugs  →", ha="center", va="bottom",
+            fontsize=7.6, color=MUTED)
+    ax.text(x0 - 0.7, y0 + 3 * ch, "cell lines", ha="center", va="center", fontsize=7.4,
+            color=MUTED, rotation=90)
+    for dx, (col, lab) in enumerate([(BLUE, "screened"), ("#efefeb", "not screened")]):
+        ax.add_patch(Rectangle((12.2 + dx * 9.5, 0.9), 1.4, 0.9, facecolor=col, lw=0))
+        ax.text(14.1 + dx * 9.5, 1.35, lab, ha="left", va="center", fontsize=7.4, color=MUTED)
+
+    # ================================================== 2 · drug panel
+    stage(26.0, ROW1_TITLE, "2", "Drug panel",
+          "only compounds with a published\nsensitivity determinant", ROW1_CAP)
+    ax = fig.add_axes([0.255, 0.615, 0.125, 0.225]); ax.set_xlim(0, 10); ax.set_ylim(0, 10)
+    ax.axis("off")
+    for i, (n, lab, col) in enumerate([(545, "545  CTRPv2 compounds", "#c3dcef"),
+                                       (173, "173  FDA / clinical", "#6ba7d6"),
+                                       (8, "8  the panel", BLUE)]):
+        half = 4.6 * (0.55 + 0.45 * (n / 545) ** 0.35)
+        yb = 7.4 - i * 2.9
+        ax.add_patch(mpatches.Polygon(
+            [(5 - half, yb + 2.2), (5 + half, yb + 2.2),
+             (5 + half * 0.62, yb), (5 - half * 0.62, yb)],
+            closed=True, facecolor=col, edgecolor="white", lw=1.2))
+        ax.text(5, yb + 1.05, lab, ha="center", va="center", fontsize=7.8,
+                color="white" if i == 2 else INK, fontweight="bold" if i == 2 else "normal")
+        if i < 2:
+            ax.annotate("", xy=(5, yb - 0.15), xytext=(5, yb - 0.6),
+                        arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=1.3))
+
+    # ================================================== 3 · split
+    n_tr, n_va, n_te = (int(d["n_by_split"][i]) for i in (0, 1, 2))
+    n_el = n_tr + n_va
+    stage(44.0, ROW1_TITLE, "3", "Split",
+          f"the {n_te} test lines are locked away once;\n"
+          f"5 folds over the other {n_el}, grouped by line", ROW1_CAP)
+    ax = fig.add_axes([0.435, 0.625, 0.225, 0.215]); ax.set_xlim(0, 100); ax.set_ylim(0, 100)
+    ax.axis("off")
+
+    tot = n_el + n_te
+    xw = 96.0 / tot
+    xc = 2.0
+    for n, col, lab in [(n_el, "#cfe0ef", "train + val"), (n_te, "#f3c9c9", "test")]:
+        ax.add_patch(Rectangle((xc, 76), n * xw, 13, facecolor=col, edgecolor="white", lw=1.0))
+        ax.text(xc + n * xw / 2, 82.5, lab, ha="center", va="center", fontsize=8, color=INK)
+        ax.text(xc + n * xw / 2, 91.5, str(n), ha="center", va="bottom", fontsize=8, color=MUTED)
+        xc += n * xw
+    ax.text(2.0, 71, f"{tot} cell lines with CTRPv2 labels", ha="left", va="top",
+            fontsize=7.6, color=MUTED)
+    ax.add_patch(Rectangle((2.0, 76), n_el * xw, 13, fill=False, edgecolor=BLUE, lw=1.6))
+    ax.annotate("", xy=(2 + n_el * xw * 0.78, 60), xytext=(2 + n_el * xw * 0.78, 74),
+                arrowprops=dict(arrowstyle="-|>", color=BLUE, lw=1.6))
+
+    order = np.argsort(d["fold"])
+    fw = (n_el * xw) / len(order)
+    for f in range(1, 6):
+        yb = 46 - (f - 1) * 9.5
+        held = (d["fold"][order] == f)
+        for i, h in enumerate(held):
+            ax.add_patch(Rectangle((2.0 + i * fw, yb), fw, 7.4, lw=0,
+                                   facecolor=BLUE if h else "#e6e6e2"))
+        ax.add_patch(Rectangle((2.0 + n_el * xw + 1.5, yb), n_te * xw, 7.4, lw=0,
+                               facecolor="#f6e2e2", hatch="///", edgecolor="#e0b4b4"))
+        ax.text(0.5, yb + 3.7, f"fold {f}", ha="right", va="center", fontsize=7.4, color=MUTED)
+    for dx, (col, lab) in enumerate([(BLUE, "held out"), ("#e6e6e2", "train")]):
+        ax.add_patch(Rectangle((2.0 + dx * 21, -1), 5, 5, facecolor=col, lw=0))
+        ax.text(8.0 + dx * 21, 1.5, lab, ha="left", va="center", fontsize=7.4, color=MUTED)
+    ax.add_patch(Rectangle((44.0, -1), 5, 5, facecolor="#f6e2e2", hatch="///",
+                           edgecolor="#e0b4b4", lw=0))
+    ax.text(50.0, 1.5, "test — out of every fold", ha="left", va="center", fontsize=7.4, color=MUTED)
+
+    # ================================================== 4 · representation
+    stage(71.0, ROW1_TITLE, "4", "Representation",
+          "same trunk, same folds —\nonly the 512-d input differs", ROW1_CAP)
+    ax = fig.add_axes([0.715, 0.655, 0.098, 0.165])
+    ax.scatter(d["pca2"][:, 0], d["pca2"][:, 1], s=2.2, color="#b9c9d8", lw=0)
+    lim = np.abs(d["pca2"]).max() * 1.05
+    ax.annotate("", xy=(lim * 0.85, 0), xytext=(-lim * 0.85, 0),
+                arrowprops=dict(arrowstyle="-|>", color=INK, lw=1.2))
+    ax.annotate("", xy=(0, lim * 0.6), xytext=(0, -lim * 0.6),
+                arrowprops=dict(arrowstyle="-|>", color=INK, lw=1.2))
+    ax.set_xlim(-lim, lim); ax.set_ylim(-lim * 0.72, lim * 0.72)
+    ax.set_xticks([]); ax.set_yticks([])
+    for sp_ in ax.spines.values():
+        sp_.set_color("#dededa")
+    ax.set_title("X_pca", fontsize=9, fontweight="bold", color=GREY, pad=3)
+    ax.set_xlabel("linear, unsupervised", fontsize=7.4, color=MUTED, labelpad=2)
+
+    ax = fig.add_axes([0.845, 0.655, 0.098, 0.165]); ax.set_xlim(0, 10); ax.set_ylim(0, 12)
+    ax.axis("off")
+    ax.set_title("X_scGPT", fontsize=9, fontweight="bold", color=AMBER, pad=3)
+    for j in range(6):
+        ax.add_patch(Rectangle((1.4 + j * 1.2, 10.2), 0.9, 0.85,
+                               facecolor="#f3e2c4", edgecolor=AMBER, lw=0.8))
+    ax.text(5.0, 9.7, "the genes of one cell", ha="center", va="top", fontsize=7.2, color=MUTED)
+    ax.annotate("", xy=(5, 7.9), xytext=(5, 8.6), arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=1.2))
+    for k in range(3):
+        ax.add_patch(FancyBboxPatch((1.2, 4.5 + k * 1.15), 7.6, 0.8,
+                     boxstyle="round,pad=0.06,rounding_size=0.2",
+                     facecolor="#fbf1de", edgecolor=AMBER, lw=1.0))
+    ax.text(5.0, 6.05, "transformer (frozen)", ha="center", va="center", fontsize=6.8, color=INK)
+    ax.annotate("", xy=(5, 3.2), xytext=(5, 4.1), arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=1.2))
+    for j in range(8):
+        ax.add_patch(Rectangle((0.7 + j * 1.1, 2.0), 0.95, 0.95,
+                               facecolor=plt.colormaps["YlOrBr"](0.25 + 0.55 * ((j * 3) % 7) / 7),
+                               edgecolor="white", lw=0.5))
+    ax.text(5.0, 1.4, "pretrained on ~33 M cells", ha="center", va="top", fontsize=7.2, color=MUTED)
+
+    # ================================================== 5 · model  (the standalone drawing)
+    stage(1.5, ROW2_TITLE, "5", "Model",
+          "one cell in, one raw AUC per panel drug out", ROW2_CAP)
+    ax = fig.add_axes([0.015, 0.135, 0.375, 0.30])
+    draw_architecture(ax, compact=True)
+
+    # ================================================== 6 · loss  (the standalone drawing)
+    stage(41.0, ROW2_TITLE, "6", "Loss",
+          "unscreened pairs dropped, rare\nresponse values weighted up", ROW2_CAP)
+    ax = fig.add_axes([0.405, 0.215, 0.215, 0.16])
+    draw_loss_objective(ax, compact=True)
+
+    # ================================================== 7 · evaluation
+    stage(64.5, ROW2_TITLE, "7", "Evaluation",
+          "cells → one value per line,\nSpearman within each drug", ROW2_CAP)
+    ax = fig.add_axes([0.655, 0.155, 0.125, 0.255])
+    oof = pd.read_csv(PANEL_OUT / "panel_oof_predictions.csv")
+    g8 = oof[(oof.rep == "X_scGPT") & (~oof.weighted) & (oof.drug == "dasatinib")]
+    ax.scatter(g8.y_true, g8.y_pred, s=11, color=BLUE, alpha=0.55, edgecolor="white", lw=0.35)
+    rho = corr[(corr.rep == "X_scGPT") & (~corr.weighted) & (corr.drug == "dasatinib")].spearman.iloc[0]
+    ax.set_xlabel("measured AUC", fontsize=7.2, labelpad=1)
+    ax.set_ylabel("predicted", fontsize=7.2, labelpad=1)
+    ax.text(0.04, 0.96, f"dasatinib\nρ = {rho:.2f}", transform=ax.transAxes,
+            ha="left", va="top", fontsize=7.6, color=INK)
+    _tidy(ax, grid="both")
+    ax.tick_params(labelsize=6.5)
+
+    # ================================================== 8 · result
+    stage(82.0, ROW2_TITLE, "8", "Result",
+          "one seed — only scGPT clears\nthe ridge control", ROW2_CAP)
+    ax = fig.add_axes([0.868, 0.155, 0.115, 0.255])
+    ridge = pd.read_csv(PANEL_OUT / "panel_ridge_baseline.csv")
+    bars = [
+        ("scGPT MLP", corr[(corr.rep == "X_scGPT") & (~corr.weighted)].spearman.mean(), AMBER),
+        ("PCA MLP", corr[(corr.rep == "X_pca") & (~corr.weighted)].spearman.mean(), GREY),
+        ("scGPT ridge", ridge[ridge.rep == "X_scGPT"].spearman.mean(), "#cfcfc9"),
+        ("PCA ridge", ridge[ridge.rep == "X_pca"].spearman.mean(), "#cfcfc9"),
+    ]
+    y = np.arange(len(bars))[::-1]
+    ax.barh(y, [b[1] for b in bars], height=0.6, color=[b[2] for b in bars])
+    for yy, (lab, v, _) in zip(y, bars):
+        ax.text(v + 0.01, yy, f"{v:.3f}", va="center", ha="left", fontsize=6.8, color=INK)
+    ax.set_yticks(y); ax.set_yticklabels([b[0] for b in bars], fontsize=6.8)
+    ax.set_xlim(0, 0.50); ax.set_xticks([0, 0.2, 0.4])
+    ax.set_xlabel("mean per-drug Spearman", fontsize=7.2, labelpad=1)
+    _tidy(ax, grid="x")
+    ax.tick_params(labelsize=6.5)
+
+    # ================================================== flow arrows
+    for x0_, x1_ in [(22.5, 25.0), (39.0, 41.5), (67.5, 70.0)]:
+        arrow(bg, x0_, 73.0, x1_, 73.0, color="#b6b6b0")
+    bg.add_patch(FancyArrowPatch((97.0, 66.0), (97.0, 53.0), arrowstyle="-",
+                 linewidth=1.8, color="#b6b6b0"))
+    bg.add_patch(FancyArrowPatch((97.0, 53.0), (3.0, 53.0), arrowstyle="-",
+                 linewidth=1.8, color="#b6b6b0"))
+    arrow(bg, 3.0, 53.0, 3.0, 49.0, color="#b6b6b0")
+    for x0_, x1_ in [(38.0, 40.5), (60.0, 62.5), (78.5, 81.0)]:
+        arrow(bg, x0_, 28.0, x1_, 28.0, color="#b6b6b0")
+
+    out = FIG / "pipeline.png"
+    fig.savefig(out, dpi=180, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
+
+# ============================================================ 4) the loss, in three figures
+def draw_loss_objective(ax, *, compact: bool = False):
+    """Draw the objective into ``ax`` — same drawing for the standalone figure and for stage 6."""
+    ax.set_xlim(0, 100); ax.set_ylim(0, 100); ax.axis("off")
+
+    if not compact:
+        ax.text(1, 99, "The objective — a weighted, masked mean squared error",
+                ha="left", va="top", fontsize=14, fontweight="bold", color=INK)
+        ax.text(1, 91, "target = raw AUC  ·  the per-drug scaling the retired auc_z applied to the "
+                       "labels now sits here instead",
+                ha="left", va="top", fontsize=9, color=GREY)
+
+    ax.text(50, 76 if not compact else 92, r"$\mathcal{L}\;=\;\frac{\sum_{i,k}\;"
+                    r"\mathbf{m}_{ik}\;\cdot\;\mathbf{w}_k(y_{ik})\;\cdot\;"
+                    r"(\hat{y}_{ik}-y_{ik})^2}"
+                    r"{\sum_{i,k}\;\mathbf{m}_{ik}\;\cdot\;\mathbf{w}_k(y_{ik})}$",
+            ha="center", va="top", fontsize=23 if not compact else 15, color=INK)
+    if compact:
+        return
+
+    for x, edge, fill, head, body in [
+        (1.5, GREY, GREY_FILL, r"$m_{ik}$   mask",
+         "1 if the line was screened\nagainst drug $k$, else 0"),
+        (35.0, BLUE, BLUE_FILL, r"$w_k(y_{ik})$   sample weight",
+         "inverse label density,\nper drug, mean 1"),
+        (68.5, RED, RED_FILL, r"$(\hat{y}_{ik}-y_{ik})^2$   error",
+         "squared, in raw AUC units\n$i$ = cell,  $k$ = drug"),
+    ]:
+        ax.add_patch(FancyBboxPatch((x, 2), 30, 26, boxstyle="round,pad=0.5,rounding_size=2.0",
+                     linewidth=1.8, edgecolor=edge, facecolor=fill, zorder=2))
+        ax.text(x + 15, 24.5, head, ha="center", va="top", fontsize=11.5,
+                fontweight="bold", color=edge, zorder=3)
+        ax.text(x + 15, 15.0, body, ha="center", va="top", fontsize=9, color=INK,
+                zorder=3, linespacing=1.5)
+
+
+def build_loss_objective():
+    """What the objective is made of — the formula and the three factors, nothing else."""
+    fig, ax = plt.subplots(figsize=(12.0, 4.6))
+    draw_loss_objective(ax)
+    out = FIG / "loss_01_objective.png"
+    fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
+def draw_weight_curve(ax, *, drug: str = "dasatinib", compact: bool = False):
+    """The fitted weight curve of one drug — stage 6 of the pipeline and the lower half of loss_02."""
+    import sys
+
+    sys.path.insert(0, str(ROOT))
+    from scripts.training.density_weighting import DEFAULT_CAP, fit_weight_fn
+
+    vals = figure_data()["panel_auc"][:, PANEL.index(drug)]
+    vals = vals[np.isfinite(vals)]
+    fn = fit_weight_fn(vals)
+    grid = np.linspace(vals.min() - 0.03, 1.1, 300)
+    ax.axhline(1.0, color=MUTED, lw=0.8, ls=":")
+    ax.axhline(DEFAULT_CAP, color=RED, lw=0.9, ls="--")
+    ax.plot(grid, fn(grid), color=BLUE, lw=2.2)
+    ax.plot(vals, fn(vals), "o", ms=2.6, color=BLUE, alpha=0.3, markeredgecolor="white",
+            markeredgewidth=0.4)
+    ax.set_ylim(0, DEFAULT_CAP * 1.15)
+    fs = 6.6 if compact else 7.5
+    ax.set_xlabel("AUC", fontsize=fs, labelpad=1)
+    ax.set_ylabel("weight" if compact else "sample weight", fontsize=fs, labelpad=1)
+    if compact:   # keep the label off the cap line, which the curve saturates at both ends
+        ax.text(0.98, 0.04, f"{drug} · cap {DEFAULT_CAP:g}×", transform=ax.transAxes,
+                ha="right", va="bottom", fontsize=fs, color=MUTED)
+    else:
+        ax.text(0.98, 0.94, f"{drug}\ncap {DEFAULT_CAP:g}×", transform=ax.transAxes,
+                ha="right", va="top", fontsize=fs, color=MUTED)
+    _tidy(ax)
+    if compact:
+        ax.tick_params(labelsize=6.2)
+        ax.set_yticks([0, 1, 3])
+    return fn, vals
+
+
+def build_loss_weights():
+    """Where the weights come from: one drug's label density, and the curve it produces."""
+    import sys
+
+    sys.path.insert(0, str(ROOT))
+    from scripts.training.density_weighting import DEFAULT_ALPHA, DEFAULT_CAP, fit_weight_fn
+
+    drug = "dasatinib"
+    vals = figure_data()["panel_auc"][:, PANEL.index(drug)]
+    vals = vals[np.isfinite(vals)]
+    fn = fit_weight_fn(vals)
+    grid = np.linspace(vals.min() - 0.03, 1.1, 400)
+    dens, wcurve = fn.kde(grid), fn(grid)
+
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(9.0, 6.8), sharex=True,
+                                 gridspec_kw=dict(height_ratios=[1, 1.15], hspace=0.12))
+    fig.subplots_adjust(top=0.845)
+    fig.suptitle("Rare response values get more weight", x=0.02, ha="left",
+                 fontsize=13, fontweight="bold", color=INK, y=0.995)
+    fig.text(0.02, 0.945, f"{drug}, {len(vals)} cell lines — the density is fitted per drug, "
+                          "inside each fold, on training lines only",
+             ha="left", va="top", fontsize=8.8, color=GREY)
+    fig.text(0.02, 0.905, r"$w(y)\;\propto\;\hat{p}(y)^{-\alpha}$,   "
+                          rf"$\alpha={DEFAULT_ALPHA:g}$,   clipped to "
+                          rf"$[1/{DEFAULT_CAP:g},\,{DEFAULT_CAP:g}]$,   normalized to mean 1",
+             ha="left", va="top", fontsize=8.8, color=INK)
+
+    top = float(dens.max())
+    a1.hist(vals, bins=22, color="#dededa", edgecolor="white", lw=0.7, density=True)
+    a1.plot(grid, dens, color=INK, lw=2.0)
+    a1.set_ylim(0, top * 1.55)
+    a1.set_ylabel("label density", fontsize=9)
+    a1.annotate("crowded middle", xy=(float(grid[int(np.argmax(dens))]), top * 1.02),
+                xytext=(0.66, top * 1.42), fontsize=9, color=MUTED, ha="left", va="top",
+                arrowprops=dict(arrowstyle="->", color=MUTED, lw=1.0))
+    a1.annotate("sparse extremes", xy=(0.20, 0.10), xytext=(0.06, top * 1.42),
+                fontsize=9, color=MUTED, ha="left", va="top",
+                arrowprops=dict(arrowstyle="->", color=MUTED, lw=1.0))
+
+    a2.axhline(1.0, color=MUTED, lw=0.9, ls=":")
+    for lvl in (DEFAULT_CAP, 1.0 / DEFAULT_CAP):
+        a2.axhline(lvl, color=RED, lw=1.0, ls="--")
+    a2.plot(grid, wcurve, color=BLUE, lw=2.4, zorder=3)
+    a2.plot(vals, fn(vals), "o", ms=4.5, color=BLUE, alpha=0.35, markeredgecolor="white",
+            markeredgewidth=0.5, zorder=4)
+    a2.set_ylim(0, DEFAULT_CAP * 1.2)
+    a2.set_ylabel("sample weight  $w(y)$", fontsize=9)
+    a2.set_xlabel("AUC   (winsorized at 1.1)", fontsize=9)
+    a2.text(0.995, 1.06, "unweighted (w = 1)", transform=a2.get_yaxis_transform(),
+            ha="right", va="bottom", fontsize=8, color=MUTED)
+    a2.text(0.5, DEFAULT_CAP + 0.06, f"cap {DEFAULT_CAP:g}×", transform=a2.get_yaxis_transform(),
+            ha="center", va="bottom", fontsize=8, color=RED)
+    a2.text(0.02, 1 / DEFAULT_CAP + 0.06, f"floor 1/{DEFAULT_CAP:g}",
+            transform=a2.get_yaxis_transform(), ha="left", va="bottom", fontsize=8, color=RED)
+    for a in (a1, a2):
+        _tidy(a)
+        a.tick_params(labelsize=8)
+
+    out = FIG / "loss_02_weights.png"
+    fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
+def build_loss_effect():
+    """What the weighting did: the spread it was designed to raise, and the ranking it did not move."""
+    corr = panel_corr()
+    reps = [("X_scGPT", AMBER, "scGPT"), ("X_pca", GREY, "PCA")]
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(10.5, 5.4))
+    fig.subplots_adjust(top=0.82)
+    fig.suptitle("The weighting fired — and the ranking did not move", x=0.02, ha="left",
+                 fontsize=13, fontweight="bold", color=INK, y=0.99)
+    fig.text(0.02, 0.925, "one point per drug, out of fold, one seed — unweighted against "
+                          "density-weighted",
+             ha="left", va="top", fontsize=8.8, color=GREY)
+
+    for ax, col, label, lim in [(a1, "pred_std", "spread of the predictions", (0.03, 0.11)),
+                                (a2, "spearman", "per-drug Spearman", (0.0, 0.65))]:
+        ax.plot(lim, lim, color="#c9c9c4", lw=1.0, ls="--", zorder=1)
+        for rep, c, name in reps:
+            u = corr[(corr.rep == rep) & (~corr.weighted)].set_index("drug").reindex(PANEL)[col]
+            w = corr[(corr.rep == rep) & (corr.weighted)].set_index("drug").reindex(PANEL)[col]
+            ax.scatter(u, w, s=46, color=c, alpha=0.85, edgecolor="white", lw=0.8,
+                       label=name, zorder=3)
+        ax.set_xlim(*lim); ax.set_ylim(*lim)
+        ax.set_xlabel(f"unweighted — {label}", fontsize=9)
+        ax.set_ylabel(f"density-weighted — {label}", fontsize=9)
+        ax.set_aspect("equal")
+        _tidy(ax, grid="both")
+        ax.tick_params(labelsize=8)
+    a1.legend(frameon=False, fontsize=8.5, loc="lower right")
+    a1.text(0.04, 0.96, "above the line:\nthe model hedges less", transform=a1.transAxes,
+            ha="left", va="top", fontsize=8.5, color=BLUE)
+    a2.text(0.04, 0.96, "on the line:\nno gain, no loss", transform=a2.transAxes,
+            ha="left", va="top", fontsize=8.5, color=MUTED)
+
+    out = FIG / "loss_03_effect.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     print(f"wrote {out}")
 
 
 if __name__ == "__main__":
+    FIG.mkdir(parents=True, exist_ok=True)
     build_pipeline()
+    build_pipeline_flow()
     build_architecture()
+    build_loss_objective()
+    build_loss_weights()
+    build_loss_effect()

@@ -59,6 +59,28 @@ and the train/val/test grouping.
 
 **This section is the canonical definition of the target; the other steps refer back to it.**
 
+> **Status, 27.07.2026 — `auc_z` is retired; the target is raw `auc`.** The sections below still
+> describe `auc_z` because it produced every result up to 14.07 and because the decomposition that
+> retired it is only readable against its definition. What changed:
+>
+> - **Target = raw `auc`, winsorized at 1.1.** Decomposed, `auc_z`'s centering is inert (the head
+>   bias absorbs the drug mean, and per-drug Spearman is shift-invariant) and its scaling is the
+>   defect described under *Known problems* below. Both are within-drug monotone transforms, so
+>   neither was ever visible to the metric: `auc_z` was a **loss-weighting scheme in disguise**.
+> - **The weighting moved into the loss**, where it can be estimated per fold on training lines
+>   only — which is what closed the standing z-score leak (μ, σ were computed once over all 180
+>   lines, val and test included, and baked into the h5ad).
+> - **Per drug: no weight.** The variance imbalance is a K=545 problem; on the 8-drug literature
+>   panel the σ range is 2.5× rather than 81×.
+> - **Per sample: inverse label density** (`scripts/training/density_weighting.py`), the regression
+>   analogue of class weighting. Measured outcome: predicted spread rose as designed, per-drug
+>   Spearman did not move — a clean negative, not to be carried into Step 2.
+> - Two mechanics forced by a target near 0.7 instead of 0: the output layer is excluded from weight
+>   decay, and each head's bias is initialized at the fold's per-drug mean.
+>
+> Figures: `docs/figures/loss_01_objective.png`, `loss_02_weights.png`, `loss_03_effect.png`.
+> Full argument and numbers: `docs/progress_report_2026-07-27.md` §3, §4, §9.
+
 The label is a CTRPv2 **drug-response score**, always a **bulk, per-(cell line × drug)** quantity —
 *not* measured per single cell. Which score is selected with `--score`
 (`layout.CTRP_SCORES`), and every score is written to its **own** targets h5ad, so two scores can be
@@ -67,7 +89,8 @@ resistant* line.
 
 | `--score` | Definition | Source table |
 |---|---|---|
-| **`auc_z`** (default, 13.07.2026) | per-drug **z-score** of `auc`, over the 180 overlapping cell lines | ⟵ derived |
+| **`auc`** (default since 27.07.2026) | `area_under_curve / conc_pts_fit` — see the row below | `v20.data.curves_post_qc.txt` |
+| `auc_z` | per-drug **z-score** of `auc`, over the 180 overlapping cell lines. Default 13.07–27.07, **retired** | ⟵ derived |
 | `auc` | `area_under_curve / conc_pts_fit` — the sigmoid-fit AUC, **normalized** by the size of the concentration grid | `v20.data.curves_post_qc.txt` |
 | `mean_pv` | *legacy:* unweighted mean of `cpd_avg_pv` (percent viability) over the dose grid; clusters near 1.0 | `v20.data.per_cpd_post_qc.txt` |
 
@@ -170,7 +193,8 @@ wide, 0.10–0.65, so the dots in the notebook figure matter as much as the bars
    family GDSC2 reports (which [Step 06](06-cross-database-integration.md) needs) — but do **not** claim
    it improves accuracy. It does not.
 
-> **Decision: keep `auc_z` as the default** (`layout.DEFAULT_CTRP_SCORE`). At the full catalog it is the
+> **Decision (13.07.2026, superseded 27.07.2026 — see the status block at the top of this section):
+> keep `auc_z` as the default** (`layout.DEFAULT_CTRP_SCORE`). At the full catalog it is the
 > difference between a model that ranks cell lines and one that does not. **At K=5 all three targets tie**
 > — on a small, spread-homogeneous subset `--score auc` is equally good and keeps predictions in native,
 > interpretable AUC units.
@@ -302,6 +326,18 @@ the cross-database block-sparse matrix in [Step 06](06-cross-database-integratio
   cell lines with more cells count proportionally more. This entry-pooled val MSE is `best_val_mse`
   in `summary.json` and `val_mse` in `history.csv`, and is what early-stopping/scheduler watch.
 - **Single-task** uses plain `((pred − y)²).mean()` (no mask).
+
+**Sample weighting rides in the mask (27.07.2026).** `M` is a float tensor, so substituting a weight
+at each observed entry for the 0/1 flag turns `Σ(sq·M)/ΣM` into `Σ(w·sq)/Σw` exactly — the weighted
+objective, with **no change to the training loop**. `scripts/training/cv.py` does this when
+`density_weighting=True`: it fits one weight function per drug inside each fold, on that fold's
+training *lines* only (`density_weighting.fit_weight_fns`), and writes
+`weight_matrix(...)` into `dataset.mask`. Unobserved entries stay 0 and remain excluded.
+Consequences worth stating: the per-epoch val MSE printed during a weighted run is the **weighted**
+MSE — the right quantity for early stopping, but not comparable to an unweighted run, so the
+comparable numbers are recomputed afterwards from the out-of-fold predictions.
+Anatomy of the objective: `docs/figures/loss_01_objective.png`; the weight curve:
+`loss_02_weights.png`.
 
 **Two aggregations are reported — do not conflate them:**
 

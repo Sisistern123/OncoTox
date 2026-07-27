@@ -17,11 +17,16 @@ All project documentation lives in [`docs/`](docs/):
 - **[docs/project_notes.md](docs/project_notes.md)** — dated thought/decision log
   (reasoning, advisor updates, ideas, open questions).
 
-### Pipeline status at a glance
+### The pipeline
 
-![OncoTox pipeline status overview](docs/pipeline_overview.png)
+![OncoTox pipeline](docs/figures/pipeline.png)
 
-Regenerate the figure with `uv run docs/make_pipeline_overview.py`.
+### Status against the plan
+
+![OncoTox pipeline status overview](docs/figures/pipeline_overview.png)
+
+All figures live in [docs/figures/](docs/figures/) and are regenerated together with
+`uv run docs/make_figures.py`.
 
 ## Layout
 
@@ -38,7 +43,7 @@ docs/                    # project_progress.md (index) + steps/ (01-08), project
 
 ```bash
 # Preprocess (HVG-5000 variant, all CTRPv2 drugs; skips the external scGPT step if embeddings exist).
-# --score picks the CTRPv2 response target: auc_z (default, per-drug z-scored AUC), auc, or the
+# --score picks the CTRPv2 response target: auc (default, raw curve-fit AUC), auc_z (retired), or the
 # legacy mean_pv (dose-averaged viability). Each score writes its own targets h5ad.
 uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --score auc_z \
     --start-at targets --skip-scgpt --all-drugs
