@@ -213,6 +213,66 @@ used `--all-drugs`, i.e. min 0). The legacy flat columns `obs["viability_<drug>"
 historical. Cancer type is never a label or a feature — it only colors the UMAPs in
 [Step 02](02-preprocessing-and-embeddings.md).
 
+### Known problems with `auc_z` — the scaling is not yet right (27.07.2026)
+
+`auc_z` fixed a real defect (unstandardized multi-task loss, above) but it is not the final answer.
+Writing the definition out makes the open issues explicit — with `center` = per-drug mean and `scale` =
+per-drug std over cell lines (`_zscore_per_drug`, `ctrp_to_h5ad.py:180`):
+
+```
+auc_z[line, drug] = (auc[line, drug] − auc_mean[drug]) / auc_std[drug]
+```
+
+**1. The target discards `auc_mean`, so nothing downstream may select on it.** Subtracting the per-drug
+mean removes *potency* entirely: the model is never asked how strongly a drug kills, only whether a line
+is above or below that drug's average. Any drug filter phrased as "kills ≥ N lines" (`auc ≤ 0.5`)
+therefore selects on the one quantity the target throws away. This invalidated the learnability gate —
+see [Step 05](05-multitask-results.md#the-learnability-gate-measured-the-wrong-quantity-27072026).
+
+**2. Dividing by `auc_std` amplifies noise for narrow-spread drugs.** Every drug is forced to variance 1,
+so a drug whose true biological spread is near the assay's measurement error has that error rescaled to
+variance 1 and enters the shared loss with the same weight as a drug carrying real signal. This is the
+mirror image of the original σ² problem: the old target over-weighted wide drugs, `auc_z` over-weights
+*narrow* ones. The correct weight is **signal-to-noise**, not equal variance. `_zscore_per_drug`'s own
+docstring anticipates this — zero-spread drugs would "blow up", and it relies on `--min-cell-lines` plus
+the learnability filter to remove them, a safeguard that the gate (problem 1) does not actually provide.
+
+**Candidate fixes**, cheapest first — none implemented yet:
+- **Floor / shrink the scale:** divide by `sqrt(auc_std² + σ_noise²)` instead of `auc_std`, so drugs at
+  the noise floor are damped rather than amplified.
+- **Reliability weighting:** weight each drug's loss by `(auc_std² − σ_noise²) / auc_std²`, the fraction
+  of its variance that is real. Needs an estimate of `σ_noise`.
+- **Select on `auc_std`** (raw scale, available as the `uns["ctrp_score_scale"]` vector) instead of
+  patching the scale at all — the simplest version, and it is also the correct drug filter.
+
+**Can `σ_noise` be estimated? Only pooled, not per drug.** `v20.data.curves_post_qc.txt` has 387,130
+(cell line × compound) curve fits, of which **7,708 (2.0 %) are replicated** and at most 3-fold. That is
+far too sparse for a per-drug noise estimate, but ample for a **single pooled** `σ_noise` — enough for
+the floor above. Per-curve uncertainty is also available directly (`p1_conf_int_low/high`, `conc_pts_fit`).
+
+### Is AUC the right target at all? (27.07.2026)
+
+Raised independently by (a) Selin's supervisor, co-author on the DrEval paper, and (b) DrEval itself,
+which lists *inconsistent viability data* among its six obstacles and recommends **CurveCurator** for
+standardized dose-response fitting. Two concrete, verified issues:
+
+**AUC conflates potency with efficacy.** The area under a dose-response curve mixes *how little drug is
+needed* (EC50) with *how much killing is achievable* (Emax). Two pharmacologically opposite drugs can
+share an AUC. CTRP's own fit already separates them, and the columns are sitting in the file we already
+parse: `apparent_ec50_umol` (potency), `pred_pv_high_conc` (predicted viability at the top dose ≈ Emax),
+`p3_total_decline`. Either is a cleaner regression target than their integral.
+
+**The tested concentration range is not standardized.** Across the 545 compounds the top test
+concentration spans **0.13 µM to 600 µM** (`top_test_conc_umol`; 283 compounds at 66 µM, 113 at 33 µM,
+the rest scattered). Note carefully what this does and does not break: because `auc_z` standardizes
+*within* each drug, cross-drug incomparability is already removed. What it does break is *within*-drug —
+a range badly matched to a compound's potency compresses every line into the top or bottom of the curve,
+shrinking `auc_std` toward the noise floor. **The dose grid is therefore a direct cause of problem 2
+above**, and the two issues should be treated together rather than as separate complaints.
+
+**Decision: not resolved here.** Changing the target is a larger move than changing the scale and
+interacts with S1 (the DrEval-aligned residual target); both are tracked in [TODO](../TODO.md).
+
 ---
 
 ## Mask `M` — the sparsity-handling mechanism (plan sub-goal 2)
