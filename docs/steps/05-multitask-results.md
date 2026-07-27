@@ -422,7 +422,7 @@ and batching unchanged, so the change is attributable. 5-fold GroupKFold over th
 
 | model | ρ `X_pca` | ρ `X_scGPT` | MSE `X_pca` | MSE `X_scGPT` |
 |---|---|---|---|---|
-| MLP, unweighted | 0.313 | **0.377** | 0.0266 | 0.0254 |
+| MLP, unweighted | 0.320 | **0.377** | 0.0264 | 0.0254 |
 | MLP, density-weighted | 0.308 | 0.369 | 0.0274 | 0.0254 |
 | `RidgeCV` on line means | 0.306 | 0.299 | 0.0270 | 0.0268 |
 
@@ -435,7 +435,7 @@ because raw `auc` at 545 heads scored **−0.069** (scGPT). The same raw target 
 whose variances differ by 81×. Removing the cause (the panel) works at least as well as compensating for
 it, without the side effect of amplifying noise-dominated drugs.
 
-**Confirmed — the ridge tie for PCA, and the scGPT margin over it, both replicate.** PCA MLP 0.313 vs its
+**Confirmed — the ridge tie for PCA, and the scGPT margin over it, both replicate.** PCA MLP 0.320 vs its
 ridge 0.306 is the third independent panel on which averaging a line's cells into one vector loses
 nothing. scGPT MLP 0.377 vs its ridge 0.299 is **+0.077**, against **+0.082** on the 14.07 10-drug panel
 (0.402 vs 0.320, `ablations/ablation_capacity.csv`). This is a **replication on an independently chosen

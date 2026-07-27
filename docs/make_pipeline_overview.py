@@ -2,6 +2,13 @@
 
   1. docs/pipeline_overview.png   — status overview of the whole pipeline (steps 01-08)
   2. docs/model_architecture.png  — input + model + task on one figure (to merge slides)
+  3. docs/pipeline_full.png       — the pipeline as a data flow: data -> split -> representation
+                                    (PCA vs scGPT) -> drug panel -> model+loss -> evaluation
+  4. docs/loss_function.png       — anatomy of the density-weighted masked MSE (reweighted
+                                    regression), with the real weight curve of one panel drug
+
+Figures 2-4 describe the setup as of 27.07.2026: target = raw AUC (winsorized at 1.1), no per-drug
+z-score, the per-drug scaling moved into the loss as an inverse-label-density sample weight.
 
 Green = done / on-plan · Amber = addition beyond plan · Red (dashed) = not started.
 
@@ -20,6 +27,8 @@ from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch, Rectangl
 import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+PANEL_OUT = ROOT / "notebooks" / "outputs" / "panel"
 
 GREEN = "#2e7d32"; GREEN_FILL = "#c8e6c9"
 AMBER = "#b8860b"; AMBER_FILL = "#ffe9b3"
@@ -27,6 +36,11 @@ RED = "#c62828"; RED_FILL = "#ffcdd2"
 BLUE = "#1f6fb2"; BLUE_FILL = "#dbe7f3"
 GREY = "#777777"; GREY_FILL = "#e8e8e8"
 INK = "#1a1a1a"
+MUTED = "#52514e"
+
+#: The literature panel (docs/steps/01, progress report §2) — the order every figure uses.
+PANEL = ["methotrexate", "dasatinib", "paclitaxel", "vincristine",
+         "afatinib", "topotecan", "tanespimycin", "selumetinib"]
 
 
 def box(ax, x, y, w, h, title, lines, edge, fill, title_color=None, dashed=False,
@@ -132,9 +146,24 @@ def _heat_strip(ax, xc, y0, y1, vals, cmap, w=2.4):
                  edgecolor=INK, lw=1.3, zorder=4))
 
 
+#: One real held-out cell line, scGPT, unweighted run (notebooks/outputs/panel/panel_oof_predictions.csv,
+#: fold in which SKES1_BONE was held out). Predicted vs measured AUC for the eight panel drugs. Used
+#: instead of an invented vector so the figure shows the actual output scale -- including the visible
+#: shrinkage (predictions span 0.37-0.75 against a measured 0.04-0.91).
+EXAMPLE_LINE = "SKES1_BONE"
+EXAMPLE_PRED = [0.438, 0.663, 0.384, 0.372, 0.748, 0.545, 0.666, 0.739]
+EXAMPLE_TRUE = [0.511, 0.797, 0.122, 0.036, 0.692, 0.177, 0.655, 0.908]
+
+
 def build_architecture():
-    fig, ax = plt.subplots(figsize=(16.0, 5.2))
-    ax.set_xlim(0, 100); ax.set_ylim(22, 50); ax.set_aspect("equal"); ax.axis("off")
+    fig, ax = plt.subplots(figsize=(17.0, 6.6))
+    ax.set_xlim(0, 100); ax.set_ylim(14, 52); ax.set_aspect("equal"); ax.axis("off")
+
+    ax.text(0, 51, "Model architecture — one cell in, one AUC per panel drug out",
+            ha="left", va="top", fontsize=13, fontweight="bold", color=INK)
+    ax.text(0, 48.0, "per-cell MLP · target = raw AUC (winsorized at 1.1) · 8-drug literature panel · "
+                     "trained with the density-weighted masked MSE (see loss_function.png)",
+            ha="left", va="top", fontsize=8.5, color=GREY)
 
     # ---------- INPUT: one cell -> embedding vector ----------
     ax.add_patch(Circle((6, 37), 2.7, facecolor="#fde0c5", edgecolor="#d2691e", lw=1.8, zorder=3))
@@ -145,42 +174,71 @@ def build_architecture():
 
     _heat_strip(ax, 14, 30.5, 43.5, np.linspace(0.05, 0.95, 14), "viridis")
     ax.text(14, 29.6, "512-d embedding", ha="center", va="top", fontsize=9.5, fontweight="bold", color=BLUE)
-    ax.text(14, 26.7, "PCA  or  scGPT", ha="center", va="top", fontsize=9, color=INK)
+    ax.text(14, 26.9, "PCA  or  scGPT\n(frozen — never fine-tuned)", ha="center", va="top",
+            fontsize=8.2, color=INK)
     arrow(ax, 15.8, 37, 22.5, 37, color=INK)
 
     # ---------- MODEL: MLP drawn as neurons ----------
-    layers_x = [26, 40, 54, 66]
-    counts = [6, 5, 4, 6]
+    layers_x = [26, 39, 51, 62]
+    counts = [6, 5, 4, 8]
     cy, sp, r = 37, 3.0, 1.25
-    pos = [[(lx, cy + (i - (n - 1) / 2) * sp) for i in range(n)] for lx, n in zip(layers_x, counts)]
+    head_sp = 2.05  # 8 heads are drawn in full, so they need tighter spacing than the trunk
+    pos = []
+    for lx, n in zip(layers_x, counts):
+        s = head_sp if n == 8 else sp
+        pos.append([(lx, cy + (i - (n - 1) / 2) * s) for i in range(n)])
     for a, b in zip(pos[:-1], pos[1:]):
         for (x1, y1) in a:
             for (x2, y2) in b:
                 ax.plot([x1, x2], [y1, y2], color="#bcd0e6", lw=0.5, zorder=1)
-    for layer in pos:
+    for li, layer in enumerate(pos):
+        rr = 0.85 if li == 3 else r
         for (x, y) in layer:
-            ax.add_patch(Circle((x, y), r, facecolor=BLUE_FILL, edgecolor=BLUE, lw=1.6, zorder=3))
-    for lx, n in zip(layers_x, counts):
+            ax.add_patch(Circle((x, y), rr, facecolor=BLUE_FILL, edgecolor=BLUE, lw=1.5, zorder=3))
+    for lx, n in zip(layers_x[:3], counts[:3]):  # '...' only where neurons are omitted
         ax.text(lx, cy - (n / 2) * sp - 0.6, "⋮", ha="center", va="top", fontsize=12, color=GREY)
-    for lx, t in zip(layers_x, ["input\n512", "hidden\n128", "hidden\n64", "heads\n10 drugs\n(545 = all)"]):
+    for lx, t in zip(layers_x, ["input\n512", "hidden\n128", "hidden\n64", "heads\n8 drugs"]):
         ax.text(lx, 25.5, t, ha="center", va="top", fontsize=9, color=INK)
-    ax.add_patch(FancyBboxPatch((22.5, 27.5), 47, 19, boxstyle="round,pad=0.3,rounding_size=1.2",
+    ax.add_patch(FancyBboxPatch((22.5, 27.5), 42.5, 19, boxstyle="round,pad=0.3,rounding_size=1.2",
                  fill=False, edgecolor=BLUE, lw=1.2, linestyle="--", zorder=0))
-    arrow(ax, 68, 37, 75, 37, color=INK)
+    ax.text(43.7, 21.4, "hidden block  =  Linear → LayerNorm → GELU → Dropout 0.5      ·      "
+                        "input dropout 0.1      ·      Adam, 25 epochs, early stopping",
+            ha="center", va="top", fontsize=8.2, color=INK)
+    ax.text(43.7, 18.3, "the 8 heads are the 8 rows of one Linear(64 → 8) over a shared trunk — "
+                        "there is no per-drug sub-network",
+            ha="center", va="top", fontsize=8.2, color=GREY, style="italic")
 
-    # ---------- OUTPUT: predicted auc_z per drug ----------
-    # auc_z is per-drug standardized: <0 = more sensitive than the average line, >0 = more resistant.
-    out_vals = np.array([0.85, 0.2, 0.75, 0.05, 0.6, 0.45, 0.9, 0.15, 0.7, 0.5, 0.8, 0.3, 0.65, 0.1])
-    _heat_strip(ax, 79, 30.5, 43.5, out_vals, "coolwarm")
-    # swatch legend (the strip is an unsorted prediction vector, so labels must not sit at its ends)
-    cm = plt.colormaps["coolwarm"]
-    for i, (v, lab, col) in enumerate([(0.95, "z > 0: resistant", RED), (0.05, "z < 0: sensitive", BLUE)]):
-        yy = 42.0 - i * 2.6
-        ax.add_patch(Rectangle((81.2, yy - 0.7), 1.5, 1.4, facecolor=cm(v), edgecolor=INK, lw=0.7, zorder=4))
-        ax.text(83.2, yy, lab, ha="left", va="center", fontsize=7.5, color=col)
-    ax.text(79, 29.6, "auc_z per drug", ha="center", va="top", fontsize=9.5, fontweight="bold", color=INK)
-    ax.text(79, 26.7, "per-drug z-score:  is THIS line\nmore sensitive than average?", ha="center",
-            va="top", fontsize=8.0, color=INK)
+    # ---------- OUTPUT: predicted raw AUC per drug ----------
+    x0, span, amax = 71.5, 20.0, 1.15          # AUC 0 .. 1.15 maps to x0 .. x0+span
+    cm = plt.colormaps["coolwarm_r"]           # low AUC = sensitive (blue) .. high = resistant (red)
+    ys = [cy + (i - 3.5) * head_sp for i in range(8)][::-1]
+    for j, (yy, p, t) in enumerate(zip(ys, EXAMPLE_PRED, EXAMPLE_TRUE)):
+        arrow(ax, 63.2, cy + (j - 3.5) * head_sp, 66.0, cy + (j - 3.5) * head_sp, color="#9db6cf")
+        ax.plot([x0, x0 + span], [yy, yy], color="#e4e4e0", lw=0.8, zorder=1)
+        ax.add_patch(Rectangle((x0, yy - 0.62), p / amax * span, 1.24, facecolor=cm(p / amax),
+                               edgecolor="white", lw=0.6, zorder=3))
+        ax.plot([x0 + t / amax * span], [yy], marker="D", ms=3.4, color=INK, zorder=4)
+        ax.text(x0 - 0.8, yy, PANEL[j], ha="right", va="center", fontsize=8, color=INK)
+    for v in (0.0, 0.5, 1.0):
+        ax.plot([x0 + v / amax * span] * 2, [ys[-1] + 1.2, ys[0] - 1.2], color=GREY, lw=0.6,
+                linestyle=":", zorder=1)
+        ax.text(x0 + v / amax * span, ys[0] - 1.8, f"{v:.1f}", ha="center", va="top",
+                fontsize=7.5, color=GREY)
+    ax.text(x0 + span / 2, 29.6, "predicted AUC per drug", ha="center", va="top",
+            fontsize=9.5, fontweight="bold", color=INK)
+    ax.text(x0, 27.0, "low AUC = sensitive (the drug kills this line)", ha="left", va="top",
+            fontsize=8, color=BLUE)
+    ax.text(x0, 24.6, "high AUC = resistant", ha="left", va="top", fontsize=8, color=RED)
+    ax.text(x0, 22.2, f"bars: out-of-fold prediction for {EXAMPLE_LINE}\n"
+                      "◆ = the measured CTRPv2 value (never seen in training)",
+            ha="left", va="top", fontsize=7.6, color=GREY)
+
+    ax.text(0, 16.0,
+            "Raw AUC, not the old per-drug z-score:  the head bias is initialized to the fold's per-drug "
+            "mean AUC and the output layer is excluded from weight decay,\nbecause on an uncentred target "
+            "the bias must sit near 0.7 and decay would pull it to 0.  The per-drug scaling that auc_z "
+            "used to apply now lives in the loss.",
+            ha="left", va="top", fontsize=8.2, color=INK)
 
     out = HERE / "model_architecture.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")

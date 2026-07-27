@@ -87,13 +87,17 @@ lines only, output layer excluded from weight decay (`TrainConfig.exclude_output
 so old runs are unchanged), head biases initialized to train-fold per-drug means. One seed.
 
 - [x] **Confirmed:** the June collapse was a K=545 effect, not a target property → retiring `auc_z` is free.
-- [x] **Confirmed (replication):** PCA MLP ties its ridge (0.313 vs 0.306); scGPT MLP clears its ridge by
+- [x] **Confirmed (replication):** PCA MLP ties its ridge (0.320 vs 0.306); scGPT MLP clears its ridge by
       **+0.077**, against +0.082 on the 14.07 panel — now on a drug set chosen without our labels.
 - [x] **Refuted:** inverse-density loss weighting (−0.006 / −0.008). Mechanism fired (pred_std 0.062 →
       0.08) but ranking did not follow — after winsorizing, |skew| ≤ 0.47, so there was no imbalance left
       to correct. **Do not carry into Step 2.**
+- [ ] **Reproducibility:** the PCA-unweighted arm is not bit-reproducible on `mps` — three identical
+      runs gave 0.313 / 0.317 / 0.320, every other arm reproduced exactly. Cause: PCA peaks at epoch 1
+      (`[1,1,3,1,1]` vs scGPT `[10,11,2,21,4]`), so its checkpoint is chosen among near-tied states. The
+      weighting deltas lie inside that band, so **do not report their sign**.
 - [ ] **Seeds.** Everything above is one seed against ±0.04 documented seed variation. Repeat over ≥3
-      seeds before scGPT − PCA (+0.063) or scGPT − ridge (+0.077) is quoted as a margin. **Blocking for
+      seeds before scGPT − PCA (+0.057) or scGPT − ridge (+0.077) is quoted as a margin. **Blocking for
       any headline number.**
 - [ ] **Report raw + normalized** (DrEval) on this panel, once seeds are in.
 
