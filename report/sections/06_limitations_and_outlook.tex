@@ -17,6 +17,19 @@ more seeds and a wider drug set. The external benchmark is itself preliminary, c
 leave-cell-line-out split on the learnable subset rather than the leave-tissue-out and leave-drug-out
 settings or the full panel.
 
+\suggestion{A further limitation concerns the loss rather than the labels. The response values of a given
+compound are not uniformly distributed over the cell lines: most lines cluster in a narrow band and the
+pharmacologically interesting extremes are sparse. Under an unweighted squared-error objective the dense
+region dominates the gradient, and the optimal predictor shrinks toward each compound's mean, which is
+exactly the behaviour observed here (predicted standard deviations of 0.53 and 0.47 against a true spread
+of 1.0). This is the regression analogue of class imbalance, and the established remedy is to weight each
+observation by the inverse of a smoothed estimate of the label density, so that rare response values
+contribute in proportion to their scarcity rather than their frequency \cite{dir,denseweight}. This was
+implemented and tested, and it does not help; the result is reported above. The shrinkage is therefore
+not an artifact of how the objective weights the response range, which leaves the small number of
+independent cell lines as the remaining explanation and makes the case for acting on the label side
+rather than on the loss.}
+
 The clearest opportunities for improvement follow from the diagnosis that the task is label-limited. First,
 the training target can be aligned with the evaluation by regressing on the doubly normalized residual, in
 which both the drug and the cell-line mean effects are removed, with the means estimated only on the
@@ -25,7 +38,24 @@ training lines of each fold; this matches the quantity DrEval rewards, and an in
 cell-line effect alone. Second, the single-cell resolution has
 yet to justify itself, since averaging a line's cells loses nothing measurable; a pooling model that
 predicts the line label from a bag of cells, for example through attention, is the natural test and must
-beat the ridge control to be worthwhile. Third, and most directly, the ceiling can be raised by adding
+beat the ridge control to be worthwhile.
+\suggestion{This point deserves to be stated more sharply, because it bears directly on the second
+research question. The pharmacological label is constant within a cell line, and the masked objective
+therefore requires every cell of a line to regress onto the same scalar. Any difference the model
+predicts between two cells of the same line is scored as error, so the loss actively penalizes the
+within-line variation that the single-cell framing exists to capture; under this objective the optimal
+per-cell predictor is constant across a line, and heterogeneity can only appear as failure to fit. It
+follows that the present setup does not test whether heterogeneity is learned implicitly \textemdash{} it
+is structurally unable to. Multiple-instance learning is not merely an incremental architecture to try
+but the minimal change that makes the question askable: predicting the line label from a bag of cells
+constrains only the aggregate, leaves the model free to assign different values and weights to different
+cells, and exposes the attention weights as a readout of which subpopulation drives the response. That
+readout is the quantity of clinical interest, since relapse is driven by rare surviving subpopulations
+rather than by the population mean, and it is the natural point at which to connect the model to the
+recurrent heterogeneity programs annotated for this dataset \cite{scp542}. Note also that the per-cell
+loss currently weights each cell line by how many cells were sequenced from it, which ranges from 56 to
+1{,}990 and is an artifact of the assay rather than information about the label; weighting each line
+equally is a prerequisite for any of these comparisons to be read as biology.} Third, and most directly, the ceiling can be raised by adding
 independent cell lines, as CTRPv2 alone screens roughly 1{,}100 against the \NLines{} in the current
 overlap. Beyond these, a diagnostic error analysis of where the model fails is low-risk and immediately
 useful, whereas gene-level interpretation to surface transcriptomic drivers of resistance is worthwhile

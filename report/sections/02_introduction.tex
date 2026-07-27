@@ -9,6 +9,19 @@ report a distribution of sensitivities within a sample and, in principle, to ide
 resistant subclones before selection pressure acts on them. The immediate obstacle is that single-cell
 drug-screening data does not exist at scale.
 
+\suggestion{This motivates two research questions, and they are the questions the project exists to
+answer. The first is representational: whether a single-cell foundation model, here scGPT, is a viable
+basis for drug-effect prediction at all, as opposed to the standard dimensionality reduction that the
+field defaults to. The second is biological and is the reason the analysis is carried out on individual
+cells rather than on cell-line averages: whether a model trained on single cells learns cellular
+heterogeneity \emph{implicitly}, as a by-product of having to map many distinct transcriptional states
+onto one pharmacological outcome. This second question is the clinically consequential one. Relapse in
+cancer is typically driven not by the average cell of a tumour but by rare, pre-existing subpopulations
+that survive treatment and repopulate it; a model that only reproduces the population mean cannot see
+them, however accurate that mean is. Cell lines are the appropriate testbed for this because they are
+clonal in origin yet demonstrably heterogeneous in expression \cite{scp542}, so any within-line structure
+the model exploits is transcriptional state rather than lineage.}
+
 To make progress despite this, the project adopts a weakly supervised strategy in which bulk
 pharmacological labels are mapped onto the individual cells of the corresponding \emph{in vitro} cell
 lines, and the model is trained to map heterogeneous single-cell inputs to the average bulk response.
@@ -39,6 +52,24 @@ This report covers only the initial phase of the work: a single database (CTRPv2
 response score, single-cell inputs and a supervised regressor. The multi-task run reported here spans
 \NDrugs{} drugs but a single database and metric; cross-database integration, toxicity and clinical
 fine-tuning are left to later work.
+
+\suggestion{A word on what this report can and cannot establish of those two questions. It does not
+settle the \emph{size} of any scGPT advantage over PCA. The data are too thin for that: the labels are
+defined per cell line, so the effective sample is roughly \NIndep{} independent observations rather than
+the tens of thousands of cells the model consumes, and the margin the evidence does support is small
+enough to sit within seed-to-seed variation. Reporting such a margin as a result would be precisely the
+kind of claim the DrEval study \cite{dreval} finds the field to be full of. The question this report is
+organized around is a different and, we argue, prior one: \emph{under what conditions could
+foundation-model embeddings help in drug-response prediction at all, and why do the conventional
+evaluation setups fail to test those conditions?} The results below are read in that light. Each central
+finding is a precondition rather than a performance number: that the multi-task objective must be
+standardized per drug before any representation can express itself; that a ridge regression on cell-line
+mean embeddings matches the deep model, so single-cell resolution has not yet earned its place; and that
+the apparent representation advantage largely dissolves once drug and cell-line mean effects are removed.
+Establishing these preconditions is the contribution; the comparison itself becomes answerable only once
+they hold. The second research question, whether heterogeneity is learned implicitly, is likewise not
+settled here, and for a structural reason set out in the limitations: the present objective penalizes the
+very within-line variation it would have to express.}
 
 \begin{figure}[t]
 \centering

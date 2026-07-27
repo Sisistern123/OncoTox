@@ -15,6 +15,17 @@
 % inline monospace for code / notebook / variable references
 \newcommand{\code}[1]{\texttt{\small #1}}
 
+% ---- proposed additions, marked in colour so they can be reviewed -------------
+% Everything wrapped in \suggestion{...} was added on 27.07.2026 and is not yet
+% part of the accepted text. To accept all of them, redefine the command as
+%   \newcommand{\suggestion}[1]{#1}
+% To reject, delete the wrapped blocks. Search the sections for "\suggestion".
+\definecolor{suggestioncol}{RGB}{176,0,102}
+% \suggestion{...} for a single paragraph; the environment for multi-paragraph blocks
+% (\textcolor cannot span a paragraph break).
+\newcommand{\suggestion}[1]{\textcolor{suggestioncol}{#1}}
+\newenvironment{suggestionblock}{\color{suggestioncol}}{\ignorespacesafterend}
+
 % single source of truth for the headline numbers (see results_numbers.tex)
 \input{results_numbers}
 

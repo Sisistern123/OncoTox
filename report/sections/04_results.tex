@@ -113,3 +113,67 @@ mean effect; the model remains above the baseline after normalization. Source:
 \code{outputs/dreval/dreval\_lco.png} (\code{notebooks/12}).}
 \label{fig:dreval}
 \end{figure}
+
+\begin{suggestionblock}
+\subsection{Retiring the standardization: the collapse was a head-count effect}
+
+The per-drug standardization was adopted because the untransformed area-under-the-curve target collapsed
+at full head count. A subsequent run isolates the cause. On an eight-compound panel selected from
+published sensitivity determinants rather than from our own response statistics, the \emph{untransformed}
+target reaches a cross-validated per-drug rank correlation of $0.377$ for scGPT, against $-0.069$ for the
+same target across all \NDrugs{} heads. The standardization was therefore never repairing the target; it
+was compensating for pooling compounds whose response variances differ by a factor of $81$, and on a panel
+where that ratio is $2.5$ the compensation is unnecessary. Removing the cause is preferable to correcting
+for it, because dividing by each compound's standard deviation rescales a noise-dominated compound up to
+full weight in the shared objective, which is a defect of its own.
+
+Two consequences follow for how results are reported. Predictions are now in the units of the assay, so
+the error is directly interpretable: a mean squared error of $0.0254$ against a per-drug-mean null of
+$0.030$ corresponds to roughly $15\,\%$ of the variance explained and a typical deviation of $0.16$
+viability. And the target is the quantity the source database publishes, which makes comparison against
+DrEval, GDSC and PRISM direct rather than mediated by a project-internal transform.
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Out-of-fold performance on the literature panel, untransformed target.} Mean over the
+eight compounds, five-fold cross-validation grouped by cell line, one seed. Source:
+\code{outputs/panel/panel\_leaderboard.csv} (\code{notebooks/14}).}
+\begin{tabular}{lcccc}
+\toprule
+& \multicolumn{2}{c}{Spearman} & \multicolumn{2}{c}{MSE} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Model & PCA & scGPT & PCA & scGPT \\
+\midrule
+MLP, unweighted            & 0.313 & \textbf{0.377} & 0.0266 & 0.0254 \\
+MLP, density-weighted      & 0.308 & 0.369 & 0.0274 & 0.0254 \\
+Ridge on cell-line means   & 0.306 & 0.299 & 0.0270 & 0.0268 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The ridge control behaves as on every previous panel: it ties the PCA model ($0.306$ against $0.313$),
+while the scGPT model clears it by $0.077$. That margin was $0.082$ on the earlier, larger panel, so this
+is a replication rather than a new finding --- and a stronger one, because the compounds here were chosen
+without reference to our labels. Absolute correlations are lower than on the earlier panel ($0.377$ against
+$0.402$), which is the expected direction: those compounds had been selected using all cell lines,
+validation and test included.
+
+\subsection{An imbalance correction that did not work}
+
+Because most cell lines of a given compound sit in a narrow band of the response range while the
+pharmacologically interesting extremes are sparse, an unweighted squared-error objective is dominated by
+the crowded centre. Weighting each observation by the inverse of a smoothed estimate of the label density
+is the established remedy \cite{dir,denseweight}, and it was applied per compound, estimated within each
+fold on training lines only. It does not help: mean rank correlation moves by $-0.006$ for PCA and $-0.008$
+for scGPT.
+
+The result is informative rather than merely negative, because the mechanism demonstrably operated. The
+standard deviation of the predictions rises from $0.062$ to $0.082$ (PCA) and $0.080$ (scGPT), which is
+the reduced shrinkage the weighting is designed to produce; the objective was reweighted as intended and
+the ranking simply did not follow. The explanation is visible in the label distributions. Before
+correction, several compounds appeared strongly right-skewed, but that tail consisted almost entirely of
+measurements above an area-under-the-curve of $1.0$, where the compound apparently improved growth
+relative to control --- assay artifact rather than biology. Once those $1.1\,\%$ of measurements are
+winsorized, every compound has an absolute skewness below $0.5$, and an imbalance correction has little
+imbalance left to act on.
+\end{suggestionblock}

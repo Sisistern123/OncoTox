@@ -33,3 +33,22 @@ than the model side. The task is defined on roughly \NIndep{} independent cell l
 bulk value broadcast onto hundreds of cells, and model-side tuning is exhausted across regularization,
 capacity and batch size. Improving performance therefore requires acting on the labels and the data, not
 on the architecture.
+
+\suggestion{It is worth stating explicitly what this reframing implies for the question the project set
+out to ask. The comparison that motivated the work, whether foundation-model embeddings beat a PCA
+baseline, is not answered here, and on this data it is not answerable: the margin is of the same order as
+the seed-to-seed variation, it does not survive normalization, and the effective sample size is the number
+of cell lines rather than the number of cells. What the work does answer is the prior question of what
+must be true before that comparison carries any information. Three conditions emerge from the results
+above, and none of them held at the outset. The training objective must be standardized across a
+heterogeneous set of drug heads, or a minority of high-variance and largely uninformative compounds
+captures the shared representation and drives every correlation to zero. The evaluation must be scored
+against a control that already absorbs the cell-line effect, since a ridge regression on cell-line mean
+embeddings reproduces the deep model's performance and a per-drug-mean null is too weak a bar to
+distinguish the two. And the reported metric must have the mean effects removed, because a substantial
+share of the raw correlation is attributable to which drug is potent and which line is broadly sensitive
+rather than to their interaction. Each condition is a way in which a conventional setup can report an
+apparent representation advantage that is not one, which is the mechanism the DrEval study
+\cite{dreval} identifies across the published literature and which is reproduced here independently on our
+own data. Read this way, the negative and diagnostic results are not preliminary steps toward the
+comparison; they are the finding, and the comparison is deferred until the data can support it.}
