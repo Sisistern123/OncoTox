@@ -1,0 +1,5 @@
+rep,weighted,pooled_mean,sd_across_drugs,drug_min,drug_max,foldwise_mean,sd_across_folds
+X_pca,False,0.315,0.111,0.188,0.533,0.341,0.028
+X_pca,True,0.308,0.122,0.119,0.517,0.325,0.044
+X_scGPT,False,0.377,0.091,0.296,0.546,0.387,0.043
+X_scGPT,True,0.369,0.1,0.25,0.531,0.377,0.039

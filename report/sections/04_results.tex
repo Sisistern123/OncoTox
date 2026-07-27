@@ -151,6 +151,15 @@ Ridge on cell-line means   & 0.306 & 0.299 & 0.0270 & 0.0268 \\
 \end{tabular}
 \end{table}
 
+The table reports pooled out-of-fold correlations, which the cross-validated design should be qualified
+with. Recomputing the score within each fold's held-out lines gives a fold-to-fold standard deviation of
+$0.028$ for PCA and $0.043$ for scGPT, and the spread across the eight compounds is larger still
+($0.111$ and $0.091$, with scGPT ranging from $0.296$ to $0.546$). The two dispersions answer different
+questions --- how much the result depends on which lines were held out, against how unevenly the model
+performs across compounds --- and neither substitutes for the other. The consequence for the comparison
+is that the scGPT advantage of $0.062$ is of the same order as a single fold standard deviation, which
+places it as consistent evidence rather than an established margin.
+
 The ridge control behaves as on every previous panel: it ties the PCA model ($0.306$ against $0.316$),
 while the scGPT model clears it by $0.077$. That margin was $0.082$ on the earlier, larger panel, so this
 is a replication rather than a new finding --- and a stronger one, because the compounds here were chosen

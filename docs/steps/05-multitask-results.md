@@ -430,6 +430,27 @@ and batching unchanged, so the change is attributable. 5-fold GroupKFold over th
 Null (per-drug mean) MSE is 0.030, so the numbers are readable directly: the scGPT model explains ~15 %
 of the variance **in AUC units**, RMSE ≈ 0.16 viability.
 
+**Dispersion — the 5-fold numbers, which the table above omits.** Computed from the stored out-of-fold
+predictions without retraining (`notebooks/15_diagnostics.ipynb` §5,
+`outputs/diagnostics/result_dispersion.csv`):
+
+| | pooled ρ | sd across the 5 folds | sd across the 8 drugs | per-drug range |
+|---|---|---|---|---|
+| PCA, unweighted | 0.315 | ±0.028 | 0.111 | 0.19 – 0.53 |
+| scGPT, unweighted | 0.377 | ±0.043 | 0.091 | 0.30 – 0.55 |
+
+Two things follow, and the second one qualifies the headline. The two dispersions answer different
+questions — fold spread says how much the result depends on *which lines were held out*, drug spread says
+how unevenly the model performs *across compounds* — and they are not interchangeable. And the
+**scGPT−PCA gap of +0.062 is about the size of one fold standard deviation**, so it is consistent
+evidence rather than an established margin, on top of being a single seed.
+
+Note the estimators differ: pooling gives one correlation over ~150 lines, while the fold-wise mean
+averages five correlations over ~30 lines each and sits slightly higher (0.341 / 0.387). Report the
+pooled value as the point estimate and the fold spread as the dispersion; do not fuse them into a single
+`mean ± sd` as though they came from one calculation.
+
+
 **Confirmed — the June collapse was a K=545 effect, not a property of the target.** `auc_z` was adopted
 because raw `auc` at 545 heads scored **−0.069** (scGPT). The same raw target on 8 comparable heads scores
 **+0.377**. So the standardization was never fixing the *target*; it was compensating for pooling drugs
