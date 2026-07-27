@@ -36,22 +36,32 @@ drugs the estimation noise is negligible and the statistic behaves. The evaluate
 left out of its own ``c`` (leave-one-drug-out), so no drug contributes to the quantity it is scored
 against. Do not change this to a panel-based estimate.
 
-Usage (the training is the expensive part -- 5 folds per heads x rep combination):
+**Usage -- prefer the route that trains nothing.** The normalization is post-processing of
+out-of-fold predictions, and the fragility index is computed from labels, so model fitting only ever
+served to *produce* the predictions. Notebook 14 already writes them, so:
 
-    # panel = whatever `selected` marks in the learnability CSV
-    uv run scripts/evaluation/dreval_normalize.py
+    # 0 model fits: score the predictions notebook 14 produced
+    uv run scripts/evaluation/dreval_normalize.py \\
+        --oof-csv notebooks/outputs/panel/panel_oof_predictions.csv --weighted false
 
-    # explicit panel, e.g. the literature-anchored one (docs/steps/05)
-    uv run scripts/evaluation/dreval_normalize.py --drugs methotrexate dasatinib paclitaxel \\
-        vincristine afatinib topotecan tanespimycin selumetinib
+Refitting is the fallback for a configuration no run has covered yet. It costs 5 folds per
+(heads x rep), so restrict the heads: the K=545 arm is the retired configuration and its contrast
+value is already recorded in docs/steps/05 (raw auc scores -0.069 there against +0.377 on the panel).
 
-    # panel only, skip the K=545 run (halves the compute)
-    uv run scripts/evaluation/dreval_normalize.py --heads panel
+    # 10 fits: panel heads only, both representations
+    uv run scripts/evaluation/dreval_normalize.py --heads panel --drugs methotrexate dasatinib \\
+        paclitaxel vincristine afatinib topotecan tanespimycin selumetinib
 
-Reproduces the evaluation protocol of ``notebooks/11_auc_vs_aucz.ipynb`` exactly: 5-fold GroupKFold
-over the train+val cell lines (the 27 test lines are never touched), each fold predicts only the lines
-it did not see, per-cell predictions averaged to one value per cell line, and every model scored
-against the common curve-fit ``auc`` ranking regardless of which score it trained on.
+The training defaults follow the current setup (27.07.2026): winsorized at 1.1, output layer out of
+weight decay, head bias at the train-fold per-drug means, 25 epochs. Otherwise a refit would
+normalize a model that is no longer in use.
+
+The cross-validation itself is :func:`scripts.training.cv.oof_predictions`, the project's single
+implementation, so this script, ``notebooks/14_panel_training.ipynb`` and anything else that needs
+out-of-fold predictions cannot drift apart: 5-fold GroupKFold over the train+val cell lines (the 27
+test lines are never touched), each fold predicting only the lines it did not see, per-cell
+predictions averaged to one value per cell line. Scoring against the common curve-fit ``auc`` ranking,
+whatever score a model trained on, is this module's own addition.
 """
 
 from __future__ import annotations
@@ -62,16 +72,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import scanpy as sc
-import torch
 from scipy.stats import spearmanr
-from sklearn.model_selection import GroupKFold
-from torch.utils.data import DataLoader
 
-from scripts.model.dataset import MultiDrugDataset
-from scripts.model.OncoMLP import OncoMLP
 from scripts.preprocessing.layout import PipelinePaths, add_data_args
-from scripts.training.train_multitask import DEFAULT_HIDDEN_DIMS
-from scripts.training.training_utils import TrainConfig, train_model
+from scripts.training.cv import line_level_predictions, oof_predictions
+from scripts.training.training_utils import TrainConfig
 
 DEFAULT_OUT = Path("notebooks/outputs/dreval/dreval_normalized.csv")
 DEFAULT_PANEL_CSV = Path("notebooks/outputs/learnability/ctrp_drug_learnability_auc.csv")
@@ -124,6 +129,33 @@ def fragility_index(truth_all: pd.DataFrame, *, leave_out: str | None = None) ->
     return z.mean(axis=1, skipna=True)
 
 
+def load_oof_csv(path: Path, *, rep: str, weighted: bool | None = None) -> dict[str, pd.DataFrame]:
+    """Read out-of-fold predictions produced elsewhere, in the shape the normalization wants.
+
+    **This is the preferred route — it costs no model fits.** The normalization is pure
+    post-processing of predictions, and the fragility index comes from labels alone, so refitting
+    only ever served to *produce* the predictions. ``notebooks/14_panel_training.ipynb`` already
+    writes them, keyed by cell line, to ``outputs/panel/panel_oof_predictions.csv``.
+
+    Reusing them is also the more correct option, not merely the cheaper one: a refit here would
+    normalize a model configuration that is no longer in use unless the arguments below are matched
+    to it exactly.
+
+    :param path: tidy CSV with columns rep, weighted, drug, cell_line, y_true, y_pred.
+    :param weighted: pick one weighting arm; ``None`` requires the file to hold only one.
+    """
+    df = pd.read_csv(path)
+    df = df[df["rep"] == rep]
+    if weighted is not None and "weighted" in df.columns:
+        df = df[df["weighted"].astype(bool) == weighted]
+    if "weighted" in df.columns and df["weighted"].nunique() > 1:
+        raise ValueError("CSV holds several weighting arms; pass weighted=True/False to choose one.")
+    if df.empty:
+        raise ValueError(f"no rows for rep={rep!r} in {path}")
+    return {d: g[["cell_line", "y_true", "y_pred"]].reset_index(drop=True)
+            for d, g in df.groupby("drug", sort=False)}
+
+
 def oof_line_predictions(
     score: str,
     drugs: list[str],
@@ -133,71 +165,60 @@ def oof_line_predictions(
     variant: str,
     data_root: Path | None,
     seed: int = 42,
-    epochs: int = 50,
+    # 25, not 50: over 36 recorded runs the best epoch was median 6 / max 11 and early stopping
+    # (patience 10) has never reached 25, so the extra epochs were pure wall-clock.
+    epochs: int = 25,
+    winsor: float | None = 1.1,
+    exclude_output_from_decay: bool = True,
+    init_head_bias: bool = True,
 ) -> dict[str, pd.DataFrame]:
     """Train K=len(drugs) heads and return out-of-fold per-cell-line predictions.
 
-    Mirrors ``oof_run`` in ``notebooks/11_auc_vs_aucz.ipynb``, with one addition: the cell-line
-    identity is kept, because the normalization needs to align drugs and the fragility index by line.
+    Prefer :func:`load_oof_csv` when predictions already exist — this function is the expensive path.
+
+    Defaults match the current training setup (27.07.2026, ``notebooks/14_panel_training.ipynb``) so
+    that a refit normalizes the model actually in use. On a raw-AUC target that means: responses
+    winsorized at ``winsor`` (above ~1.1 the compound apparently improved growth over control, i.e.
+    assay artifact), the output layer kept out of weight decay (its bias must sit near each drug's
+    mean, and decay pulls it to 0), and that bias initialized to the train-fold per-drug means so the
+    model starts at the null predictor rather than at zero. Pass ``winsor=None,
+    exclude_output_from_decay=False, init_head_bias=False, epochs=50`` to reproduce the pre-27.07
+    protocol of ``notebooks/11_auc_vs_aucz.ipynb`` instead.
 
     :returns: drug -> DataFrame(cell_line, y_true, y_pred); ``y_true`` is always on the curve-fit
         ``auc`` scale so models trained on different scores share one yardstick.
     """
     truth = sc.read_h5ad(PipelinePaths.build(data_root, variant, "auc").targets_h5ad, backed="r")
     truth_y = np.asarray(truth.obsm["Y_ctrp"], dtype=float)
-    truth_m = np.asarray(truth.obsm["M_ctrp"], dtype=bool)
     truth_drugs = list(truth.uns["ctrp_drugs"])
 
     adata = sc.read_h5ad(PipelinePaths.build(data_root, variant, score).targets_h5ad)
-    eligible = adata.obs["split_ctrp"].isin(["train", "val"]).to_numpy()  # test never touched
-    groups = adata.obs["Cell_line"].astype(str).to_numpy()
-    idx = np.flatnonzero(eligible)
     mask = np.asarray(adata.obsm["M_ctrp"], dtype=bool)
-    all_drugs = list(adata.uns["ctrp_drugs"])
+    if winsor is not None:
+        y = np.asarray(adata.obsm["Y_ctrp"], dtype=np.float32)
+        adata.obsm["Y_ctrp"] = np.where(mask, np.clip(y, None, winsor), 0.0).astype(np.float32)
 
-    cfg = TrainConfig(epochs=epochs, seed=seed, log_every=1000)
-    pred = np.full((adata.n_obs, len(drugs)), np.nan)
-    for fold, (tr, va) in enumerate(GroupKFold(n_splits=5).split(idx, groups=groups[idx]), 1):
-        trc = np.zeros(adata.n_obs, bool)
-        trc[idx[tr]] = True
-        vac = np.zeros(adata.n_obs, bool)
-        vac[idx[va]] = True
-        tr_ds = MultiDrugDataset(adata=adata, use_rep=rep, cell_mask=trc, drugs=drugs)
-        va_ds = MultiDrugDataset(adata=adata, use_rep=rep, cell_mask=vac, drugs=drugs)
-        model = OncoMLP(
-            input_dim=tr_ds.X.shape[1],
-            hidden_dims=DEFAULT_HIDDEN_DIMS[rep],
-            dropout_rate=0.5,
-            input_dropout=0.1,
-            norm="layer",
-            output_dim=len(tr_ds.drug_names),
-        )
-        best, _ = train_model(
-            model,
-            DataLoader(tr_ds, batch_size=128, shuffle=True),
-            DataLoader(va_ds, batch_size=256, shuffle=False),
-            config=cfg,
-            tag=f"norm_{score}_{rep}_K{len(drugs)}_s{seed}_f{fold}",
-            drug_names=tr_ds.drug_names,
-        )
-        best = best.to("cpu").eval()  # train_model leaves it on mps/cuda
-        with torch.no_grad():
-            x = torch.tensor(np.asarray(adata.obsm[rep], dtype=np.float32)[vac])
-            pred[vac] = best(x).numpy()  # held-out lines only
+    cfg = TrainConfig(
+        epochs=epochs, seed=seed, log_every=1000,
+        exclude_output_from_decay=exclude_output_from_decay,
+    )
+    # One CV implementation for the whole project (scripts/training/cv.py): grouped folds, per-fold
+    # line-level statistics, optional density weighting, head-bias initialization.
+    pred, _ = oof_predictions(
+        adata, rep, drugs,
+        config=cfg,
+        init_head_bias=init_head_bias,
+        tag=f"norm_{score}_{rep}_K{len(drugs)}_s{seed}",
+    )
 
-    out: dict[str, pd.DataFrame] = {}
-    for drug in eval_drugs:
-        j, k, kt = drugs.index(drug), all_drugs.index(drug), truth_drugs.index(drug)
-        lines, y_true, y_pred = [], [], []
-        for line in np.unique(groups[eligible]):
-            ci = np.flatnonzero((groups == line) & eligible)
-            obs = ci[mask[ci, k] & truth_m[ci, kt] & np.isfinite(pred[ci, j])]
-            if obs.size:
-                lines.append(line)
-                y_pred.append(pred[obs, j].mean())  # cells -> one value per cell line
-                y_true.append(truth_y[obs, kt].mean())
-        out[drug] = pd.DataFrame({"cell_line": lines, "y_true": y_true, "y_pred": y_pred})
-    return out
+    # Score every model against the common curve-fit `auc` ranking, whatever it trained on.
+    jcol = [drugs.index(d) for d in eval_drugs]
+    tcol = [truth_drugs.index(d) for d in eval_drugs]
+    tidy = line_level_predictions(
+        pred[:, jcol], adata, eval_drugs, truth=truth_y[:, tcol]
+    )
+    return {d: g[["cell_line", "y_true", "y_pred"]].reset_index(drop=True)
+            for d, g in tidy.groupby("drug", sort=False)}
 
 
 def _partial_spearman(p: np.ndarray, t: np.ndarray, c: np.ndarray) -> float:
@@ -264,7 +285,18 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--reps", nargs="+", default=list(REPS), choices=list(REPS))
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--epochs", type=int, default=25,
+                        help="Best epoch is median 6 over 36 recorded runs; 25 is never reached.")
+    parser.add_argument(
+        "--oof-csv",
+        type=Path,
+        default=None,
+        help="Score existing out-of-fold predictions instead of refitting (no model fits at all). "
+             "Expects rep, drug, cell_line, y_true, y_pred -- e.g. "
+             "notebooks/outputs/panel/panel_oof_predictions.csv from notebook 14.",
+    )
+    parser.add_argument("--weighted", choices=["true", "false"], default=None,
+                        help="With --oof-csv: pick one weighting arm if the file holds both.")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     return parser.parse_args()
 
@@ -280,30 +312,42 @@ def main() -> None:
     if missing:
         raise ValueError(f"panel drugs not in the targets file: {missing}")
 
-    configs = []
-    if args.heads in ("panel", "both"):
-        configs.append((panel, f"K={len(panel)}"))
-    if args.heads in ("all", "both"):
-        configs.append((all_drugs, f"K={len(all_drugs)}"))
-
-    print(f"panel ({len(panel)}): {panel}")
-    print(f"score={score} variant={args.variant} seed={args.seed}")
     print(f"fragility index over {len(all_drugs)} drugs, {len(truth_all)} lines")
-    print(f"{len(configs) * len(args.reps)} runs x 5 folds\n")
+    if args.oof_csv is None:
+        print(f"panel ({len(panel)}): {panel}")
+
+    if args.oof_csv is not None:
+        # No training: the normalization is post-processing of predictions, and the fragility
+        # index comes from labels alone.
+        weighted = None if args.weighted is None else args.weighted == "true"
+        configs = [(None, f"oof:{args.oof_csv.name}")]
+        print(f"scoring existing predictions from {args.oof_csv} (0 model fits)\n")
+    else:
+        configs = []
+        if args.heads in ("panel", "both"):
+            configs.append((panel, f"K={len(panel)}"))
+        if args.heads in ("all", "both"):
+            configs.append((all_drugs, f"K={len(all_drugs)}"))
+        print(f"score={score} variant={args.variant} seed={args.seed}")
+        print(f"{len(configs) * len(args.reps)} runs x 5 folds "
+              f"-- consider --oof-csv instead, which needs none\n")
 
     rows = []
     for drugs, heads in configs:
         for rep in args.reps:
-            oof = oof_line_predictions(
-                score,
-                drugs,
-                rep,
-                panel,
-                variant=args.variant,
-                data_root=args.data_root,
-                seed=args.seed,
-                epochs=args.epochs,
-            )
+            if args.oof_csv is not None:
+                oof = load_oof_csv(args.oof_csv, rep=rep, weighted=weighted)
+            else:
+                oof = oof_line_predictions(
+                    score,
+                    drugs,
+                    rep,
+                    panel,
+                    variant=args.variant,
+                    data_root=args.data_root,
+                    seed=args.seed,
+                    epochs=args.epochs,
+                )
             res = normalized_correlations(oof, truth_all, heads=heads, rep=rep)
             rows.extend(res)
             print(
