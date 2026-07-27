@@ -144,20 +144,20 @@ eight compounds, five-fold cross-validation grouped by cell line, one seed. Sour
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}
 Model & PCA & scGPT & PCA & scGPT \\
 \midrule
-MLP, unweighted            & 0.320 & \textbf{0.377} & 0.0264 & 0.0254 \\
+MLP, unweighted            & $0.316 \pm 0.003$ & \textbf{0.377} & 0.0265 & 0.0254 \\
 MLP, density-weighted      & 0.308 & 0.369 & 0.0274 & 0.0254 \\
 Ridge on cell-line means   & 0.306 & 0.299 & 0.0270 & 0.0268 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The ridge control behaves as on every previous panel: it ties the PCA model ($0.306$ against $0.320$),
+The ridge control behaves as on every previous panel: it ties the PCA model ($0.306$ against $0.316$),
 while the scGPT model clears it by $0.077$. That margin was $0.082$ on the earlier, larger panel, so this
 is a replication rather than a new finding --- and a stronger one, because the compounds here were chosen
 without reference to our labels.
 
 Two properties of the runs qualify how precisely these numbers should be read. The PCA arm is not
-bit-reproducible: three executions of identical code and seed gave $0.313$, $0.317$ and $0.320$, while
+bit-reproducible: four executions of identical code and seed gave $0.313$, $0.315$, $0.317$ and $0.320$, while
 every other arm reproduced exactly. The cause is visible in the training logs --- the PCA model reaches
 its best validation epoch after a single epoch in four of five folds, against ten to twenty for scGPT
 --- so its selected checkpoint is chosen among near-tied, barely-trained states. That is a mechanistic

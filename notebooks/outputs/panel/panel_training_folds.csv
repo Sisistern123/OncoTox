@@ -1,5 +1,5 @@
 fold,rep,n_train_lines,n_val_lines,best_epoch,best_val_obj,weighted
-1,X_pca,124,29,1,0.028047551022436217,False
+1,X_pca,124,29,1,0.02581691785211488,False
 2,X_pca,122,31,1,0.03173008168984125,False
 3,X_pca,122,31,3,0.03190926995912275,False
 4,X_pca,122,31,1,0.02320082111882297,False
