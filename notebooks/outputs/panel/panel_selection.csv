@@ -1,0 +1,9 @@
+drug,target,moa,status,determinant,reference,determinant_type,n_lines,auc_std,kills,spares
+methotrexate,DHFR,inhibitor of dihydrofolate reductase,FDA,SLC19A1 (reduced folate carrier) governs uptake; its loss is the classical resistance mechanism,"Zhao & Goldman 2014; Wright et al., Nature 2022",expression,170,0.20504446982247077,52,31
+dasatinib,EPHA2;KIT;LCK;SRC;YES1,"inhibitor of SRC, YES1, EPHA2, c-KIT, and LCK",FDA,"six-gene expression signature, 92% / 83% accuracy in held-out breast / lung lines; LYN","Huang et al., Cancer Res 2007; Oncotarget 2016",expression,177,0.15527065101251453,35,27
+paclitaxel,,inhibitor of microtubule assembly,FDA,ABCB1 efflux and TUBB3,Oncotarget 2016; Br J Cancer 2016,expression,170,0.24605074754890516,66,25
+vincristine,,inhibitor of mictrotubule assembly,FDA,same ABCB1 / TUBB3 axis (shared microtubule-disruptor resistance),Oncotarget 2016; Br J Cancer 2016,expression,178,0.19061639739747044,61,19
+afatinib,EGFR;ERBB2,inhibitor of EGFR and HER2,clinical,EGFR + ERBB2 co-amplification; receptor expression alone did NOT predict it,Cancer Discov 2019; Br J Cancer 2011,mutation,164,0.1564712926390235,19,26
+topotecan,TOP1,inhibitor of topoisomerase I,FDA,"SLFN11 expression, the canonical topoisomerase-inhibitor marker","Zoppoli et al., PNAS 2012; PLOS One 2019",expression,175,0.1783667024762522,37,18
+tanespimycin,HSP90AA1,inhibitor of HSP90,clinical,"NQO1 bioactivates the benzoquinone; confirmed in CCLE and GDSC, 7 cancer types",PLOS One 2016; Br J Cancer 2014,expression,173,0.16260688695992737,14,44
+selumetinib,MAP2K1;MAP2K2,inhibitor of MEK1 and MEK2,clinical,BRAF / RAS mutation,Mol Cancer Ther 2010,mutation,175,0.17628764262744878,12,80

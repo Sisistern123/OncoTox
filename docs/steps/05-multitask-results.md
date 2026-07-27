@@ -390,7 +390,26 @@ statistics**, not because of the literature: `sirolimus` (6 kill / 63 spare), `n
   per-drug ρ measured on it retains an optimistic component. Honest description: **literature-anchored,
   spread-verified** — not label-blind.
 - **Consequence:** the train-only-selection check ([TODO](../TODO.md)) stays **blocking** for any
-  headline number computed on this panel. A cleaner variant — measure the kill/spare requirement on
+  headline number computed on this panel.
+
+**⚠️ The panel inherited the defect it was meant to escape (found 27.07.2026, after the run).** The
+candidate list was ranked by `min(kill, spare)` before the literature criterion was applied — the very
+kill-based quantity the section above shows to be the wrong one. The consequence is not marginal:
+**32 of the 116 wrongly-discarded drugs are approved or in clinical trials**, among them `oxaliplatin`,
+`bortezomib`, `ruxolitinib`, `regorafenib`, `entinostat` — and **`nutlin-3` itself**, the drug used to
+demonstrate the defect (spread 0.147, coverage 0.96, status `clinical`, but zero kills, so balance 0 and
+never a candidate).
+
+So the eight are defensible as compounds, and every number computed on them stands, but the *pool they
+were drawn from* was silently pre-filtered by the discredited criterion. Stating it plainly: **the panel
+is literature-anchored, spread-verified, and drawn from a kill-filtered pool.**
+
+**The fix, and why it is not applied yet.** Rebuild the pool on coverage plus `auc_std` — no kill counts
+anywhere — then apply the literature criterion to *that*. It would very likely admit `nutlin-3` and
+several of the other 32, giving a larger and better-justified panel. It also invalidates every number in
+[Step 05](#step-1-executed--raw-auc--density-weighting-on-the-panel-notebooks14_panel_trainingipynb-27072026)
+and requires re-running notebooks 13-15, so it is the next data step rather than a same-day correction.
+ A cleaner variant — measure the kill/spare requirement on
   **GDSC2/PRISM** instead of on our CTRP labels — is recorded there as the follow-up.
 
 **The panel is a hypothesis test, not a grab bag.** The determinants split by *data modality*, and our
