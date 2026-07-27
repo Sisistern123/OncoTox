@@ -16,6 +16,21 @@
 > rather than presented on a panel we knew to be flawed; the point of that decision is lost if we patch
 > around it.
 
+- start bei data download, schau genauer auf drug selection, suche publications dafür raus
+- data harmonization genauer anschauen
+      - bulk und sc annotation merge -- wie genau wurde es gemacht, ist es valide?
+      - scGPT OOV check -- sind die wirklich OOV?
+- scGPT check
+      - wie genau wird es trainiert
+      - wie werden die embeds generiert
+      - kann man finetunen?
+- redundanz, staleness, file overload
+      - schauen, ob es redundanten code gibt, code duplication
+      - schauen, ob es veralteten stale code gibt, der nirgends genutzt wird
+      - restrukturierung der notebooks, archivierung von veraltetem code
+      - schauen, ob zu viele files für nichts gemacht werden
+
+
 ## 🔍 28.07.2026 — full pipeline review, data download to evaluation
 
 Walk the whole thing once, in order, deciding three things at each stage: **what is settled**, **what is
