@@ -83,12 +83,34 @@ A standalone LaTeX write-up of the current state lives in [`../report/`](../repo
 
 ## Pipeline overview (at a glance)
 
-![OncoTox pipeline status overview](./pipeline_overview.png)
+![OncoTox pipeline](./figures/pipeline.png)
+
+What actually runs, stage by stage: the sparse (cell line × drug) response matrix, the drug panel
+funnel, the cell-line-grouped folds, the two representations that are compared, the per-cell MLP,
+the weighted loss, and the out-of-fold scoring. Details in
+[Step 03](steps/03-model-and-training-design.md); the current numbers in the working report.
+
+![OncoTox pipeline status overview](./figures/pipeline_overview.png)
 
 Green = done / on-plan · amber = addition or partial · red (dashed) = still missing.
 Stages 1–6 are complete; the red boxes (cross-database PRISM/GDSC heads and the XAI stretch goal)
-are the remaining work. Regenerate with `uv run docs/make_pipeline_overview.py`
-(source: `docs/make_pipeline_overview.py`).
+are the remaining work.
+
+### The figure set
+
+| figure | shows | argument lives in |
+|---|---|---|
+| `figures/pipeline.png` | the pipeline, stage by stage | [Step 03](steps/03-model-and-training-design.md) |
+| `figures/pipeline_overview.png` | status against the written plan | this file |
+| `figures/model_architecture.png` | one cell in, one AUC per panel drug out | [Step 03](steps/03-model-and-training-design.md) |
+| `figures/loss_01_objective.png` | what the objective is made of | working report §4 |
+| `figures/loss_02_weights.png` | one drug's label density and the weight curve it produces | working report §4 |
+| `figures/loss_03_effect.png` | what the weighting did: spread up, ranking flat | working report §9 |
+
+All six are regenerated together with `uv run docs/make_figures.py` (source:
+`docs/make_figures.py`). Panels drawn from data read `docs/figures/figure_data.npz` — a small cache
+of line-level labels, fold ids and the observation mask, rebuilt from the targets h5ad when absent —
+and the CSVs in `notebooks/outputs/panel/`, so no figure can drift from the numbers.
 
 ---
 
@@ -327,13 +349,20 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 | Sub-goal 3: baseline on SCP542×CTRPv2 highest-confidence intersection | ✅ Done | [Step 04](./steps/04-single-task-results.md)–[05](./steps/05-multitask-results.md) |
 | Phase 1: scGPT embeddings + UMAP latent validation | ✅ Done | [Step 02](./steps/02-preprocessing-and-embeddings.md); Fig. 3/4 |
 | Phase 2: single-task continuous regression | ✅ Done (on legacy `mean_pv`) | best scGPT val **0.0336** ([Step 04](./steps/04-single-task-results.md)) |
-| Target score: curve-fit AUC instead of dose-averaged viability | ✅ Done 13.07.2026, **re-runs pending** | `--score auc_z` default ([Step 03](./steps/03-model-and-training-design.md)); Steps 04–05 numbers still `mean_pv` |
+| Target score: curve-fit AUC instead of dose-averaged viability | ✅ Done 13.07.2026; default is **raw `auc`** since 27.07.2026 | `auc_z` was the default 13.07–27.07 and is retired — its scaling amplified noise-dominated drugs ([Step 03](./steps/03-model-and-training-design.md)). Steps 04–05 numbers are still `mean_pv` |
 | Core hypothesis: scGPT overfits less than PCA | ✅ Confirmed (generalization only) | 512-d matched: `hvg5000` single-task gap 0.004 (scGPT) vs 0.033 (PCA); but PCA ≈/better on all-drugs accuracy (169 vs 147) ([Step 05](./steps/05-multitask-results.md)) |
 | Does the model rank cell lines at all? | ✅ **Yes** (13.07.2026) | **0.43 (PCA) / 0.49 (scGPT)** out-of-fold on the 5 learnable drugs — and **0.38 / 0.43 even at K=545** once the target is z-scored. The old ρ ≈ 0 was an unstandardized-loss + unlearnable-drug artifact ([Step 05](./steps/05-multitask-results.md)). **14.07 (10-drug re-run): 0.36 / 0.40, K=545 0.32 / 0.33** — same conclusion, smaller margins |
 | Is the per-drug z-scoring load-bearing? | ✅ **Yes — it is the whole effect** (13.07.2026) | K=545: `mean_pv` −0.070 / `auc` −0.087 / **`auc_z` +0.430** (scGPT). At K=5 all three tie. The **curve fit buys no accuracy**; the standardization does everything (`notebooks/11`). **14.07 (10 drugs) confirms:** K=545 `mean_pv` −0.078 / `auc` −0.069 / **`auc_z` +0.328** |
 | Is scGPT's lead over PCA real? | 🟡 **Sign-consistent over 3 seeds** (13.07.2026) | K=545 `auc_z` gap **+0.075 ± 0.038** (seeds 42/1/7, all positive) on the 5-drug set. Consistent evidence, **not** a proven margin. **14.07 (10 drugs): gap shrank to +0.036 (K=10) / +0.012 (K=545)** — now near seed-noise size, do not headline |
 | Is the model over-regularized / too big? | ❌ **No — tuning is closed** (13.07.2026) | Regularization, capacity (74,629→2,565 params), batch size, reweighting: **all flat**. **Ridge on 150 line-means ties the PCA MLP** (0.428) → the deep pipeline buys +0.06, scGPT only (`notebooks/10_diagnosis.ipynb`). **14.07 (10 drugs): ridge 0.343 vs PCA MLP 0.356** — still ties; capacity flat 74,954→5,130 params |
 | External benchmark (DrEval LCO, normalized) | ✅ **Above naive, below best-in-class** (14.07.2026) | `drevalpy` 1.5.1, mean over 5 folds: `NaiveMeanEffects` 0.000 → **`OncoMLP` scGPT norm. ρ 0.357 / R² 0.114**, PCA 0.340 / 0.086, their `SingleDrugRF` (scgpt) 0.339. Clears the naive bar, below the paper's ~19 % R² best LCO model (`notebooks/12`, `dreval/dreval_lco_results.csv`) |
+| Is the drug-selection filter sound? | ❌ **No — it measured the wrong quantity** (27.07.2026) | The kill/spare gate filtered on *potency* while the target removes the drug mean and the metric reads only *ranking*. `nutlin-3` has the same spread as `dasatinib` (0.147 vs 0.155) and was rejected for being cytostatic; **116/545** drugs have zero kills yet real spread and full coverage ([Step 05](./steps/05-multitask-results.md), `notebooks/15`) |
+| Drug selection | ✅ **From the literature since 25.07.2026** | 8 compounds, each with a published cell-line sensitivity determinant. Reproducible by citation; the old 0.5/0.8 thresholds were unstable (0.7/0.8 gave a different ten). ⚠️ literature-anchored and spread-verified, **not label-blind** ([Step 05](./steps/05-multitask-results.md)) |
+| Was `auc_z` the right target? | ❌ **No — retired 27.07.2026** | Centering is inert (the head bias absorbs it); scaling amplified noise-dominated drugs. And the collapse it was introduced to fix was a **head-count effect**: raw `auc` scores −0.069 at K=545 and **+0.377** at K=8 ([Step 03](./steps/03-model-and-training-design.md)) |
+| Does inverse-density loss weighting help? | ❌ **No — clean negative** (27.07.2026) | −0.006 / −0.008. The mechanism fired (pred_std 0.062 → 0.08), the ranking did not follow: after winsorizing the artifacts, \|skew\| ≤ 0.47, so there was no imbalance left to correct. Rules out the loss geometry as the cause of the shrinkage (`notebooks/14`) |
+| Is the cell-line effect proliferation? | ❌ **No** (27.07.2026) | ρ = −0.050, n = 180; no annotated program exceeds \|ρ\| 0.113. Both controls pass. So removing the effect discards no biology we would keep (`notebooks/15`) |
+| Does the signal survive removing the cell-line effect? | ✅ **Mostly** (27.07.2026) | scGPT 0.377 → **0.329**, PCA 0.315 → 0.304. On the old panel `kx2-391` collapsed to 0.006; nothing here does. Computed from stored predictions, **zero model fits** (`dreval/dreval_normalized_panel.csv`) |
+| Can the setup test research question 2 (implicit heterogeneity)? | ❌ **Not as built** (27.07.2026) | The label is constant within a line, so masked MSE scores any difference between two of its cells as error — the objective penalizes the heterogeneity the project exists to study. MIL is the minimal change that makes the question askable ([Step 05](./steps/05-multitask-results.md)) |
 | 8-run matrix conclusions (`mean_pv`) | ⚠️ **Suspect — re-run required** | They rest on the K=545 null result, which the unstandardized loss substantially produced. Re-run on `--score auc_z` ([TODO](./TODO.md)) |
 | Phase 3a: multi-task masked loss | ✅ Done **within CTRPv2 only** | [Step 05](./steps/05-multitask-results.md) |
 | Phase 3b: integrate PRISM / GDSC (cross-database, efficacy+toxicity) | ❌ Not started | data downloaded + harmonized only ([Step 06](./steps/06-cross-database-integration.md)) |
@@ -355,6 +384,38 @@ matched to scGPT, removing the dimensionality confound — [Step 05](./steps/05-
 2. **Cell-line overlap: 190 vs 180** — 190 = name matches in CTRPv2's roster; 180 = lines with
    actual post-QC measurements (10 listed-but-unscreened lines drop out). It's **data availability,
    not normalization** (verified 14.06). Use 180 (the trainable set).
+
+---
+
+## Where this goes next, and why in that order
+
+*The governing rule: never change the target and the architecture in the same run. That is what made the
+June result take weeks to unpick, and it is why the 27.07 step moved only the target and the loss.*
+
+**1. MIL / attention pooling — next.** Not one more architecture to try, but the **minimal change that
+makes research question 2 askable at all**: today the constant-within-line label means the objective
+penalizes any difference the model predicts between two cells of one line. A bag constrains only the
+aggregate. It is also the only untested capacity lever (regularization, size, batch, reweighting are all
+measured flat), it removes the 82× line-weighting artifact structurally (one bag = one line = one
+example), and its attention weights are the clinically interesting readout — which subpopulation drives
+the response. It needs no new data and it is falsifiable: it has to beat the per-cell MLP *and* ridge on
+line means, and failing both is itself a reportable result.
+
+**2. scDEAL-style bulk pretraining + more cell lines — after MIL.** Every remaining lever is label-side:
+model tuning is closed, ridge ties the MLP, the density weighting was a null. What binds is ~150
+independent cell lines each carrying one broadcast bulk value. The screens themselves are much larger —
+CTRPv2 ~1,100 lines, GDSC ~970, PRISM ~900 — so the labels exist and single-cell expression is what is
+missing. scDEAL pretrains a denoising autoencoder on bulk and aligns the bulk and single-cell latent
+spaces by domain adaptation, which attacks that gap directly instead of copying one bulk value onto ~300
+cells. It comes second because it changes *where the representation comes from* while MIL changes *how
+cells map to a line-level prediction* — landing both at once makes the result unattributable — and
+because MIL's outcome decides whether the single-cell framing is worth building on.
+
+**Deferred with reasons, not as a backlog:** the base quantity (EC50/Emax instead of AUC — a second
+target change, would collide with MIL); seeds (preliminary results with a fixed seed are acceptable until
+a margin is quoted as a number); the input-scale confound (PCA inputs ~78× larger than scGPT under one
+learning rate — cheap, but it qualifies an old conclusion rather than advancing a new one); learned task
+weights (they estimate residual variance, mixing label noise with model error).
 
 ---
 
