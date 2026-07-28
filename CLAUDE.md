@@ -101,6 +101,15 @@ settles it. "I assumed you meant X" is a decision taken on her behalf and disclo
 is the thing this file exists to prevent. Asking twice is cheap; a run built on a guessed interpretation
 is not.
 
+**Ask the moment the question arises — never collect questions for the end.** Stop at the question, ask
+it on its own, and wait. Do not keep working past it and hand it over later, bundled with a report and
+three other things.
+
+Two reasons, and both have already cost time here. Everything done after an open question appeared rests
+on a guess about its answer, so if the guess is wrong that work is waste — and it is waste that looks
+like progress. And a batch of questions is much harder to answer than the same questions one at a time:
+they get conflated, the cheap ones crowd out the one that mattered, and some are simply missed.
+
 **Execute exactly what was decided.** If carrying it out reveals that the decision does not survive
 contact with the data, stop and say so rather than adapting it yourself.
 
