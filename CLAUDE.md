@@ -46,6 +46,30 @@ Not "may I do X?" — that is still your plan seeking approval. Give her what sh
 Then stop. If she says "just do it", that covers what was described — not the next choice that turns out
 to be needed along the way. Those come back to her too.
 
+## Every decision carries its source — always
+
+When a choice is put in front of her, it comes with what it rests on. When the decision is recorded, the
+source is recorded **in the same place**, not in a chat message that disappears:
+
+- **literature** — citation specific enough to find (authors, venue, year) *and* what it actually claims
+- **a method** — the paper it comes from
+- **data** — which resource, which release or version, which file, retrieved when
+- **an internal result** — the notebook, output file or commit that produced it
+- **a convention** — whose convention, and where it is written down
+
+**If there is no source, say that.** An arbitrary threshold documented as arbitrary is honest; the same
+threshold stated without comment reads as principled, and that is the more damaging of the two. The
+kill/spare cut-offs of 0.5 and 0.8 had nothing behind them — moving them to 0.7/0.8 produced a completely
+different drug panel of the same quality, which only became visible once the arbitrariness was written
+down.
+
+The pattern to copy: `notebooks/13`'s `DETERMINANTS` table keeps each compound, its published
+determinant, the reference, and whether that determinant is expression- or mutation-level, in one
+structure next to the data — so the evidence cannot drift away from the thing it justifies.
+
+Under FAIRER this is **R** and **E** at once: a decision without provenance is not reusable, and an
+unsourced choice presented as grounded is a reporting problem rather than a bookkeeping one.
+
 ## Work in small steps, together
 
 **Nothing is built alone and handed over finished.** No complete file written from scratch, no notebook
