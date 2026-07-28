@@ -44,6 +44,38 @@ cells as weak supervision ([Step 03](03-model-and-training-design.md)).
 
 ✅ On-plan: SCP542 + CTRPv2 are the designated primary pair; PRISM/GDSC reserved for later.
 
+### Licences and terms of use of the source data (checked 28.07.2026)
+
+The repository's own MIT licence covers **code and documentation only** — it grants nothing over the
+data analysed here, each source of which carries its own terms. Checked against the providers:
+
+| Source | Terms | Redistribution | Commercial use |
+|---|---|---|---|
+| **CTRPv2** (CTD² / Broad, via DepMap) | **CC BY 4.0** | permitted with attribution | permitted with attribution |
+| **PRISM** Repurposing (DepMap) | **CC BY 4.0** | permitted with attribution | permitted with attribution |
+| **SCP542** (Broad Single Cell Portal) | **no named licence.** The portal's Terms of Service state that data in *public* studies is available for "unrestricted public view, redistribution and reuse"; the portal does not own the data, the contributing study does | permitted per the ToS | not addressed |
+| **GDSC2 / Cell Model Passports** (Sanger) | ⚠️ **no open licence.** A bespoke policy grants "a non-exclusive, non-transferable right to use data files for **internal** proprietary research and educational purposes", and explicitly excludes resale, combination with other data or product offerings, and provision of commercial services | **not granted** | **excluded** |
+| **DrugBank** (compound harmonization only) | **CC BY-NC 4.0** for the academic full download; account required. Only the separate *DrugBank Open Data* identifier set is CC0 | permitted, non-commercial | **requires a separate agreement** |
+
+**The operative asymmetry: GDSC is the only source that does not grant redistribution, and DrugBank is
+the only one restricted to non-commercial use.** Both feed
+`data/drug/all_sources_drug_catalog.csv` — 295 GDSC rows with targets and pathways, plus three DrugBank
+match files.
+
+**No violation exists today**, because `data/` is excluded in `.gitignore` and nothing under it is
+tracked. But that file is exactly the one that would be committed by accident during a cleanup, and the
+repository's MIT licence would then appear to grant rights over GDSC and DrugBank content that neither
+provider allows. **Keep `data/` untracked**, and if a harmonized compound table ever needs to be shared,
+share the CTRPv2 and PRISM columns only, or regenerate it from the providers.
+
+Attribution obligations that follow: cite Kinker et al. 2020 for SCP542, the CTRP publications for
+CTRPv2 ([Step 05](05-multitask-results.md) carries them), and acknowledge the CTD² Data Portal URL where
+the funding is acknowledged. Sources for the table above are recorded in `references.bib`.
+
+*Not yet checked:* whether SCP542 carries a study-level licence of its own beyond the portal ToS — the
+portal delegates that to the contributing study, so the Kinker et al. data-availability statement is the
+place to look.
+
 ---
 
 ## Overlap & coverage audit (03.04.2026)

@@ -23,7 +23,12 @@ SOFTWARE.
 ---
 
 This licence covers the source code and documentation in this repository only.
-It does not extend to the third-party datasets the project analyses — SCP542,
-CTRPv2, GDSC and PRISM each carry their own terms of use, which are the
-responsibility of the user to observe. Those terms have not yet been reviewed
-and recorded here; see docs/TODO.md.
+It does not extend to the third-party datasets the project analyses. SCP542,
+CTRPv2, PRISM, GDSC2 and DrugBank each carry their own terms, which the user is
+responsible for observing; they are recorded and referenced in
+docs/steps/01-datasets-and-harmonization.md.
+
+Two of them are more restrictive than this licence: GDSC2 / Cell Model Passports
+grants internal research and educational use only and does not grant
+redistribution, and DrugBank is non-commercial. No data is distributed with this
+repository — the data/ directory is untracked — and it should stay that way.
