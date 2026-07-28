@@ -1,0 +1,203 @@
+% OncoTox — project bibliography.
+%
+% Single source for every work the project cites: the report is generated from this file, and the
+% documentation under docs/ refers to the same keys. Adding a source here rather than inline is what
+% keeps a citation attached to the decision it justifies (see CLAUDE.md).
+%
+% Not yet included: the drug-determinant literature behind the compound panel. Both panels were voided
+% on 27.07.2026, so those entries are added when the panel is rebuilt and it is clear which are needed.
+
+% ---------------------------------------------------------------------------------------------------
+% Data sources
+% ---------------------------------------------------------------------------------------------------
+
+@article{scp542,
+  author  = {Kinker, Gabriela S. and Greenwald, Alissa C. and Tal, Rotem and Orlova, Zhanna and
+             Cuoco, Michael S. and McFarland, James M. and others},
+  title   = {Pan-cancer single-cell {RNA}-seq identifies recurring programs of cellular heterogeneity},
+  journal = {Nature Genetics},
+  volume  = {52},
+  pages   = {1208--1218},
+  year    = {2020},
+  doi     = {10.1038/s41588-020-00726-6},
+  note    = {Source of the SCP542 single-cell atlas used as model input}
+}
+
+@article{ctrpv2,
+  author  = {Seashore-Ludlow, Brinton and others},
+  title   = {Harnessing connectivity in a large-scale small-molecule sensitivity dataset},
+  journal = {Cancer Discovery},
+  volume  = {5},
+  number  = {11},
+  pages   = {1210--1223},
+  year    = {2015},
+  note    = {CTRPv2 sensitivity landscape; the source of the drug-response labels}
+}
+
+@article{ctrp_rees,
+  author  = {Rees, Matthew G. and others},
+  title   = {Correlating chemical sensitivity and basal gene expression reveals mechanism of action},
+  journal = {Nature Chemical Biology},
+  volume  = {12},
+  pages   = {109--116},
+  year    = {2016},
+  note    = {CTRPv2 companion analysis: which compounds are predictable from basal expression}
+}
+
+@misc{prism,
+  author       = {{DepMap, Broad Institute} and Kocak, Mustafa},
+  title        = {{PRISM} Repurposing Public 24{Q}2},
+  howpublished = {figshare dataset},
+  year         = {2024},
+  doi          = {10.6084/m9.figshare.25917643.v1}
+}
+
+@misc{gdsc,
+  author       = {{Wellcome Sanger Institute}},
+  title        = {Genomics of Drug Sensitivity in Cancer ({GDSC}) and Cell Model Passports},
+  howpublished = {\url{https://cellmodelpassports.sanger.ac.uk/downloads}},
+  year         = {2023}
+}
+
+% ---------------------------------------------------------------------------------------------------
+% Terms of use of the source data — see docs/steps/01-datasets-and-harmonization.md
+% ---------------------------------------------------------------------------------------------------
+
+@misc{license_scp,
+  author       = {{Broad Institute}},
+  title        = {Single Cell Portal --- Terms of Service},
+  howpublished = {\url{https://singlecell.broadinstitute.org/single_cell/terms_of_service}},
+  year         = {2026},
+  note         = {No named licence; public studies released for unrestricted view, redistribution and
+                  reuse, with ownership retained by the contributing study. Accessed 28.07.2026}
+}
+
+@misc{license_depmap,
+  author       = {{DepMap, Broad Institute}},
+  title        = {{DepMap} portal data usage and licence},
+  howpublished = {\url{https://depmap.org/portal/}},
+  year         = {2026},
+  note         = {DepMap-released data, including CTRPv2 and PRISM, under CC BY 4.0.
+                  Accessed 28.07.2026}
+}
+
+@misc{license_sanger,
+  author       = {{Wellcome Sanger Institute}},
+  title        = {Cancer Dependency Map at Sanger --- Data Usage Policy},
+  howpublished = {\url{https://depmap.sanger.ac.uk/documentation/data-usage-policy/}},
+  year         = {2026},
+  note         = {No open licence. Non-exclusive, non-transferable right to use the data for internal
+                  research and educational purposes; resale, combination with other data offerings and
+                  commercial services excluded; redistribution not granted. Accessed 28.07.2026}
+}
+
+@misc{license_drugbank,
+  author       = {{DrugBank}},
+  title        = {{DrugBank} licensing and terms of use},
+  howpublished = {\url{https://go.drugbank.com/releases/latest}},
+  year         = {2026},
+  note         = {Academic full download under CC BY-NC 4.0, account required; commercial use by
+                  separate agreement. Only the DrugBank Open Data identifier set is CC0.
+                  Accessed 28.07.2026}
+}
+
+% ---------------------------------------------------------------------------------------------------
+% Methods and models
+% ---------------------------------------------------------------------------------------------------
+
+@article{scgpt,
+  author  = {Cui, Haotian and others},
+  title   = {{scGPT}: toward building a foundation model for single-cell multi-omics using
+             generative {AI}},
+  journal = {Nature Methods},
+  volume  = {21},
+  pages   = {1470--1480},
+  year    = {2024},
+  doi     = {10.1038/s41592-024-02201-0}
+}
+
+@article{perception,
+  author  = {Sinha, Sanju and others},
+  title   = {{PERCEPTION} predicts patient response and resistance to treatment using single-cell
+             transcriptomics of their tumors},
+  journal = {Nature Cancer},
+  volume  = {5},
+  pages   = {938--952},
+  year    = {2024},
+  doi     = {10.1038/s43018-024-00756-7}
+}
+
+@article{dreval,
+  author  = {Bernett, Judith and Iversen, Pascal and Picciani, Mario and Wilhelm, Mathias and
+             Baum, Katharina and List, Markus},
+  title   = {Critical evaluation of drug response prediction models with {DrEval}},
+  journal = {Nature Communications},
+  volume  = {17},
+  pages   = {4238},
+  year    = {2026},
+  note    = {Software: \texttt{drevalpy} v1.5.1}
+}
+
+@inproceedings{dir,
+  author    = {Yang, Yuzhe and Zha, Kaiwen and Chen, Ying-Cong and Wang, Hao and Katabi, Dina},
+  title     = {Delving into deep imbalanced regression},
+  booktitle = {Proceedings of the 38th International Conference on Machine Learning (ICML)},
+  volume    = {139},
+  pages     = {11842--11851},
+  year      = {2021},
+  note      = {Label Distribution Smoothing}
+}
+
+@article{denseweight,
+  author  = {Steininger, Michael and Kobs, Konstantin and Davidson, Padraig and Krause, Anna and
+             Hotho, Andreas},
+  title   = {Density-based weighting for imbalanced regression},
+  journal = {Machine Learning},
+  volume  = {110},
+  pages   = {2187--2211},
+  year    = {2021},
+  doi     = {10.1007/s10994-021-06023-5},
+  note    = {Source of the compression exponent used in the sample weighting}
+}
+
+@inproceedings{kendall,
+  author    = {Kendall, Alex and Gal, Yarin and Cipolla, Roberto},
+  title     = {Multi-task learning using uncertainty to weigh losses for scene geometry and semantics},
+  booktitle = {IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2018}
+}
+
+% ---------------------------------------------------------------------------------------------------
+% Data stewardship — FAIR and the FAIRER convention
+% ---------------------------------------------------------------------------------------------------
+
+@article{fair,
+  author  = {Wilkinson, Mark D. and others},
+  title   = {The {FAIR} Guiding Principles for scientific data management and stewardship},
+  journal = {Scientific Data},
+  volume  = {3},
+  pages   = {160018},
+  year    = {2016},
+  doi     = {10.1038/sdata.2016.18},
+  note    = {The reference definition of Findable, Accessible, Interoperable, Reusable}
+}
+
+@article{fairhealth,
+  author  = {Holub, Petr and Kohlmayer, Florian and Prasser, Fabian and Mayrhofer, Michaela Th. and
+             Schl{\"u}nder, Irene and Martin, Gillian M. and Casati, Sara and Koumakis, Lefteris and
+             Wutte, Andrea and Kozera, {\L}ukasz and Strapagiel, Dominik and Anton, Gabriele and
+             Zanetti, Gianluigi and Sezerman, Osman U. and Mendy, Maimuna and Val{\'i}k, Dalibor and
+             Lavitrano, Marialuisa and Dagher, Georges and Zatloukal, Kurt and
+             van Ommen, Gert-Jan B. and Litton, Jan-Eric},
+  title   = {Enhancing reuse of data and biological material in medical research:
+             From {FAIR} to {FAIR}-Health},
+  journal = {Biopreservation and Biobanking},
+  volume  = {16},
+  number  = {2},
+  pages   = {97--105},
+  year    = {2018},
+  doi     = {10.1089/bio.2017.0110},
+  note    = {Closest published anchor for the Ethical and Reproducible extensions this project works
+             under. FAIRER itself has no canonical primary source and is treated as a convention in
+             health-AI contexts}
+}
