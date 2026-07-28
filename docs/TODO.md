@@ -41,6 +41,15 @@ every one of them was a step that looked settled and had never been checked.
       downloaded when, from where. Is the provenance written down anywhere reproducible?
 - [ ] **2 · Harmonization** — cell-line and compound name matching, the 190 vs 180 discrepancy, duplicate
       experiments averaged. Verify the join has not silently dropped lines.
+  - [ ] **B · Migrate to persistent identifiers.** The pipeline joins cell lines on `ccl_name_norm` —
+        lowercased, hyphens stripped — not on DepMap `ACH-` or Cellosaurus `CVCL_` IDs, and genes on
+        symbols rather than Ensembl. The identifiers exist in the catalog but only in the exploratory
+        `notebooks/02`, never in the production path. This is not cosmetic: the 190-vs-180 confusion came
+        from exactly here, and it compounds once PRISM and GDSC are joined, where cell-line synonyms
+        diverge and gene symbols drift across annotation releases. **Expect the migration to expose join
+        errors that are currently invisible**, possibly changing the line count and therefore every
+        number — which is the argument for doing it *before* the panel rebuild rather than after.
+        (FAIRER: **I**)
 - [ ] **3 · Preprocessing** — CPM, log1p, HVG selection and count, what `.X` holds at each stage, scGPT
       out-of-vocabulary genes. Does the HVG set depend on all cells including test?
 - [ ] **4 · Representations** — PCA components, scGPT embedding generation and its input format
@@ -81,6 +90,46 @@ A standalone write-up of the current state is `../report/` (LaTeX → `main.pdf`
 > ridge control, replicated on an independently chosen drug panel) and **Q2 has none — the current
 > objective penalizes the within-line variation it would have to express**, which is why MIL is next
 > and not one of the several cheaper items below.
+
+## FAIRER — data stewardship (28.07.2026)
+
+The project works under **FAIRER**: FAIR as defined by Wilkinson et al. 2016, plus **E**thical and
+**R**eproducible. FAIRER has no canonical primary source; it is treated here as a convention in
+health-AI contexts, with FAIR-Health (Holub et al. 2018) as the closest published anchor. Both are in
+`references.bib`. Full six-letter assessment of where the project stands: see item H below.
+
+**Already closed (28.07.2026):** MIT `LICENSE`; `CITATION.cff` with ORCID and both affiliations, tagged
+`v0.1.0`; `references.bib` as the single bibliography, with the report generated from it; and the
+source-data terms of use checked against the providers and recorded in
+[Step 01](./steps/01-datasets-and-harmonization.md) — CTRPv2 and PRISM CC BY 4.0, SCP542 unrestricted
+under the portal ToS, **GDSC granting no redistribution**, **DrugBank non-commercial**.
+
+- [ ] **D · Schema documentation for the derived outputs.** `notebooks/outputs/**/*.csv` and the targets
+      h5ads carry no column documentation — a reader has to open a file to learn what is in it. One
+      `outputs/README.md` describing each file's columns and producer would do it. (FAIRER: **F**)
+- [ ] **E · Data-availability path.** The raw data sits under `~/Desktop/OncoTox/data`, gitignored and
+      several GB, so nothing is reconstructible by a third party. The realistic route is not depositing
+      the files but recording **exactly which release of each source, retrieved when**, plus a script
+      that rebuilds the derived artifacts from them. The provenance currently lives as prose in
+      `project_notes.md` and decays. Decide separately whether anything gets deposited (Zenodo) at
+      publication. (FAIRER: **A**)
+- [ ] **F · One residual on the data terms.** The main check is done (above). Left open: whether SCP542
+      carries a **study-level** licence beyond the portal ToS — the portal delegates that to the
+      contributing study, so the Kinker et al. data-availability statement is where to look.
+      (FAIRER: **E**)
+- [ ] **G · State the FAIRER commitment in the docs, not only in the bibliography.** The sources are in
+      `references.bib`, but no document says the project works under FAIRER or what the six letters mean
+      here. Natural home is `project_progress.md`, next to H. (FAIRER: **R**)
+- [ ] **H · Record the six-letter assessment.** Where the project stands against F, A, I, R, E, R — with
+      the two live gaps named: name-based joins instead of persistent identifiers (item B), and the fact
+      that `set_seed` sets no determinism flags, so the PCA arm moved across four identical runs
+      (0.313 / 0.315 / 0.317 / 0.320) at a fixed seed. **Decision needed when this is written:** own
+      section in `project_progress.md`, or a new `docs/steps/` file. (FAIRER: all six)
+
+**Determinism — decided 28.07.2026, no action:** do *not* force `torch.use_deterministic_algorithms`;
+several operations have no deterministic MPS implementation and it would likely fail rather than merely
+slow training. Report the non-determinism instead, and measure it at the specific points where it
+matters — folded into review items 10 and 12.
 
 ## Next up — prioritized (15.07.2026, from the progress-report feedback)
 
