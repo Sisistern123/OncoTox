@@ -48,6 +48,13 @@ to be needed along the way. Those come back to her too.
 
 ## Executing and reporting
 
+**If the instruction is not completely clear, ask before starting.** An instruction that underdetermines
+what to do is not an invitation to fill the gap with the most reasonable reading — the gap is exactly
+where analysis decisions hide. Say which part is ambiguous and what the possible readings are; she
+settles it. "I assumed you meant X" is a decision taken on her behalf and disclosed after the fact, which
+is the thing this file exists to prevent. Asking twice is cheap; a run built on a guessed interpretation
+is not.
+
 **Execute exactly what was decided.** If carrying it out reveals that the decision does not survive
 contact with the data, stop and say so rather than adapting it yourself.
 
