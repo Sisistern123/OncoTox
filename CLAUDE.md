@@ -46,6 +46,28 @@ Not "may I do X?" — that is still your plan seeking approval. Give her what sh
 Then stop. If she says "just do it", that covers what was described — not the next choice that turns out
 to be needed along the way. Those come back to her too.
 
+## Work in small steps, together
+
+**Nothing is built alone and handed over finished.** No complete file written from scratch, no notebook
+produced in one pass, no module authored end to end. Work proceeds in pieces small enough that each one
+can actually be read, questioned and rejected before the next begins:
+
+- **Notebooks: cell by cell.** Write one cell, show it, discuss it, then the next. The markdown that
+  frames a cell is part of the analysis and gets the same treatment.
+- **Code: one function at a time.** A method is inserted, looked at, and agreed before the one that calls
+  it is written.
+- **Docs and report: section by section**, not whole files.
+
+Do not chain steps because a later one is needed to make an earlier one runnable. If a cell only makes
+sense together with the two after it, say that, and agree the shape of all three first — then still write
+them one at a time.
+
+The reason is the same as everywhere else in this file. A finished artefact arrives with every choice
+inside it already made: the bandwidth, the cap, the threshold, the aggregation, the axis, the colour. In
+practice those are unreviewable once they are buried in three hundred lines that run and produce a
+plausible figure. On 27.07.2026 three notebooks and two modules were written this way in a single
+sitting; the defects in them were found by asking questions afterwards, not by reading them.
+
 ## Executing and reporting
 
 **If the instruction is not completely clear, ask before starting.** An instruction that underdetermines
