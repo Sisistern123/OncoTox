@@ -28,7 +28,7 @@ lines, and the model is trained to map heterogeneous single-cell inputs to the a
 Laboratory cell lines do not fully recapitulate clinical tumors, but they provide the high-volume,
 continuous labels required to train a robust representation that can later be fine-tuned on scarcer
 clinical data. The central methodological difficulty in this setup is a resolution mismatch: standard
-pharmacological labels, including those of CTRPv2 \cite{ctrp}, PRISM \cite{prism} and GDSC \cite{gdsc}, are
+pharmacological labels, including those of CTRPv2 \cite{ctrpv2,ctrp_rees}, PRISM \cite{prism} and GDSC \cite{gdsc}, are
 derived from bulk cell populations, whereas the transcriptomic data from SCP542 \cite{scp542} captures
 individual cellular heterogeneity. Mapping one average bulk score onto hundreds of heterogeneous cells
 introduces substantial label noise, and regressing raw, sparse single-cell counts directly onto these
