@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software or its results, please cite it as below."
+title: "OncoTox: single-cell drug-response prediction with foundation-model embeddings"
+abstract: >-
+  Predicts anti-cancer drug response from single-cell transcriptomes, comparing scGPT
+  foundation-model embeddings against a matched PCA baseline. Trains a shared-trunk
+  multi-task regressor on the intersection of the SCP542 single-cell atlas and the
+  CTRPv2 drug-response screen, evaluated under a leave-cell-line-out protocol.
+type: software
+authors:
+  - family-names: Tuerkoglu
+    given-names: Selin
+    orcid: "https://orcid.org/0009-0002-2296-994X"
+    affiliation: "Technical University of Munich (TUM), Germany; Tsunoda Laboratory, The University of Tokyo, Japan"
+version: "0.1.0"
+date-released: "2026-07-28"
+repository-code: "https://github.com/Sisistern123/OncoTox"
+license: MIT
+keywords:
+  - single-cell RNA-seq
+  - drug response prediction
+  - foundation models
+  - scGPT
+  - pharmacogenomics
+  - CTRPv2
+# The works this project builds on are listed in references.bib at the repository root,
+# which is also the bibliography the report is generated from.
