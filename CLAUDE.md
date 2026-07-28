@@ -121,6 +121,16 @@ same message.
 exists only as a shell command in a chat is not a result and must not be reported as one. Where a fact
 requires a methodological choice before it can be computed, that choice is hers first.
 
+## Committing
+
+**Stage only the files you changed yourself — never `git add -A` or `git add <directory>`.** List the
+paths explicitly. If other modified files are sitting in the working tree, say so and ask whether they
+belong in the same commit; do not sweep them up.
+
+This has already gone wrong. On 27–28.07.2026 several of Selin's own edits to `docs/TODO.md` and the
+report were swept into commits carrying my messages, which attributes her work to me in a repository
+that is meant to be citable. Nothing was lost, but the history is wrong about who wrote what.
+
 ## When something is wrong
 
 **Name it as wrong, immediately and in full.** Do not grade a defect down into a caveat. Do not report
