@@ -101,7 +101,7 @@ part of the model, not as a confound to be normalized away.
 
 Changing the gene set means re-running `convert`, which forces a re-embed and a re-PCA; that is why
 `hvg5000` and `all_genes` live in **separate folders that never share files** (`guard_output`
-enforces it). `notebooks/06_verify_variants.ipynb` checks these gene counts and the `X_pca` source at
+enforces it). `notebooks/data_and_harmonization/verify_variants.ipynb` checks these gene counts and the `X_pca` source at
 any time.
 
 ### The two representations — what they are scientifically
@@ -148,7 +148,7 @@ gene set under `processed/scRNAseq_SCP542/all_genes/`. `convert` keeps all 22,72
 OOV-drop then leaves **20,570** in `.X` (what scGPT embeds), while **`X_pca` is computed on the full
 22,722 convert counts** — a genuine full-transcriptome PCA. So the trainable file is **53,513 ×
 20,570** in `.X`, carrying `X_scGPT` (from the 20,570 in-vocab genes) and `X_pca` (from all 22,722).
-`notebooks/06_verify_variants.ipynb` checks the gene counts directly and plots the two variants'
+`notebooks/data_and_harmonization/verify_variants.ipynb` checks the gene counts directly and plots the two variants'
 UMAPs side by side. Evaluation of the all-genes side is still pending.
 
 ✅ On-plan / closes part of the HVG deviation by enabling the full-transcriptome comparison.
@@ -157,11 +157,19 @@ UMAPs side by side. Evaluation of the all-genes side is still pending.
 
 ## Latent-space validation (UMAP, Fig. 3 / Fig. 4)
 
-`notebooks/06_verify_variants.ipynb` (§7) is the **standalone validation** (not part of the
+`notebooks/data_and_harmonization/verify_variants.ipynb` (§7) is the **standalone validation** (not part of the
 orchestrator): it builds PCA-vs-scGPT UMAPs for **both** variants via `sc.pp.neighbors` + UMAP,
 colored by `Cancer_type` (**Fig. 3**) and `viability_paclitaxel` (**Fig. 4**). It visually confirmed
 the hypothesis: PCA = discrete tissue "islands", scGPT = continuous shared manifold; paclitaxel
 sensitivity mixed across the scGPT manifold.
+
+**Outputs** (all under `notebooks/outputs/embeddings/`, written by `data_and_harmonization/verify_variants.ipynb` §8):
+
+| File | What it shows |
+|---|---|
+| `umap_cancertype_pca_vs_scgpt.png` (dpi 300) | the 2-panel PCA-vs-scGPT comparison by cancer type — the headline latent-validation figure |
+| `umap_sweep_cancertype.png` (dpi 200) | the same contrast across the full gene-set sweep grid; **the tissue-islands vs continuous-manifold split holds at every gene count**, so it is not an artifact of the HVG choice |
+| `variants.png` | QC check that the `hvg5000` and `all_genes` outputs agree |
 
 ---
 
@@ -179,19 +187,59 @@ data/
   processed/scRNAseq_SCP542/all_genes/   # full transcriptome variant
 ```
 
+**Raw inputs** (shared, not per-variant):
+
+- scRNA-seq counts → `data/scRNAseq_SCP542/expression/CPM_data.txt`
+- cell metadata → `data/scRNAseq_SCP542/metadata/Metadata.txt`
+- CTRPv2 tables → `data/metadata/CTRPv2.0_2015_ctd2_ExpandedDataset/v20.*`
+
+**There is no separate file per representation, per drug, or per task.** One trainable file per variant
+bundles everything, and the representation / drug / task are *selected at training time*. Exact location
+of each artifact, under `processed/scRNAseq_SCP542/` (`<score>` = the `--score` suffix, `auc` by default):
+
+| Artifact | HVG filtered? | File | Stored as | Shape / genes |
+|---|---|---|---|---|
+| Counts (CPM) | **filtered** | `hvg5000/SCP542_CCLE.h5ad` | `.X` | 53,513 × 5,000 |
+| Counts (CPM) | **non-filtered** | `all_genes/SCP542_CCLE.h5ad` | `.X` | 53,513 × 22,722 |
+| scGPT embeddings | **filtered** | `hvg5000/SCP542_CCLE_scGPT_human_embeddings.h5ad` | `obsm["X_scGPT"]` | 53,513 × 512 (from 4,576 in-vocab genes) |
+| scGPT embeddings | **non-filtered** | `all_genes/SCP542_CCLE_scGPT_human_embeddings.h5ad` | `obsm["X_scGPT"]` | 53,513 × 512 (from 20,570 in-vocab genes) |
+| PCA | **filtered** | `hvg5000/…_with_targets_<score>.h5ad` | `obsm["X_pca"]` | 53,513 × **512** (computed on the 5,000 HVG) |
+| PCA | **non-filtered** | `all_genes/…_with_targets_<score>.h5ad` | `obsm["X_pca"]` | 53,513 × **512** (computed on all 22,722) |
+| Drug labels — all 545 | both | `<variant>/…_with_targets_<score>.h5ad` | `obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, `uns["ctrp_score"]` | 53,513 × 545 |
+| Drug labels — one drug | both | same targets file | one column of `Y_ctrp` via `--drugs paclitaxel`; legacy `obs["viability_paclitaxel"]` | 53,513 × 1 |
+| Split — shared, cell-line-grouped | both | same targets file | `obs["split_ctrp"]` | per-cell |
+| Split — paclitaxel-only (legacy) | both | same targets file | `obs["split_paclitaxel"]` | per-cell |
+
+**How a run selects from these** — no new input files are written per run:
+
+| Choice | Flag | Selects |
+|---|---|---|
+| gene set | `--variant {hvg5000, all_genes}` | which folder |
+| target score | `--score {auc, auc_z, mean_pv}` | which targets file in that folder |
+| representation | `--use-rep {X_scGPT, X_pca}` | which `obsm` key |
+| task | `--drugs paclitaxel` vs omitted | K = 1 vs K = 545 |
+
+**Training outputs:** each run writes `runs/<timestamp>_<tag>/` (gitignored) holding `best_model.pt`,
+`config.json`, `run_meta.json` (records the variant via the targets path), `history.csv`,
+`summary.json`, `per_drug_results.csv`, plus one index row in `runs/runs_index.csv`. Column-level detail
+in [Step 05](05-multitask-results.md#run-versioning-26052026).
+
 Per variant, the two expensive files are built **once** and shared by every score:
 `SCP542_CCLE.h5ad` → `..._scGPT_human_embeddings.h5ad`. The targets step then forks per score into
 the trainable file (`X_scGPT`, `X_pca`, `Y_ctrp`, `M_ctrp`, `split_ctrp`, `split_paclitaxel`):
 
 - `..._with_targets_auc.h5ad` — **default since 27.07.2026** (`--score auc`), raw curve-fit AUC
 - `..._with_targets_auc_z.h5ad` — `--score auc_z`, **retired** as the default on 27.07.2026 (its
-  scaling amplified noise-dominated drugs in the shared loss; see [Step 03](03-model-and-training-design.md))
-- `..._with_targets_auc.h5ad` — `--score auc`
+  scaling amplified noise-dominated drugs in the shared loss; see
+  [Corrections](corrections-and-dead-ends.md#auc_z-as-the-training-target))
 - `..._with_targets.h5ad` — `--score mean_pv` (legacy name kept, so the Step 04–05 runs still resolve)
 
-**Reproduce** (a documented, runnable walk-through of these commands lives in
-`notebooks/05_preprocessing.ipynb`). `--score` defaults to `auc`; passing it explicitly is what
-makes a comparison run unambiguous:
+### Reproduce
+
+A documented, runnable walk-through of these commands lives in `notebooks/1_preprocessing.ipynb`, which
+drives the same `run_preprocessing.py` entry points the CLI uses, so the notebook and the command line
+cannot drift. `--score` defaults to `auc`; passing it explicitly is what makes a comparison run
+unambiguous:
 ```bash
 # From scratch (runs convert+HVG → embeddings → targets → splits → pca).
 # The scgpt step needs the separate scGPT env, hence --scgpt-python.

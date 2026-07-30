@@ -75,11 +75,28 @@ and the train/val/test grouping.
 > - **Per sample: inverse label density** (`scripts/training/density_weighting.py`), the regression
 >   analogue of class weighting. Measured outcome: predicted spread rose as designed, per-drug
 >   Spearman did not move — a clean negative, not to be carried into Step 2.
-> - Two mechanics forced by a target near 0.7 instead of 0: the output layer is excluded from weight
->   decay, and each head's bias is initialized at the fold's per-drug mean.
->
+> Superseded numbers and the full decomposition:
+> [Corrections](corrections-and-dead-ends.md#auc_z-as-the-training-target).
 > Figures: `docs/figures/loss_01_objective.png`, `loss_02_weights.png`, `loss_03_effect.png`.
-> Full argument and numbers: `docs/progress_report_2026-07-27.md` §3, §4, §9.
+
+**Two mechanics are forced by a target near 0.7 rather than 0.** Both are silent if missed — nothing
+errors, the model simply trains against a handicap — so they are recorded with the code that causes them:
+
+1. **The output layer must be excluded from weight decay.**
+   `optim.Adam(model.parameters(), ..., weight_decay=1e-3)` (`scripts/training/training_utils.py:179`)
+   decays **every** parameter, head biases included. On `auc_z` the optimal bias was 0, so the decay was
+   free; on raw `auc` the bias must sit near 0.7 and is actively pulled toward 0. Biases and LayerNorm
+   parameters therefore go in a `weight_decay=0` group — `TrainConfig.exclude_output_from_decay`, default
+   **off** so older runs reproduce unchanged.
+2. **Head biases must be initialized at the train-fold per-drug means.** `nn.Linear` initializes them in
+   ±0.125 against a target near 0.7, so the model otherwise starts far from the null predictor instead of
+   at it.
+
+**And one property that made the switch verifiable:** per-drug Spearman is invariant to within-drug
+affine transforms, so for a *fixed* model, raw `auc` with per-drug loss weights and the old `auc_z`
+target score **identically**. That is why the refactor could be validated by requiring it to reproduce
+the `auc_z` numbers before anything new was measured — any gap would have been either an implementation
+bug or the size of the z-score leak, and both were worth knowing separately.
 
 The label is a CTRPv2 **drug-response score**, always a **bulk, per-(cell line × drug)** quantity —
 *not* measured per single cell. Which score is selected with `--score`
@@ -89,9 +106,8 @@ resistant* line.
 
 | `--score` | Definition | Source table |
 |---|---|---|
-| **`auc`** (default since 27.07.2026) | `area_under_curve / conc_pts_fit` — see the row below | `v20.data.curves_post_qc.txt` |
+| **`auc`** (default since 27.07.2026) | `area_under_curve / conc_pts_fit` — the sigmoid-fit AUC, **normalized** by the size of the concentration grid | `v20.data.curves_post_qc.txt` |
 | `auc_z` | per-drug **z-score** of `auc`, over the 180 overlapping cell lines. Default 13.07–27.07, **retired** | ⟵ derived |
-| `auc` | `area_under_curve / conc_pts_fit` — the sigmoid-fit AUC, **normalized** by the size of the concentration grid | `v20.data.curves_post_qc.txt` |
 | `mean_pv` | *legacy:* unweighted mean of `cpd_avg_pv` (percent viability) over the dose grid; clusters near 1.0 | `v20.data.per_cpd_post_qc.txt` |
 
 ### How `auc_z` is computed, step by step
@@ -147,21 +163,13 @@ are stored in `Y_ctrp` and broadcast to every cell of the line.
 center` recovers the original units for any prediction (needed for cross-drug comparisons, which are
 meaningless on the z-scale — see below).
 
-### Why train on `auc_z` rather than `auc`
+### Why `auc_z` was chosen, and why that reasoning no longer holds
 
-1. **It equalizes the heads in the shared loss** — the real reason. Per-drug `auc` spread ranges from
-   **0.034 to 0.302** across the 545 drugs (a 9× span, ~80× in squared-error terms). Under a masked
-   MSE on raw `auc`, the wide-spread drugs would supply nearly all the gradient to the shared trunk
-   and the narrow ones almost none — purely because of their *units*, not their learnability.
-   Z-scoring gives every head equal weight.
-2. **It makes the metric readable.** With unit variance, the per-drug-mean null model scores **MSE =
-   1.0** exactly, so any value below 1 is real per-drug signal. On raw `auc` every drug has its own
-   null value and no number is interpretable on its own. (This is presentation, not learning.)
-3. **It removes the per-drug potency offset** — the *weakest* of the three, and worth stating honestly:
-   each drug is its own output row **with its own bias term**, so the head absorbs that offset either
-   way. This argument is close to vacuous; do not lean on it.
+The three arguments originally made for it — equalizing the heads in the shared loss, making the metric
+readable at MSE = 1.0, and removing the per-drug potency offset — together with the known defects that
+retired it, are in [Corrections](corrections-and-dead-ends.md#auc_z-as-the-training-target).
 
-### Measured: all three targets head-to-head (`notebooks/11_auc_vs_aucz.ipynb`, 13.07.2026)
+### Measured: all three targets head-to-head (`notebooks/result_evaluation/target_comparison.ipynb`, 13.07.2026)
 
 The argument above was tested, not assumed. All three scores were trained with the identical model and
 scored on **one common yardstick — the curve-fit `auc` ranking of cell lines** (`mean_pv` is *not* an
@@ -190,14 +198,12 @@ wide, 0.10–0.65, so the dots in the notebook figure matter as much as the bars
    `mean_pv` and raw `auc` are statistically identical at *both* K (0.450 vs 0.439 at K=5; +0.027 vs
    +0.016 at K=545 — CIs fully overlapping). Reason 1 in the list above is **principled, not empirical**:
    keep the curve fit for the post-QC sigmoid, the confidence intervals, and because it is the metric
-   family GDSC2 reports (which [Step 06](06-cross-database-integration.md) needs) — but do **not** claim
+   family GDSC2 reports (which [Step 06](06-planned-work.md#a-cross-database-integration) needs) — but do **not** claim
    it improves accuracy. It does not.
 
-> **Decision (13.07.2026, superseded 27.07.2026 — see the status block at the top of this section):
-> keep `auc_z` as the default** (`layout.DEFAULT_CTRP_SCORE`). At the full catalog it is the
-> difference between a model that ranks cell lines and one that does not. **At K=5 all three targets tie**
-> — on a small, spread-homogeneous subset `--score auc` is equally good and keeps predictions in native,
-> interpretable AUC units.
+> **The decision this table produced — keep `auc_z` as the default — was superseded on 27.07.2026**
+> ([Corrections](corrections-and-dead-ends.md#auc_z-as-the-training-target)). The measurements above stand;
+> only the conclusion drawn from them changed.
 
 **And it retro-diagnoses the project's central null result.** [Step 05](05-multitask-results.md) §3
 ("neither rep ranks cell lines", ρ ≈ 0 across 545 drugs) ran at **K=545 on `mean_pv`** — the grey column
@@ -237,42 +243,11 @@ used `--all-drugs`, i.e. min 0). The legacy flat columns `obs["viability_<drug>"
 historical. Cancer type is never a label or a feature — it only colors the UMAPs in
 [Step 02](02-preprocessing-and-embeddings.md).
 
-### Known problems with `auc_z` — the scaling is not yet right (27.07.2026)
+### Known problems with `auc_z`
 
-`auc_z` fixed a real defect (unstandardized multi-task loss, above) but it is not the final answer.
-Writing the definition out makes the open issues explicit — with `center` = per-drug mean and `scale` =
-per-drug std over cell lines (`_zscore_per_drug`, `ctrp_to_h5ad.py:180`):
-
-```
-auc_z[line, drug] = (auc[line, drug] − auc_mean[drug]) / auc_std[drug]
-```
-
-**1. The target discards `auc_mean`, so nothing downstream may select on it.** Subtracting the per-drug
-mean removes *potency* entirely: the model is never asked how strongly a drug kills, only whether a line
-is above or below that drug's average. Any drug filter phrased as "kills ≥ N lines" (`auc ≤ 0.5`)
-therefore selects on the one quantity the target throws away. This invalidated the learnability gate —
-see [Step 05](05-multitask-results.md#the-learnability-gate-measured-the-wrong-quantity-27072026).
-
-**2. Dividing by `auc_std` amplifies noise for narrow-spread drugs.** Every drug is forced to variance 1,
-so a drug whose true biological spread is near the assay's measurement error has that error rescaled to
-variance 1 and enters the shared loss with the same weight as a drug carrying real signal. This is the
-mirror image of the original σ² problem: the old target over-weighted wide drugs, `auc_z` over-weights
-*narrow* ones. The correct weight is **signal-to-noise**, not equal variance. `_zscore_per_drug`'s own
-docstring anticipates this — zero-spread drugs would "blow up", and it relies on `--min-cell-lines` plus
-the learnability filter to remove them, a safeguard that the gate (problem 1) does not actually provide.
-
-**Candidate fixes**, cheapest first — none implemented yet:
-- **Floor / shrink the scale:** divide by `sqrt(auc_std² + σ_noise²)` instead of `auc_std`, so drugs at
-  the noise floor are damped rather than amplified.
-- **Reliability weighting:** weight each drug's loss by `(auc_std² − σ_noise²) / auc_std²`, the fraction
-  of its variance that is real. Needs an estimate of `σ_noise`.
-- **Select on `auc_std`** (raw scale, available as the `uns["ctrp_score_scale"]` vector) instead of
-  patching the scale at all — the simplest version, and it is also the correct drug filter.
-
-**Can `σ_noise` be estimated? Only pooled, not per drug.** `v20.data.curves_post_qc.txt` has 387,130
-(cell line × compound) curve fits, of which **7,708 (2.0 %) are replicated** and at most 3-fold. That is
-far too sparse for a per-drug noise estimate, but ample for a **single pooled** `σ_noise` — enough for
-the floor above. Per-curve uncertainty is also available directly (`p1_conf_int_low/high`, `conc_pts_fit`).
+Moved to [Corrections](corrections-and-dead-ends.md#auc_z-as-the-training-target) — the noise amplification, the fact that the target discards potency so nothing
+downstream may select on it, the unimplemented candidate fixes, and what is and is not estimable about
+`σ_noise`.
 
 ### Is AUC the right target at all? (27.07.2026)
 
@@ -307,7 +282,7 @@ against that drug**. `MultiDrugDataset` (`scripts/model/dataset.py`) fills missi
 so the tensor is finite, then carries `M` alongside so the loss can ignore those zeros.
 
 This is the masked-loss core that the plan's sub-goal 2 calls for, and it is what will generalize to
-the cross-database block-sparse matrix in [Step 06](06-cross-database-integration.md).
+the cross-database block-sparse matrix in [Step 06](06-planned-work.md#a-cross-database-integration).
 
 ---
 
@@ -326,6 +301,28 @@ the cross-database block-sparse matrix in [Step 06](06-cross-database-integratio
   cell lines with more cells count proportionally more. This entry-pooled val MSE is `best_val_mse`
   in `summary.json` and `val_mse` in `history.csv`, and is what early-stopping/scheduler watch.
 - **Single-task** uses plain `((pred − y)²).mean()` (no mask).
+
+### ⚠️ Open defect — the loss weights cell lines by how deeply they were sequenced
+
+The loss is a mean over observed **cells** (`scripts/training/training_utils.py:90`), but the label is
+per **cell line**. Two distributions therefore multiply into the weight each line carries:
+
+| | min | median | max |
+|---|---|---|---|
+| cells per line | 56 | 226 | 1,990 |
+| observed drugs per line | 38 | 465 | 505 |
+
+Combined, `NCIH2110_LUNG` carries **4.37 %** of the total loss and `PANC1_PANCREAS` **0.054 %** — a factor
+of **82**. Equal shares would be 0.56 % each; the top 10 lines carry **18.3 %** instead of 5.6 %. With
+~150 independent examples, letting one line count 82× another is indefensible, and most of the imbalance
+is the cell count — a sequencing artifact carrying no information about the label. (The z-scoring code was
+careful about exactly this — "statistics are computed per cell line, not per cell" — the loss was not.)
+
+**Reweighting the existing objective does not fix it:** line-balanced reweighting was tested and is empty
+([Corrections](corrections-and-dead-ends.md#line-balanced-reweighting-will-help)), which in hindsight is
+forced, since the ridge-on-line-means control *is* the fully line-balanced limit and it ties the PCA MLP.
+MIL removes the defect structurally — one bag is one line is one example — which is one of the reasons it
+is next ([TODO](../TODO.md)).
 
 **Sample weighting rides in the mask (27.07.2026).** `M` is a float tensor, so substituting a weight
 at each observed entry for the 0/1 flag turns `Σ(sq·M)/ΣM` into `Σ(w·sq)/Σw` exactly — the weighted
@@ -401,7 +398,7 @@ as flags (`--use-rep`, `--drugs`, `--batch-size 128`, `--epochs 50`, `--lr`, `--
 `--dropout`, `--input-dropout`, `--loss {mse,huber}`, `--hidden-dims`, `--seed`); run artifacts are
 written by `create_run_dir`/`save_run` ([Step 05](05-multitask-results.md)).
 
-Both the CLI and `notebooks/07_training.ipynb` drive one training run through the same
+Both the CLI and `notebooks/2_training.ipynb` drive one training run through the same
 `train_multitask.train_rep(...)` function (datasets → per-drug-mean baseline → `OncoMLP` → `train_model`
 → `save_run`), returning the run dir, history, and per-drug MSE arrays. The notebook is the
 **reproducible PCA-vs-scGPT comparison**: it trains both reps at the matched 512-d width and writes
@@ -412,7 +409,7 @@ notebook and command line cannot diverge.
 
 ## These hyperparameters are not worth tuning (ablated 13.07.2026)
 
-`notebooks/10_diagnosis.ipynb` sweeps four model-side knobs on the 5 learnable drugs, scored with
+`notebooks/result_evaluation/ablations_and_rescue.ipynb` sweeps four model-side knobs on the 5 learnable drugs, scored with
 out-of-fold per-drug Spearman (the metric of [Step 05](05-multitask-results.md)). **Every axis is flat,
 and the defaults above are at or within noise of the best setting on all of them:**
 
@@ -423,31 +420,11 @@ and the defaults above are at or within noise of the best setting on all of them
 | `batch_size` | 32 / 128 / 512 | 0.43–0.44 | 0.46–**0.49** |
 | Sample reweighting | line-balanced, focus-extremes | 0.41–0.43 | 0.48–0.49 |
 
-> ⚠️ **Scope correction (14.07.2026).** The four ablations above were run on the **K=5** setup. They show
-> the knobs do not *improve* the corrected model — they do **not** show that the knobs could not have
-> *fixed* the K=545 collapse. That claim was tested separately, and **one of them partially does**
-> (`notebooks/outputs/ablations/rescue_k545.csv`). Applied to the **broken** setting (K=545, raw `auc`,
-> scGPT, ρ = −0.063):
->
-> | Intervention | ρ |
-> |---|---|
-> | heavy regularization | −0.091 |
-> | line-balanced **sample** reweighting | −0.078 |
-> | smaller model (74,629 → 16,645 params) | −0.053 |
-> | batch size 32 | +0.027 |
-> | **no regularization** | **+0.234** |
-> | **per-drug (task) reweighting = `auc_z`** | **+0.433** |
->
-> **Removing regularization recovers ~70% of the collapse.** This is mechanistically consistent: the
-> failure is a **capacity competition** between heads — with dropout 0.5 the trunk cannot serve both the
-> loud noisy drugs and the learnable ones, so the loud ones win. Adding capacity (dropping the
-> regularizer) lets it fit both.
->
-> **But it is a symptom fix, not a cause fix**, and the interaction proves it: on the **corrected**
-> (`auc_z`) setting the *same* regularization is **optimal** (K=5: current 0.488 vs none 0.456). The model
-> was never over-regularized in absolute terms — it was **over-regularized relative to a mis-weighted
-> loss**. And the price is steep: without regularization the network memorizes the training lines (train
-> MSE ≈ 0.01) and still reaches only half of what the weighting fix delivers.
+> ⚠️ **These ablations ran on the *corrected* setup, so they show the knobs do not *improve* it — not
+> that the knobs could not have *fixed* the K=545 collapse.** That was tested separately, and removing
+> regularization recovers ~70 % of it. Why that is a symptom fix rather than a cause fix, with the full
+> rescue table:
+> [Corrections](corrections-and-dead-ends.md#the-model-is-over-regularized-or-too-small).
 
 **Decision: stop tuning the model** *(on the corrected loss)*. At ~150 independent labels, architecture
 search cannot buy signal. Three findings are worth carrying forward, because each kills a

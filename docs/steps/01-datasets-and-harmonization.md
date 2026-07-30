@@ -34,7 +34,7 @@ datasets are all **bulk, cell-line-level** drug screens:
   [Step 03](03-model-and-training-design.md).
 - **GDSC2** reports `LN_IC50` (natural-log half-maximal inhibitory concentration) and AUC — the same
   curve-fit family as CTRP's `area_under_curve`, which is what makes
-  [Step 06](06-cross-database-integration.md) tractable.
+  [Step 06](06-planned-work.md#a-cross-database-integration) tractable.
 - **PRISM** is a barcoded, multiplexed viability assay reporting log fold-change vs control — very
   large and very sparse.
 
@@ -43,6 +43,64 @@ bulk labels are the only high-volume continuous signal available, so they are ma
 cells as weak supervision ([Step 03](03-model-and-training-design.md)).
 
 ✅ On-plan: SCP542 + CTRPv2 are the designated primary pair; PRISM/GDSC reserved for later.
+
+### Provenance — what was retrieved, from where, when
+
+*Moved here 30.07.2026 from the dated log, which is where it had been decaying. This is the record
+[TODO](../TODO.md) review item 1 and FAIRER **A**/**E** ask for.*
+
+| Source | Retrieved | From |
+|---|---|---|
+| **SCP542** scRNA-seq (53,513 cells × 22,722 genes) | 30.03.2026 | Broad Single Cell Portal, study **SCP542** *"pan-cancer cell line heterogeneity"* — <https://singlecell.broadinstitute.org/single_cell/study/SCP542/pan-cancer-cell-line-heterogeneity>. Source publication Kinker et al., *Nat Genet* 2020, <https://doi.org/10.1038/s41588-020-00726-6>. This is the dataset the PERCEPTION paper used. |
+| **CTRPv2** viability + compound annotations | 30.03.2026 | DepMap portal, all-data tab — <https://depmap.org/portal/data_page/?tab=allData>. Release `CTRPv2.0_2015_ctd2_ExpandedDataset`. Cell lines join via `v20.meta.per_cell_line` (`master_ccl_id`) and experiments via `v20.meta.per_experiment`. |
+| **PRISM** Repurposing, Public 24Q2 | 30.03.2026 | DepMap — `Repurposing_Public_24Q2_Extended_Primary_Data_Matrix.csv`. Taken specifically because it covers **failed** drugs as well as approved ones. |
+| **GDSC2** IC50 + raw data | 26.03–30.03.2026 | Sanger Cell Model Passports — <https://cellmodelpassports.sanger.ac.uk/downloads> ("GDSC2 IC50 Data", "GDSC2 Raw Data"). |
+| **Clinical-phase annotations** | 30.03.2026 | Broad Drug Repurposing Hub — <https://repo-hub.broadinstitute.org/repurposing#download-data> |
+| **DrugBank** full database (XML) | — | <https://go.drugbank.com/>, academic download; account required. Licence terms above. |
+
+⚠️ **How GDSC2's `LN_IC50` was processed is not documented.** The Sanger documentation link
+(`depmap.sanger.ac.uk/documentation/gdsc/`) was dead, and the DepMap/GDSC team was asked directly with no
+response ([Corrections](corrections-and-dead-ends.md#scdrugatlas-and-clintox-as-data-sources)). This is an
+open gap for any future GDSC head.
+
+### Design decisions taken with the advisor (27.03–03.04.2026)
+
+The project's framing was settled by asking, not assumed. The three questions put to Artem on 27.03 were:
+is the target **cytotoxicity/efficacy** (does the drug kill heterogeneous cancer cells) or **adverse
+patient toxicity** (dangerous side effects in healthy tissue); should the model predict **continuous** or
+**binary** values; and which dataset should be primary. The answers, which several current choices rest
+on:
+
+- **Define toxicity by the labels the chosen datasets actually carry** — do not import an external
+  definition. This is why the project predicts efficacy-type response and not patient-level toxicity.
+- **If several response types exist and the effort is reasonable, model them all** — the origin of the
+  multi-metric goal in [Step 06 · A](06-planned-work.md#a-cross-database-integration).
+- **Prefer continuous outputs** (IC50 / viability-like); binarize only where a specific downstream
+  evaluation needs it. This is why the target is a continuous regression
+  ([Step 03](03-model-and-training-design.md)) and why binary clinical outcomes are a *fine-tuning* step
+  rather than the training objective.
+- **Multi-task can absorb missing labels via masked losses** — no need to force a full intersection. The
+  direct origin of the mask `M` ([Step 03](03-model-and-training-design.md#mask-m--the-sparsity-handling-mechanism-plan-sub-goal-2)).
+- **Output/task weighting may be needed during training** — flagged this early; still an open question.
+- **Report overlap and applicable sample counts before modelling**, to judge feasibility — which is what
+  the audit below was built to do.
+- **DrugBank** is acceptable for FDA/drug annotation support.
+- **scDrugAtlas** is usable if the data can be obtained, but it is Harmony-processed and cross-dataset
+  merging should be avoided — a caution that contributed to abandoning it
+  ([Corrections](corrections-and-dead-ends.md#scdrugatlas-and-clintox-as-data-sources)).
+
+> **On the word "toxicity".** Finding usable toxicity definitions and annotations is genuinely hard, and
+> the reason is structural: toxicity toward tumour cells is precisely what is wanted, while *excessive*
+> toxicity is what withdraws a compound from trials — so the quantity is recorded inconsistently and
+> mostly as an absence. That is why this project operationalises toxicity as cell-line efficacy, and why
+> PRISM's coverage of failed drugs was attractive.
+
+> **One GDSC-derived artifact exists and is not part of the modelling work.** An initial
+> informative-drug list was produced from `notebooks/data_and_harmonization/drug_coverage.ipynb` and shared with
+> Hashimoto-san — a CTRPv2 version and a GDSC version (`outputs/data/gdsc_drug_learnability.csv`). Both
+> were shared as **explicitly not final**, and the GDSC one was for her use only; no GDSC drug list has
+> ever fed this project's drug selection or training. GDSC remains downloaded-but-unused, and is not a
+> modelling priority.
 
 ### Licences and terms of use of the source data (checked 28.07.2026)
 
@@ -80,7 +138,7 @@ place to look.
 
 ## Overlap & coverage audit (03.04.2026)
 
-The audit lives in the standalone notebook `notebooks/02_compare_GDSC_CTRP.ipynb` — a one-off
+The audit lives in the standalone notebook `notebooks/data_and_harmonization/drug_catalog.ipynb` — a one-off
 exploratory analysis (not part of the training pipeline) that produces the plan's **Fig. 1 / Fig. 2**
 and writes the drug-catalog CSVs. Its purpose is to pick the **highest-confidence intersection** to
 start from before any modeling (plan sub-goal 3).
@@ -129,7 +187,7 @@ numbers sub-goal 3 rests on.
 
 The audit above is **exploratory** — its catalogs (`all_sources_drug_catalog.csv`,
 `drug_overlap_candidates.csv`, the DrugBank exports) are **not yet consumed by any model**. They are
-built for the cross-database join in [Step 06](06-cross-database-integration.md), where PRISM/GDSC
+built for the cross-database join in [Step 06](06-planned-work.md#a-cross-database-integration), where PRISM/GDSC
 heads finally need a unified compound vocabulary.
 
 Today the trained model depends on Step 01 through exactly **one** thing: the cell-line and drug

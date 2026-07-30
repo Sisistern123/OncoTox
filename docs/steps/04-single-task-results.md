@@ -7,11 +7,12 @@ progression of best single-task val MSE through the HVG-5000 + model upgrade.*
 This is plan-Phase-2 (single-task continuous regression). Model/training design is in
 [Step 03](03-model-and-training-design.md).
 
-> ⚠️ **Legacy target score.** Every number on this page was trained on the **`mean_pv`** score (mean
-> percent viability over the dose grid), which was the only target until 13.07.2026. The default is
-> now **`auc_z`** ([Step 03](03-model-and-training-design.md)), on which the same MSEs would be
-> ~100× larger simply because the target is standardized — the two are **not comparable**. Reproduce
-> this page exactly with `--score mean_pv`.
+> ⚠️ **Legacy target score.** Every number on this page was trained on **`mean_pv`** (mean percent
+> viability over the dose grid), the only target until 13.07.2026. The default is now raw **`auc`**
+> ([Step 03](03-model-and-training-design.md)). Absolute MSEs are **not comparable** across the two, and
+> the scores rank cell lines differently — within a drug they agree at only ρ ≈ 0.72, so this is not
+> cosmetic ([Corrections](corrections-and-dead-ends.md#the-steps-0405-numbers-as-a-comparable-baseline)).
+> Reproduce this page exactly with `--score mean_pv`.
 
 > **Which single-task is this?** The numbers below are the **earlier dedicated-`split_paclitaxel`
 > baseline** (its own split over paclitaxel-labelled lines). The **8-run experiment matrix's**
@@ -23,7 +24,7 @@ This is plan-Phase-2 (single-task continuous regression). Model/training design 
 > **single** drug paclitaxel. This is the narrowest slice of
 > the project: one dataset, one response type, one compound. The widening happens in
 > [Step 05](05-multitask-results.md) (still CTRPv2 only, across drugs) and ultimately in
-> [Step 06](06-cross-database-integration.md) (the true "combine all databases + metrics" goal).
+> [Step 06](06-planned-work.md#a-cross-database-integration) (the true "combine all databases + metrics" goal).
 
 ---
 
@@ -86,18 +87,22 @@ LayerNorm/GELU model + scheduler/early-stop training upgrade
 
 | Setup | PCA best val | scGPT best val |
 |---|---|---|
-| No-HVG, regularized (08.05) | _open — rerun_ | ~0.0371 (ep 10) |
-| HVG-5000, old model (BatchNorm/ReLU) | _open — rerun_ | 0.0354 (ep 50) |
-| **HVG-5000, upgraded model** | _open — rerun_ | **0.0336 (ep 14)** |
+| No-HVG, regularized (08.05) | ~0.0375 (ep 10) | ~0.0371 (ep 10) |
+| HVG-5000, old model (BatchNorm/ReLU) | 0.0362 (ep 5) | 0.0354 (ep 50) |
+| **HVG-5000, upgraded model** | **0.0351 (ep 8)** | **0.0336 (ep 14)** |
+
+Both arms early-stopped under the upgraded training setup — PCA at epoch 18 (best epoch 8), scGPT at
+epoch 24 (best epoch 14), both after 10 epochs without val improvement. The `runs/` directories are
+gitignored and no longer present, so these best-epoch values are all that survives of those curves.
 
 These are the **single-task reference points** (`split_paclitaxel`, 5,035 val cells), loaded by
 `ScGPTDrugDataset` over `obsm["X_scGPT"]` / `obsm["X_pca"]`.
 
-> **PCA column left open — and not part of the 13.06 matrix rerun.** This `split_paclitaxel`
-> progression is the legacy dedicated-split baseline; the matrix rerun used the shared `split_ctrp`
-> (its single-task PCA-vs-scGPT numbers are in [Step 05](05-multitask-results.md)). The PCA cells
-> here would only be filled by re-running the `split_paclitaxel` single-task separately. The scGPT
-> numbers are the original baseline.
+> **Not part of the 13.06 matrix rerun.** This `split_paclitaxel` progression is the legacy
+> dedicated-split baseline; the matrix rerun used the shared `split_ctrp` (its single-task
+> PCA-vs-scGPT numbers are in [Step 05](05-multitask-results.md)). *(The PCA column read "open — rerun"
+> until 30.07.2026; the values were recovered from the dated log before it was retired, so no re-run is
+> needed.)*
 
 ✅ On-plan (still single-task CTRPv2 viability on the overlap; best result to date).
 
