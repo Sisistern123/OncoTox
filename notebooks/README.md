@@ -1,68 +1,103 @@
 # OncoTox notebooks
 
-Figures and tables go to [`outputs/`](outputs/) (grouped by pipeline stage — see its README).
-Model artifacts live in `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
+**A number means pipeline.** `1_` → `2_` → `3_` is the run order that rebuilds the data and the results.
+Everything else is analysis and lives in a named directory — no numbers, because there is no order to run
+them in. Figures and tables go to [`outputs/`](outputs/); model artifacts to `runs/` (git-ignored),
+indexed by `runs/runs_index.csv`.
 
-> ⚠️ **`07_training.ipynb` is superseded (13.07.2026).** Its 8-run matrix and its "ρ ≈ 0, the model
-> cannot rank cell lines" conclusion were produced at K=545 on the legacy `mean_pv` target, whose
-> **unstandardized per-drug variance was destroying the signal**. `10_diagnosis` reproduces that failure
-> on demand and fixes it. Treat `07`'s conclusions as **pending a re-run**, not merely stale.
+> ⛔ **The drug panel is void and a pipeline review is in progress** ([`docs/TODO.md`](../docs/TODO.md)).
+> Nothing computed on that panel is quotable until it is rebuilt — which affects `3_panel_training` and
+> everything under `drug_selection/`.
 
-## Reading order
+## The pipeline
 
-**`08 → 09 → 10 → 11 → 12`** is the current story, in the order it should be read:
+| # | Notebook | What it does | Drives |
+|---|---|---|---|
+| **1** | `1_preprocessing.ipynb` | Builds the trainable data: recomputes the 512-d PCA baseline for both variants (§A) and builds the HVG-sweep variants including the scGPT re-embed (§B) | `scripts/preprocessing/run_preprocessing.py` |
+| **2** | `2_training.ipynb` | The PCA-vs-scGPT harness: 8-run matrix (load-or-train), 5-fold GroupKFold CV with test held out, per-drug correlation, HVG sweep | `train_multitask.train_rep`, `cv_evaluate` |
+| **3** | `3_panel_training.ipynb` | The current training run: raw `auc`, per-fold density weighting, out-of-fold scoring against the ridge control | `scripts/training/cv.py`, `density_weighting.py` |
 
-| # | Notebook | Question it answers |
-|---|---|---|
-| **08** | `08_learnability_filter` | **Which drugs *can* be learned?** `learnability = min(#killed, #spared)`, coverage ≥ 90 % → **top 10 of 545**. *(A diagnostic simplification, not a result — see `10` §on validity: the score correlates only +0.36 with the ρ the model actually reaches.)* |
-| **09** | `09_learnable5_training` | **Does the pipeline learn anything at all?** PCA vs scGPT on those 10, out-of-fold on ~150 held-out lines: **ρ = 0.360 / 0.396** — against ≈ 0 in June. |
-| **10** | `10_diagnosis` | **Why did the 545-head model fail, and what fixes it?** The targets' biology, the implicit σ²-weighting of the loss, **the causal rescue test on the broken setting**, the model-knob ablations on the corrected one, and the ridge control. |
-| **11** | `11_auc_vs_aucz` | **Which target?** `mean_pv` vs `auc` vs `auc_z`, at K=10 and K=545, with bootstrap CIs, Pearson, and seed stability. |
-| **12** | `12_dreval_benchmark` | **How strong is this by the field's standard?** Our data + model through the real **DrEval** package (`drevalpy` 1.5.1): their LCO splits, their baselines, their metrics. |
+`1_` and `2_` call the **same entry points the CLI uses**, so the notebooks and the command line cannot
+drift — they are documentation *and* a re-run, not a fork.
 
-**Supporting (not on the critical path):**
+> ⚠️ **`2_training`'s conclusions are superseded; its machinery is not.** The 8-run matrix and the
+> "ρ ≈ 0, the model cannot rank cell lines" reading were produced at K=545 on the legacy `mean_pv`
+> target, whose unstandardised per-drug variance was destroying the signal
+> ([why](../docs/steps/corrections-and-dead-ends.md#neither-representation-ranks-cell-lines--the-k545-null-result)).
+> It stays in the pipeline because re-running the matrix on the current target is an open task and this is
+> the only place that harness exists.
 
-| # | Notebook | Role |
-|---|---|---|
-| 02 | `02_compare_GDSC_CTRP` | Drug-catalog harmonization (CTRP/GDSC/DrugBank) → writes `data/drug/*`. One-off. |
-| 04 | `04_drug_coverage` | Coverage & response variance on the raw labels. Its *learnability* section is superseded by `08` (it was built on `mean_pv`); its target-distribution figures still stand. |
-| 06 | `06_verify_variants` | Preprocessing QC + the PCA-vs-scGPT UMAPs. |
-| 07 | `07_training` | The 8-run matrix / CV / HVG sweep. ⚠️ **Superseded** (see banner). |
+## Analysis
 
-### Why the numbering has gaps
+### `data_and_harmonization/` — what is in the data, and does the join hold?
 
-**01, 03, 05 are missing on purpose** — they were moved to `archive/` and their numbers are *not*
-reused: `07` and `04` are cited by name in the docs, the commit history and the progress reports, so
-renumbering would break every reference to buy nothing. Treat the numbers as **stable identifiers, not
-a sequence**.
-
-| Archived | Why |
+| Notebook | Question it answers |
 |---|---|
-| `01_scDAExploration` | first look at the SCP542 data; superseded by everything after it |
-| `03_analysis` | CTRP→PRISM repurposing map; never consumed by the pipeline |
-| `05_preprocessing` | a front-end to the preprocessing CLI — duplicated by [Step 02](../docs/steps/02-preprocessing-and-embeddings.md#reproduce) |
+| `drug_catalog.ipynb` | Cross-database compound harmonization (CTRP / GDSC / PRISM / DrugBank) → writes `data/drug/*`. The **only** analysis notebook whose outputs another step consumes |
+| `drug_coverage.ipynb` | Per-drug coverage and response spread; the label distribution behind "why the task is hard". ⚠️ Its *learnability* section was built on `mean_pv` and is superseded; the target-distribution figures still stand |
+| `verify_variants.ipynb` | QC of `hvg5000` vs `all_genes`, plus the PCA-vs-scGPT UMAP latent validation |
 
-`10_diagnosis` also absorbed a `13` that existed only briefly (it asked the same question as `10` on a
-different setting); its number is retired.
+### `result_evaluation/` — is the number real?
 
-The directories under [`outputs/`](outputs/) are **not** numbered, precisely because they do not map
-one-to-one onto notebook numbers (`data/` is written by `04` *and* `10`; `target/` by `11` *and* `10`).
-They are named for what they contain.
+| Notebook | Question it answers |
+|---|---|
+| `target_comparison.ipynb` | **Which target?** `mean_pv` vs `auc` vs `auc_z` at K=10 and K=545, with bootstrap CIs, Pearson alongside Spearman, and seed stability |
+| `ablations_and_rescue.ipynb` | **Why did the 545-head model fail, and what fixes it?** The implicit σ²-weighting of the loss, the causal rescue test on the broken setting, the model-knob ablations on the corrected one, and the ridge control |
+| `dreval_benchmark.ipynb` | **How strong is this by the field's standard?** Our data and model through the real **DrEval** package (`drevalpy` 1.5.1): their LCO splits, their baselines, their metrics |
+| `diagnostics.ipynb` | The drug-selection gate defect, the proliferation test, and result dispersion across folds *and* drugs |
+
+### `drug_selection/` — which compounds enter the model
+
+The project's main open deliverable. All three currently rest on a criterion that
+[measured the wrong quantity](../docs/steps/corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability),
+and all three get re-run after the rebuild.
+
+| Notebook | What it was |
+|---|---|
+| `learnability_filter.ipynb` | The kill/spare gate that took 545 drugs to 10 — **discredited criterion** |
+| `learnable_subset_training.ipynb` | PCA vs scGPT on that subset — a best-case diagnostic, never a generalization number |
+| `panel_distributions.ipynb` | Response distributions and the weighting design on the 8-drug panel — **void panel** |
+
+### `archive/` — nothing here is load-bearing
+
+**The dividing line: everything outside `archive/` is cited by a step file and something documented
+depends on it. Nothing in `archive/` is.** That is the test, applied by checking which notebooks the step
+files actually reference — not by judging how interesting they look.
+
+| Notebook | Why it is here |
+|---|---|
+| `scdrugatlas_exploration.ipynb` | Explores **scDrugAtlas**, a data source that was evaluated and [rejected](../docs/steps/corrections-and-dead-ends.md#scdrugatlas-and-clintox-as-data-sources). Kept as the record of that decision. *(Long mislabelled in the docs as SCP542 exploration — "scDA" is scDrugAtlas.)* |
+| `ctrp_prism_repurposing.ipynb` | CTRP→PRISM repurposing and clinical-phase mapping. Read-only, writes no artifact, and no step depends on it. Worth knowing it exists: it is the only notebook that loads `GDSC2_fitted_dose_response_27Oct23.xlsx`, which the "externalize the spread requirement" task will need |
+
+Two things are **not** grounds for archiving. **Superseded conclusions** — `2_training`'s results are void
+but its harness is the only way to re-run the matrix, so it stays in the pipeline. **A discredited
+criterion** — everything in `drug_selection/` is built on one, but it is the documented record of how
+selection was done and it re-runs after the rebuild.
 
 ## Re-running
 
 Every training notebook has a **`RETRAIN` flag, default `False`** — it then loads the saved CSVs from
-`outputs/` and only redraws the figures (seconds). Set it to `True` to refit everything.
+`outputs/` and only redraws the figures, in seconds. Set it `True` to refit.
 
 Fits use `TrainConfig(epochs=25)`: across 36 recorded runs the best epoch was **median 6, max 11**, and
-early stopping (patience 10) never approached 25 — the previous cap of 50 only cost wall-clock.
+early stopping (patience 10) never came close to 25 — the earlier cap of 50 only cost wall-clock.
 
-Data is built by the CLI, not the notebooks:
+Data is built by the CLI, not by the notebooks (`--score` defaults to `auc`):
 
 ```bash
 uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \
-    --score auc_z --start-at targets --skip-scgpt      # one targets h5ad per --score
+    --score auc --start-at targets --skip-scgpt      # one targets h5ad per --score
 ```
 
-All results in this repo use the **`hvg5000`** variant: 5,000 HVGs; scGPT embeds the **4,576** of them in
-its vocabulary (424 OOV); PCA is computed on all 5,000 → both representations **512-d**.
+All results in this repo use the **`hvg5000`** variant: 5,000 HVGs, of which scGPT embeds the **4,576** in
+its vocabulary (424 OOV), while PCA is computed on all 5,000 → both representations **512-d**.
+
+The directories under [`outputs/`](outputs/) are deliberately **not** named after notebooks, because they
+do not map one-to-one: `data/` is written by `drug_coverage` *and* `ablations_and_rescue`, `target/` by
+`target_comparison` *and* `ablations_and_rescue`. They are named for what they contain.
+
+## Where the written record lives
+
+`docs/steps/01`–`05` hold the numbers and own every claim ·
+[`corrections-and-dead-ends.md`](../docs/steps/corrections-and-dead-ends.md) holds everything superseded,
+retracted, refuted or abandoned · [`docs/TODO.md`](../docs/TODO.md) is the action list.

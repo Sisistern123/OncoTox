@@ -8,12 +8,14 @@ they live in `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 
 | Directory | Written by | Contents |
 |---|---|---|
-| **`data/`** | `04_drug_coverage` | Target distribution and per-drug coverage on the raw CTRPv2 labels. |
-| **`embeddings/`** | `06_verify_variants` | Latent-space validation: PCA-vs-scGPT UMAPs, gene-set variants. |
-| **`learnability/`** | `08_learnability_filter`, `09_learnable5_training` | The drug filter (545 → 10, `learnability = min(#killed, #spared)`) and the PCA-vs-scGPT result on that subset. `pca_vs_scgpt.png` also carries the line-level ridge control. |
-| **`target/`** | `11_auc_vs_aucz`, `10_diagnosis` §2 | Which target to train on; the per-drug **loss-weighting bug**; seed stability. |
-| **`ablations/`** | `10_diagnosis` §3–§5 | The **causal rescue test** on the broken K=545 setting, the model-knob ablations on the corrected one, and the ridge control. |
-| **`dreval/`** | `12_dreval_benchmark` | External benchmark against **DrEval** (`drevalpy` 1.5.1): their LCO splits, baselines, metrics. |
+| **`data/`** | `drug_coverage` | Target distribution and per-drug coverage on the raw CTRPv2 labels. |
+| **`embeddings/`** | `verify_variants` | Latent-space validation: PCA-vs-scGPT UMAPs, gene-set variants. |
+| **`learnability/`** | `learnability_filter`, `learnable_subset_training` | The drug filter (545 → 10, `learnability = min(#killed, #spared)`) and the PCA-vs-scGPT result on that subset. `pca_vs_scgpt.png` also carries the line-level ridge control. |
+| **`target/`** | `target_comparison`, `ablations_and_rescue` §2 | Which target to train on; the per-drug **loss-weighting bug**; seed stability. |
+| **`ablations/`** | `ablations_and_rescue` §3–§5 | The **causal rescue test** on the broken K=545 setting, the model-knob ablations on the corrected one, and the ridge control. |
+| **`dreval/`** | `dreval_benchmark` | External benchmark against **DrEval** (`drevalpy` 1.5.1): their LCO splits, baselines, metrics. |
+| **`diagnostics/`** | `diagnostics` | The drug-selection gate defect (`gate_per_drug.csv`, `gate_potency_vs_spread.png`), the proliferation test (`line_effect_vs_programs.csv`, `line_effect_vs_proliferation.png`), the input-scale asymmetry (`input_scale.csv`), and result dispersion (`result_dispersion.csv`). |
+| **`panel/`** | `panel_distributions`, `3_panel_training` | ⛔ **Computed on the [voided panel](../../docs/steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it)** — response distributions, the weight curves, and the panel training result. Do not quote; re-runs after the rebuild. |
 
 ### The five figures that carry the current story
 
@@ -38,6 +40,6 @@ they live in `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 
 | Path | Why it is legacy |
 |---|---|
-| `legacy/training_545_mean_pv/` | The 8-run matrix, 5-fold CV, HVG sweep and per-drug correlations from `07_training`. Produced at **K=545 on `mean_pv`**, i.e. with the unstandardized loss that `10_diagnosis` shows was destroying the signal. Its "ρ ≈ 0" conclusion does not survive; the numbers are kept only as evidence of the failure mode. |
+| `legacy/training_545_mean_pv/` | The 8-run matrix, 5-fold CV, HVG sweep and per-drug correlations from `2_training`. Produced at **K=545 on `mean_pv`**, i.e. with the unstandardized loss that `ablations_and_rescue` shows was destroying the signal. Its "ρ ≈ 0" conclusion does not survive; the numbers are kept only as evidence of the failure mode. |
 | `legacy/ctrp_drug_learnability_mean_pv.csv` | The old learnability table (`resp_std × coverage`) on `mean_pv`. Its score is **degenerate** on the z-scored target and its gates kept 439/545, so it never bit. Replaced by `learnability/ctrp_drug_learnability_auc.csv`. |
 | `legacy/gdsc_drug_learnability.csv` | GDSC2 learnability list, produced once for Hashimoto-san. Never consumed by the modelling pipeline. |
