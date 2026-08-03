@@ -134,6 +134,207 @@ The model/training upgrade that landed alongside this work is in
 [Step 03](03-model-and-training-design.md); the single-task numbers are in
 [Step 04](04-single-task-results.md).
 
+### Why HVG-5000 is the default (03.08.2026)
+
+Three reasons, in descending order of weight.
+
+**1 — More genes buy nothing measurable.** The gene-set sweep
+([Step 05](05-multitask-results.md#gene-set-sweep--heads-beating-vs-gene-count-incl-all_genes-28062026),
+`notebooks/data_and_harmonization/verify_variants.ipynb` §9, 28.06.2026) puts 1k/2k/3k/5k **and**
+`all_genes` through the same
+5-fold GroupKFold over all 545 drugs. Heads-beating-baseline is **flat across the whole axis** for both
+representations, and `all_genes` (PCA 204 ± 86, scGPT 184 ± 90) is no better than `hvg5000`
+(210 ± 73 / 189 ± 94) — it sits mid-band for PCA and lowest of all for scGPT. Val MSE is constant at
+0.0105–0.0107 throughout.
+
+**2 — At the input length we run, `all_genes` is randomly subsampled and `hvg5000` is not.** We embed
+with `max_length=1200` (`gen_embeds.py`), which is `embed_data`'s default and matches the `scGPT_human`
+checkpoint's own pretraining configuration — `"max_seq_len": 1200`, `"trunc_by_sample": true`
+(`scGPT_human/args.json`). When a cell carries more expressed genes than the cap, the data collator draws
+a **random** subset rather than truncating (`scgpt/data_collator.py:143-169`). Measured over all 53,513
+cells of each embeddings file's `.X` (one `h5py` pass, 03.08.2026):
+
+| Variant | mean expressed genes / cell | max | cells above the 1,199-gene cap |
+|---|---|---|---|
+| `hvg5000` | 589 | 1,208 | **1** (0.002 %) |
+| `all_genes` | 3,550 | 7,797 | **53,513** (100 %) |
+
+So at HVG-5000 scGPT sees every gene surviving the filter in all but one cell, whereas at `all_genes` it
+sees a random ~34 % of each cell — a different third on each run. Under this configuration, feeding the
+full transcriptome does not deliver more information to scGPT; it only randomises which fraction reaches
+the model.
+
+**Confirmed against the publication** — Cui, H., Wang, C., Maan, H. *et al.* "scGPT: toward building a
+foundation model for single-cell multi-omics using generative AI." *Nature Methods* **21**, 1470–1480
+(2024), doi:10.1038/s41592-024-02201-0, Methods, *Implementation details*:
+
+> "Note that, in pretraining, only genes with non-zero expression are input to the model. We set a
+> maximum input length of 1,200. For cells with a number of non-zero genes larger than the maximum input
+> length, 1,200 input genes would be randomly sampled at each iteration."
+
+So the random subsampling our pipeline hits at `all_genes` is exactly the operation used in pretraining,
+not an artifact of the inference wrapper.
+
+> **1,200 is a configuration choice, not a limit of the model.** The paper defines M as "a predefined
+> maximum input length" and states that "the input dimension M **can reach tens of thousands of genes**,
+> substantially exceeding the input length of conventional transformers commonly used in NLG", handled
+> via FlashAttention (Methods, *Input embeddings*). The code agrees: `TransformerModel` builds gene
+> inputs through `GeneEncoder` alone and never instantiates `PositionalEncoding`
+> (`scgpt/model/model.py:86` vs `:742`), so genes are an unordered set and nothing architecturally caps
+> the sequence, and the authors' own tutorials run the same pretrained weights at `max_seq_len` 1536,
+> 3001 and 4001 (`max_seq_len = n_hvg + 1`). The argument above therefore justifies HVG-5000 **given**
+> our 1,200 setting, and would have to be redone if that setting changed. Note that the FlashAttention
+> the paper relies on to reach those lengths is **not available to us** — see
+> [Compute environment and its limits](#compute-environment-and-its-limits-03082026).
+
+**The paper's HVG counts bracket ours.** Depending on task the authors select **1,200** HVGs (multiomic
+integration), **3,000** (cell annotation) and **5,000** (perturbation prediction; Methods), using Scanpy
+for "normalization, log transformation and HVG selection". Our 5,000 sits at the top of that range, not
+outside it.
+
+---
+
+## Compute environment and its limits (03.08.2026)
+
+Everything scGPT-related runs on one Apple Silicon machine (arm64, macOS 26.6, `torch` 2.3.1 in the
+separate scGPT venv). Two hardware limits shape what the embedding step can and cannot do, and both were
+verified by running them, not by reading docs.
+
+### FlashAttention is unavailable, and cannot be installed
+
+The paper leans on FlashAttention to reach long inputs. We cannot use it. `pip install flash-attn` fails
+at **metadata generation**, before any compilation:
+
+```
+OSError: CUDA_HOME environment variable is not set.
+  torch/utils/cpp_extension.py -> CUDAExtension -> library_paths(cuda=True)
+```
+
+flash-attn ships CUDA kernels and requires an NVIDIA GPU; there is no Apple Silicon build, and
+`torch.cuda.is_available()` is `False` here. **This is not a configuration problem and has no workaround
+on this machine.**
+
+The consequence is easy to miss: `embed_data` requests `use_fast_transformer=True` by default, and when
+flash-attn is absent the model **silently downgrades** to the standard PyTorch transformer with a
+`UserWarning`, not an error (`scgpt/model/model.py:75-82`). So attention is the ordinary quadratic
+implementation, and any increase in `max_length` costs O(n²) with none of the mitigation the paper
+assumes.
+
+### MPS works — 4× faster, same embeddings — but needs a fallback flag
+
+`gen_embeds.py` hardcodes `device = "cpu"` with the comment "MPS disabled". The reason is a single
+missing operator:
+
+```
+NotImplementedError: The operator 'aten::_nested_tensor_from_mask_left_aligned'
+is not currently implemented for the MPS device.
+```
+
+Setting **`PYTORCH_ENABLE_MPS_FALLBACK=1`** runs that one op on CPU and the rest natively on MPS.
+Benchmarked on 256 real cells (`hvg5000`, `max_length=1200`, `batch_size=64`, seeded identically for both
+devices; scratchpad `mps_smoke2.py`, 03.08.2026):
+
+| Device | 256 cells | extrapolated to 53,513 cells |
+|---|---|---|
+| CPU | 26.9 s | ~94 min |
+| **MPS** (with fallback) | **6.6 s** | **~23 min** |
+
+**The two devices agree numerically:** max absolute difference **2.7 × 10⁻⁷**, cosine similarity
+**1.000000** (min and mean) across all 256 cells. Cell embeddings are L2-normalised by scGPT
+(`cell_emb.py`), so that residual is float32 noise, not a difference in result.
+
+> ⚠️ The full-run figures are **extrapolated linearly from 256 cells** — no complete run has been timed.
+
+**`gen_embeds.py` now selects MPS and seeds itself** (03.08.2026): it sets
+`PYTORCH_ENABLE_MPS_FALLBACK=1` *before* the scgpt import — PyTorch reads that variable when the MPS
+backend registers its dispatch keys, i.e. at `torch` import time, so a later assignment is silently
+ignored — then picks `mps` when `torch.backends.mps.is_available()` and falls back to `cpu` otherwise,
+and seeds `torch` and `numpy` with **42** before embedding. That covers both random draws in the path:
+the collator's gene subsampling (`data_collator.py:169`) and the tie-breaking inside value binning
+(`preprocess.py:_digitize`); the DataLoader uses `num_workers=0`, so there is no per-worker reseeding to
+handle.
+
+Verified by running `gen_embeds.py` **twice** over a 256-cell `all_genes` subset — the case where every
+cell is subsampled, so the seed is actually exercised — and comparing `obsm["X_scGPT"]`: **bitwise
+identical, max absolute difference 0.0**.
+
+> ⚠️ **The embeddings currently on disk predate this change.** Every `..._scGPT_human_embeddings.h5ad`
+> under `processed/scRNAseq_SCP542/` was generated on CPU without a seed and has **not** been
+> regenerated. Until it is, the files do not match what the script now produces.
+
+### What this rules out
+
+Raising `max_length` to cover every gene in `all_genes` would need ~7,798 (the largest expressed-gene
+count in any cell). Without FlashAttention that is roughly a 40× increase in attention cost over 1,200
+and forces a smaller batch size for memory, on top of putting the input far outside the 1,200-token
+regime the checkpoint was pretrained in. **Full-coverage single-pass embedding is therefore expensive and
+untested here.**
+
+### Decision — one seeded draw at 1,200; `all_genes` is a sanity check (03.08.2026)
+
+Four routes were considered for making the `all_genes` scGPT embedding something other than one
+unreproducible random draw: (**A**) keep `max_length=1200` and seed it; (**B**) keep 1,200 and average
+*k* independently seeded draws per cell; (**C**) raise `max_length` to ~7,798 for full single-pass
+coverage; (**D**) drop `all_genes` as a scGPT comparator entirely.
+
+**Chosen: A — a single draw at `max_length=1200`, seeded with 42.** Decision by Selin, 03.08.2026.
+`all_genes` is hereby **a sanity check, not a full-transcriptome comparator**; `hvg5000` is the primary
+result.
+
+Why A over B, the closest alternative:
+
+1. **Interpretability.** Every A embedding is an actual model output produced at the input length the
+   checkpoint was pretrained on. B's averaged vector is a **constructed object the model never emitted**:
+   scGPT L2-normalises each cell embedding (`cell_emb.py`), so the mean of *k* unit vectors falls inside
+   the sphere and has to be renormalised by hand. For a representation that is fed to a downstream
+   predictor and then interpreted, "this is what scGPT returned" is a materially easier thing to defend
+   than "this is the renormalised mean of five draws".
+2. **Cost.** B multiplies the embedding step by *k* and obliges a re-run of anything computed on the
+   embeddings. Measured: ~23 min per pass on MPS (extrapolated from 256 cells, above), so *k* = 5 is
+   roughly 2 h of embedding plus downstream re-runs — **not prohibitive, and this is the weaker of the
+   two reasons.** Reason 1 is the load-bearing one.
+3. **It keeps the two variants comparable.** Only **1 cell of 53,513** is subsampled in `hvg5000`, so B
+   would build `all_genes` by a procedure `hvg5000` never uses — trading a known sampling artifact for a
+   new asymmetry between the very variants being compared. For a sanity check, that defeats the purpose.
+
+> ⚠️ **The consequence, stated plainly.** Under A the `all_genes` scGPT embeddings still represent a
+> **random ~34 % of each cell's expressed genes**. They become *reproducible*, not *complete*. No claim
+> of the form "scGPT does not benefit from the full transcriptome" can rest on them, because scGPT never
+> received the full transcriptome. What `all_genes` can support is the narrower statement that
+> HVG-5000 loses nothing detectable relative to a same-length draw from the unfiltered gene set.
+> Route **C** remains the only one that would license the stronger claim, and it is not being taken.
+
+**3 — Storage cost (but *not* embedding time).** `all_genes` occupies **26 GB** on disk against **11 GB**
+for `hvg5000` (`du -sh data/processed/scRNAseq_SCP542/*/`, 03.08.2026).
+
+> ⚠️ **Correction, 03.08.2026.** An earlier version of this section claimed re-embedding time "scales
+> similarly" with the gene set. **It does not.** Because `max_length` caps the sequence at 1,200, scGPT
+> reads at most 1,199 genes per cell in *either* variant, so the embedding step costs essentially the
+> same for `all_genes` as for `hvg5000`. The variant cost difference is disk plus the convert/PCA/IO
+> steps, not the transformer. Reason 3 is therefore a **storage** argument only, and is the weakest of
+> the three. See [Compute environment and its limits](#compute-environment-and-its-limits-03082026) for
+> the measured numbers.
+
+> ⚠️ **What is stale in the evidence above** (03.08.2026):
+>
+> - **The quoted numbers are superseded.** They were trained on the **`mean_pv`** target (cached at
+>   `outputs/legacy/training_545_mean_pv/hvg_sweep.csv`), retired as the default on 27.07.2026. §9 was
+>   re-targeted to **`auc`** on 03.08.2026 and no longer reads that cache, so **the sweep has no live
+>   numbers until it is re-run**. The conclusion is expected to carry over — `mean_pv` and raw `auc`
+>   were shown statistically identical everywhere
+>   ([Corrections](corrections-and-dead-ends.md#the-curve-fit-preserves-signal-the-dose-average-destroys),
+>   `notebooks/result_evaluation/target_comparison.ipynb`, 13.07.2026) — but that is an expectation,
+>   not a result.
+> - Until 03.08.2026 the sweep cell was **internally inconsistent**: its load branch read the
+>   `mean_pv` cache while its compute branch resolved the targets file through
+>   `layout.DEFAULT_CTRP_SCORE`, which had changed to `auc`. Re-running it would have written `auc`
+>   numbers into a `mean_pv`-labelled file with identical column names. §9 now pins `SCORE` explicitly.
+> - The `all_genes` **scGPT** embeddings were generated **without a seed**, so that column of the sweep
+>   is not exactly reproducible. Fixed going forward (seed 42); the existing numbers predate the fix.
+> - The **PCA** column will need re-running once the pending `add_pca.py` changes (gene scaling before
+>   PCA, post-HVG renormalization) are settled — both alter `X_pca` for every variant. The scGPT column
+>   is unaffected by them.
+
 > ⚠️ **Addition + history:** the first build (21.04–07.05.2026) used the **full transcriptome**
 > (53,513 × 22,722, no HVG). HVG-5000 was added **inside `convert`** on 25.05.2026 — fewer scGPT
 > OOV genes, smaller files. The plan only mentions full-transcriptome PCA, so HVG-5000 is a

@@ -219,6 +219,7 @@ def main():
             force=args.force_pca,
             counts_h5ad=str(paths.raw_h5ad),
             n_comps=args.pca_n_comps,
+            seed=args.seed,
         )
 
     print("\nPreprocessing pipeline complete.")

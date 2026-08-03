@@ -560,11 +560,18 @@ they were drawn from was not, which is a separate defect.
 **Claimed** as a hunch from the earlier matrix runs — and its mirror, that HVG filtering specifically
 helps scGPT.
 
-**Not reproduced** 28.06.2026 (`notebooks/2_training.ipynb` §4), the gene-set sweep at 1k/2k/3k/5k plus
+**Not reproduced** 28.06.2026 (then `notebooks/2_training.ipynb` §4; since 03.08.2026
+`notebooks/data_and_harmonization/verify_variants.ipynb` §9), the gene-set sweep at 1k/2k/3k/5k plus
 `all_genes` under identical 5-fold CV: both representations are **flat across the whole axis** (PCA
 ~203–216 heads beating baseline, scGPT ~184–193), val MSE constant at 0.0105–0.0107. PCA's `all_genes`
 value of 204 sits mid-band, *below* `hvg3000`'s 216. There is no sweet spot and no all-genes advantage
 for either representation.
+
+> ⚠️ **03.08.2026 — the supporting numbers are superseded, the refutation is not.** Those figures came
+> from the retired `mean_pv` target; §9 now runs on `auc` and does not read the `mean_pv` cache, so the
+> sweep has no live numbers until re-run ([Step 05](05-multitask-results.md#gene-set-sweep--heads-beating-vs-gene-count-incl-all_genes-28062026)).
+> The claim stays refuted — nothing has been produced that revives it — but it must not be re-asserted
+> from these numbers without the re-run.
 
 ---
 

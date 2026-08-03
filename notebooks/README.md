@@ -14,7 +14,7 @@ indexed by `runs/runs_index.csv`.
 | # | Notebook | What it does | Drives |
 |---|---|---|---|
 | **1** | `1_preprocessing.ipynb` | Builds the trainable data: recomputes the 512-d PCA baseline for both variants (§A) and builds the HVG-sweep variants including the scGPT re-embed (§B) | `scripts/preprocessing/run_preprocessing.py` |
-| **2** | `2_training.ipynb` | The PCA-vs-scGPT harness: 8-run matrix (load-or-train), 5-fold GroupKFold CV with test held out, per-drug correlation, HVG sweep | `train_multitask.train_rep`, `cv_evaluate` |
+| **2** | `2_training.ipynb` | The PCA-vs-scGPT harness: 8-run matrix (load-or-train), 5-fold GroupKFold CV with test held out, per-drug correlation | `train_multitask.train_rep`, `cv_evaluate` |
 | **3** | `3_panel_training.ipynb` | The current training run: raw `auc`, per-fold density weighting, out-of-fold scoring against the ridge control | `scripts/training/cv.py`, `density_weighting.py` |
 
 `1_` and `2_` call the **same entry points the CLI uses**, so the notebooks and the command line cannot
@@ -35,7 +35,7 @@ drift — they are documentation *and* a re-run, not a fork.
 |---|---|
 | `drug_catalog.ipynb` | Cross-database compound harmonization (CTRP / GDSC / PRISM / DrugBank) → writes `data/drug/*`. The **only** analysis notebook whose outputs another step consumes |
 | `drug_coverage.ipynb` | Per-drug coverage and response spread; the label distribution behind "why the task is hard". ⚠️ Its *learnability* section was built on `mean_pv` and is superseded; the target-distribution figures still stand |
-| `verify_variants.ipynb` | QC of `hvg5000` vs `all_genes`, plus the PCA-vs-scGPT UMAP latent validation |
+| `verify_variants.ipynb` | QC of `hvg5000` vs `all_genes`, the PCA-vs-scGPT UMAP latent validation, and (§9) the gene-set sweep — heads-beating vs gene count under CV, moved here from `2_training` §4 on 03.08.2026 and re-targeted to `auc` |
 
 ### `result_evaluation/` — is the number real?
 

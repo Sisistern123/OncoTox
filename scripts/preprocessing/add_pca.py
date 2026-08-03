@@ -9,6 +9,9 @@ from scripts.preprocessing.layout import PipelinePaths, add_data_args
 
 
 DEFAULT_N_COMPS = 512
+# Project-wide seed. scanpy's own default is random_state=0, so this must be passed
+# explicitly to sc.pp.pca -- leaving it out silently uses 0.
+DEFAULT_SEED = 42
 
 
 def run(
@@ -16,6 +19,7 @@ def run(
     force: bool = False,
     counts_h5ad: str | None = None,
     n_comps: int = DEFAULT_N_COMPS,
+    seed: int = DEFAULT_SEED,
 ):
     """Compute the PCA baseline (``X_pca``) and store it in the targets AnnData.
 
@@ -63,7 +67,7 @@ def run(
         raise ValueError(
             f"n_comps={n_comps} exceeds min(n_obs, n_vars)={max_comps} for {counts_h5ad}."
         )
-    sc.pp.pca(src, n_comps=n_comps)
+    sc.pp.pca(src, n_comps=n_comps, random_state=seed)
     adata.obsm["X_pca"] = src.obsm["X_pca"]
     print(f"  X_pca computed on {src.n_vars} genes -> shape {adata.obsm['X_pca'].shape}.")
 
@@ -96,6 +100,12 @@ def _parse_args():
         default=DEFAULT_N_COMPS,
         help=f"Number of PCA components to keep (default: {DEFAULT_N_COMPS}, matches scGPT width).",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=DEFAULT_SEED,
+        help=f"random_state for sc.pp.pca (default: {DEFAULT_SEED}; scanpy's own default is 0).",
+    )
     return parser.parse_args()
 
 
@@ -103,4 +113,10 @@ if __name__ == "__main__":
     args = _parse_args()
     paths = PipelinePaths.build(args.data_root, args.variant, args.score)
     counts = args.counts or paths.raw_h5ad
-    run(str(args.path or paths.targets_h5ad), args.force, counts_h5ad=str(counts), n_comps=args.n_comps)
+    run(
+        str(args.path or paths.targets_h5ad),
+        args.force,
+        counts_h5ad=str(counts),
+        n_comps=args.n_comps,
+        seed=args.seed,
+    )

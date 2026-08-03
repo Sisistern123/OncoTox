@@ -134,9 +134,17 @@ def oof_predictions(
             with torch.no_grad():
                 head.bias.copy_(torch.from_numpy(means))
 
+        # Explicit generator: without one, RandomSampler seeds itself from the global torch
+        # RNG at iteration time, which happens to be seeded because train_model calls
+        # set_seed(config.seed) first -- an ordering dependency that breaks silently.
         best, hist = train_model(
             model,
-            DataLoader(tr_ds, batch_size=batch_size, shuffle=True),
+            DataLoader(
+                tr_ds,
+                batch_size=batch_size,
+                shuffle=True,
+                generator=torch.Generator().manual_seed(config.seed),
+            ),
             DataLoader(va_ds, batch_size=batch_size, shuffle=False),
             config=config,
             tag=f"{tag}_f{fold}",

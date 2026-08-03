@@ -250,7 +250,14 @@ def train_rep(
             "rerun ctrp_to_h5ad to regenerate Y_ctrp consistently."
         )
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    # Explicit generator so the shuffle order does not depend on train_model happening to
+    # call set_seed before the loader is first iterated.
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        generator=torch.Generator().manual_seed(config.seed),
+    )
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     sample_x, _, _ = train_dataset[0]
@@ -420,7 +427,12 @@ def cv_evaluate(
 
         train_ds = MultiDrugDataset(adata=adata, use_rep=use_rep, cell_mask=train_cells, drugs=drugs)
         val_ds = MultiDrugDataset(adata=adata, use_rep=use_rep, cell_mask=val_cells, drugs=drugs)
-        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+        train_loader = DataLoader(
+            train_ds,
+            batch_size=batch_size,
+            shuffle=True,
+            generator=torch.Generator().manual_seed(config.seed),
+        )
         val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
 
         baseline_const = _per_drug_train_mean(train_ds)

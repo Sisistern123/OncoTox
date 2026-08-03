@@ -521,7 +521,17 @@ correction to an earlier claim that credited the curve fit rather than the stand
 
 ### Gene-set sweep — heads-beating vs gene count (incl. all_genes, 28.06.2026)
 
-Does either rep have a preferred gene-set size? `notebooks/2_training.ipynb` §4 builds each variant
+> ⛔ **03.08.2026 — the numbers in this table are superseded.** They were produced on the retired
+> **`mean_pv`** target and cached at `outputs/legacy/training_545_mean_pv/hvg_sweep.csv`. The sweep
+> moved to `notebooks/data_and_harmonization/verify_variants.ipynb` §9 and was re-targeted to **`auc`**,
+> which no longer reads that cache — so the sweep currently has **no live numbers**. The table is kept
+> as the record of what was believed on 28.06.2026; do not quote it as current. Two further caveats
+> on it are in [Step 02](02-preprocessing-and-embeddings.md#decision--one-seeded-draw-at-1200-all_genes-is-a-sanity-check-03082026):
+> the `all_genes`/scGPT column came from unseeded embeddings, and the PCA column will move again once
+> the pending `add_pca.py` changes land.
+
+Does either rep have a preferred gene-set size?
+`notebooks/data_and_harmonization/verify_variants.ipynb` §9 builds each variant
 (1k/2k/3k/5k **plus `all_genes`**, full pipeline incl. scGPT re-embed; `1_preprocessing` §B) and runs the same
 **5-fold GroupKFold, test held out, all 545 drugs** — so the HVG-vs-all-genes comparison is
 apples-to-apples under identical CV:
