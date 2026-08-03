@@ -360,8 +360,17 @@ Unlike the items above these are questions, not scheduled work.*
 - [ ] **Cross-database PRISM** (masked multi-task) — [Step 06](./steps/06-planned-work.md#a-cross-database-integration).
       (GDSC not a modelling priority; was only for Hashimoto-san's list.)
 - [ ] **XAI** — feature importance → resistance drivers — [Step 06 · B](./steps/06-planned-work.md#b-xai-and-feature-interpretability).
-- [ ] Confirm scGPT input preprocessing in `gen_embeds.py` (raw counts vs CPM) so scGPT isn't handicapped.
-- [ ] *(Optional)* regenerate scGPT embeddings from scratch (reproducibility pass; identical output).
+- [x] ~~Confirm scGPT input preprocessing in `gen_embeds.py` (raw counts vs CPM) so scGPT isn't
+      handicapped.~~ **Answered 03.08.2026: CPM does not handicap scGPT, and the paper sanctions it.**
+      Value binning uses per-cell quantiles of that cell's own non-zero values, so it is rank-based and
+      invariant to any monotone per-cell transform — CPM, raw counts, `normalize_total`, `log1p` all
+      give byte-identical bins (verified on 200 cells). Cui et al. present binning as the *replacement*
+      for TPM-normalization and log1p, and state that `X` "represent[s] both the raw and preprocessed
+      data matrices before binning". Detail in
+      [Step 02](./steps/02-preprocessing-and-embeddings.md#compute-environment-and-its-limits-03082026).
+- [ ] Regenerate scGPT embeddings — **no longer optional and no longer identical**: `gen_embeds.py` now
+      seeds with 42 and runs on MPS, so every embeddings file on disk predates the change. Scope
+      (all_genes only vs all five variants) still undecided.
 - [ ] *(Optional)* re-run `split_paclitaxel` single-task to fill [Step 04](./steps/04-single-task-results.md)'s
       PCA column, or retire that progression.
 

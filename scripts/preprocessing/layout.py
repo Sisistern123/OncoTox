@@ -8,7 +8,9 @@ from pathlib import Path
 
 # Default locations for this machine (override with --data-root / CLI flags if needed).
 DEFAULT_DATA_ROOT = Path("/Users/selin/Desktop/OncoTox/data")
-DEFAULT_SCGPT_SCRIPT = Path("/Users/selin/PycharmProjects/scGPT/gen_embeds.py")
+# Vendored next to this file (03.08.2026); it still needs the separate scGPT venv, which
+# run_preprocessing.py reaches via --scgpt-python.
+DEFAULT_SCGPT_SCRIPT = Path(__file__).resolve().with_name("gen_embeds.py")
 DEFAULT_SCGPT_MODEL_DIR = Path("/Users/selin/Desktop/OncoTox/scGPT/scGPT_human")
 
 VARIANTS = ("hvg1000", "hvg2000", "hvg3000", "hvg5000", "all_genes")
