@@ -50,6 +50,7 @@ so the improvement is auditable.
 
 | Date | What |
 |---|---|
+| 05.08.2026 | [scGPT discarded genes that are in its vocabulary under their current symbols](#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols) — exact symbol match against an older annotation; **open** |
 | 28.07.2026 | [The 8-drug literature panel, and every number computed on it](#the-8-drug-literature-panel-and-every-number-computed-on-it) — drawn from a pre-filtered pool |
 | 27.07.2026 | [The kill/spare learnability gate measured potency, not rankability](#the-learnability-gate-measured-potency-not-rankability) — survived months |
 | 14.07.2026 | [The first DrEval benchmark — a val-split leak](#the-first-dreval-benchmark--a-val-split-leak) — found and fixed same day (`ee07b00`) |
@@ -82,6 +83,81 @@ so the improvement is auditable.
 ---
 
 ## Superseded results
+
+### scGPT discarded genes that are in its vocabulary under their current symbols
+
+**Found** 05.08.2026 while checking [TODO](../TODO.md)'s standing question *"scGPT OOV check — sind die
+wirklich OOV?"*. The answer is **no**.
+
+**What it is.** `gen_embeds.py` resolves genes by an **exact string match** of SCP542's symbols against
+`scGPT_human/vocab.json`; `embed_data` then drops everything unmatched (`scgpt/tasks/cell_emb.py:220`).
+But SCP542 carries an **older HGNC annotation than the vocabulary**, so every gene renamed between the
+two releases fails the match and is thrown away — while being present in the vocabulary under its
+current symbol. The mismatch is not a formatting problem: of the 424 / 2,152 dropped symbols, **0** are
+recovered by case-folding and **5** by stripping punctuation.
+
+The six highest-expression casualties in `all_genes`, with the vocabulary membership of each symbol
+checked directly:
+
+| dropped as OOV | expressed in | current symbol | in vocab |
+|---|---|---|---|
+| `GNB2L1` | 99.96 % of cells | `RACK1` | ✓ |
+| `ATP5E` | 99.95 % | `ATP5F1E` | ✓ |
+| `H2AFZ` | 99.47 % | `H2AZ1` | ✓ |
+| `H3F3B` | 99.82 % | `H3-3B` | ✓ |
+| `HIST1H4C` | 92.30 % | `H4C3` | ✓ |
+| `H3F3A` | 99.65 % | `H3-3A` | ✓ |
+
+Also `PTRF`→`CAVIN1`, `CYR61`→`CCN1`, `LINC00152`→`CYTOR`, `H2AFJ`→`H2AJ`, `C6orf48`→`SNHG32`. Every
+old symbol absent from the vocabulary, every current one present.
+
+**Scale**, counted 05.08.2026 in `notebooks/data_and_harmonization/gene_symbol_rescue.ipynb` against
+`reference/hgnc_complete_set.txt` (HGNC approved set, published 04.08.2026, pinned by SHA-256 because
+HGNC overwrites its download URL in place and publishes no dated archive —
+[provenance](../../reference/README.md)). Percentages are of the **whole transcriptome**: the source
+matrix is CPM-normalized, so each cell carries a fixed 10⁶ budget and a gene set's CPM-per-cell is its
+share of it.
+
+| | genes discarded | **recoverable renames** | discarded expression | **of which recoverable** |
+|---|---|---|---|---|
+| `hvg5000` | 424 | **129** | 0.433 % | **0.378 %** — 87 % of the loss |
+| `all_genes` | 2,152 | **775** | 3.874 % | **3.608 %** — 93 % of the loss |
+
+**Nearly the whole loss is recoverable.** In `all_genes`, 775 genes carrying **3.6 % of every cell's
+transcriptome** were discarded for no reason, 392 of them expressed in over 10 % of cells. Genuinely
+absent genes — clone-based names that were never HGNC entities — number 1,348 but carry only 0.21 %.
+A further 26 genes were renamed into a symbol the vocabulary also lacks (0.013 %), and 3 former symbols
+map to several current genes and were left unresolved rather than guessed.
+
+Recovery is by HGNC `prev_symbol` only; `alias_symbol` is deliberately not used, since a synonym can map
+two distinct genes onto one name. The counts are therefore a **lower bound**.
+
+> ⚠️ **Correction, 05.08.2026 (same day).** This entry first gave the discarded share as **1.48 %** for
+> `hvg5000` and 3.90 % for `all_genes` under one column heading. Those had different denominators: the
+> `all_genes` figure was of the transcriptome (3.87 % exact, confirmed), but the `hvg5000` figure was of
+> the **HVG-5000 subset's** expression. Against the transcriptome it is **0.433 %**. The table above uses
+> one denominator throughout.
+
+**Collisions — 1 in `hvg5000`, 11 in `all_genes`.** A recovered symbol that already exists as its own row
+cannot simply be remapped; the two rows would have to be merged, which combines expression values and is
+an analysis decision about the data. They are listed by the notebook and **left unresolved**. The largest
+shows why: `HNRNPU-AS1 → HNRNPU` would fold an antisense lncRNA into its sense gene. Also
+`C2orf48 → RRM2`, `C10orf12 → LCOR`, `CTAGE5 → MIA2`.
+
+**What it affects — scGPT only, and worse than the gene count suggests.** PCA reads the `convert` file,
+before the OOV drop, so it receives all 5,000 / 22,722 genes; HVG selection also runs before the drop.
+The damage is confined to the scGPT arm. Within it, the loss is **not** limited to the discarded genes:
+`DataCollator(do_binning=True)` bins each cell by quantiles of that cell's own non-zero values, so
+removing the most-expressed genes moves every quantile edge and changes the bin assigned to *every
+remaining gene*.
+
+**Direction of the bias.** It handicaps the representation the project argues for. Every reported
+scGPT-vs-PCA margin is therefore **conservative** with respect to this defect — it can only have
+understated scGPT, never inflated it.
+
+**Not fixed.** The size of the defect is now measured; the repair is not made. Applying it needs a rule
+for the 12 collisions and a re-embedding, which the [freeze](../TODO.md) forbids. Until then every scGPT
+embedding on disk was produced without those 775 genes.
 
 ### The learnability gate measured potency, not rankability
 
