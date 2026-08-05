@@ -16,6 +16,26 @@
 > rather than presented on a panel we knew to be flawed; the point of that decision is lost if we patch
 > around it.
 
+> # ⛔ 03.08.2026 — NOTHING IS RE-RUN UNTIL SELIN'S REVIEW IS FINISHED
+>
+> **No re-embedding, no retraining, no recomputing of `X_pca` — nothing — until Selin has completed her
+> own double-check of the pipeline and the repository and says so.** Code and documentation fixes
+> continue; producing new numbers does not.
+>
+> **Why it matters now:** the 03.08 preprocessing pass changed what the code *produces* without
+> re-running anything. `gen_embeds.py` seeds with 42 and runs on MPS; `add_pca.py` passes
+> `random_state=42` to `sc.pp.pca`; the training `DataLoader`s take an explicit generator. So **every
+> artifact on disk predates the code that now exists** — embeddings, `X_pca`, and every run under
+> `runs/`. That divergence is recorded, not hidden: the affected numbers carry dated markers in
+> [Step 02](./steps/02-preprocessing-and-embeddings.md),
+> [Step 05](./steps/05-multitask-results.md) and
+> [Corrections](./steps/corrections-and-dead-ends.md).
+>
+> **The order is deliberate.** Re-running first would burn hours regenerating artifacts from a pipeline
+> the review may still change, and would destroy the inputs behind the committed results before they
+> have been read. Decisions still open that would each force another recompute: gene scaling before PCA,
+> the post-HVG renormalization, the HVG ranking scale, and the re-embedding scope.
+
 - start bei data download, schau genauer auf drug selection, suche publications dafür raus
 - data harmonization genauer anschauen
       - bulk und sc annotation merge -- wie genau wurde es gemacht, ist es valide?

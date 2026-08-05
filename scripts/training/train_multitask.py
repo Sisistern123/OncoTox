@@ -243,6 +243,11 @@ def train_rep(
     val_dataset = MultiDrugDataset(
         h5ad_path=h5ad_path, use_rep=use_rep, split="val", drugs=drugs
     )
+    # What was actually read: on a fixed split X_pca resolves to the train-fitted key.
+    # Recorded separately from `rep` so run tags stay stable while provenance is exact.
+    rep_key = train_dataset.use_rep
+    if rep_key != use_rep:
+        print(f"  rep '{use_rep}' resolved to obsm['{rep_key}'] (fitted on train cells only).")
 
     if train_dataset.drug_names != val_dataset.drug_names:
         raise RuntimeError(
@@ -329,6 +334,7 @@ def train_rep(
             "drug_scope_kind": "multi_drug",
             "drugs_requested": drugs,
             "rep": use_rep,
+            "rep_key": rep_key,
             "data_root": str(data_root) if data_root is not None else None,
             "variant": variant,
             "h5ad_path": h5ad_path,
@@ -362,6 +368,7 @@ def train_rep(
         "input_dim": input_dim,
         "output_dim": output_dim,
         "rep": use_rep,
+        "rep_key": rep_key,
     }
 
 

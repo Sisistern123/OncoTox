@@ -10,6 +10,37 @@ reduced to the \NHvg{} most highly variable; scGPT embeds the \NVocab{} of these
 vocabulary, while PCA is computed on all \NHvg{}. The gene-set size is not critical: an earlier sweep from
 1{,}000 genes to the full transcriptome showed no advantage for any particular count
 (\code{notebooks/07}), so the \NHvg-gene selection is used throughout.
+\revision{\emph{Correction, 05.08.2026.} That sweep was computed on the legacy \code{mean\_pv} response
+score rather than the \code{auc} target used throughout this report, so its numbers are superseded; it
+now lives in \code{notebooks/data\_and\_harmonization/verify\_variants.ipynb}, \S9, and the reference to
+\code{notebooks/07} above is stale. Its \emph{all-genes} arm is also not the full transcriptome as far as
+scGPT is concerned: the model reads at most 1{,}200 genes per cell, drawn at random from that cell's
+non-zero genes, so what the sweep compared was \NHvg{} \emph{selected} genes against a random subsample
+of broadly similar size. The claim that gene-set size does not matter is therefore untested on the
+current target.}
+
+\begin{revisionblock}
+\textbf{Expression preprocessing (revised 05.08.2026).} SCP542 is distributed as counts per million, so
+library-size normalization has already been applied --- once, to the full gene matrix, which is where it
+belongs. The pipeline therefore does not normalize a second time. Expression is log-transformed as
+$\log(1+x)$; the \NHvg{} most variable genes are selected on that matrix using the dispersion-based
+Seurat criterion; each gene is then standardized to zero mean and unit variance across cells, with
+$z$-scores clipped at 10, before the principal components are taken
+(\code{scripts/preprocessing/scp542\_conversion.py}, \code{scripts/preprocessing/add\_pca.py}).
+
+Until this revision the PCA branch did two things differently. It applied a second library-size
+normalization \emph{after} gene selection, dividing each cell by the total of its retained genes alone,
+which rescales a cell by the share of its expression that happens to fall inside the selected set and
+scales the same cell differently in each gene-set variant. And it applied no per-gene standardization,
+so the leading components tracked absolute expression level rather than variation between cells. Both
+are corrected in the code; \textbf{every PCA number in this report was produced before the correction}
+and will change when the representation is recomputed.
+
+scGPT receives the same CPM matrix with neither step applied. It replaces them with a per-cell binning
+of expression into 51 quantile bins, computed from that cell's own non-zero values --- a rank transform,
+and therefore invariant to any monotone per-cell rescaling. Counts, CPM and $\log(1+x)$ inputs give
+identical bins, so the CPM input does not disadvantage the model \cite{scgpt}.
+\end{revisionblock}
 
 A property of the data governs every error estimate in this report. The label is defined per cell line and
 drug, not per cell, so all cells of a line share the same broadcast bulk value and act as
@@ -25,6 +56,26 @@ fed into the same multi-head perceptron, with hidden dimensions 128 and 64, laye
 activations and dropout. The network has one output head per drug and is trained with a masked
 mean-squared-error loss that is evaluated only on observed cell-drug pairs. The model and training code are
 defined in \code{scripts/model/OncoMLP.py} and \code{scripts/training/train\_multitask.py}.
+
+\begin{revisionblock}
+\textbf{Splits, and where each representation is fitted (added 05.08.2026).} Train, validation and test
+are a 70/15/15 partition of cell lines, so every cell of a line falls on the same side and no line is
+split across parts. The assignment is now \emph{frozen to a versioned file}
+(\code{splits/split\_ctrp.csv}) instead of being redrawn from the data on each run. It has to be:
+eligibility depends on which compounds survive the label filters, so a change to the drug panel would
+otherwise move lines between train, validation and test unannounced, and results from either side of
+that change would look comparable while being scored on different held-out lines. Redrawing requires an
+explicit flag, and a line that the frozen file does not cover is an error rather than a fresh draw.
+
+The principal components used as model input are fitted on the training lines of that split alone ---
+per-gene standardization and the rotation both --- and then applied to the held-out lines
+(\code{X\_pca\_train\_ctrp}). A separate all-cells decomposition (\code{X\_pca}) is kept for description
+only, such as the latent-space figures, where holding cells out would be wrong. The cross-validation
+results are the exception: its folds are drawn at training time rather than stored, so no precomputed
+train-only projection exists for them and they still use the all-cells decomposition. scGPT needs no
+such distinction --- its weights are pretrained and frozen, and its per-cell binning uses only the cell
+being embedded, so nothing about it is fitted on this data.
+\end{revisionblock}
 
 \subsection{Response target and per-drug standardization}
 \label{sec:target}

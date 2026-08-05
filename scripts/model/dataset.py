@@ -3,6 +3,43 @@ import scanpy as sc
 import torch
 from torch.utils.data import Dataset
 
+from scripts.preprocessing.add_pca import train_pca_key
+
+
+def resolve_rep(
+    obsm_keys,
+    use_rep: str,
+    split_col: str | None,
+    all_cells_pca: bool = False,
+) -> str:
+    """Map the requested representation to the ``obsm`` key actually read.
+
+    ``X_pca`` exists in two forms. The stored ``X_pca`` is fitted on every cell and is the
+    descriptive representation -- correct for UMAPs, wrong as model input, because a
+    held-out cell's coordinates then depend on held-out cells. ``add_pca.py`` also writes
+    ``X_pca_train_<split>`` for each fixed split, fitted on that split's training cells
+    only. A run scored on a fixed split therefore reads the train-fitted key by default.
+
+    This applies only to PCA. ``X_scGPT`` comes from frozen pretrained weights and a
+    per-cell binning, so it is never fitted on this data and has nothing to resolve.
+    Cross-validation passes ``split_col=None`` (its folds are drawn at training time, not
+    stored), so it falls through to ``X_pca`` -- still leaky, and documented as such in
+    docs/steps/02.
+
+    ``all_cells_pca=True`` forces the stored ``X_pca``; it exists so the leaky and
+    non-leaky variants can be compared deliberately, not as a convenience.
+    """
+    if use_rep != "X_pca" or split_col is None or all_cells_pca:
+        return use_rep
+    key = train_pca_key(split_col)
+    if key not in obsm_keys:
+        raise ValueError(
+            f"'{key}' not found in obsm, so X_pca on '{split_col}' would silently fall back "
+            f"to the all-cells PCA. Re-run add_pca.py for this file, or pass "
+            f"all_cells_pca=True to ask for the all-cells representation on purpose."
+        )
+    return key
+
 
 class ScGPTDrugDataset(Dataset):
     """Single-drug dataset (used by ``train_baseline.py`` / ``train_scGPT.py``)."""
@@ -66,6 +103,7 @@ class MultiDrugDataset(Dataset):
         drugs: "list[str] | None" = None,
         adata=None,
         cell_mask=None,
+        all_cells_pca: bool = False,
     ):
         """Load a multi-drug split.
 
@@ -113,9 +151,18 @@ class MultiDrugDataset(Dataset):
         if n_split == 0:
             raise ValueError(f"No cells found for split '{self.split}'.")
 
-        if use_rep not in adata.obsm:
+        # On a fixed split, X_pca resolves to that split's train-fitted PCA; under a
+        # cell_mask (the CV harness) there is no stored split to fit against, so it does
+        # not. self.use_rep records what was actually read, for run_meta.
+        self.use_rep = resolve_rep(
+            adata.obsm.keys(),
+            use_rep,
+            None if cell_mask is not None else split_col,
+            all_cells_pca=all_cells_pca,
+        )
+        if self.use_rep not in adata.obsm:
             raise ValueError(
-                f"Representation '{use_rep}' not found in adata.obsm! "
+                f"Representation '{self.use_rep}' not found in adata.obsm! "
                 f"Please verify your embeddings."
             )
 
@@ -136,7 +183,7 @@ class MultiDrugDataset(Dataset):
             keep_idx = np.array([available[d] for d in requested], dtype=int)
             drug_names = requested
 
-        X = np.asarray(adata.obsm[use_rep], dtype=np.float32)[split_mask]
+        X = np.asarray(adata.obsm[self.use_rep], dtype=np.float32)[split_mask]
         Y = np.asarray(adata.obsm[y_obsm_key], dtype=np.float32)[split_mask][:, keep_idx]
         M = np.asarray(adata.obsm[mask_obsm_key], dtype=bool)[split_mask][:, keep_idx]
         # Replace NaNs in masked-out entries with 0.0 so they're safe to feed

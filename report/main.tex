@@ -26,6 +26,15 @@
 \newcommand{\suggestion}[1]{\textcolor{suggestioncol}{#1}}
 \newenvironment{suggestionblock}{\color{suggestioncol}}{\ignorespacesafterend}
 
+% ---- pipeline-review revisions, 03.-05.08.2026, marked in red ----------------
+% \revision{...} / revisionblock wraps text added or corrected during the
+% preprocessing review. Deliberately a different colour from \suggestion above:
+% that batch is a proposal from 27.07 awaiting acceptance, this one records
+% changes already made to the code, so the two must be reviewable separately.
+\definecolor{revisioncol}{RGB}{200,0,0}
+\newcommand{\revision}[1]{\textcolor{revisioncol}{#1}}
+\newenvironment{revisionblock}{\color{revisioncol}}{\ignorespacesafterend}
+
 % single source of truth for the headline numbers (see results_numbers.tex)
 \input{results_numbers}
 

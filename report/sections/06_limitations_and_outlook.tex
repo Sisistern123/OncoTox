@@ -23,6 +23,53 @@ more seeds and a wider drug set. The external benchmark is itself preliminary, c
 leave-cell-line-out split on the learnable subset rather than the leave-tissue-out and leave-drug-out
 settings or the full panel.
 
+\begin{revisionblock}
+\textbf{Reproducibility, and the standing of the numbers below (05.08.2026).} A review of the
+preprocessing pipeline found several sources of run-to-run variation that had not been controlled. They
+are recorded here rather than beside any one result because they qualify all of them. Random seeds were
+set in the training code but not everywhere randomness was actually consumed: the principal-component
+decomposition silently used the library default rather than the project seed, the training data loaders
+took their shuffling order from the global generator instead of an explicit one, and the embedding script
+set no seed at all. All are now fixed to a single project-wide value.
+
+This matters most for scGPT, whose embedding path is not deterministic by construction. The model reads
+at most 1{,}200 genes per cell and samples them at random when a cell has more, so the all-genes variant
+is a random subsample of each cell's transcriptome rather than the transcriptome itself. With the seed
+fixed it is one reproducible draw, and it is treated here as a sanity check rather than as a
+full-transcriptome comparator --- a single well-defined input is preferable to averaging over draws,
+which would multiply the cost of every experiment and leave each individual result harder to attribute.
+
+The hardware also bounds what can be checked. FlashAttention is CUDA-only and cannot be installed on this
+machine, so scGPT runs through the standard attention implementation; this is numerically equivalent but
+is why embedding one gene-set variant takes about twenty minutes here, and why the variants are not
+regenerated on demand. Training on the MPS backend is not bit-reproducible: four identical runs of the
+PCA arm returned Spearman correlations of 0.313, 0.315, 0.317 and 0.320 while every other arm was exact,
+so differences smaller than that band are not interpretable.
+
+A second asymmetry concerns how each representation is built, and it bears on the comparison itself. The
+principal components were fitted on the full expression matrix: gene selection, per-gene standardization
+and the rotation all used every cell, held-out lines included. The scGPT embedding is not fitted on this
+data at all --- the weights are pretrained and frozen, and the binning that precedes them uses only the
+cell being embedded --- so the two arms were not on equal terms. None of these fits sees a response
+label, which is why standard pipelines accept them, but the PCA baseline was tuned to the cells it was
+evaluated on and the scGPT representation was not. The bias runs toward the control, so any scGPT
+advantage measured this way is conservative on that account.
+
+For the fixed train/validation/test split this is now corrected: standardization and rotation are fitted
+on the training lines alone and applied to the held-out ones, as described in the Methods. It is
+\emph{not} corrected for the cross-validated results, whose folds are drawn at training time and so have
+no stored train-only projection; those remain on the all-cells decomposition, and gene selection remains
+an all-cells step for both arms. The numbers reported below all predate the correction in any case.
+
+Finally, the preprocessing corrections described in the Methods section change what the code produces,
+and nothing has been recomputed. \textbf{Every number in this report was produced by the pipeline as it
+stood before those corrections}, from the representations still on disk. They are reported as the record
+of what was actually run; re-running is deliberately deferred until the pipeline review is complete, so
+that results are regenerated once from a settled pipeline rather than repeatedly from a moving one. The
+embedding script was itself, until this review, an untracked file outside the repository, and is now
+versioned alongside the results it produces.
+\end{revisionblock}
+
 \suggestion{A further limitation concerns the loss rather than the labels. The response values of a given
 compound are not uniformly distributed over the cell lines: most lines cluster in a narrow band and the
 pharmacologically interesting extremes are sparse. Under an unweighted squared-error objective the dense

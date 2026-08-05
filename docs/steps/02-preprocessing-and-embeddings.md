@@ -91,7 +91,8 @@ convert : 22,722 → 5,000 genes (HVG)  — the single filter        [.X = CPM]
 `add_pca.py` reads the **convert counts** `SCP542_CCLE.h5ad` (the full HVG set) to compute `X_pca`,
 *not* the targets `.X` (which lost the OOV genes). So `X_pca` is a genuine HVG-5000 (or, for
 `all_genes`, full-transcriptome) PCA — a standard single-cell PCA baseline — while scGPT uses the
-vocabulary subset it is able to.
+vocabulary subset it is able to. *(The **transform** applied before that PCA was not standard until
+05.08.2026 — see [What transform PCA sees](#what-transform-pca-sees--corrected-05082026) below.)*
 
 **This gene-count asymmetry (PCA on the full filtered set, scGPT on its in-vocab subset) is
 intentional.** Dropping out-of-vocabulary genes is a real property of *using* scGPT, so each method
@@ -103,6 +104,106 @@ Changing the gene set means re-running `convert`, which forces a re-embed and a 
 `hvg5000` and `all_genes` live in **separate folders that never share files** (`guard_output`
 enforces it). `notebooks/data_and_harmonization/verify_variants.ipynb` checks these gene counts and the `X_pca` source at
 any time.
+
+### What transform PCA sees — corrected 05.08.2026
+
+`add_pca.py::run` reads the convert file and applies this before `sc.pp.pca`:
+
+```python
+sc.pp.log1p(src)                 # .X is CPM: library size already normalized, on the full gene set
+sc.pp.scale(src, max_value=10)   # per-gene z-score across cells, clipped
+sc.pp.pca(src, n_comps=512, random_state=42)
+```
+
+**The standard this follows.** Scanpy's and Seurat's recipes both normalize library size **once, on
+the full gene matrix, before gene selection**, then log-transform, then standardize genes, then take
+components. SCP542 arrives as CPM — Kinker et al. distribute `CPM_data.txt` — so that normalization
+has already happened and must not be repeated. `max_value=10` follows Seurat's
+`ScaleData(scale.max = 10)` default and scanpy's own tutorial setting; with 53,513 cells a single
+outlier can otherwise hand one gene an entire component.
+
+**Two defects this replaces**, both found in the 05.08.2026 audit of every line in the repository
+that transforms expression values:
+
+1. **Over-normalization.** `sc.pp.normalize_total(src, target_sum=1e4)` ran *after* HVG subsetting.
+   That is not a rescale to a different target but a **second** library-size normalization computed
+   over the retained genes only: each cell divided by its own HVG sum, so a cell whose expression
+   sits largely outside the selected set was inflated relative to one whose expression sits inside
+   it — a biological property turned into a scale factor. It also made variants mutually
+   incomparable (the same cell scaled differently in `hvg1000` than in `hvg5000`) and the pipeline
+   internally inconsistent: genes *ranked* on `log1p(CPM)`, then *projected* on
+   `log1p(CP10K-over-HVGs)`.
+2. **Under-normalization.** No per-gene standardization ran before PCA. CPM normalizes *within a
+   cell, across genes*; it says nothing about a gene's variance *across cells*, so the leading
+   components tracked absolute expression level rather than variation between cells. That is the
+   axis `sc.pp.scale` addresses, and it is why Seurat and scanpy both scale before PCA whatever
+   normalization preceded it.
+
+**What it costs — and what was already being paid.** `sc.pp.scale` fits each gene's mean and standard
+deviation over **all** 53,513 cells, held-out lines included, so a test cell is centred using
+statistics it helped compute. That is leakage, but it is *not* new: `sc.pp.pca` already fits the
+entire 512-dimensional rotation on all cells, and always has, which is a far larger all-cells fit
+than two numbers per gene. Adding scaling makes an existing leak marginally wider; it does not open
+one. HVG selection (`convert`) is the third, and applies to both arms.
+
+**The asymmetry this creates between the arms matters more than the leak itself.** All three fits are
+unsupervised — none sees a response label — which is why standard pipelines accept them. But `X_pca`
+is fitted *on our cells* (HVG + scaling + rotation), while `X_scGPT` comes from frozen pretrained
+weights and a binning that uses quantiles of each cell's **own** values, so a cell's scGPT embedding
+draws on no other cell at all. Only the HVG gene set is shared. **The PCA baseline therefore gets two
+all-cells fits that scGPT structurally cannot have, and the bias runs toward the control**: any
+scGPT-over-PCA margin measured this way is conservative. This qualifies every PCA-vs-scGPT number in
+the project and belongs next to review item 4's input-scale asymmetry in `docs/TODO.md`.
+
+**What was done about it (05.08.2026).** For the **fixed splits** the leak is removed. `add_pca.py`
+writes, alongside the all-cells `X_pca`, one train-fitted key per fixed-split column:
+
+| key | fitted on | used for |
+|---|---|---|
+| `X_pca` | all 53,513 cells | description only — UMAPs, latent-space validation |
+| `X_pca_train_ctrp` | cells of `split_ctrp == "train"` | models scored on `split_ctrp` |
+| `X_pca_train_paclitaxel` | cells of `split_paclitaxel == "train"` | models scored on `split_paclitaxel` |
+
+Both the per-gene mean/sd and the rotation are fitted on training cells and then applied to every cell
+(`add_pca.py::_pca_fitted_on_train`, sklearn rather than scanpy because neither `sc.pp.scale` nor
+`sc.pp.pca` separates fitting from transforming). `scripts/model/dataset.py::resolve_rep` maps
+`--use-rep X_pca` to the train-fitted key whenever the run uses a fixed split, and **raises** if that
+key is absent rather than falling back to the leaky matrix. The key actually read is recorded in each
+run's `run_meta.json` as `rep_key`.
+
+**Still not fixed: cross-validation.** CV folds are drawn at training time (`cv.py`, GroupKFold), so
+`resolve_rep` leaves them on the all-cells `X_pca` — five fold-specific matrices cannot be one stored
+array. HVG selection also remains an all-cells step, for both arms. So the asymmetry above is reduced,
+not eliminated, and every CV number still carries it.
+
+**Splits are frozen to a file (05.08.2026).** The train/val/test partition is no longer redrawn from the
+data on each run: `create_splits.py::frozen_split` reads `splits/split_ctrp.csv` (versioned in the repo,
+not under the gitignored data root) and only redraws under `--regenerate-split`. The reason is that
+eligibility is *not* stable — a line qualifies if it carries at least one CTRP label, so changing the
+drug panel or `ctrp_to_h5ad`'s filters silently moves lines between train, val and test, and runs from
+either side of the change look comparable when they are not. A line present in the data but missing from
+the frozen file raises rather than being assigned. **This will hard-fail the panel rebuild**, which is
+the intended behaviour: regenerating is a deliberate act that invalidates comparability with everything
+run before it.
+
+**What it invalidates.** Every `X_pca` on disk — and therefore every PCA number in these docs and in
+the report — predates this change. ⛔ Nothing is recomputed until the review is finished; see the
+banner in [`docs/TODO.md`](../TODO.md). Expect the **~78× input-scale asymmetry** between `X_pca`
+and `X_scGPT` (review item 4) to move too, since standardizing genes changes component magnitudes.
+
+**By-product — the HVG ranking scale is not a live issue.** `flavor="seurat"` `expm1`s the matrix
+back (`scanpy/preprocessing/_highly_variable_genes.py:373`, scanpy 1.12), bins genes by
+`log1p(mean)`, and z-scores log-dispersion within bin. A global constant on the input therefore
+shifts log-dispersion by a constant that the within-bin z-score removes exactly, so CPM and CP10K
+select the same genes provided bin membership survives — which it does at CPM scale, where gene
+means are ≫ 1. It is not an identity at arbitrary scale, and it is moot now that ranking and
+projection read the same matrix.
+
+**scGPT needs none of this.** Its embedding path applies no normalization and no `log1p`
+(`scgpt/tasks/cell_emb.py` builds the model directly; `DataCollator(do_binning=True)` bins in the
+loader, `scgpt/data_collator.py:90`, `n_bins=51`). Binning uses quantiles of each cell's own
+non-zero values, so it is a rank transform and invariant to any monotone per-cell rescaling —
+verified on 200 cells, where CPM, raw counts, `normalize_total` and `log1p` give identical bins.
 
 ### The two representations — what they are scientifically
 

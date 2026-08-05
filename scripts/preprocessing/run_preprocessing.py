@@ -110,6 +110,14 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--skip-multi-split", action="store_true")
     parser.add_argument(
+        "--regenerate-split",
+        action="store_true",
+        help=(
+            "Redraw the frozen train/val/test split in splits/ instead of reusing it. "
+            "Results from before and after are scored on different held-out lines."
+        ),
+    )
+    parser.add_argument(
         "--scgpt-python",
         default=None,
         help="Python with scgpt installed (only needed when running the scGPT step).",
@@ -205,9 +213,16 @@ def main():
         if not paths.targets_h5ad.exists():
             raise RuntimeError(f"Missing targets h5ad:\n  {paths.targets_h5ad}")
         if args.target_drug:
-            create_splits.run(str(paths.targets_h5ad), args.target_drug, args.seed)
+            create_splits.run(
+                str(paths.targets_h5ad),
+                args.target_drug,
+                args.seed,
+                regenerate=args.regenerate_split,
+            )
         if not args.skip_multi_split:
-            create_splits.run_multi(str(paths.targets_h5ad), seed=args.seed)
+            create_splits.run_multi(
+                str(paths.targets_h5ad), seed=args.seed, regenerate=args.regenerate_split
+            )
 
     if start_idx <= STEP_ORDER.index("pca"):
         _print_step(5, total, f"add_pca (force={args.force_pca}, n_comps={args.pca_n_comps})")
