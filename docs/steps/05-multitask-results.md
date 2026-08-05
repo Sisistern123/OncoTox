@@ -555,12 +555,12 @@ correction to an earlier claim that credited the curve fit rather than the stand
 > half as many dispersion-selected genes.** It is *not* evidence about scGPT and the full transcriptome,
 > which was never fed to it.
 >
-> ⚠️ `hvg1000`–`hvg3000` have no measured expressed-gene counts. They cannot reach the cap, since the
-> HVG sets are strictly nested (`hvg1000 ⊂ … ⊂ hvg5000`) and `hvg5000`'s own maximum sits below it —
-> but note that nesting was checked ad hoc on 05.08.2026, and its re-runnable form,
-> `notebooks/data_and_harmonization/verify_variants.ipynb` §10a, **has not been executed**. Treat it as
-> a claim awaiting its own evidence. `hvg1000` is settled independently and needs no check: 939 in-vocab
-> genes cannot fill a 1,200-token sequence.
+> ⚠️ `hvg1000`–`hvg3000` have no measured expressed-gene counts, but they cannot reach the cap. The HVG
+> sets are **strictly nested** — `hvg1000 ⊂ hvg2000 ⊂ hvg3000 ⊂ hvg5000 ⊂ all_genes`, zero genes outside
+> the larger set at every step, verified 05.08.2026 in
+> `notebooks/data_and_harmonization/verify_variants.ipynb` §10a — so their per-cell counts are bounded by
+> `hvg5000`'s, whose own maximum sits below the cap. `hvg1000` is settled independently and needs no
+> check: 939 in-vocab genes cannot fill a 1,200-token sequence.
 
 Does either rep have a preferred gene-set size?
 `notebooks/data_and_harmonization/verify_variants.ipynb` §9 builds each variant
