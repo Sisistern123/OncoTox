@@ -89,8 +89,11 @@ uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs 
     --score auc --start-at targets --skip-scgpt      # one targets h5ad per --score
 ```
 
-All results in this repo use the **`hvg5000`** variant: 5,000 HVGs, of which scGPT embeds the **4,576** in
-its vocabulary (424 OOV), while PCA is computed on all 5,000 → both representations **512-d**.
+All results in this repo use the **`hvg5000`** variant: scGPT embeds only the subset of those genes in
+its vocabulary, PCA is computed on all of them, and both representations come out **512-d**. Gene counts
+per stage: [Step 02](../docs/steps/02-preprocessing-and-embeddings.md#hvg-5000-pipeline-outputs).
+⛔ The OOV drop is **not** clean — most of it is a symbol-matching defect, not scGPT's vocabulary:
+[Corrections](../docs/steps/corrections-and-dead-ends.md#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols).
 
 The directories under [`outputs/`](outputs/) are deliberately **not** named after notebooks, because they
 do not map one-to-one: `data/` is written by `drug_coverage` *and* `ablations_and_rescue`, `target/` by

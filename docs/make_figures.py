@@ -8,8 +8,10 @@
   loss_02_weights.png      where the weights come from — one drug's label density and weight curve
   loss_03_effect.png       what the weighting did, per drug: spread up, ranking flat
 
-The figures carry a caption at most; the argument behind them lives in the prose --
-``docs/progress_report_2026-07-27.md`` (§4 the weighting, §9 the Step-1 result) and
+The figures carry a caption at most; the argument behind them lives in the prose. Note that
+``docs/progress_report_*.md`` is **untracked by design**, so a fresh clone will not have it --
+the tracked source for every claim is ``docs/steps/`` (§4 the weighting, §9 the Step-1 result
+correspond to Step 03 and Step 05) and
 ``docs/steps/03-model-and-training-design.md`` (architecture, loss, target).
 
 Setup as of 27.07.2026: target = raw AUC winsorized at 1.1, no per-drug z-score; the per-drug

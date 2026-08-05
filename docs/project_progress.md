@@ -118,20 +118,23 @@ All eight runs share the cell-line-grouped split and a **matched trunk** `(128,6
 | **Representation** | `X_pca` (standard single-cell PCA baseline, **512-d** to match scGPT) · `X_scGPT` (512-d embedding) |
 | **Task** | single-task (paclitaxel) · multi-task (all drugs, K = 545) |
 
-**Genes per condition** — PCA uses the full filtered set; scGPT uses only its in-vocabulary subset.
-This OOV gap is **intentional** (scGPT's vocabulary coverage is part of the model — see
-[Step 02](./steps/02-preprocessing-and-embeddings.md)):
+**Genes per condition** — PCA uses the full filtered set, scGPT only its in-vocabulary subset. Counts
+per variant: [Step 02](./steps/02-preprocessing-and-embeddings.md#hvg-5000-pipeline-outputs).
 
-| Gene set | PCA genes | scGPT genes (in-vocab) |
-|---|---|---|
-| `all_genes` | 22,722 | 20,570 |
-| `hvg5000` | 5,000 | 4,576 |
+> ⛔ **Corrected 05.08.2026.** This page previously called that gap **intentional** — "scGPT's
+> vocabulary coverage is part of the model". It is not. **775 of the discarded genes are present in
+> scGPT's vocabulary under their current symbols** and were thrown away by an exact match against an
+> older annotation, costing 3.6 % of every cell's transcriptome:
+> [Corrections](./steps/corrections-and-dead-ends.md#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols).
 
-**Result (matched trunk + matched 512-d width, 27.06.2026):** scGPT **overfits far less** —
-`hvg5000` single-task train/val gap **0.004 (scGPT) vs 0.033 (PCA)** — but does **not** beat PCA on
-raw accuracy: on all-drugs PCA leads on heads-beating (`hvg5000` **169 vs 147**, `all_genes` **138 vs
-131**), val MSEs within 0.0003. So the representation mainly affects *generalization*, not predictive
-power — and this now holds with input dimensionality matched, so it is **not** a capacity artifact.
+> ⛔ **The 27.06.2026 result that stood here is superseded — twice over.** This page stated it without
+> markers, which is exactly what an index must not do. Its conclusions were **overturned 13.07.2026**
+> (they rest on the K=545 null the unstandardized loss produced) and the `all_genes` half was **struck
+> 05.08.2026** (at `max_length=1200` scGPT never received the full transcriptome, so those rows compared
+> two different gene sets). What survives, what does not, and the current numbers:
+> [Step 05](./steps/05-multitask-results.md#multi-task-masked-loss-over-all-545-ctrpv2-drugs-26052026)
+> and [Corrections](./steps/corrections-and-dead-ends.md#the-8-run-matrix-conclusions). **Do not quote a
+> PCA-vs-scGPT result from this page** — it is an index and holds none of its own.
 
 Results: [Step 04](./steps/04-single-task-results.md) (single-task), [Step 05](./steps/05-multitask-results.md)
 (multi-task); per-drug coverage & learnability in `notebooks/data_and_harmonization/drug_coverage.ipynb`. Action list:
@@ -293,8 +296,6 @@ weights (they estimate residual variance, mixing label noise with model error).
   exception is a superseded number, which lives only in [Corrections](./steps/corrections-and-dead-ends.md).
 - **Every claim names the code that produced it** — the script and function, or the notebook and section,
   plus the `outputs/` artifact a number was read from.
-- **190 vs 180 cell-line overlap — resolved (14.06):** it is **not** a normalization difference
-  (both rules give 190). **190** = SCP542 names found in CTRPv2's cell-line *roster*; **180** = those
-  with actual **post-QC viability measurements**. The 10-line gap is unscreened lines (no labels):
-  `abc1, hs939t, jhh7, mdamb436, mfe280, ncih1048, ncih2073, ncih2347, rerflckj, ten`. Use **180**
-  (the trainable set); 190 is the roster count ([Step 01](./steps/01-datasets-and-harmonization.md)).
+- **The 190-vs-180 cell-line overlap** is resolved and written up where it belongs, in
+  [Step 01](./steps/01-datasets-and-harmonization.md) — with the roster-vs-screened distinction and the
+  ten unscreened lines. It used to be restated here in full, which contradicted the two rules above.

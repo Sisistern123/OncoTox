@@ -42,7 +42,7 @@ so the improvement is auditable.
 | 27.07.2026 | [Per-drug variance weighting (`σ_noise`, plan items 1.0–1.2)](#per-drug-variance-weighting--dissolved-by-a-scope-change-never-needed) — dissolved by a scope change |
 | 14.07.2026 | [The 13.07 five-drug numbers](#the-1307-five-drug-numbers) — re-run on a wider set; neither column was ever a generalization number |
 | 13.07.2026 | ["Neither representation ranks cell lines" — the K=545 null](#neither-representation-ranks-cell-lines--the-k545-null-result), and the "ceiling is the label" net read it supported |
-| 13.07.2026 · 05.08.2026 | [The 8-run matrix conclusions](#the-8-run-matrix-conclusions) — design stands, conclusions do not; the `all_genes` axis struck separately (scGPT saw ~1,199 random genes, PCA all 22,722) |
+| 13.07.2026 · 05.08.2026 | [The 8-run matrix conclusions](#the-8-run-matrix-conclusions) — design stands, conclusions do not; the `all_genes` axis struck separately (scGPT saw a capped random draw, PCA the whole gene set) |
 | 13.07.2026 | [The Steps 04–05 numbers as a comparable baseline](#the-steps-0405-numbers-as-a-comparable-baseline) — scale change, not error |
 | 27.06.2026 | [The ~50-d PCA baseline and the `(64,32)` trunk](#the-50-d-pca-baseline-and-the-6432-pca-trunk) — two confounds found and closed |
 
@@ -478,9 +478,9 @@ single-task overfitting comparison, which involves no multi-task coupling.
 expected to **change** the conclusions rather than refresh them ([TODO](../TODO.md)).
 
 **Also struck 05.08.2026 — the `all_genes` half of the gene-set axis, on a second and independent
-ground.** scGPT is embedded at `max_length=1200`, and at `all_genes` all 53,513 cells exceed the cap, so
-it received a random ~1,199 of each cell's ~3,550 expressed genes while PCA received all 22,722
-([Step 02](02-preprocessing-and-embeddings.md#decision--one-seeded-draw-at-1200-all_genes-is-a-sanity-check-03082026)).
+ground.** scGPT is embedded at `max_length=1200`, and at `all_genes` the cap binds in every cell, so it
+received a random fraction of each cell's expressed genes while PCA received the whole gene set
+(counts: [Step 02](02-preprocessing-and-embeddings.md#why-hvg-5000-is-the-default-03082026)).
 The `all_genes` arms of the matrix therefore differ in gene set as well as in encoding and were never a
 like-for-like comparison — this holds independently of the target defect above and would survive a
 re-run on a standardized target. `hvg5000` is unaffected (1 cell of 53,513 above the cap), so the
@@ -656,12 +656,12 @@ for either representation.
 
 > ⚠️ **Narrowed 05.08.2026 — the scGPT half of the last sentence.** The claim being refuted is about
 > **PCA**, which read all 22,722 genes, so the refutation itself is untouched. But scGPT never received
-> the full transcriptome: at `max_length=1200` all 53,513 cells exceed the cap in `all_genes`, so it got
-> a random ~1,199 of each cell's ~3,550 expressed genes
-> ([Step 02](02-preprocessing-and-embeddings.md#decision--one-seeded-draw-at-1200-all_genes-is-a-sanity-check-03082026)).
+> the full transcriptome: at `max_length=1200` the cap binds in every cell of `all_genes`, so it got only
+> a random fraction of each cell's expressed genes
+> (counts: [Step 02](02-preprocessing-and-embeddings.md#why-hvg-5000-is-the-default-03082026)).
 > "No all-genes advantage **for either representation**" therefore holds as written for PCA only. For
-> scGPT the flat result supports the narrower statement that ~1,199 randomly drawn genes do no better
-> than 589 dispersion-selected ones — see
+> scGPT the flat result supports the narrower statement that roughly twice as many randomly drawn genes
+> do no better than the dispersion-selected ones — see
 > [Step 05](05-multitask-results.md#gene-set-sweep--heads-beating-vs-gene-count-incl-all_genes-28062026).
 > The mirror claim that HVG filtering *helps* scGPT stays refuted, since the four HVG points are all
 > below the cap and genuinely comparable.

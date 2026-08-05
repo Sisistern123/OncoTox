@@ -172,7 +172,8 @@ matters — folded into review items 10 and 12.
    so the objective matches DrEval's normalized metric. Motivated by `dreval/dreval_normalized.csv`
    (~20% of the signal is pure cell-line effect; `kx2-391` is entirely that artifact). New `--score`
    option in `ctrp_to_h5ad.py` (pattern: `_zscore_per_drug`, `DEFAULT_CTRP_SCORE`); compare in `dreval_benchmark`.
-   Success = normalized DrEval ρ rises above 0.357 (scGPT) without inflating the raw correlation.
+   Success = normalized DrEval ρ rises above the current scGPT value without inflating the raw
+   correlation (the bar itself lives in [Step 05](./steps/05-multitask-results.md), not here).
 2. **S2 — MIL / attention pooling over a line's cells** — the only untested capacity lever (bag of cells
    → line label). Must beat the ridge baseline **and** the per-cell MLP. On the literature panel
    (27.07.2026) that is ridge 0.306 / 0.299 and MLP 0.316 / 0.377 for PCA / scGPT — the 0.342 quoted
