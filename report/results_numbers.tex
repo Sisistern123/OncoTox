@@ -35,6 +35,13 @@
 \newcommand{\NVocab}{4{,}576}      % of those, in scGPT's vocabulary
 \newcommand{\NLearn}{10}           % learnable-drug subset size
 
+% === gene-symbol defect (notebooks/outputs/embeddings/gene_symbol_rescue.csv, 05.08.2026)
+% Genes discarded as out-of-vocabulary that are in fact IN scGPT's vocabulary under
+% their current HGNC symbol; recovered via prev_symbol in reference/hgnc_complete_set.txt.
+\newcommand{\NRescuedAll}{775}     % all_genes variant
+\newcommand{\PctRescuedAll}{3.6}   % % of each cell's transcriptome they carry
+\newcommand{\NRescuedHvg}{129}     % hvg5000 variant
+
 % === out-of-fold Spearman on auc_z, mean over the 10 learnable drugs 
 % source: target/target_comparison.csv (mean of the per-drug `spearman` rows,
 %         filtered by score=auc_z, heads, rep)

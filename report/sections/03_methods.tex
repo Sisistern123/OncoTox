@@ -7,7 +7,31 @@ All experiments use the highest-confidence intersection of SCP542 \cite{scp542} 
 post-quality-control measurements (190 roster name matches, of which 10 are unscreened), \NDrugs{}
 compounds and \NCells{} cells, with effectively complete viability coverage inside the overlap. Genes are
 reduced to the \NHvg{} most highly variable; scGPT embeds the \NVocab{} of these that lie in its
-vocabulary, while PCA is computed on all \NHvg{}. The gene-set size is not critical: an earlier sweep from
+vocabulary, while PCA is computed on all \NHvg{}.
+\begin{revisionblock}
+\textbf{That vocabulary count is not what it appears --- found 05.08.2026.} The embedding script
+resolves gene symbols against scGPT's vocabulary by exact string match, and the expression matrix
+carries an older HGNC annotation than the vocabulary does. Genes renamed between the two releases
+therefore fail the match and are discarded although the vocabulary holds them under their current
+name. Recovering renames from the HGNC approved-symbol set shows that \NRescuedHvg{} of the
+\NHvg-gene variant's discarded genes fall into this class, and \NRescuedAll{} of the
+full-transcriptome variant's --- the latter carrying \PctRescuedAll\% of every cell's transcriptome,
+among them RACK1, the ATP-synthase subunit ATP5F1E and the replication-dependent histones, each
+expressed in over 99\% of cells \cite{hgnc}. Only about a fifth of a percent of the discarded
+expression is genuine vocabulary coverage, so the gene-count asymmetry between the two
+representations is largely a defect rather than, as stated elsewhere in this report, a property of
+the model being compared.
+
+The consequence exceeds the missing genes themselves. scGPT bins expression using quantiles of each
+cell's own non-zero values, so removing the most strongly expressed genes shifts every bin boundary
+and alters the bin assigned to every remaining gene. The defect is confined to the scGPT arm ---
+principal components and the variability ranking are both computed before the discard --- and it
+therefore weakens the representation this work argues for. Every scGPT-versus-PCA margin reported
+here is conservative with respect to it, never inflated. The repair is specified but deliberately
+not applied: the representations have not been regenerated, so applying it now would silently change
+which numbers belong to which pipeline.
+\end{revisionblock}
+The gene-set size is not critical: an earlier sweep from
 1{,}000 genes to the full transcriptome showed no advantage for any particular count
 (\code{notebooks/07}), so the \NHvg-gene selection is used throughout.
 \revision{\emph{Correction, 05.08.2026.} That sweep was computed on the legacy \code{mean\_pv} response

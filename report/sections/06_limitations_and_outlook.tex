@@ -54,6 +54,10 @@ cell being embedded --- so the two arms were not on equal terms. None of these f
 label, which is why standard pipelines accept them, but the PCA baseline was tuned to the cells it was
 evaluated on and the scGPT representation was not. The bias runs toward the control, so any scGPT
 advantage measured this way is conservative on that account.
+\revision{A second effect runs the same way: the gene-symbol defect described in the methods withheld
+from scGPT a substantial share of each cell's expression that the principal components received in
+full. Both asymmetries handicap the same arm, so the two accumulate rather than offset, and no
+reported margin in favour of scGPT can be explained by either.}
 
 For the fixed train/validation/test split this is now corrected: standardization and rotation are fitted
 on the training lines alone and applied to the held-out ones, as described in the Methods. It is
