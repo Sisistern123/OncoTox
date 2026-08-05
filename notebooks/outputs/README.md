@@ -9,7 +9,7 @@ they live in `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 | Directory | Written by | Contents |
 |---|---|---|
 | **`data/`** | `drug_coverage` | Target distribution and per-drug coverage on the raw CTRPv2 labels. |
-| **`embeddings/`** | `verify_variants` | Latent-space validation: PCA-vs-scGPT UMAPs, gene-set variants. |
+| **`embeddings/`** | `verify_variants`, `gene_symbol_rescue` | Latent-space validation: PCA-vs-scGPT UMAPs, gene-set variants, and what the gene set actually delivered to scGPT (`gene_symbol_rescue.csv`, below). |
 | **`learnability/`** | `learnability_filter`, `learnable_subset_training` | The drug filter (545 → 10, `learnability = min(#killed, #spared)`) and the PCA-vs-scGPT result on that subset. `pca_vs_scgpt.png` also carries the line-level ridge control. |
 | **`target/`** | `target_comparison`, `ablations_and_rescue` §2 | Which target to train on; the per-drug **loss-weighting bug**; seed stability. |
 | **`ablations/`** | `ablations_and_rescue` §3–§5 | The **causal rescue test** on the broken K=545 setting, the model-knob ablations on the corrected one, and the ridge control. |

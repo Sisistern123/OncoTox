@@ -303,12 +303,30 @@ with `max_length=1200` (`gen_embeds.py`), which is `embed_data`'s default and ma
 checkpoint's own pretraining configuration — `"max_seq_len": 1200`, `"trunc_by_sample": true`
 (`scGPT_human/args.json`). When a cell carries more expressed genes than the cap, the data collator draws
 a **random** subset rather than truncating (`scgpt/data_collator.py:143-169`). Measured over all 53,513
-cells of each embeddings file's `.X` (one `h5py` pass, 03.08.2026):
+cells of every variant's embeddings `.X` (post-OOV, i.e. the matrix actually tokenized) in
+`notebooks/data_and_harmonization/verify_variants.ipynb` §10b–§10c, 05.08.2026; per-cell counts cached
+to `outputs/embeddings/scgpt_nonzero_per_cell.npz`:
 
-| Variant | mean expressed genes / cell | max | cells above the 1,199-gene cap |
-|---|---|---|---|
-| `hvg5000` | 589 | 1,208 | **1** (0.002 %) |
-| `all_genes` | 3,550 | 7,797 | **53,513** (100 %) |
+| Variant | in scGPT vocab | expressed genes / cell (median · mean · max) | cells at or above the cap | **genes scGPT actually saw** (mean) |
+|---|---|---|---|---|
+| `hvg1000` | 939 | 119 · 122 · 277 | 0 | 122 |
+| `hvg2000` | 1,846 | 253 · 257 · 555 | 0 | 257 |
+| `hvg3000` | 2,771 | 367 · 373 · 790 | 0 | 373 |
+| `hvg5000` | 4,576 | 580 · 589 · 1,208 | **1** (0.002 %) | 589 |
+| `all_genes` | 20,570 | 3,461 · 3,550 · 7,797 | **53,513** (100 %) | **1,199** |
+
+The last column is the one that governs how the gene-set axis reads: it is `min(expressed, 1199)`
+averaged over cells — what the model received, as against the size the variant is named for. In capped
+cells `hvg5000` keeps 99.3 % of a cell's genes; `all_genes` keeps **34.6 %**.
+
+**The axis is real for scGPT, but compressed at the top.** Across the five variants scGPT's actual input
+grows 122 → 257 → 373 → 589 → 1,199, so more genes *do* reach it at every step — but the nominal
+22,722-gene condition delivers only about **twice** what `hvg5000` does, not twenty times, and delivers
+it as a random draw rather than a dispersion-selected set.
+
+> ⚠️ **Supersedes the 03.08.2026 figures.** This table previously carried `hvg5000` and `all_genes` only,
+> from an ad-hoc `h5py` pass that existed as a shell command rather than as code. The re-runnable
+> measurement reproduces both rows exactly and adds the three smaller variants.
 
 So at HVG-5000 scGPT sees every gene surviving the filter in all but one cell, whereas at `all_genes` it
 sees a random ~34 % of each cell — a different third on each run. Under this configuration, feeding the
