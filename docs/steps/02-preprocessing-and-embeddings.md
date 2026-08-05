@@ -31,7 +31,7 @@ rebuilding the expensive `convert`/`scgpt` outputs, which they **share**.
 
 | # | Step / script | Reads | Writes (added to the h5ad) |
 |---|---|---|---|
-| 1 | **convert** — `scp542_conversion.py` | `expression/CPM_data.txt` (genes×cells) + `metadata/Metadata.txt` | `SCP542_CCLE.h5ad`: cells×genes, `.X` = **CPM**. **HVG filtering happens here** (see below); records `uns["hvg_n_top_genes"]`. |
+| 1 | **convert** — `scp542_conversion.py` | `expression/CPM_data.txt` (genes×cells) + `metadata/Metadata.txt` | `SCP542_CCLE.h5ad`: cells×genes, `.X` = **CPM**. **HVG filtering happens here** (see below); records `uns["hvg_n_top_genes"]`. Since 05.08.2026 also `var["hgnc_symbol"]` — the current HGNC symbol per row, read only by step 2. |
 | 2 | **scgpt** — `scripts/preprocessing/gen_embeds.py`, run under the separate scGPT venv via `--scgpt-python` (vendored into the repo 03.08.2026; it was previously an untracked file outside it) | the **convert output** `SCP542_CCLE.h5ad` | `..._scGPT_human_embeddings.h5ad`: adds `obsm["X_scGPT"]` (**512-dim**) **and drops scGPT-OOV genes from `.X`** (hvg5000: 5,000→4,576). |
 | 3 | **targets** — `ctrp_to_h5ad.py` | the embeddings h5ad + the CTRPv2 tables (curve fits for `auc`/`auc_z`, dose grid for `mean_pv`) | `..._with_targets[_<score>].h5ad`: adds `obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, `uns["ctrp_score"]` + the de-standardization stats ([Step 03](03-model-and-training-design.md) for mechanics). |
 | 4 | **splits** — `create_splits.py` | the targets h5ad (in place) | `obs["split_paclitaxel"]` (`run`) + `obs["split_ctrp"]` (`run_multi`) — cell-line-grouped. |
@@ -110,18 +110,25 @@ the genes it can embed.
 > vocabulary coverage. Full write-up, scale and direction of the bias:
 > [Corrections](corrections-and-dead-ends.md#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols).
 >
-> **Repair decided 05.08.2026, not yet applied.** `scp542_conversion.py` will add an
-> **`var['hgnc_symbol']`** column carrying the current HGNC symbol — `var_names` keeps SCP542's
-> identifiers exactly as distributed — and `gen_embeds.py` will resolve the vocabulary through that
-> column. The **12 collisions**, where a recovered symbol already exists as its own row, are **left
-> unmapped**: they carry 0.0021 % of the transcriptome, and merging them would change expression values
-> and risk folding an antisense lncRNA into its sense gene. Both choices are deliberate in the same
-> direction — **no expression value changes**, so `X_pca` and the HVG selection stay bit-identical and
-> the eventual re-embed is attributable to the recovered genes alone.
+> **Repair applied to the code 05.08.2026 — `scripts/preprocessing/gene_symbols.py`.**
+> `scp542_conversion.py` adds a **`var['hgnc_symbol']`** column carrying the current HGNC symbol —
+> `var_names` keeps SCP542's identifiers exactly as distributed — and
+> `gen_embeds.py::resolve_gene_names` resolves the vocabulary through it, **consulting it only where a
+> row's own symbol is not a token**, so no gene embedded today can be lost. The **12 collisions**, where
+> a recovered symbol already exists as its own row, are **left unmapped**: they carry 0.0021 % of the
+> transcriptome, and merging them would change expression values and risk folding an antisense lncRNA
+> into its sense gene. Renames are also refused where the old symbol is itself a currently approved
+> symbol of another gene, since HGNC records reassignments (`OSR1`→`OXSR1`) alongside true renames.
+> Every choice runs in the same direction — **no expression value changes**, so `X_pca` and the HVG
+> selection stay bit-identical and the re-embed is attributable to the recovered genes alone. The
+> three decisions and what each rejects are in
+> [Corrections](corrections-and-dead-ends.md#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols).
 >
-> ⚠️ **Nothing in `scripts/` reads the mapping yet**, so re-running preprocessing today reproduces the
-> defect. This must land **before** the [clean sweep](../TODO.md) or the sweep regenerates embeddings
-> that are still missing those genes.
+> ⚠️ **Code only — nothing is recomputed.** Every embeddings file on disk, and therefore every scGPT
+> number in these docs and in the report, still carries the defect in full. The repair takes effect at
+> the [clean sweep](../TODO.md); it landed before the sweep so the sweep is not paid for twice. The
+> gene counts stated throughout this file (4,576 / 20,570) are what is **on disk**; after the sweep
+> they become **4,704 / 21,332**.
 
 Changing the gene set means re-running `convert`, which forces a re-embed and a re-PCA; that is why
 `hvg5000` and `all_genes` live in **separate folders that never share files** (`guard_output`

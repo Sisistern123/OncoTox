@@ -5,6 +5,7 @@ import pandas as pd
 import scanpy as sc
 
 from scripts.preprocessing.expression import kinker_transform
+from scripts.preprocessing.gene_symbols import annotate_hgnc_symbols
 from scripts.preprocessing.layout import (
     PipelinePaths,
     VARIANT_N_TOP_GENES,
@@ -25,6 +26,10 @@ def run(
     genes. The ranking runs on a transformed *copy* (``log2(1 + CPM/10)``, the SCP542
     authors' own quantification -- see ``expression.py``), so the saved ``.X`` keeps the
     original CPM values.
+
+    ``var`` gains one column, ``hgnc_symbol`` -- SCP542's own identifiers stay in
+    ``var_names`` and no expression value is touched, so the HVG set and ``X_pca`` are
+    unaffected by it. Only ``gen_embeds.py`` reads it; see ``gene_symbols.py``.
     """
     print("Loading expression matrix... (this may take a few minutes and require high RAM)")
     df_expr = pd.read_csv(input_expr, sep="\t", index_col=0)
@@ -38,6 +43,13 @@ def run(
 
     print("Aligning metadata with expression data...")
     adata.obs = df_meta.loc[adata.obs_names]
+
+    # Runs before HVG selection deliberately: the collision check then sees the full
+    # transcriptome, so a rename is never applied to a symbol whose current holder exists in
+    # the data but was dropped by HVG. It costs one recovered gene in hvg5000 against checking
+    # each variant's own gene set, and none in the smaller variants (Selin, 05.08.2026).
+    print("Annotating current HGNC symbols...")
+    annotate_hgnc_symbols(adata)
 
     if n_top_genes is not None and n_top_genes > 0:
         n_before = adata.n_vars

@@ -50,7 +50,7 @@ so the improvement is auditable.
 
 | Date | What |
 |---|---|
-| 05.08.2026 | [scGPT discarded genes that are in its vocabulary under their current symbols](#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols) — exact symbol match against an older annotation; **open** |
+| 05.08.2026 | [scGPT discarded genes that are in its vocabulary under their current symbols](#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols) — exact symbol match against an older annotation; **repaired in code 05.08.2026, takes effect at the sweep** |
 | 28.07.2026 | [The 8-drug literature panel, and every number computed on it](#the-8-drug-literature-panel-and-every-number-computed-on-it) — drawn from a pre-filtered pool |
 | 27.07.2026 | [The kill/spare learnability gate measured potency, not rankability](#the-learnability-gate-measured-potency-not-rankability) — survived months |
 | 14.07.2026 | [The first DrEval benchmark — a val-split leak](#the-first-dreval-benchmark--a-val-split-leak) — found and fixed same day (`ee07b00`) |
@@ -155,9 +155,10 @@ remaining gene*.
 scGPT-vs-PCA margin is therefore **conservative** with respect to this defect — it can only have
 understated scGPT, never inflated it.
 
-**Repair decided 05.08.2026 (Selin), not yet applied.** Two choices had to be settled; both were taken
-so that **no expression value anywhere changes**, which keeps the eventual re-embed attributable to the
-recovered genes alone.
+**Repair decided 05.08.2026 (Selin); applied to the code the same day, `scripts/preprocessing/gene_symbols.py`
+plus the two callers below. Nothing is re-run** — see *Standing* at the end of this entry. Three choices
+had to be settled; all were taken so that **no expression value anywhere changes**, which keeps the
+eventual re-embed attributable to the recovered genes alone.
 
 **1 — The rename is recorded as a new `var['hgnc_symbol']` column, not by rewriting `var_names`.**
 `scp542_conversion.py` adds the column, `gen_embeds.py` resolves the vocabulary through it. SCP542's
@@ -176,14 +177,51 @@ rescue is worth**. *Rejected:* merging the old row into the existing one, which 
 loses the same expression while still perturbing the gene set. Recovering them case by case remains
 possible **later, as a separately attributable change**.
 
-Because renaming is numerically inert for the value-based steps — PCA works on values, HVG ranks by
-dispersion, neither reads gene names — this pair leaves `X_pca` and the HVG selection **bit-identical**
-and moves only scGPT's token set.
+**3 — A rename is refused where the old symbol is itself a current approved symbol.** *Added
+05.08.2026 while implementing the repair, after the guard was found missing from the map the notebook
+built.* HGNC's `prev_symbol` records **reassignments** as well as renames: `OSR1` is the approved symbol
+of odd-skipped related 1 *and* a former symbol of `OXSR1`; likewise `NTNG1`→`NTNG2`, `ADCY3`→`ADCY8`,
+`SRGAP2`→`SRGAP3` (verified directly in `reference/hgnc_complete_set.txt`). Where SCP542 uses a symbol
+that is approved today, it is read as meaning the gene that holds it today. The assumption — that
+SCP542's annotation postdates each reassignment — cannot be checked, since SCP542 ships no annotation
+version, which is the reason for resolving the doubt toward leaving the gene alone. This refuses 228
+further pairs (314 refused in total, with the 86 ambiguous ones), and costs **two** rescues in
+`all_genes` — `RNU12`, which would otherwise be fed to scGPT under the pseudogene token `RNU12-2P`, and
+`EPB41L4A-AS2` — worth 0.003 % of the rescued expression, and **none** in `hvg5000`.
 
-**Still unapplied.** No pipeline code reads `reference/hgnc_complete_set.txt` or the rescue table yet
-(`grep` over `scripts/` returns nothing), so **re-running preprocessing today reproduces the defect**.
-The change must land *before* the [clean sweep](../TODO.md), or the sweep regenerates embeddings still
-missing 3.6 % of every cell and a second full re-embed is needed.
+**Consequence for the numbers above:** the recoverable counts become **773** (`all_genes`) and **129**
+(`hvg5000`), which round to the same 3.6 % / 0.378 % quoted in the table and in the report. The table is
+left as measured; `gene_symbol_rescue.csv` predates the guard.
+
+Because renaming is numerically inert for the value-based steps — PCA works on values, HVG ranks by
+dispersion, neither reads gene names — these choices leave `X_pca` and the HVG selection
+**bit-identical** and move only scGPT's token set.
+
+**How it resolves, and why a row's own symbol wins.** `gen_embeds.py::resolve_gene_names` consults
+`hgnc_symbol` **only where the row's own symbol is not a token**. Renaming unconditionally would *lose*
+**336** genes in `all_genes` and **53** in `hvg5000`: genes the vocabulary holds under the symbol SCP542
+uses, which HGNC has since reassigned to a gene the vocabulary does *not* hold (`TP73-AS1`→`GFOD3P`,
+`HSPB11`→`IFT25`, `C1orf127`→`CIROZ`). Preferring the row's own symbol makes the repair strictly
+additive — no gene kept today is dropped by it — which is what keeps the re-embed attributable.
+
+The annotation runs **before** HVG selection, so the collision check sees the whole transcriptome and a
+symbol is never reused for a gene that HVG happened to drop. Measured cost against checking each
+variant's own gene set: one recovered gene in `hvg5000`, none in the smaller variants.
+
+**Net effect on the gene set handed to scGPT**, measured 05.08.2026 on the matrices as they stand
+(read-only, `backed='r'`; nothing regenerated):
+
+| variant | embedded today | after the repair | recovered |
+|---|---|---|---|
+| `hvg5000` | 4,576 | **4,704** | +128 |
+| `all_genes` | 20,570 | **21,332** | +762 |
+
+The recovered counts are below the 773 / 129 *recoverable* figures because collisions stay unmapped
+(11 and 1 of them respectively) — the defect's size and the repair's yield are different quantities.
+
+**Standing — code only, nothing recomputed.** Every embedding on disk, and therefore every scGPT number
+in the docs and the report, still carries the defect in full. The repair takes effect at the
+[clean sweep](../TODO.md); it landed before it so that the sweep does not have to be paid for twice.
 
 ### The learnability gate measured potency, not rankability
 

@@ -10,9 +10,12 @@ Reads the ``convert`` output (``SCP542_CCLE.h5ad``), writes an h5ad carrying
 ``obsm["X_scGPT"]`` (512-d) with scGPT-out-of-vocabulary genes dropped from ``.X``, plus
 an OOV gene table and summary alongside it.
 
-Two behaviours worth knowing, both documented in
+Three behaviours worth knowing, all documented in
 ``docs/steps/02-preprocessing-and-embeddings.md``:
 
+* Gene symbols are resolved against the vocabulary before embedding: a row's own symbol wins,
+  and ``var['hgnc_symbol']`` is consulted only where that symbol is not a token. See
+  ``resolve_gene_names``.
 * ``max_length=1200`` matches the ``scGPT_human`` checkpoint's pretraining configuration.
   Cells with more non-zero genes have 1,199 of them **randomly sampled** -- the same
   operation used during pretraining (Cui et al., *Nature Methods* 21, 1470-1480, 2024).
@@ -42,6 +45,11 @@ from scgpt.tasks.cell_emb import embed_data  # noqa: E402
 # Fixed so embeddings are reproducible; see the seeding block in main().
 SEED = 42
 
+# Where resolve_gene_names() writes the symbols actually handed to the model. Kept distinct
+# from both var_names (SCP542 as distributed) and hgnc_symbol (the current nomenclature), so
+# the exported OOV table records what was embedded rather than what was intended.
+RESOLVED_GENE_COL = "scgpt_gene"
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate scGPT cell embeddings for SCP542.")
@@ -52,12 +60,60 @@ def parse_args():
     return parser.parse_args()
 
 
-def export_oov_genes(adata, model_dir, gene_col, input_file, oov_genes_file, oov_summary_file):
+def load_vocab(model_dir):
+    """Return the checkpoint's gene tokens and the file they came from."""
     vocab_file = Path(model_dir) / "vocab.json"
     with open(vocab_file, "r") as f:
         vocab_payload = json.load(f)
+    return set(vocab_payload.keys()), vocab_file
 
-    vocab_tokens = set(vocab_payload.keys())
+
+def resolve_gene_names(adata, vocab_tokens, gene_col):
+    """Write the column of gene names to embed with, and return its name.
+
+    SCP542 carries an older HGNC annotation than the checkpoint's vocabulary, so an exact
+    string match discards genes the vocabulary does hold under their current symbol -- 775 of
+    them in ``all_genes``, carrying 3.6% of every cell's transcriptome. ``scp542_conversion.py``
+    records the current symbol per row in ``var['hgnc_symbol']`` (see ``gene_symbols.py``);
+    this resolves it against the vocabulary.
+
+    **A row's own symbol always wins.** The current symbol is consulted only where the row's own
+    symbol is not a token. Renaming unconditionally would *lose* 336 genes in ``all_genes`` and
+    53 in ``hvg5000`` -- genes the vocabulary holds under the symbol SCP542 uses, which HGNC
+    has since reassigned to a gene the vocabulary does not hold (``TP73-AS1`` -> ``GFOD3P``,
+    ``HSPB11`` -> ``IFT25``). Preferring the row's own symbol makes the resolution strictly
+    additive, which is what keeps a re-embedding attributable to the recovered genes alone.
+
+    Net effect, measured 05.08.2026 on the matrices as they stand: ``all_genes`` 20,570 ->
+    21,332 genes embedded, ``hvg5000`` 4,576 -> 4,704.
+    """
+    base = adata.var_names if gene_col == "index" else adata.var[gene_col].astype(str)
+    base = pd.Series(list(base), index=adata.var_names, dtype=object)
+
+    if "hgnc_symbol" not in adata.var.columns:
+        # Inputs built before 05.08.2026 have no such column; embed them as they always were
+        # rather than silently applying a different gene set than the file was written for.
+        print(
+            "  var['hgnc_symbol'] is absent -- this input predates the gene-symbol repair; "
+            "falling back to exact matching on the row's own symbol."
+        )
+        adata.var[RESOLVED_GENE_COL] = base.to_numpy()
+        return RESOLVED_GENE_COL
+
+    current = adata.var["hgnc_symbol"].astype(str)
+    rescued = (~base.isin(vocab_tokens)) & current.isin(vocab_tokens)
+    adata.var[RESOLVED_GENE_COL] = base.where(~rescued, current).to_numpy()
+
+    print(
+        f"  gene symbols: {int(base.isin(vocab_tokens).sum()):,} of {adata.n_vars:,} rows match "
+        f"the vocabulary directly, {int(rescued.sum()):,} more via their current HGNC symbol"
+    )
+    return RESOLVED_GENE_COL
+
+
+def export_oov_genes(
+    adata, vocab_tokens, vocab_file, gene_col, input_file, oov_genes_file, oov_summary_file
+):
     gene_names = adata.var.index if gene_col == "index" else adata.var[gene_col]
     gene_names = pd.Series(gene_names, index=adata.var_names)
     in_vocab_mask = gene_names.isin(vocab_tokens).to_numpy()
@@ -197,8 +253,16 @@ def main():
     print(f"Loading AnnData from {input_file}...")
     adata = sc.read_h5ad(input_file)
 
-    export_oov_genes(adata, model_dir, gene_col, input_file, oov_genes_file, oov_summary_file)
-    adata = run_embedding(adata, model_dir, gene_col, device)
+    vocab_tokens, vocab_file = load_vocab(model_dir)
+    print("Resolving gene symbols against the vocabulary...")
+    embed_col = resolve_gene_names(adata, vocab_tokens, gene_col)
+
+    # Both the OOV export and the embedding read the resolved column, so the table lists the
+    # genes actually discarded rather than the ones an exact match would have discarded.
+    export_oov_genes(
+        adata, vocab_tokens, vocab_file, embed_col, input_file, oov_genes_file, oov_summary_file
+    )
+    adata = run_embedding(adata, model_dir, embed_col, device)
     adata = sanitize_for_h5ad(adata)
 
     print(f"Saving to {output_file}...")

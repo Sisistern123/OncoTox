@@ -27,9 +27,13 @@ cell's own non-zero values, so removing the most strongly expressed genes shifts
 and alters the bin assigned to every remaining gene. The defect is confined to the scGPT arm ---
 principal components and the variability ranking are both computed before the discard --- and it
 therefore weakens the representation this work argues for. Every scGPT-versus-PCA margin reported
-here is conservative with respect to it, never inflated. The repair is specified but deliberately
-not applied: the representations have not been regenerated, so applying it now would silently change
-which numbers belong to which pipeline.
+here is conservative with respect to it, never inflated. The repair is implemented in the pipeline:
+the conversion step now records each row's current symbol alongside the identifier the dataset
+distributes, and the embedding step consults it only where a row's own symbol is not in the
+vocabulary, so no gene embedded today can be lost by it. It raises the \NHvg-gene variant from
+\NVocab{} genes to \NVocabRepaired{}. \textbf{No representation has been regenerated}, deliberately:
+the embeddings are rebuilt once, from a settled pipeline, at the end of the review, so every number
+in this report belongs to the pipeline as described before this paragraph.
 \end{revisionblock}
 The gene-set size is not critical: an earlier sweep from
 1{,}000 genes to the full transcriptome showed no advantage for any particular count
