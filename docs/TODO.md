@@ -80,6 +80,17 @@ every one of them was a step that looked settled and had never been checked.
         (FAIRER: **I**)
 - [ ] **3 · Preprocessing** — CPM, log1p, HVG selection and count, what `.X` holds at each stage, scGPT
       out-of-vocabulary genes. Does the HVG set depend on all cells including test?
+  - [ ] **A · Apply the gene-symbol repair — BEFORE the clean sweep.** 775 genes carrying 3.6 % of every
+        cell are discarded by an exact symbol match against an older annotation, though scGPT's
+        vocabulary holds them under their current names
+        ([Corrections](./steps/corrections-and-dead-ends.md#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols)).
+        **Decided 05.08.2026:** `scp542_conversion.py` adds a `var['hgnc_symbol']` column (`var_names`
+        keeps SCP542's identifiers as distributed) and `gen_embeds.py` resolves the vocabulary through
+        it; the 12 collisions stay unmapped. No expression value changes, so `X_pca` and the HVG set
+        stay bit-identical and the re-embed is attributable to the recovered genes alone.
+        **Nothing in `scripts/` reads the mapping yet — re-running preprocessing today reproduces the
+        defect**, so if this lands after the sweep it costs a second full re-embed.
+        Source table: `reference/hgnc_complete_set.txt`. (FAIRER: **I**)
 - [ ] **4 · Representations** — PCA components, scGPT embedding generation and its input format
       (raw counts vs CPM — never confirmed), and **the ~78× input-scale asymmetry between the two under
       one shared learning rate**, which is untested and qualifies every PCA-vs-scGPT claim we have made.

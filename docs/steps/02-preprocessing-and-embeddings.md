@@ -97,11 +97,31 @@ convert : 22,722 → 5,000 genes (HVG)  — the single filter        [.X = CPM]
 vocabulary subset it is able to. *(The **transform** applied before that PCA was not standard until
 05.08.2026 — see [What transform PCA sees](#what-transform-pca-sees--corrected-05082026) below.)*
 
-**This gene-count asymmetry (PCA on the full filtered set, scGPT on its in-vocab subset) is
-intentional.** Dropping out-of-vocabulary genes is a real property of *using* scGPT, so each method
-is compared exactly as it would be applied in practice: PCA on the genes the HVG step selects, scGPT
-on the genes it can actually embed. The comparison therefore includes scGPT's vocabulary coverage as
-part of the model, not as a confound to be normalized away.
+**This gene-count asymmetry (PCA on the full filtered set, scGPT on its in-vocab subset) was intended
+as part of the model.** Dropping genes scGPT cannot embed is a real property of *using* it, so each
+method would be compared as it is applied in practice: PCA on the genes the HVG step selects, scGPT on
+the genes it can embed.
+
+> ⛔ **That justification does not hold — corrected 05.08.2026.** Most of the drop is **not** scGPT's
+> vocabulary coverage; it is a symbol-matching defect. `gen_embeds.py` matches SCP542's symbols exactly,
+> against an older HGNC annotation than the vocabulary uses, so **775 genes carrying 3.6 % of every
+> cell's transcriptome** are discarded despite being in the vocabulary under their current names —
+> RACK1, ATP5F1E, H2AZ1, the H3-3A/B and H4C3 histones among them. Only 0.21 % of the loss is genuine
+> vocabulary coverage. Full write-up, scale and direction of the bias:
+> [Corrections](corrections-and-dead-ends.md#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols).
+>
+> **Repair decided 05.08.2026, not yet applied.** `scp542_conversion.py` will add an
+> **`var['hgnc_symbol']`** column carrying the current HGNC symbol — `var_names` keeps SCP542's
+> identifiers exactly as distributed — and `gen_embeds.py` will resolve the vocabulary through that
+> column. The **12 collisions**, where a recovered symbol already exists as its own row, are **left
+> unmapped**: they carry 0.0021 % of the transcriptome, and merging them would change expression values
+> and risk folding an antisense lncRNA into its sense gene. Both choices are deliberate in the same
+> direction — **no expression value changes**, so `X_pca` and the HVG selection stay bit-identical and
+> the eventual re-embed is attributable to the recovered genes alone.
+>
+> ⚠️ **Nothing in `scripts/` reads the mapping yet**, so re-running preprocessing today reproduces the
+> defect. This must land **before** the [clean sweep](../TODO.md) or the sweep regenerates embeddings
+> that are still missing those genes.
 
 Changing the gene set means re-running `convert`, which forces a re-embed and a re-PCA; that is why
 `hvg5000` and `all_genes` live in **separate folders that never share files** (`guard_output`

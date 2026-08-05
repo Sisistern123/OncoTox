@@ -155,9 +155,35 @@ remaining gene*.
 scGPT-vs-PCA margin is therefore **conservative** with respect to this defect — it can only have
 understated scGPT, never inflated it.
 
-**Not fixed.** The size of the defect is now measured; the repair is not made. Applying it needs a rule
-for the 12 collisions and a re-embedding, which the [freeze](../TODO.md) forbids. Until then every scGPT
-embedding on disk was produced without those 775 genes.
+**Repair decided 05.08.2026 (Selin), not yet applied.** Two choices had to be settled; both were taken
+so that **no expression value anywhere changes**, which keeps the eventual re-embed attributable to the
+recovered genes alone.
+
+**1 — The rename is recorded as a new `var['hgnc_symbol']` column, not by rewriting `var_names`.**
+`scp542_conversion.py` adds the column, `gen_embeds.py` resolves the vocabulary through it. SCP542's
+identifiers stay exactly as distributed, so the matrix remains comparable to Kinker et al.'s published
+one, while the modern symbol becomes available as a join key for everything downstream — the direction
+[review item 2B](../TODO.md) asks for. `var` is currently empty, so the column is purely additive.
+*Rejected:* rewriting `var_names` (destroys provenance for nothing the column does not give) and
+resolving only inside `gen_embeds.py` (leaves stale symbols in the data, so every later join — CTRPv2
+gene sets, XAI naming, PRISM/GDSC integration — meets the same problem again).
+
+**2 — The 12 collisions are left unmapped.** They stay out-of-vocabulary exactly as today. They carry
+**21.4 CPM/cell = 0.0021 %** of the transcriptome, against the rescue's 3.608 % — **0.06 % of what the
+rescue is worth**. *Rejected:* merging the old row into the existing one, which would recover that
+0.0021 % at the price of changing expression values and risking a biologically wrong merge
+(`HNRNPU-AS1 → HNRNPU` folds an antisense lncRNA into its sense gene); and dropping the old row, which
+loses the same expression while still perturbing the gene set. Recovering them case by case remains
+possible **later, as a separately attributable change**.
+
+Because renaming is numerically inert for the value-based steps — PCA works on values, HVG ranks by
+dispersion, neither reads gene names — this pair leaves `X_pca` and the HVG selection **bit-identical**
+and moves only scGPT's token set.
+
+**Still unapplied.** No pipeline code reads `reference/hgnc_complete_set.txt` or the rescue table yet
+(`grep` over `scripts/` returns nothing), so **re-running preprocessing today reproduces the defect**.
+The change must land *before* the [clean sweep](../TODO.md), or the sweep regenerates embeddings still
+missing 3.6 % of every cell and a second full re-embed is needed.
 
 ### The learnability gate measured potency, not rankability
 
