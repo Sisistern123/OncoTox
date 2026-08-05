@@ -35,6 +35,14 @@
 > the review may still change, and would destroy the inputs behind the committed results before they
 > have been read. Decisions still open that would each force another recompute: gene scaling before PCA,
 > the post-HVG renormalization, the HVG ranking scale, and the re-embedding scope.
+>
+> **Everything is regenerated in one clean sweep at the end of the review — decided 05.08.2026 (Selin).**
+> Not piecemeal as each item closes. Two narrow exceptions were allowed during the audit, both for
+> measurements whose values *cannot* depend on anything the review might change, and both read-only:
+> `verify_variants.ipynb` §10a–§10c (input-length measurement) and `gene_symbol_rescue.ipynb`. Anything
+> that regenerates a **committed artifact** waits for the sweep — including `verify_variants` §7/§8,
+> which rebuild the UMAPs and overwrite `outputs/embeddings/umap_cancertype_pca_vs_scgpt.png`. Anything
+> that **trains** waits unconditionally, `verify_variants` §9 among it.
 
 - start bei data download, schau genauer auf drug selection, suche publications dafür raus
 - data harmonization genauer anschauen
