@@ -145,6 +145,18 @@ Reproducible in `notebooks/2_training.ipynb`; run dirs `runs/20260627_1913xx_*` 
 | `all_genes` | scGPT | 0.0106 | 131 / 545 |
 | `all_genes` | PCA | 0.0106 | **138 / 545** |
 
+> ⛔ **05.08.2026 — the `all_genes` rows are not a full-transcriptome comparison.** scGPT is embedded at
+> `max_length=1200`, and at `all_genes` **all 53,513 cells** exceed that cap: the model received a random
+> ~1,199 of each cell's ~3,550 expressed genes, a different subset per cell. PCA saw all 22,722. The two
+> arms of an `all_genes` row therefore differ in *gene set* as well as in encoding, so **no PCA-vs-scGPT
+> contrast may be drawn within those rows**, and none of them supports a statement about scGPT and the
+> full transcriptome — scGPT never received it. The `hvg5000` rows are unaffected: exactly **1** cell of
+> 53,513 sits above the cap, so scGPT there sees every gene surviving the filter. Measurement and the
+> decision to keep 1,200 are in
+> [Step 02](02-preprocessing-and-embeddings.md#decision--one-seeded-draw-at-1200-all_genes-is-a-sanity-check-03082026).
+> The `all_genes` scGPT embeddings were additionally generated **unseeded**, so that draw is not
+> reproducible either; the seed fix (42) postdates them.
+
 **Reading the results (matched trunk + matched 512-d width):**
 
 - **Core hypothesis — supported (single-task, `hvg5000`):** scGPT's train/val gap is **0.004** vs
@@ -152,8 +164,8 @@ Reproducible in `notebooks/2_training.ipynb`; run dirs `runs/20260627_1913xx_*` 
   first-layer capacity lets it fit the train set harder (train 0.011) while val stays high (0.045),
   exactly the memorization the denoised scGPT prior is meant to avoid.
 - **All-drugs — PCA competitive/better on raw accuracy:** heads-beating `hvg5000` **PCA 169 vs scGPT
-  147**, `all_genes` **PCA 138 vs scGPT 131**; val MSEs are within 0.0003. scGPT does **not** win on
-  absolute predictive metrics.
+  147**, ~~`all_genes` **PCA 138 vs scGPT 131**~~ (struck 05.08.2026 — not like-for-like, see the block
+  above); val MSEs are within 0.0003. scGPT does **not** win on absolute predictive metrics.
 - **Net:** scGPT's robust, reproducible win is **lower overfitting**, not higher accuracy — and this
   now holds with input dimensionality matched, so it can no longer be dismissed as a capacity artifact.
 - **Which heads are even learnable** is driven by coverage + response variance — see
@@ -530,6 +542,27 @@ correction to an earlier claim that credited the curve fit rather than the stand
 > the `all_genes`/scGPT column came from unseeded embeddings, and the PCA column will move again once
 > the pending `add_pca.py` changes land.
 
+> ⛔ **05.08.2026 — the `all_genes` point does not mean what its label says, for scGPT only.** At
+> `max_length=1200` every one of the 53,513 cells exceeds the cap in `all_genes`, so scGPT received a
+> random **~1,199** of each cell's ~3,550 expressed genes rather than the full set
+> ([Step 02](02-preprocessing-and-embeddings.md#decision--one-seeded-draw-at-1200-all_genes-is-a-sanity-check-03082026)).
+> The four HVG points are **not** affected: `hvg5000` averages 589 expressed genes per cell and only 1
+> cell of 53,513 reaches the cap, so scGPT sees the whole filtered set there. The PCA column is
+> unaffected throughout — PCA reads every gene it is given at every point.
+>
+> **What the `all_genes` scGPT point therefore does support (B2, 05.08.2026).** It is not "fewer genes":
+> at `all_genes` scGPT got roughly **twice** as many genes as at `hvg5000` (~1,199 vs 589), drawn at
+> random from the 20,570 in-vocab genes instead of selected by dispersion. The flat result across the two
+> is a real finding, stated narrowly: **doubling the gene count while randomising which genes are chosen
+> buys nothing over half as many dispersion-selected genes.** It is *not* evidence about scGPT and the
+> full transcriptome, which was never fed to it.
+>
+> ⚠️ `hvg1000`–`hvg3000` were never measured for expressed-gene counts. They cannot reach the cap if the
+> HVG sets are nested — scanpy's `n_top_genes` takes the top *N* of one dispersion ranking, so the
+> smaller sets should be subsets of `hvg5000` and their per-cell counts at or below its 589 — but that
+> nesting is **inferred from the selection rule, not verified against the stored gene lists**.
+> `hvg1000` is settled regardless: 939 in-vocab genes cannot produce 1,200 tokens.
+
 Does either rep have a preferred gene-set size?
 `notebooks/data_and_harmonization/verify_variants.ipynb` §9 builds each variant
 (1k/2k/3k/5k **plus `all_genes`**, full pipeline incl. scGPT re-embed; `1_preprocessing` §B) and runs the same
@@ -546,9 +579,11 @@ apples-to-apples under identical CV:
 
 - **No sweet spot, and no all-genes advantage.** Both reps are **flat across the whole axis** (PCA
   ~203–216, scGPT ~184–193) — filtering does not help scGPT (contrary to the earlier hunch), and
-  `all_genes` is **no better than HVG** for either rep (PCA's `all_genes` 204 sits mid-band, below
-  hvg3000's 216; the earlier "PCA prefers all genes" is not reproduced). Val MSE ~constant
-  (0.0105–0.0107) throughout.
+  `all_genes` is **no better than HVG** ~~for either rep~~ **for PCA** (PCA's `all_genes` 204 sits
+  mid-band, below hvg3000's 216; the earlier "PCA prefers all genes" is not reproduced). Val MSE
+  ~constant (0.0105–0.0107) throughout. *(Amended 05.08.2026: for scGPT the `all_genes` point is a
+  1,199-gene random draw, so it supports only the narrower claim in the block above, not a
+  no-all-genes-advantage statement.)*
 - PCA is marginally higher than scGPT at every gene count, but the ±73–94 fold spread overlaps
   completely — within noise at all sizes, consistent with the CV finding above.
 - **Δmse > 0 at every gene-set size** for both reps: the model stays marginally *worse* than the

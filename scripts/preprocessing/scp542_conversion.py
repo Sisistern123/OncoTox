@@ -4,6 +4,7 @@ import anndata as ad
 import pandas as pd
 import scanpy as sc
 
+from scripts.preprocessing.expression import kinker_transform
 from scripts.preprocessing.layout import (
     PipelinePaths,
     VARIANT_N_TOP_GENES,
@@ -21,7 +22,9 @@ def run(
     """Build the foundational SCP542_CCLE.h5ad object from raw CPM + metadata.
 
     If `n_top_genes` is given, the AnnData is subset to that many highly variable
-    genes (computed on a log1p copy so the saved .X keeps the original CPM values).
+    genes. The ranking runs on a transformed *copy* (``log2(1 + CPM/10)``, the SCP542
+    authors' own quantification -- see ``expression.py``), so the saved ``.X`` keeps the
+    original CPM values.
     """
     print("Loading expression matrix... (this may take a few minutes and require high RAM)")
     df_expr = pd.read_csv(input_expr, sep="\t", index_col=0)
@@ -46,7 +49,10 @@ def run(
         else:
             print(f"Selecting top {n_top_genes} highly variable genes...")
             adata_hvg = adata.copy()
-            sc.pp.log1p(adata_hvg)
+            # log2(1 + CPM/10), the transform the SCP542 authors use -- see expression.py.
+            # flavor="seurat" needs log-scale input and reads uns["log1p"]["base"] to invert
+            # it before computing dispersions.
+            kinker_transform(adata_hvg)
             sc.pp.highly_variable_genes(
                 adata_hvg,
                 n_top_genes=n_top_genes,

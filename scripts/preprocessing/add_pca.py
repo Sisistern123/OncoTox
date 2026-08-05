@@ -7,6 +7,7 @@ import scanpy as sc
 from scipy import sparse
 from sklearn.decomposition import PCA
 
+from scripts.preprocessing.expression import kinker_transform
 from scripts.preprocessing.layout import PipelinePaths, add_data_args
 
 
@@ -38,7 +39,8 @@ def _pca_fitted_on_train(
 ) -> np.ndarray:
     """Standardize and project, with every statistic estimated on training cells only.
 
-    ``X`` is the log1p expression matrix for *all* cells; ``train_mask`` selects the
+    ``X`` is the transformed expression matrix (``log2(1 + CPM/10)``) for *all* cells,
+    before per-gene scaling; ``train_mask`` selects the
     training ones. Per-gene mean and standard deviation **and** the principal-component
     rotation are fitted on ``X[train_mask]`` alone and then applied to every cell, so a
     held-out cell's coordinates depend on no held-out cell.
@@ -84,9 +86,9 @@ def run(
     the convert output keeps PCA on the single HVG filter, so PCA and scGPT are a
     clean, like-for-like comparison. The targets file's ``.X`` is left untouched.
 
-    The transform applied before PCA is ``log1p`` then per-gene scaling (see the comments
-    at the call site). The input is already CPM, so no library-size normalization is
-    applied here -- that step belongs on the full gene set and has already happened.
+    The transform applied before PCA is ``log2(1 + CPM/10)`` then per-gene scaling (see the
+    comments at the call site). The input is already CPM, so no library-size normalization
+    is applied here -- that step belongs on the full gene set and has already happened.
 
     **Two kinds of key are written.** ``X_pca`` is fitted on all cells and is the
     descriptive representation -- UMAPs and latent-space validation, where holding cells
@@ -130,16 +132,16 @@ def run(
 
     # SCP542 ships as CPM (Kinker et al. distribute `CPM_data.txt`), so library-size
     # normalization has already been applied -- once, to the full gene set, which is where the
-    # standard recipe puts it. So log1p directly; this matches what the HVG step already does
-    # (scp542_conversion.py ranks genes on a log1p copy of the same CPM matrix), which means
-    # genes are now selected and projected under the identical transform.
+    # standard recipe puts it. What remains is the log transform, and we use the one the
+    # dataset's own authors use: log2(1 + CPM/10). Same call as the HVG step, so genes are
+    # selected and projected under an identical transform. See expression.py for the citation.
     #
     # Until 05.08.2026 a `normalize_total(target_sum=1e4)` sat here. It was not a rescale to a
     # different target but a *second* library-size normalization computed over the HVG subset
     # only: each cell divided by its own retained-gene sum, so a cell whose expression sits
     # mostly outside the HVG set got inflated relative to one whose expression sits inside it,
     # and the same cell was scaled differently in hvg1000 than in hvg5000.
-    sc.pp.log1p(src)
+    kinker_transform(src)
     max_comps = min(src.n_obs, src.n_vars)
     if n_comps > max_comps:
         raise ValueError(
@@ -147,7 +149,7 @@ def run(
         )
 
     # The train-fitted keys are computed FIRST, and read src.X directly: sc.pp.scale below
-    # standardizes src.X in place, so afterwards it is no longer the log1p matrix.
+    # standardizes src.X in place, so afterwards it is no longer the transformed matrix.
     X_log = src.X.toarray() if sparse.issparse(src.X) else np.asarray(src.X)
     for col in split_cols:
         key = train_pca_key(col)

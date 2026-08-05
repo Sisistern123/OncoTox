@@ -63,6 +63,94 @@ cells as weak supervision ([Step 03](03-model-and-training-design.md)).
 response ([Corrections](corrections-and-dead-ends.md#scdrugatlas-and-clintox-as-data-sources)). This is an
 open gap for any future GDSC head.
 
+### Upstream QC — what SCP542 already had done to it (05.08.2026)
+
+*The data arrives quality-controlled. Dying cells, low-quality cells and suspected doublets **have
+been removed** — by Kinker et al., before publication — so the pipeline applies no second filtering
+pass, and needs none. Recording their decisions is the point: the `53,513 × 22,722` figures quoted
+throughout this project are the output of someone else's quality control, not a raw measurement, and a
+choice we cannot defend is a choice we should not be making silently. Source: Kinker et al.,
+**Nature Genetics 52, 1208–1218 (2020)**,
+doi:10.1038/s41588-020-00726-6 — Methods, "Processing of scRNA-seq data", and Results, "Pan-cancer
+scRNA-seq of human cell lines". `references.bib` key `scp542`.*
+
+**Design.** 198 CCLE lines profiled in nine multiplexed pools — eight CCLE pools of 24–27 lines each,
+grouped by doubling time, plus one custom head-and-neck pool — on 10x Genomics Chromium 3′ v2, for an
+average of **~280 cells per line**.
+
+| Stage | What they did |
+|---|---|
+| Barcode filtering, alignment, UMI counting | **Cell Ranger 3.0.1** (10x Genomics) |
+| Assigning cells to cell lines | Consensus of two approaches, genetic (SNP) and expression-based. Inconsistent assignments — mostly cells with low SNP coverage — were **excluded** |
+| Cell quality | Detected genes used as the quality proxy; cells **"conservatively" retained at 2,000–9,000 detected genes**. Low-quality cells and suspected doublets excluded |
+| Cell-line quality | Lines with **fewer than 50 assigned cells** excluded |
+| Result | **53,513 cells, 198 cell lines, 22 cancer types**; mean **19,264 UMIs** and **3,802 genes** detected per cell |
+
+**What the 2,000–9,000 window actually is.** For each cell, count how many of the 22,722 genes have a
+non-zero value — its *detected genes*, averaging 3,802 across this dataset. Cells were kept only when
+that count fell inside the window. The two bounds catch different failures:
+
+- **Floor (2,000)** — too few genes detected means almost no RNA was captured: an empty droplet
+  containing only ambient RNA, or a dying cell whose RNA has leaked out. The profile is mostly noise.
+- **Ceiling (9,000)** — too many usually means the droplet held **two** cells rather than one. Two
+  transcriptomes together show more distinct genes than either alone, so an unusually high count is the
+  signature of a doublet.
+
+Together: *keep droplets that look like exactly one intact cell.* Every cell in our 53,513 therefore
+has between 2,000 and 9,000 detected genes; nothing outside that range exists anywhere in our data.
+
+⚠️ **What the measure cannot distinguish.** A broken cell and a real cell that genuinely contains
+little RNA look identical by this test — a quiescent or senescence-like cell is small and
+transcriptionally quiet, so it has few detected genes and falls near the floor. Both are cut. That is
+standard and usually harmless; it matters here because those quiet states are plausibly among the rare
+survivors that **research question 2** is about.
+
+**Quantification.** `CPM[i,j] = 10⁶ × UMI[i,j] / Σ UMI[·,j]`, then `E[i,j] = log2(1 + CPM[i,j]/10)`.
+The portal distributes the **CPM** matrix (`CPM_data.txt`), not `E` — verified from the values, which
+run to tens and hundreds. How and why we apply their `E` transform ourselves is
+[Step 02](02-preprocessing-and-embeddings.md#the-expression-transform-is-the-datasets-own-05082026).
+
+**Why we do not re-filter.** Their doublet call rests on a signal the distributed matrix does not
+carry: cells were assigned to lines **by genotype**, so a droplet holding two different cell lines
+shows mixed SNPs and is caught directly. That is a far stronger discriminator than the
+expression-based inference a tool such as Scrublet performs, and it cannot be reconstructed from
+expression alone. Running scanpy's standard QC on top would filter an already-filtered population a
+second time, cutting real cells at the margins for no gain. **Cell-level QC is therefore inherited and
+cited, not repeated** — which is ordinary practice for a published, quality-controlled dataset.
+
+**Their gene filters are *not* in the file we hold.** For their own heterogeneity analyses they
+filtered genes two ways — per cell line, `E > 3.5` in at least 2% of cells (≈6,758 genes per line);
+across lines, the 7,000 most highly expressed (minimum average expression 12 CPM). Our matrix has
+**22,722** genes, so neither was applied to the distributed data. Those filters sit downstream of what
+we received, and our HVG selection is independent of them.
+
+**Their centering (`Er`, `ER`) — one is already covered, the other would break the task.**
+
+- **`ER`**, global centering (`E − mean(E)` over all 53,513 cells), is a subset of what we already do:
+  `sc.pp.scale` in [Step 02](02-preprocessing-and-embeddings.md) centers *and* scales each gene to unit
+  variance. Adopting `ER` explicitly would mean centering without scaling — strictly less. No action.
+- **`Er`**, per-cell-line centering (`E − mean(E)` over that line's cells), removes between-line
+  variation and leaves only within-line variation. **The response label is constant within a cell
+  line**, so all of its signal is between-line; centering per line would delete exactly the variance
+  the target depends on and the task would collapse. Not adopted, and not a close call.
+  It is, however, the natural representation for **research question 2** — Kinker et al. use `Er`
+  precisely because they study within-line heterogeneity. Worth revisiting when the objective stops
+  being "predict a line-constant scalar from each cell", i.e. at the MIL / attention-pooling step
+  ([TODO](../TODO.md) S2).
+
+**Two things this pins down.**
+
+1. **The detected-gene window is an adopted analysis decision, not an inherent property of the data.**
+   It is the only cell-level QC the project stands on, it was made by someone else, and it bounds every
+   heterogeneity claim we can make (see the window and its blind spot above).
+2. **198 is where the cell-line funnel starts.** The 190 roster name matches and 180 screened lines in
+   the [overlap audit](#overlap--coverage-audit-03042026) below are counted down from this 198, not
+   from CCLE at large.
+
+⚠️ Still open (FAIRER **E**): whether SCP542 carries a **study-level** licence beyond the portal terms
+of use. The Kinker et al. data-availability statement is where to look; the portal delegates to the
+contributing study. See [Licences](#licences-and-terms-of-use-of-the-source-data-checked-28072026).
+
 ### Design decisions taken with the advisor (27.03–03.04.2026)
 
 The project's framing was settled by asking, not assumed. The three questions put to Artem on 27.03 were:

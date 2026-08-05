@@ -50,9 +50,12 @@ by `--variant` (`layout.VARIANT_N_TOP_GENES`: `hvg5000 → 5000`, `all_genes →
 **How the selection works** (`scp542_conversion.py`), starting from `.X` = CPM
 (counts-per-million; 22,722 genes × 53,513 cells):
 
-1. Copy the matrix and `log1p` the **copy only**. (`sc.pp.highly_variable_genes(flavor="seurat")`
-   ranks genes by normalized dispersion — a statistic defined on the log scale — so it needs
-   log-transformed input.)
+1. Copy the matrix and transform the **copy only** to `log2(1 + CPM/10)`
+   (`expression.kinker_transform`). `sc.pp.highly_variable_genes(flavor="seurat")` ranks genes by
+   normalized dispersion — a statistic defined on the log scale — so it needs log-transformed
+   input, and it reads `uns["log1p"]["base"]` to invert the transform before computing
+   dispersions. *(Was a plain `log1p(CPM)` until 05.08.2026; see
+   [the transform](#the-expression-transform-is-the-datasets-own-05082026).)*
 2. On that copy, keep the **top 5,000 genes** by dispersion.
 3. Subset the **original CPM** matrix to those 5,000 genes. Discard the log1p copy.
 
@@ -105,12 +108,58 @@ Changing the gene set means re-running `convert`, which forces a re-embed and a 
 enforces it). `notebooks/data_and_harmonization/verify_variants.ipynb` checks these gene counts and the `X_pca` source at
 any time.
 
+### The expression transform is the dataset's own (05.08.2026)
+
+**`.X` really is raw CPM.** Verified against the distributed file: `CPM_data.txt` carries values such
+as `31.54` and `42.24`, far outside the 0–15 range a log-transformed matrix would give. So the portal
+ships the CPM matrix, not the `E` matrix the paper analyses.
+
+**But Kinker et al. do not analyse raw CPM.** Their Methods ("Processing of scRNA-seq data") quantify
+expression as
+
+> `E[i,j] = log2(1 + CPM[i,j]/10)`
+
+and state the reason for the divisor: the average number of UMIs detected per cell is **under
+100,000**, so without dividing by 10 the difference between detected (`E > 0`) and undetected
+(`E = 0`) genes is inflated. — Kinker et al., *Pan-cancer single-cell RNA-seq identifies recurring
+programs of cellular heterogeneity*, **Nature Genetics 52, 1208–1218 (2020)**,
+doi:10.1038/s41588-020-00726-6. Cited in `references.bib` as `scp542`.
+
+**Why transform at all, rather than feeding CPM straight in.** PCA — and every method built on
+Euclidean distance — works on *squared differences*, so each gene contributes in proportion to its
+absolute spread. On raw CPM a housekeeping gene sitting at 5,000 CPM that varies by a mild 20% moves
+cells 1,000 units apart, while a transcription factor at 50 CPM that varies by a full 100% moves them
+50. The leading components then describe which cells expressed a lot of ribosomal and mitochondrial
+RNA, not which cells differ biologically. The log fixes the mismatch at its source: expression
+differences are *multiplicative*, and a log turns a fold-change into a fixed additive distance
+regardless of where on the scale it happens, so a doubling counts the same in a rare gene as in an
+abundant one.
+
+Per-gene scaling (below) equalizes variance too, but it does not replace the log and cannot: gene
+selection happens *before* scaling and its dispersion statistic is defined on the log scale, and
+z-scoring a heavily right-skewed raw-CPM distribution leaves a handful of extreme cells dominating the
+gene even after standardization. Log first, then scale.
+
+**We now use their transform**, in both places that need it, through the single entry point
+`scripts/preprocessing/expression.py::kinker_transform` so the two cannot drift apart. Until
+05.08.2026 both used a plain `log1p(CPM)` — natural log, no divisor — which has no justification
+specific to this data, while the authors' choice is argued from a measured property of it. The base
+is set through `sc.pp.log1p(base=2)` rather than by hand, because that records
+`uns["log1p"]["base"]`, which `highly_variable_genes(flavor="seurat")` reads to invert the transform
+correctly.
+
+⚠️ **This can change which genes are selected.** The earlier claim that HVG selection is invariant to
+a global constant relied on gene means being ≫ 1, where `log1p(mean)` behaves like a shift and the
+equal-width mean-bins move with it. Dividing by 10 pushes many means below 1, where that no longer
+holds, so bin membership — and therefore the HVG set — may genuinely differ. Not measurable until the
+pipeline is re-run.
+
 ### What transform PCA sees — corrected 05.08.2026
 
 `add_pca.py::run` reads the convert file and applies this before `sc.pp.pca`:
 
 ```python
-sc.pp.log1p(src)                 # .X is CPM: library size already normalized, on the full gene set
+kinker_transform(src)            # log2(1 + CPM/10); .X is CPM, already library-size normalized
 sc.pp.scale(src, max_value=10)   # per-gene z-score across cells, clipped
 sc.pp.pca(src, n_comps=512, random_state=42)
 ```
@@ -118,9 +167,10 @@ sc.pp.pca(src, n_comps=512, random_state=42)
 **The standard this follows.** Scanpy's and Seurat's recipes both normalize library size **once, on
 the full gene matrix, before gene selection**, then log-transform, then standardize genes, then take
 components. SCP542 arrives as CPM — Kinker et al. distribute `CPM_data.txt` — so that normalization
-has already happened and must not be repeated. `max_value=10` follows Seurat's
-`ScaleData(scale.max = 10)` default and scanpy's own tutorial setting; with 53,513 cells a single
-outlier can otherwise hand one gene an entire component.
+has already happened and must not be repeated. The log step is the dataset authors' (above) rather
+than a generic `log1p`. `max_value=10` follows Seurat's `ScaleData(scale.max = 10)` default and
+scanpy's own tutorial setting; with 53,513 cells a single outlier can otherwise hand one gene an
+entire component.
 
 **Two defects this replaces**, both found in the 05.08.2026 audit of every line in the repository
 that transforms expression values:
@@ -191,13 +241,13 @@ the report — predates this change. ⛔ Nothing is recomputed until the review 
 banner in [`docs/TODO.md`](../TODO.md). Expect the **~78× input-scale asymmetry** between `X_pca`
 and `X_scGPT` (review item 4) to move too, since standardizing genes changes component magnitudes.
 
-**By-product — the HVG ranking scale is not a live issue.** `flavor="seurat"` `expm1`s the matrix
-back (`scanpy/preprocessing/_highly_variable_genes.py:373`, scanpy 1.12), bins genes by
-`log1p(mean)`, and z-scores log-dispersion within bin. A global constant on the input therefore
-shifts log-dispersion by a constant that the within-bin z-score removes exactly, so CPM and CP10K
-select the same genes provided bin membership survives — which it does at CPM scale, where gene
-means are ≫ 1. It is not an identity at arbitrary scale, and it is moot now that ranking and
-projection read the same matrix.
+**By-product — the HVG ranking scale.** `flavor="seurat"` `expm1`s the matrix back
+(`scanpy/preprocessing/_highly_variable_genes.py:373`, scanpy 1.12), bins genes by `log1p(mean)`, and
+z-scores log-dispersion within bin. A global constant on the input therefore shifts log-dispersion by
+a constant that the within-bin z-score removes exactly — *provided bin membership survives*, which
+holds while gene means are ≫ 1 but not once they are pushed below 1. Ranking and projection now read
+the same matrix either way, so there is no CPM-vs-CP10K mismatch left; what remains is that the
+`/10` divisor adopted above can itself move bin membership. See the warning in the previous section.
 
 **scGPT needs none of this.** Its embedding path applies no normalization and no `log1p`
 (`scgpt/tasks/cell_emb.py` builds the model directly; `DataCollator(do_binning=True)` bins in the

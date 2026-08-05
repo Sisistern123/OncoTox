@@ -15,26 +15,95 @@ score rather than the \code{auc} target used throughout this report, so its numb
 now lives in \code{notebooks/data\_and\_harmonization/verify\_variants.ipynb}, \S9, and the reference to
 \code{notebooks/07} above is stale. Its \emph{all-genes} arm is also not the full transcriptome as far as
 scGPT is concerned: the model reads at most 1{,}200 genes per cell, drawn at random from that cell's
-non-zero genes, so what the sweep compared was \NHvg{} \emph{selected} genes against a random subsample
-of broadly similar size. The claim that gene-set size does not matter is therefore untested on the
+non-zero genes, and in the all-genes variant every cell exceeds that cap. What the sweep compared for
+scGPT was therefore about 589 dispersion-selected genes per cell at \NHvg{} against about 1{,}199
+randomly drawn ones at all-genes --- roughly twice as many genes, but chosen at random rather than
+selected. The flat result supports only the narrow statement that random selection at twice the count
+does no better than dispersion selection; it is not evidence that scGPT gains nothing from the full
+transcriptome, which the model never received. The comparison is unaffected for the principal-component
+representation, which reads every gene it is given. Both readings are in any case untested on the
 current target.}
 
 \begin{revisionblock}
+\textbf{Quality control inherited from the source (added 05.08.2026).} SCP542 does not arrive raw, and
+this project applies no cell-level filtering of its own, so the figures above are the output of the
+source study's quality control rather than a raw measurement \cite{scp542}. Cells were profiled in nine
+multiplexed pools on the 10x Chromium platform, at an average of about 280 cells per line; barcode
+filtering, alignment and molecule counting used Cell Ranger 3.0.1. Cells were assigned to cell lines by
+the consensus of a genetic and an expression-based method, with inconsistent assignments --- largely
+cells of low sequencing coverage --- discarded. The number of genes with a non-zero measurement in a
+given cell, its detected-gene count, served as the quality proxy, and cells were retained when that
+count fell between 2{,}000 and 9{,}000. The two bounds catch different failures: a count below the
+floor indicates that almost no RNA was captured, as in an empty droplet carrying only ambient
+transcript or a cell whose contents have leaked out, while a count above the ceiling indicates that the
+droplet held two cells rather than one, since two transcriptomes together present more distinct genes
+than either alone. The window therefore retains droplets consistent with a single intact cell.
+Suspected doublets and low-quality cells were removed on this basis, as were cell lines with fewer than
+fifty assigned cells. What
+remains is the \NCells{} cells and 198 cell lines used here, at an average of 19{,}264 unique molecular
+identifiers and 3{,}802 detected genes per cell. The gene filters the source study applied for its own
+heterogeneity analyses were \emph{not} applied to the distributed matrix, which retains \NGenes{}
+genes, so the gene selection described below is independent of them.
+
+No further quality control is performed here, and none is warranted. The doublet call in particular
+rests on information the distributed matrix does not carry: because cells were assigned to lines by
+genotype, a droplet containing two different cell lines presents mixed variants and is identified
+directly, which is a stronger discriminator than expression-based inference and cannot be reconstructed
+from expression alone. Applying a second, generic filtering pass would remove genuine cells at the
+margins of an already filtered population without recovering that signal. Two consequences of the
+inherited filter are worth stating. Cells outside the retained window are absent from the data
+entirely, so any statement this report makes about cellular heterogeneity concerns heterogeneity within
+that window --- relevant to the second research question, since states of low transcript content, such
+as quiescent or senescence-like cells, lie near its lower bound. And the 198 lines are where the sample
+funnel begins: \NLines{} of them carry usable response measurements, and that number, not the size of
+the drug screen, is what bounds the effective sample size, since the screen itself covers roughly
+1{,}100 lines.
+
+The source study additionally centers expression before its own analyses, in two forms, and neither is
+adopted here. Centering each gene on its mean across all cells is already subsumed by the per-gene
+standardization described below, which centers and scales. Centering each gene within each cell line is
+a different operation: it removes between-line variation and retains only variation within a line.
+Because the response label is constant across the cells of a line, all of its signal is between-line,
+so per-line centering would remove precisely the variance the target depends upon. It is nevertheless
+the natural representation for the second research question, and the point at which to revisit it is
+the move to pooling over a line's cells rather than predicting from each cell separately.
+
 \textbf{Expression preprocessing (revised 05.08.2026).} SCP542 is distributed as counts per million, so
 library-size normalization has already been applied --- once, to the full gene matrix, which is where it
-belongs. The pipeline therefore does not normalize a second time. Expression is log-transformed as
-$\log(1+x)$; the \NHvg{} most variable genes are selected on that matrix using the dispersion-based
+belongs. The pipeline therefore does not normalize a second time. Expression is transformed as
+$E_{ij} = \log_{2}(1 + \mathrm{CPM}_{ij}/10)$, which is the quantification the dataset's own authors
+use: they divide by ten because the average number of unique molecular identifiers detected per cell is
+below $10^5$, and without it the difference between detected and undetected genes is inflated
+\cite{scp542}. The \NHvg{} most variable genes are selected on that matrix using the dispersion-based
 Seurat criterion; each gene is then standardized to zero mean and unit variance across cells, with
 $z$-scores clipped at 10, before the principal components are taken
-(\code{scripts/preprocessing/scp542\_conversion.py}, \code{scripts/preprocessing/add\_pca.py}).
+(\code{scripts/preprocessing/expression.py}, \code{scripts/preprocessing/scp542\_conversion.py},
+\code{scripts/preprocessing/add\_pca.py}). Until this revision both steps used a plain $\log(1+x)$ on
+raw CPM --- natural log, no divisor --- which has no justification specific to this data, whereas the
+published choice is argued from a measured property of it.
 
-Until this revision the PCA branch did two things differently. It applied a second library-size
+The reason for transforming at all, rather than passing counts per million directly to the
+decomposition, is that principal component analysis and every method built on Euclidean distance weigh
+each gene by its absolute spread. On the untransformed scale a housekeeping gene at 5{,}000 counts per
+million varying by a fifth separates two cells by a thousand units, while a transcription factor at
+fifty counts per million varying by a factor of two separates them by fifty; the leading components
+then report which cells carried more ribosomal and mitochondrial transcript, not which cells differ
+biologically. Expression differences are multiplicative, and the logarithm converts a fold change into
+a fixed additive distance wherever on the scale it occurs, so a doubling counts equally in a rare and
+in an abundant gene. The per-gene standardization described next equalizes variance as well, but does
+not substitute for the transform: gene selection precedes it and its dispersion statistic is defined on
+the logarithmic scale, and standardizing a strongly right-skewed distribution still leaves a few
+extreme cells dominating the gene.
+
+Until this revision the PCA branch did two further things differently. It applied a second library-size
 normalization \emph{after} gene selection, dividing each cell by the total of its retained genes alone,
 which rescales a cell by the share of its expression that happens to fall inside the selected set and
 scales the same cell differently in each gene-set variant. And it applied no per-gene standardization,
 so the leading components tracked absolute expression level rather than variation between cells. Both
 are corrected in the code; \textbf{every PCA number in this report was produced before the correction}
-and will change when the representation is recomputed.
+and will change when the representation is recomputed. The change of log transform may additionally
+move which genes the variability criterion selects, since it alters the expression bins the dispersions
+are normalized within, so the gene set itself is not guaranteed to be identical either.
 
 scGPT receives the same CPM matrix with neither step applied. It replaces them with a per-cell binning
 of expression into 51 quantile bins, computed from that cell's own non-zero values --- a rank transform,
