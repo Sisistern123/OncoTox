@@ -30,13 +30,72 @@ def train_pca_key(split_col: str) -> str:
     return "X_pca_train_" + split_col.removeprefix("split_")
 
 
+def _pca_record(
+    genes: np.ndarray,
+    mean: np.ndarray,
+    std: np.ndarray,
+    center: np.ndarray,
+    components: np.ndarray,
+    variance: np.ndarray,
+    variance_ratio: np.ndarray,
+    n_comps: int,
+    seed: int,
+    fitted_on: str,
+) -> dict:
+    """Everything needed to reproduce a stored projection, or apply it to new cells.
+
+    ``obsm["X_pca*"]`` holds only where each cell landed. That is the *output* of the
+    projection and does not contain the projection itself: it says nothing about which
+    genes built each component, nor how much of the total variance the kept components
+    account for. Both are computed on the way and were discarded until 10.08.2026
+    (audit item 04b) -- so neither "what fraction of the variance does PCA(512) retain?"
+    nor "which genes dominate PC1?" could be answered without re-running the fit, and a
+    new cell could not be placed in the same space at all.
+
+    That last point is the one that matters for ``X_pca_train_*``: those are fitted on
+    training cells only, so re-running reproduces them only while every input is
+    bit-identical (same cells, same HVG list, same split, same seed). Across a
+    re-preprocessing sweep that stops holding, and the recipe behind the stored
+    coordinates would be gone.
+
+    Stored in ``uns`` rather than ``varm`` because ``varm`` is indexed by the file's own
+    ``var``: the targets file keeps 4,576 genes after the scGPT OOV drop while PCA runs on
+    the 5,000 from the convert output, so the axes do not match. Hence ``genes``, which
+    labels the gene axis of ``mean``/``std``/``center`` and the columns of ``components``.
+
+    The transform this reproduces, for a cell's ``log2(1 + CPM/10)`` gene vector ``x``::
+
+        z = clip((x - mean) / std, -scale_max_value, +scale_max_value)
+        coords = (z - center) @ components.T
+
+    ``mean``/``std`` are the per-gene standardization; ``center`` is the separate mean
+    that the PCA itself subtracts, which is near but not exactly zero because clipping
+    happens after standardization.
+    """
+    return {
+        "genes": np.asarray(genes, dtype=object).astype(str),
+        "mean": np.asarray(mean, dtype=np.float32),
+        "std": np.asarray(std, dtype=np.float32),
+        "center": np.asarray(center, dtype=np.float32),
+        "scale_max_value": float(SCALE_MAX_VALUE),
+        "components": np.asarray(components, dtype=np.float32),
+        "variance": np.asarray(variance, dtype=np.float32),
+        "variance_ratio": np.asarray(variance_ratio, dtype=np.float32),
+        "n_comps": int(n_comps),
+        "seed": int(seed),
+        "fitted_on": str(fitted_on),
+    }
+
+
 def _pca_fitted_on_train(
     X: np.ndarray,
     train_mask: np.ndarray,
     n_comps: int,
     seed: int,
+    genes: np.ndarray,
+    fitted_on: str,
     max_value: float = SCALE_MAX_VALUE,
-) -> np.ndarray:
+) -> tuple[np.ndarray, dict]:
     """Standardize and project, with every statistic estimated on training cells only.
 
     ``X`` is the transformed expression matrix (``log2(1 + CPM/10)``) for *all* cells,
@@ -47,11 +106,16 @@ def _pca_fitted_on_train(
 
     This is the hand-rolled equivalent of ``sc.pp.scale`` + ``sc.pp.pca`` because neither
     separates fitting from transforming, which is precisely what a train-only fit needs.
-    Returns the projection for all cells, in the row order of ``X``.
+    Returns the projection for all cells in the row order of ``X``, and the ``_pca_record``
+    describing the fit that produced it.
     """
     train = X[train_mask]
     mean = train.mean(axis=0)
-    std = train.std(axis=0)
+    # ddof=1, matching sc.pp.scale on the all-cells path (scanpy applies the Bessel
+    # correction; numpy's .std() defaults to ddof=0). Harmonized 10.08.2026, audit item 04b:
+    # the two PCA fits are meant to differ only in which cells they see, and on this atlas
+    # the correction itself is worth well under 0.01%.
+    std = train.std(axis=0, ddof=1)
     # Genes with no variance across training cells carry no information and would divide
     # by zero. Leaving std at 1 keeps them mean-centred but unscaled, so a held-out cell
     # that does express such a gene is not silently amplified.
@@ -62,7 +126,24 @@ def _pca_fitted_on_train(
 
     pca = PCA(n_components=n_comps, random_state=seed)
     pca.fit(Z[train_mask])
-    return pca.transform(Z).astype(np.float32)
+    record = _pca_record(
+        genes=genes,
+        mean=mean,
+        std=std,
+        # pca.mean_ is the column mean of Z[train_mask] -- the centring the PCA does itself,
+        # on top of the standardization above. Not zero, because the clip lands after the
+        # divide by std.
+        center=pca.mean_,
+        components=pca.components_,
+        variance=pca.explained_variance_,
+        # Relative to the variance of the TRAINING cells, since that is the only thing this
+        # fit saw. Not comparable as a percentage with the all-cells key below.
+        variance_ratio=pca.explained_variance_ratio_,
+        n_comps=n_comps,
+        seed=seed,
+        fitted_on=fitted_on,
+    )
+    return pca.transform(Z).astype(np.float32), record
 
 
 def run(
@@ -96,6 +177,9 @@ def run(
     present in ``obs``, a ``X_pca_train_<split>`` key is fitted on that split's training
     cells only and is what a model evaluated on that split should read.
 
+    Each key recomputed here also gets an entry in ``uns["pca_fits"]`` holding the fit
+    itself -- loadings, variances and standardization statistics -- see ``_pca_record``.
+
     If ``counts_h5ad`` is None, PCA falls back to a copy of the targets ``.X``
     (legacy behaviour). Keys already present are skipped unless ``force=True``.
     """
@@ -117,6 +201,12 @@ def run(
 
     for key in todo:
         adata.obsm.pop(key, None)
+    # Records are keyed by the obsm key they describe, and only ever written for keys
+    # actually recomputed in this call: a key skipped because it already exists keeps
+    # whatever record it came with, rather than acquiring one from a different fit.
+    pca_fits = dict(adata.uns.get("pca_fits", {}))
+    for key in todo:
+        pca_fits.pop(key, None)
 
     if counts_h5ad is not None:
         print(f"Computing PCA on HVG-filtered counts from {counts_h5ad}...")
@@ -164,7 +254,14 @@ def run(
                 f"n_comps={n_comps} exceeds min(n_train={n_train}, n_genes={src.n_vars}) "
                 f"for obs['{col}']."
             )
-        adata.obsm[key] = _pca_fitted_on_train(X_log, train_mask, n_comps, seed)
+        adata.obsm[key], pca_fits[key] = _pca_fitted_on_train(
+            X_log,
+            train_mask,
+            n_comps,
+            seed,
+            genes=np.asarray(src.var_names),
+            fitted_on=f"{n_train} cells labelled 'train' in obs['{col}']",
+        )
         print(f"  {key}: fitted on {n_train} train cells -> shape {adata.obsm[key].shape}.")
 
     if "X_pca" in todo:
@@ -176,9 +273,31 @@ def run(
         # where excluding cells would be wrong. Models trained on a fixed split read the
         # train-fitted key above instead. The 5-fold CV still reads X_pca -- see docs/steps/02.
         sc.pp.scale(src, max_value=SCALE_MAX_VALUE)
+        # sc.pp.scale writes the statistics it used into var["mean"]/var["std"]; taking them
+        # from there rather than recomputing means the record cannot disagree with the
+        # transform it describes. (It uses ddof=1, where numpy's .std() defaults to ddof=0 --
+        # recomputing by hand got this wrong and the synthetic check in the docstring caught it.)
+        Z_all = src.X.toarray() if sparse.issparse(src.X) else np.asarray(src.X)
         sc.pp.pca(src, n_comps=n_comps, random_state=seed)
         adata.obsm["X_pca"] = src.obsm["X_pca"]
+        pca_fits["X_pca"] = _pca_record(
+            genes=np.asarray(src.var_names),
+            mean=src.var["mean"].to_numpy(),
+            std=src.var["std"].to_numpy(),
+            center=Z_all.mean(axis=0),
+            # scanpy stores loadings as (n_genes, n_comps); sklearn uses the transpose. Both
+            # records are written in sklearn's orientation so one formula reprojects either.
+            components=np.asarray(src.varm["PCs"]).T,
+            variance=src.uns["pca"]["variance"],
+            variance_ratio=src.uns["pca"]["variance_ratio"],
+            n_comps=n_comps,
+            seed=seed,
+            fitted_on=f"all {src.n_obs} cells",
+        )
         print(f"  X_pca (all cells) computed on {src.n_vars} genes -> shape {adata.obsm['X_pca'].shape}.")
+        print(f"    {100 * float(pca_fits['X_pca']['variance_ratio'].sum()):.1f}% of variance retained.")
+
+    adata.uns["pca_fits"] = pca_fits
 
     print("Saving updated AnnData with X_pca (targets .X unchanged)...")
     ad.settings.allow_write_nullable_strings = True

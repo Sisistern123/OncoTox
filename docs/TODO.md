@@ -131,6 +131,27 @@ every one of them was a step that looked settled and had never been checked.
 - [ ] **4 · Representations** — PCA components, scGPT embedding generation and its input format
       (raw counts vs CPM — never confirmed), and **the ~78× input-scale asymmetry between the two under
       one shared learning rate**, which is untested and qualifies every PCA-vs-scGPT claim we have made.
+  - [ ] **A · The input-scale asymmetry is still untested.** Needs training runs, so it goes with the sweep.
+  - [x] **B · The PCA fit is now stored, not just the coordinates — done in code 10.08.2026.**
+        `obsm["X_pca*"]` held only where each cell landed; the loadings, the variance ratios and the
+        standardization statistics were computed and thrown away, so the pipeline could answer neither
+        *what fraction of variance does PCA(512) retain* nor *which genes dominate PC1*, and could not
+        project a new cell into an existing space — which the cross-database and XAI stages both need.
+        `add_pca.py::_pca_record` writes all of it to `uns["pca_fits"]` per key; `varm` was not an option
+        because the targets file's gene axis (4,576) differs from the PCA's (5,000). Structure, the
+        reprojection formula and the verification:
+        [Step 02](./steps/02-preprocessing-and-embeddings.md#the-fit-is-stored-not-only-the-coordinates-10082026).
+        Costs ~10 MB (`hvg5000`) / ~47 MB (`all_genes`) per fit. Takes effect at the sweep.
+    - [x] **Found on the way: the two PCA fits were standardized differently.**
+          `_pca_fitted_on_train` used numpy's `ddof=0`, `sc.pp.scale` uses `ddof=1`. Worth under 0.01 %
+          on this atlas, so no conclusion moves — but the two representations being compared were not
+          produced by identical code. **Harmonized to `ddof=1` (Selin, 10.08.2026)**, leaving *which
+          cells are seen* as the only difference between the fits. Changes `X_pca_train_*` in its last
+          digits, at the sweep.
+    - [ ] **Open, not asked for yet:** how many values actually reach the ±10 clip
+          (Seurat's `ScaleData(scale.max = 10)` default). If it is a handful the cap is inert and the
+          choice of 10 does not matter; if it is percent-scale it is shaping the components. Read-only
+          count, no re-run.
 - [ ] **5 · Target** — AUC vs EC50 vs Emax: AUC conflates potency with efficacy and the tested
       concentration range spans 0.13–600 µM. Winsorizing threshold. Are all statistics per fold?
 - [ ] **6 · Drug selection — REBUILD, this is the main deliverable.** Pool on coverage and spread only,

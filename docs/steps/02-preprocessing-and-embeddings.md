@@ -35,7 +35,7 @@ rebuilding the expensive `convert`/`scgpt` outputs, which they **share**.
 | 2 | **scgpt** — `scripts/preprocessing/gen_embeds.py`, run under the separate scGPT venv via `--scgpt-python` (vendored into the repo 03.08.2026; it was previously an untracked file outside it) | the **convert output** `SCP542_CCLE.h5ad` | `..._scGPT_human_embeddings.h5ad`: adds `obsm["X_scGPT"]` (**512-dim**) **and drops scGPT-OOV genes from `.X`** (hvg5000: 5,000→4,576). |
 | 3 | **targets** — `ctrp_to_h5ad.py` | the embeddings h5ad + the CTRPv2 tables (curve fits for `auc`/`auc_z`, dose grid for `mean_pv`) | `..._with_targets[_<score>].h5ad`: adds `obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, `uns["ctrp_score"]` + the de-standardization stats ([Step 03](03-model-and-training-design.md) for mechanics). |
 | 4 | **splits** — `create_splits.py` | the targets h5ad (in place) | `obs["split_paclitaxel"]` (`run`) + `obs["split_ctrp"]` (`run_multi`) — cell-line-grouped. |
-| 5 | **pca** — `add_pca.py` | the targets h5ad + the **convert counts** `SCP542_CCLE.h5ad` | `obsm["X_pca"]`: `normalize_total(1e4)` → `log1p` → `sc.pp.pca` (**512 comps**, matching the scGPT width) computed on the **HVG-filtered convert counts** (5,000 genes), *not* the targets `.X`. Targets `.X` left unchanged. |
+| 5 | **pca** — `add_pca.py` | the targets h5ad + the **convert counts** `SCP542_CCLE.h5ad` | `obsm["X_pca"]`: `log2(1 + CPM/10)` → `sc.pp.scale(max_value=10)` → `sc.pp.pca` (**512 comps**, matching the scGPT width) computed on the **HVG-filtered convert counts** (5,000 genes), *not* the targets `.X` — plus one train-fitted `X_pca_train_<split>` per fixed split, and a `uns["pca_fits"]` record per key (both below). Targets `.X` left unchanged. |
 
 ✅ On-plan order: embeddings + comparative UMAP (below) come **before** any predictor — the plan's
 Phase-1 latent validation gates the regression work.
@@ -237,7 +237,7 @@ writes, alongside the all-cells `X_pca`, one train-fitted key per fixed-split co
 
 | key | fitted on | used for |
 |---|---|---|
-| `X_pca` | all 53,513 cells | description only — UMAPs, latent-space validation |
+| `X_pca` | all 53,513 cells | UMAPs and latent-space validation — **and every CV run**, see below |
 | `X_pca_train_ctrp` | cells of `split_ctrp == "train"` | models scored on `split_ctrp` |
 | `X_pca_train_paclitaxel` | cells of `split_paclitaxel == "train"` | models scored on `split_paclitaxel` |
 
@@ -262,6 +262,56 @@ all and are dropped from every split by `create_splits.py::has_any_label`. That 
 11.4 % of the atlas. It is not a test leak: those cells appear in no split, so no held-out label is
 touched. But the representation is partly shaped by data the model never sees, which is a separate
 question from the leak above and is decided with it under review item 7.
+
+### The fit is stored, not only the coordinates (10.08.2026)
+
+`obsm["X_pca*"]` records **where each cell landed**. That is the output of the projection and does not
+contain the projection: nothing in it says which genes build each component, nor what fraction of the
+total variance the 512 kept components account for. Both were computed on the way and discarded, so
+until 10.08.2026 the pipeline could answer neither *how much variance does PCA(512) retain* nor *which
+genes dominate PC1*, and could not place a new cell in an existing space at all. `add_pca.py::run` now
+writes a record per recomputed key into `uns["pca_fits"]` (`add_pca.py::_pca_record`):
+
+| field | what it is |
+|---|---|
+| `genes` | gene names labelling the axis of `mean`/`std`/`center` and the columns of `components` |
+| `mean`, `std` | the per-gene standardization |
+| `center` | the mean the PCA subtracts on top of it — not zero, because the clip lands after the divide |
+| `scale_max_value` | the ±10 clip (Seurat's `ScaleData(scale.max = 10)` default) |
+| `components` | the loadings, `(n_comps, n_genes)` |
+| `variance`, `variance_ratio` | per component; for a train-fitted key the ratio is of the **training** cells' variance, so it is not comparable as a percentage with the all-cells key |
+| `n_comps`, `seed`, `fitted_on` | provenance of the fit |
+
+The transform it reproduces, for a cell's `log2(1 + CPM/10)` gene vector `x`:
+
+```
+z      = clip((x - mean) / std, -scale_max_value, +scale_max_value)
+coords = (z - center) @ components.T
+```
+
+**Why `uns` and not `varm`.** `varm` is indexed by the file's own `var`, and the targets file keeps
+4,576 genes after the scGPT OOV drop while PCA runs on the 5,000 from the convert output — the axes do
+not match. Hence the explicit `genes` vector.
+
+**Which key this matters most for.** `X_pca` can be recovered by re-running, since it depends only on
+the convert output. `X_pca_train_*` cannot: it is fitted on training cells alone, so re-running
+reproduces it only while every input is bit-identical — same cells, same HVG list, same split, same
+seed. That stops holding across a re-preprocessing sweep, and the recipe behind the stored coordinates
+would be gone. Cost is ~10 MB per fit at `hvg5000` and ~47 MB at `all_genes`, against targets files of
+2.2 GB and 8.6 GB.
+
+**Verified** on synthetic data by applying the stored record back to the input matrix and checking it
+reproduces the stored coordinates (agreement to 3e-06 for `X_pca`, 7e-07 for `X_pca_train_ctrp`). The
+check found a real defect: the record's `mean`/`std` were recomputed by hand with numpy's `ddof=0`
+while `sc.pp.scale` uses `ddof=1`, so the stored recipe did not reproduce the stored coordinates. The
+record now reads scanpy's own `var["mean"]`/`var["std"]` instead of recomputing them.
+
+**Consequence — the two fits are now standardized identically (10.08.2026).** That defect exposed a
+pre-existing mismatch: `_pca_fitted_on_train` used `ddof=0`, `sc.pp.scale` uses `ddof=1`. The gap is a
+factor of √(n/(n−1)), under 0.01 % on this atlas, so no conclusion depends on it — but the two
+representations being compared were not produced by identical code. `_pca_fitted_on_train` now passes
+`ddof=1`, leaving *which cells are seen* as the only difference between the two fits. This changes
+`X_pca_train_*` in its last digits and takes effect with the sweep, like everything else here.
 
 **Splits are frozen to a file (05.08.2026).** The train/val/test partition is no longer redrawn from the
 data on each run: `create_splits.py::frozen_split` reads `splits/split_ctrp.csv` (versioned in the repo,
