@@ -65,8 +65,18 @@ Walk the whole thing once, in order, deciding three things at each stage: **what
 open**, **what has never actually been verified**. The last column is where today's problems came from —
 every one of them was a step that looked settled and had never been checked.
 
-- [ ] **1 · Data acquisition** — SCP542, CTRPv2 (and GDSC / PRISM for later). Which release, which files,
-      downloaded when, from where. Is the provenance written down anywhere reproducible?
+- [x] **1 · Data acquisition — walked 10.08.2026.** Release, files, date and origin now recorded per
+      source in [Step 01](./steps/01-datasets-and-harmonization.md#provenance--what-was-retrieved-from-where-when),
+      together with the two data roots (`~/Desktop/OncoTox/data` and `<repo>/data`), which nothing had
+      stated before. Found and fixed: GDSC2's release was only ever in its filenames (**27Oct23**);
+      DrugBank had no date (**06.03.2026**, from the file mtime — flagged as such); the Repurposing Hub
+      file is the **20200324** release. **CTRPv2 verified byte-identical to the published release** — all
+      15 files match the MD5s in its `MANIFEST.txt`, the only source that shipped any. SCP542's licence
+      question closed (item F) and its GEO accession **GSE157220** recorded. The two orphan downloads
+      identified. *Settled, not open:* SCP542 exposes no version identifier, so the retrieval date is its
+      version reference (Selin, 10.08.2026); no checksums generated for the three sources that shipped
+      none; GDSC's `LN_IC50` processing stays undocumented — `GDSC_Raw_Data_Description.pdf` came with
+      the download and may close it, but GDSC is not a modelling priority.
 - [ ] **2 · Harmonization** — cell-line and compound name matching, the 190 vs 180 discrepancy, duplicate
       experiments averaged. Verify the join has not silently dropped lines.
   - [ ] **B · Migrate to persistent identifiers.** The pipeline joins cell lines on `ccl_name_norm` —
@@ -157,9 +167,12 @@ under the portal ToS, **GDSC granting no redistribution**, **DrugBank non-commer
       instead of decaying in a dated log.)* Still open: **a script that rebuilds the derived artifacts
       from those sources**, and a separate decision on whether anything gets deposited (Zenodo) at
       publication. (FAIRER: **A**)
-- [ ] **F · One residual on the data terms.** The main check is done (above). Left open: whether SCP542
-      carries a **study-level** licence beyond the portal ToS — the portal delegates that to the
-      contributing study, so the Kinker et al. data-availability statement is where to look.
+- [x] **F · One residual on the data terms — closed 10.08.2026.** SCP542 carries **no** study-level
+      licence beyond the portal ToS. Checked in Kinker et al. 2020 itself: the Data availability
+      statement (p. 13) names no licence and declares no restriction, and the Reporting Summary (p. 28)
+      lists none under the heading that asks for restrictions. It also yields a persistent accession we
+      did not have — **GEO `GSE157220`**. Both recorded in
+      [Step 01](./steps/01-datasets-and-harmonization.md#provenance--what-was-retrieved-from-where-when).
       (FAIRER: **E**)
 - [ ] **G · State the FAIRER commitment in the docs, not only in the bibliography.** The sources are in
       `references.bib`, but no document says the project works under FAIRER or what the six letters mean
@@ -301,7 +314,7 @@ This file no longer restates finished work. Completed items live where their num
 | 5-fold GroupKFold CV, per-drug correlation, gene-set sweep | [Step 05](./steps/05-multitask-results.md) |
 | Target distribution + per-drug coverage & learnability | [Step 05](./steps/05-multitask-results.md#the-learnability-gate-measured-the-wrong-quantity-27072026) |
 | Cancer-type UMAPs and the latent-space validation | [Step 02](./steps/02-preprocessing-and-embeddings.md#latent-space-validation-umap-fig-3--fig-4) |
-| 190 vs 180 cell-line overlap, source licences, the Hashimoto-san drug list | [Step 01](./steps/01-datasets-and-harmonization.md) |
+| 190 vs 180 cell-line overlap, source licences, the externally shared drug list | [Step 01](./steps/01-datasets-and-harmonization.md) |
 | Target score → `auc_z`, and its retirement | [Step 03](./steps/03-model-and-training-design.md), [Corrections](./steps/corrections-and-dead-ends.md#auc_z-as-the-training-target) |
 | Learnability filter + the 5-/10-drug results | [Step 05](./steps/05-multitask-results.md), [Corrections](./steps/corrections-and-dead-ends.md#the-1307-five-drug-numbers) |
 | The 13.07 "net read" that replaced the label-ceiling conclusion | [Corrections](./steps/corrections-and-dead-ends.md#neither-representation-ranks-cell-lines--the-k545-null-result) |
@@ -399,7 +412,7 @@ Unlike the items above these are questions, not scheduled work.*
       tuning closed and ridge-on-150-lines matching the MLP, the only remaining levers are label-side —
       above all **more independent cell lines** (SCP542×CTRPv2 caps at 180; CTRPv2 itself has ~1,100).
 - [ ] **Cross-database PRISM** (masked multi-task) — [Step 06](./steps/06-planned-work.md#a-cross-database-integration).
-      (GDSC not a modelling priority; was only for Hashimoto-san's list.)
+      (GDSC not a modelling priority; was only for the externally shared list.)
 - [ ] **XAI** — feature importance → resistance drivers — [Step 06 · B](./steps/06-planned-work.md#b-xai-and-feature-interpretability).
 - [x] ~~Confirm scGPT input preprocessing in `gen_embeds.py` (raw counts vs CPM) so scGPT isn't
       handicapped.~~ **Answered 03.08.2026: CPM does not handicap scGPT, and the paper sanctions it.**

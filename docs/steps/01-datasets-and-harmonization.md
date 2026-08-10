@@ -47,16 +47,48 @@ cells as weak supervision ([Step 03](03-model-and-training-design.md)).
 ### Provenance — what was retrieved, from where, when
 
 *Moved here 30.07.2026 from the dated log, which is where it had been decaying. This is the record
-[TODO](../TODO.md) review item 1 and FAIRER **A**/**E** ask for.*
+[TODO](../TODO.md) review item 1 and FAIRER **A**/**E** ask for. Release identifiers, filenames and
+roots re-checked against the filesystem 10.08.2026 (audit item 01).*
+
+**The sources sit in two different roots.** Nothing else in the project said so, and paths quoted
+elsewhere in this file are relative to whichever root the source landed in:
+
+| Root | Sources it holds |
+|---|---|
+| `~/Desktop/OncoTox/data/` — the pipeline's `--data-root`, hard-coded as `DEFAULT_DATA_ROOT` in `scripts/preprocessing/layout.py` | SCP542 (`scRNAseq_SCP542/`), CTRPv2 (`metadata/CTRPv2.0_2015_ctd2_ExpandedDataset/`), PRISM (`metadata/PRISM_REPURPOSED/`), Repurposing Hub annotations (`metadata/repo-drug-annotation-20200324.txt`), DrugBank (`full database.xml`) |
+| `<repo>/data/` — untracked, see [Licences](#licences-and-terms-of-use-of-the-source-data-checked-28072026) | GDSC2, the compound catalog the [overlap audit](#overlap--coverage-audit-03042026) writes (`drug/`), and the abandoned scDrugAtlas download (`scDrugAtlas/`, identified below) |
+
+Only the first root is reachable from code; the second is referenced by the audit notebook alone.
+
+**Two downloaded files belong to no pipeline and had no record until 10.08.2026.** Both are identified
+here so neither is mistaken later for something the analysis depends on:
+
+- `scRNAseq_SCP542/other/CCLE_scRNAseq_github/` (~3.9 GB, files dated 29.08.2020) is the **authors' own
+  reproduction bundle**, from `https://github.com/gabrielakinker/CCLE_heterogeneity` — the repository
+  named in the Kinker et al. Code availability statement (p. 14). It holds `CCLE_heterogeneity_Rfiles/`
+  (their CPM matrix and metadata as `.RDS`, copy number by gene, gene loci, the tumour comparison
+  matrix, the literature metaprogram table) and `Expected_results/` (3.2 GB of module 1–6 reference
+  outputs). Nothing in this project reads it. It is the reference implementation of *their*
+  heterogeneity analysis, which is the natural comparison point for research question 2, not for the
+  response prediction.
+- `data/scDrugAtlas/ea472fa4aec64cabaef5194af0ba5ba0.h5ad` (45 MB) is **not SCP542**: 1,761 cells ×
+  18,919 genes, `obs` = `drug` (control 1,061 / `Pal` 693 / `palbociclib` 7), binary `response`
+  (1: 1,064, 0: 697), two batches, genes as Ensembl IDs, already carrying `X_pca` and a neighbour
+  graph. It is a palbociclib treatment-versus-control perturbation experiment with sensitivity labels,
+  evidently two sources stitched together — batch 2 is seven cells under a different spelling of the
+  drug. ⚠️ **Which study it came from cannot be recovered:** the hash filename carries no provenance and
+  nothing accompanies the file. It arrived with the scDrugAtlas line of work, which was abandoned
+  ([Corrections](corrections-and-dead-ends.md#scdrugatlas-and-clintox-as-data-sources)), and no result
+  in this project rests on it.
 
 | Source | Retrieved | From |
 |---|---|---|
-| **SCP542** scRNA-seq (53,513 cells × 22,722 genes) | 30.03.2026 | Broad Single Cell Portal, study **SCP542** *"pan-cancer cell line heterogeneity"* — <https://singlecell.broadinstitute.org/single_cell/study/SCP542/pan-cancer-cell-line-heterogeneity>. Source publication Kinker et al., *Nat Genet* 2020, <https://doi.org/10.1038/s41588-020-00726-6>. This is the dataset the PERCEPTION paper used. |
-| **CTRPv2** viability + compound annotations | 30.03.2026 | DepMap portal, all-data tab — <https://depmap.org/portal/data_page/?tab=allData>. Release `CTRPv2.0_2015_ctd2_ExpandedDataset`. Cell lines join via `v20.meta.per_cell_line` (`master_ccl_id`) and experiments via `v20.meta.per_experiment`. |
-| **PRISM** Repurposing, Public 24Q2 | 30.03.2026 | DepMap — `Repurposing_Public_24Q2_Extended_Primary_Data_Matrix.csv`. Taken specifically because it covers **failed** drugs as well as approved ones. |
-| **GDSC2** IC50 + raw data | 26.03–30.03.2026 | Sanger Cell Model Passports — <https://cellmodelpassports.sanger.ac.uk/downloads> ("GDSC2 IC50 Data", "GDSC2 Raw Data"). |
-| **Clinical-phase annotations** | 30.03.2026 | Broad Drug Repurposing Hub — <https://repo-hub.broadinstitute.org/repurposing#download-data> |
-| **DrugBank** full database (XML) | — | <https://go.drugbank.com/>, academic download; account required. Licence terms above. |
+| **SCP542** scRNA-seq (53,513 cells × 22,722 genes) | 30.03.2026 | Broad Single Cell Portal, study **SCP542** *"pan-cancer cell line heterogeneity"* — <https://singlecell.broadinstitute.org/single_cell/study/SCP542/pan-cancer-cell-line-heterogeneity>. Source publication Kinker et al., *Nat Genet* 2020, <https://doi.org/10.1038/s41588-020-00726-6>. This is the dataset the PERCEPTION paper used. **Also deposited at GEO under accession `GSE157220`** (from the paper's Data availability statement, p. 13) — the only persistent accession among our four primary sources, and the durable route if the portal study is ever revised or withdrawn. ⚠️ The portal exposes **no version or revision identifier**, so the retrieval date is the only version reference this source has; recorded as sufficient (Selin, 10.08.2026). Files taken: `expression/CPM_data.txt` (5.4 GB, the matrix everything downstream uses), `metadata/Metadata.txt`, `other/UMIcount_data.txt` (3.5 GB raw UMI counts — **downloaded but never used**; see [Step 02](02-preprocessing-and-embeddings.md#the-expression-transform-is-the-datasets-own-05082026)), plus the per-cancer-type tSNE cluster files. `file_supplemental_info.tsv` lists the study's full file set. |
+| **CTRPv2** viability + compound annotations | 30.03.2026 | DepMap portal, all-data tab — <https://depmap.org/portal/data_page/?tab=allData>. Release `CTRPv2.0_2015_ctd2_ExpandedDataset`. Cell lines join via `v20.meta.per_cell_line` (`master_ccl_id`) and experiments via `v20.meta.per_experiment`. The 15 files carry their upstream 2015 dates, and the release ships **`MANIFEST.txt` with an MD5 per file** — the only integrity anchor any source provided. ✅ **All 15 verified against it 10.08.2026: every checksum matches**, so this copy is byte-identical to the release the Broad published. The other three sources shipped no checksums and no comparable check is possible for them. |
+| **PRISM** Repurposing, Public 24Q2 | 30.03.2026 | DepMap — `Repurposing_Public_24Q2_Extended_Primary_Data_Matrix.csv`. Taken specifically because it covers **failed** drugs as well as approved ones. The full 24Q2 file set was downloaded (LFC, LMFI, QC, metadata); only the extended primary matrix is read. |
+| **GDSC2** IC50 + raw data | 26.03.2026 | Sanger Cell Model Passports — <https://cellmodelpassports.sanger.ac.uk/downloads>. Release **27 Oct 2023**: `GDSC2_fitted_dose_response_27Oct23.xlsx` ("GDSC2 IC50 Data") and `GDSC2_public_raw_data_27Oct23/` ("GDSC2 Raw Data", 2.1 GB + description PDF). |
+| **Clinical-phase annotations** | 30.03.2026 | Broad Drug Repurposing Hub — <https://repo-hub.broadinstitute.org/repurposing#download-data>. File `repo-drug-annotation-20200324.txt`, i.e. the **24.03.2020** annotation release. |
+| **DrugBank** full database (XML) | 06.03.2026 | <https://go.drugbank.com/>, academic download; account required. Licence terms above. ⚠️ The date is the file's mtime, not a recorded download — no acquisition record exists for this source, and the XML carries no version in its filename. |
 
 ⚠️ **How GDSC2's `LN_IC50` was processed is not documented.** The Sanger documentation link
 (`depmap.sanger.ac.uk/documentation/gdsc/`) was dead, and the DepMap/GDSC team was asked directly with no
@@ -147,9 +179,14 @@ we received, and our HVG selection is independent of them.
    the [overlap audit](#overlap--coverage-audit-03042026) below are counted down from this 198, not
    from CCLE at large.
 
-⚠️ Still open (FAIRER **E**): whether SCP542 carries a **study-level** licence beyond the portal terms
-of use. The Kinker et al. data-availability statement is where to look; the portal delegates to the
-contributing study. See [Licences](#licences-and-terms-of-use-of-the-source-data-checked-28072026).
+✅ **Closed 10.08.2026 (FAIRER E): SCP542 carries no study-level licence beyond the portal terms of
+use.** Checked in the source publication itself — Kinker et al., *Nature Genetics* 52, 1208–1218 (2020),
+**Data availability** statement, p. 13: *"Raw and processed scRNA-seq data are available through the
+Broad Institute's single-cell portal (SCP542) and at the Gene Expression Omnibus (GEO) (accession number
+GSE157220)."* No licence is named and no restriction is declared; the Reporting Summary (p. 28) repeats
+the statement under a heading that expressly asks for "a description of any restrictions on data
+availability" and lists none. The portal ToS is therefore the operative term, as recorded under
+[Licences](#licences-and-terms-of-use-of-the-source-data-checked-28072026).
 
 ### Design decisions taken with the advisor (27.03–03.04.2026)
 
@@ -184,9 +221,11 @@ on:
 > PRISM's coverage of failed drugs was attractive.
 
 > **One GDSC-derived artifact exists and is not part of the modelling work.** An initial
-> informative-drug list was produced from `notebooks/data_and_harmonization/drug_coverage.ipynb` and shared with
-> Hashimoto-san — a CTRPv2 version and a GDSC version (`outputs/data/gdsc_drug_learnability.csv`). Both
-> were shared as **explicitly not final**, and the GDSC one was for her use only; no GDSC drug list has
+> informative-drug list was produced from `notebooks/data_and_harmonization/drug_coverage.ipynb` and shared
+> on request outside this project — a CTRPv2 version and a GDSC version
+> (`notebooks/outputs/legacy/gdsc_drug_learnability.csv`, alongside
+> `ctrp_drug_learnability_mean_pv.csv`; both moved to `legacy/` when the outputs were reorganized). Both
+> were shared as **explicitly not final**, and the GDSC one for that use only; no GDSC drug list has
 > ever fed this project's drug selection or training. GDSC remains downloaded-but-unused, and is not a
 > modelling priority.
 
@@ -199,7 +238,7 @@ data analysed here, each source of which carries its own terms. Checked against 
 |---|---|---|---|
 | **CTRPv2** (CTD² / Broad, via DepMap) | **CC BY 4.0** | permitted with attribution | permitted with attribution |
 | **PRISM** Repurposing (DepMap) | **CC BY 4.0** | permitted with attribution | permitted with attribution |
-| **SCP542** (Broad Single Cell Portal) | **no named licence.** The portal's Terms of Service state that data in *public* studies is available for "unrestricted public view, redistribution and reuse"; the portal does not own the data, the contributing study does | permitted per the ToS | not addressed |
+| **SCP542** (Broad Single Cell Portal) | **no named licence, confirmed at both levels.** The portal's Terms of Service state that data in *public* studies is available for "unrestricted public view, redistribution and reuse"; the portal does not own the data, the contributing study does — and the study names no licence and declares no restriction either (checked 10.08.2026, see above). The same data is deposited at GEO under **GSE157220** | permitted per the ToS | not addressed |
 | **GDSC2 / Cell Model Passports** (Sanger) | ⚠️ **no open licence.** A bespoke policy grants "a non-exclusive, non-transferable right to use data files for **internal** proprietary research and educational purposes", and explicitly excludes resale, combination with other data or product offerings, and provision of commercial services | **not granted** | **excluded** |
 | **DrugBank** (compound harmonization only) | **CC BY-NC 4.0** for the academic full download; account required. Only the separate *DrugBank Open Data* identifier set is CC0 | permitted, non-commercial | **requires a separate agreement** |
 
@@ -208,8 +247,11 @@ the only one restricted to non-commercial use.** Both feed
 `data/drug/all_sources_drug_catalog.csv` — 295 GDSC rows with targets and pathways, plus three DrugBank
 match files.
 
-**No violation exists today**, because `data/` is excluded in `.gitignore` and nothing under it is
-tracked. But that file is exactly the one that would be committed by accident during a cleanup, and the
+**No violation exists today** — verified 10.08.2026: `.gitignore` line 1 excludes `data/`, and
+`git ls-files data/` returns nothing. Note this is the **repo-local** root, which is where both
+restricted sources happen to live (GDSC2 and the DrugBank-derived catalog); the Desktop root is outside
+the working tree and cannot be committed at all. But that file is exactly the one that would be
+committed by accident during a cleanup, and the
 repository's MIT licence would then appear to grant rights over GDSC and DrugBank content that neither
 provider allows. **Keep `data/` untracked**, and if a harmonized compound table ever needs to be shared,
 share the CTRPv2 and PRISM columns only, or regenerate it from the providers.
@@ -218,9 +260,11 @@ Attribution obligations that follow: cite Kinker et al. 2020 for SCP542, the CTR
 CTRPv2 ([Step 05](05-multitask-results.md) carries them), and acknowledge the CTD² Data Portal URL where
 the funding is acknowledged. Sources for the table above are recorded in `references.bib`.
 
-*Not yet checked:* whether SCP542 carries a study-level licence of its own beyond the portal ToS — the
-portal delegates that to the contributing study, so the Kinker et al. data-availability statement is the
-place to look.
+✅ *Checked 10.08.2026:* SCP542 carries **no** study-level licence of its own. The portal delegates to
+the contributing study, and the study's own Data availability statement (Kinker et al. 2020, p. 13)
+names no licence and declares no restriction — see the
+[upstream QC section](#upstream-qc--what-scp542-already-had-done-to-it-05082026) for the quoted text.
+The portal ToS stands as the operative term, and the FAIRER **F** item is closed.
 
 ---
 

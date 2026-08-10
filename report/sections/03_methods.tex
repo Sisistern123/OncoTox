@@ -133,10 +133,34 @@ and will change when the representation is recomputed. The change of log transfo
 move which genes the variability criterion selects, since it alters the expression bins the dispersions
 are normalized within, so the gene set itself is not guaranteed to be identical either.
 
-scGPT receives the same CPM matrix with neither step applied. It replaces them with a per-cell binning
-of expression into 51 quantile bins, computed from that cell's own non-zero values --- a rank transform,
-and therefore invariant to any monotone per-cell rescaling. Counts, CPM and $\log(1+x)$ inputs give
-identical bins, so the CPM input does not disadvantage the model \cite{scgpt}.
+\textbf{The two representations are preprocessed differently, and deliberately so.} scGPT receives the
+same counts-per-million matrix with neither the logarithm nor the per-gene standardization applied. The
+embedding entry point used here, \code{embed\_data}, exposes no normalization or transform argument at
+all: the single operation applied to expression before the model reads it is a binning of each cell into
+51 bins whose edges are quantiles of that same cell's non-zero values
+(\code{scgpt/tasks/cell\_emb.py}, \code{scgpt/data\_collator.py}, \code{scgpt/preprocess.py} in the
+vendored scGPT checkout; the call site is \code{scripts/preprocessing/gen\_embeds.py}). scGPT's separate
+\code{Preprocessor} utility, which its fine-tuning tutorials use and which does normalize to a fixed
+library size and select variable genes, is not on this path \cite{scgpt}.
+
+Nothing is lost by omitting them, because binning is a rank transform. The bin edges are quantiles of the
+cell's own values and each value is digitized against those same edges, so a strictly increasing map
+applied within a cell --- dividing by the library size, taking a logarithm, or both --- moves the values
+and the edges together and every gene lands in the bin it started in. Raw unique-molecular-identifier
+counts, counts per million, and $\log(1+x)$ of either therefore present the model with identical input,
+up to floating-point ties between values a transform renders equal, which the binning breaks at random
+under the fixed seed. Normalizing before scGPT is not merely unnecessary; it is inert.
+
+This is why the asymmetry is not an oversight. The principal-component baseline requires the logarithm
+and the standardization because it measures Euclidean distance on the expression values themselves,
+where each gene's influence scales with its absolute spread --- the argument given above. scGPT never
+reads those values, only their order within each cell, so the same two operations would alter nothing it
+sees. Applying them to both arms for the sake of symmetry would not make the comparison fairer; it would
+only disguise the fact that the two representations consume different information from the same matrix.
+It also means the choice of source matrix is settled for one arm and open for the other: the portal
+additionally distributes the pre-quality-control unique-molecular-identifier counts, and substituting
+them would leave the scGPT input bit-for-bit unchanged while changing gene selection and the principal
+components.
 \end{revisionblock}
 
 A property of the data governs every error estimate in this report. The label is defined per cell line and

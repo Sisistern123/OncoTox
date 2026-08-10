@@ -42,4 +42,4 @@ they live in `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 |---|---|
 | `legacy/training_545_mean_pv/` | The 8-run matrix, 5-fold CV, HVG sweep and per-drug correlations from `2_training`. Produced at **K=545 on `mean_pv`**, i.e. with the unstandardized loss that `ablations_and_rescue` shows was destroying the signal. Its "ρ ≈ 0" conclusion does not survive; the numbers are kept only as evidence of the failure mode. |
 | `legacy/ctrp_drug_learnability_mean_pv.csv` | The old learnability table (`resp_std × coverage`) on `mean_pv`. Its score is **degenerate** on the z-scored target and its gates kept 439/545, so it never bit. Replaced by `learnability/ctrp_drug_learnability_auc.csv`. |
-| `legacy/gdsc_drug_learnability.csv` | GDSC2 learnability list, produced once for Hashimoto-san. Never consumed by the modelling pipeline. |
+| `legacy/gdsc_drug_learnability.csv` | GDSC2 learnability list, produced once and shared on request outside this project. Never consumed by the modelling pipeline. |
