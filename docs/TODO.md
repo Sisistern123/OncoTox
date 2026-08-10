@@ -128,21 +128,13 @@ every one of them was a step that looked settled and had never been checked.
           rescuable — 773 rather than 775, no effect at the precision anything quotes. Re-running the
           notebook is read-only and takes seconds, but it **overwrites a committed artifact**, so it
           waits for the sweep unless released separately.
-- [ ] **4 · Representations** — three strands: **the ~78× input-scale asymmetry between the two arms
-      under one shared learning rate** (**A**, open — it is untested and qualifies every PCA-vs-scGPT
-      claim we have made, and the never-asked question of *how many* components belongs with it),
-      whether the PCA fit is recoverable at all (**B**, closed 10.08.2026), and what scGPT is fed
-      (**C**, closed 10.08.2026). **Only A blocks the item, and A needs training runs.**
-  - [ ] **A · The input-scale asymmetry is still untested.** Needs training runs, so it goes with the sweep.
-        Note the 78× itself is stale — `sc.pp.scale` entered the PCA path 05.08.2026 and standardizing
-        genes changes component magnitudes, so the number has to be re-measured, not re-used. After the
-        sweep it is readable straight from the new record: `sqrt(variance[i])` **is** the standard
-        deviation of PCA coordinate *i*, so the arm's input scale no longer needs a multi-GB matrix load.
-    - [ ] **Recorded 10.08.2026 (Selin): how many components should PCA keep?** 512 was chosen to match
-          scGPT's embedding width — a fair basis for a controlled comparison, but not a statement about
-          the data, and the item has never asked it. Once the sweep writes `variance_ratio`, *what does
-          512 retain* and *where does the curve flatten* are a two-line read off `uns["pca_fits"]`.
-          Answer it with A, since changing the width changes the very asymmetry A measures.
+- [x] **4 · Representations — walked 10.08.2026. The one strand that cannot be answered by reading has
+      been moved out.** Three strands: whether the PCA fit is recoverable at all (**B**, closed
+      10.08.2026), what scGPT is fed (**C**, closed 10.08.2026), and the **~78× input-scale asymmetry
+      between the two arms under one shared learning rate** (**A**). A asks what a scale difference does
+      to a *trained* model, so no amount of code-reading settles it — it is scheduled with the runs that
+      can, under [After the sweep](#after-the-sweep--the-one-review-item-that-needs-new-runs). Nothing
+      in the review still waits on it.
   - [x] **B · The PCA fit is now stored, not just the coordinates — done in code 10.08.2026.**
         `obsm["X_pca*"]` held only where each cell landed; the loadings, the variance ratios and the
         standardization statistics were computed and thrown away, so the pipeline could answer neither
@@ -212,6 +204,33 @@ every one of them was a step that looked settled and had never been checked.
 **Working agreement for the session, restated because it was broken today:** no step of the analysis gets
 decided silently. If a choice affects what enters the model or how a number is computed, it is proposed
 first and agreed before it is executed.
+
+## After the sweep — the one review item that needs new runs
+
+Every other item above was settled by reading code, data or a paper. This one asks what a difference in
+*input scale* does to a trained model, which only training can answer. It is parked here rather than left
+open above, so the review closes on what the review can decide — and so it is not mistaken for something
+that can be picked up early.
+
+- [ ] **4A · The ~78× input-scale asymmetry between the two arms, under one shared learning rate.**
+      Moved out of review item 4 on 10.08.2026. It qualifies every PCA-vs-scGPT claim made so far: if one
+      arm reaches the optimizer with values ~78× larger than the other, one learning rate is not one
+      setting, and an arm can look worse for a reason that has nothing to do with the representation.
+      Two halves with different prerequisites:
+  - [ ] **Measure the asymmetry — needs the sweep's preprocessing pass, no training.** The 78× is
+        stale: `sc.pp.scale` entered the PCA path 05.08.2026 and standardizing genes changes component
+        magnitudes, so the number has to be re-measured, not re-used. Once PCA is recomputed it is a
+        read off the stored record — `sqrt(variance[i])` **is** the standard deviation of PCA
+        coordinate *i*, so the arm's input scale no longer costs a multi-GB matrix load
+        ([Step 02](./steps/02-preprocessing-and-embeddings.md#the-fit-is-stored-not-only-the-coordinates-10082026)).
+  - [ ] **Test whether it matters — needs the retrained baseline to compare against.** Not before the
+        sweep's retraining step: a controlled comparison needs a current baseline from the current
+        pipeline, and every run under `runs/` predates the code that now exists.
+  - [ ] **Recorded 10.08.2026 (Selin): how many components should PCA keep?** 512 was chosen to match
+        scGPT's embedding width — a fair basis for a controlled comparison, but not a statement about
+        the data, and the item has never asked it. Once the sweep writes `variance_ratio`, *what does
+        512 retain* and *where does the curve flatten* are a two-line read off `uns["pca_fits"]`.
+        Answer it here, since changing the width changes the very asymmetry this item measures.
 
 
 Action list. Scientific narrative + full numbers live in
@@ -504,10 +523,15 @@ Unlike the items above these are questions, not scheduled work.*
       handicapped.~~ **Answered 03.08.2026: CPM does not handicap scGPT, and the paper sanctions it.**
       Value binning uses per-cell quantiles of that cell's own non-zero values, so it is rank-based and
       invariant to any monotone per-cell transform — CPM, raw counts, `normalize_total`, `log1p` all
-      give byte-identical bins (verified on 200 cells). Cui et al. present binning as the *replacement*
+      give the same bins at a given RNG state. Cui et al. present binning as the *replacement*
       for TPM-normalization and log1p, and state that `X` "represent[s] both the raw and preprocessed
       data matrices before binning". Detail in
-      [Step 02](./steps/02-preprocessing-and-embeddings.md#compute-environment-and-its-limits-03082026).
+      [Step 02](./steps/02-preprocessing-and-embeddings.md#what-scgpt-is-fed-and-why-its-scale-does-not-matter).
+      **Correction 10.08.2026:** this line previously said "byte-identical … (verified on 200 cells)".
+      No such check exists, and the raw counts it names are not in this project — the claim is an
+      argument from `scgpt/preprocess.py`, not a measurement, and the bins are not byte-identical
+      because `_digitize` breaks ties with an unseeded-at-that-point RNG
+      ([Corrections](./steps/corrections-and-dead-ends.md#the-scgpt-binning-invariance-was-verified-on-200-cells)).
 - [ ] Regenerate scGPT embeddings — **no longer optional and no longer identical**: `gen_embeds.py` now
       seeds with 42 and runs on MPS, so every embeddings file on disk predates the change. Scope
       (all_genes only vs all five variants) still undecided.
