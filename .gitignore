@@ -1,5 +1,7 @@
 # Data and large artifacts (under Desktop/OncoTox/data; see scripts/preprocessing/layout.py)
-data/
+# Anchored with a leading slash: unanchored, `data/` also matched notebooks/outputs/data/,
+# whose figures and tables are meant to be committed (10.08.2026).
+/data/
 
 # Python bytecode and caches
 __pycache__/
