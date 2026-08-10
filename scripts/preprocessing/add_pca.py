@@ -59,9 +59,11 @@ def _pca_record(
     coordinates would be gone.
 
     Stored in ``uns`` rather than ``varm`` because ``varm`` is indexed by the file's own
-    ``var``: the targets file keeps 4,576 genes after the scGPT OOV drop while PCA runs on
-    the 5,000 from the convert output, so the axes do not match. Hence ``genes``, which
-    labels the gene axis of ``mean``/``std``/``center`` and the columns of ``components``.
+    ``var``, and the two axes do not match: the ``scgpt`` step drops out-of-vocabulary genes
+    from the targets file's ``.X`` while PCA runs on the full HVG set from the convert output.
+    How many genes that leaves changes with the gene-symbol repair, which is exactly why the
+    record carries ``genes`` rather than relying on the file's own axis -- it labels the gene
+    axis of ``mean``/``std``/``center`` and the columns of ``components``.
 
     The transform this reproduces, for a cell's ``log2(1 + CPM/10)`` gene vector ``x``::
 

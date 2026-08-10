@@ -59,6 +59,7 @@ so the improvement is auditable.
 
 | Date | What |
 |---|---|
+| 10.08.2026 | [The scGPT binning invariance was "verified on 200 cells"](#the-scgpt-binning-invariance-was-verified-on-200-cells) — no code behind it, and the raw counts it compared against do not exist here; the conclusion holds as an argument |
 | 27.07.2026 | ["scGPT clears the ridge control" was a first](#scgpt-clears-the-ridge-control-was-a-first) — it was a replication |
 | 25.07.2026 | [The panel was chosen blind to our labels](#the-panel-was-chosen-blind-to-our-labels) |
 | 14.07.2026 | [`ml210` was rejected on coverage](#ml210-was-rejected-on-coverage) |
@@ -696,6 +697,29 @@ regularization.
 against ρ = 0.48) is exactly what an MSE-optimal predictor **must** do — the conditional mean shrinks
 toward the prior in proportion to how little signal exists. It is correct calibration, not timidity, and
 loosening dropout *raises* MSE. To report in AUC units, divide by ρ; Spearman is unchanged.
+
+### The scGPT binning invariance was "verified on 200 cells"
+
+**Claimed**, undated, in Step 02's account of what scGPT's embedding path does to its input: binning
+"is a rank transform and invariant to any monotone per-cell rescaling — *verified on 200 cells, where
+CPM, raw counts, `normalize_total` and `log1p` give identical bins*."
+
+**Retracted 10.08.2026 (review item 4).** No notebook, script or `outputs/` artifact ever backed it;
+a search of `notebooks/`, `scripts/` and `docs/` finds nothing. And it could not have been produced in
+this project: SCP542 distributes only `CPM_data.txt`, so **the raw counts it names do not exist here**
+and there was never anything to compare CPM against.
+
+**The wording was wrong in a second way.** `_digitize` (`scgpt/preprocess.py:239`) resolves values
+landing on a repeated bin edge with `np.random.rand`, so binning is **stochastic** wherever a cell has
+tied expression values. Without a fixed RNG state the same input does not bin identically to *itself*,
+let alone across four input formats. (`gen_embeds.py:243-250` seeds it, which is why the embeddings
+are reproducible at all.)
+
+**The conclusion survives; only its status changed.** The invariance follows from the source — bin
+edges are quantiles of the cell's own non-zero values, so any strictly monotone transform moves values
+and edges together — and Step 02 now states it as
+[an argument rather than a measurement](02-preprocessing-and-embeddings.md#what-scgpt-is-fed-and-why-its-scale-does-not-matter).
+Nothing downstream depended on the stronger claim, and the input scGPT is actually fed is unchanged.
 
 ### "scGPT clears the ridge control" was a first
 

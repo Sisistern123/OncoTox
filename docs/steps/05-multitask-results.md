@@ -160,8 +160,14 @@ Reproducible in `notebooks/2_training.ipynb`; run dirs `runs/20260627_1913xx_*` 
 > transcriptome — scGPT never received it. The `hvg5000` rows are unaffected; the cap binds in a single
 > cell there. The decision to keep 1,200 is
 > [here](02-preprocessing-and-embeddings.md#decision--one-seeded-draw-at-1200-all_genes-is-a-sanity-check-03082026).
-> These embeddings were additionally generated **unseeded**, so the draw is not reproducible either; the
-> seed fix (42) postdates them.
+> These embeddings were additionally generated **unseeded** — and that part is *not* confined to
+> `all_genes` (widened 10.08.2026, review item 4). Two things in the embedding path draw on the RNG: the
+> gene subsample above, and the tie-breaking inside scGPT's value binning, where `_digitize`
+> (`scgpt/preprocess.py:239`) resolves values landing on a repeated bin edge with `np.random.rand`. The
+> second touches **every cell that has tied expression values, in both variants**. So no embedding on
+> disk is exactly reproducible, `hvg5000` included; only the *truncation* caveat above is
+> `all_genes`-specific. The seed fix — `np.random.seed(42)` beside `torch.manual_seed(42)`,
+> `gen_embeds.py:243-250` — postdates every embedding on disk and takes effect at the sweep.
 
 **Reading the results (matched trunk + matched 512-d width):**
 

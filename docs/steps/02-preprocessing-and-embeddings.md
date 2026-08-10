@@ -263,6 +263,55 @@ all and are dropped from every split by `create_splits.py::has_any_label`. That 
 touched. But the representation is partly shaped by data the model never sees, which is a separate
 question from the leak above and is decided with it under review item 7.
 
+**Splits are frozen to a file (05.08.2026).** The train/val/test partition is no longer redrawn from the
+data on each run: `create_splits.py::frozen_split` reads `splits/split_ctrp.csv` (versioned in the repo,
+not under the gitignored data root) and only redraws under `--regenerate-split`. The reason is that
+eligibility is *not* stable — a line qualifies if it carries at least one CTRP label, so changing the
+drug panel or `ctrp_to_h5ad`'s filters silently moves lines between train, val and test, and runs from
+either side of the change look comparable when they are not. A line present in the data but missing from
+the frozen file raises rather than being assigned. **This will hard-fail the panel rebuild**, which is
+the intended behaviour: regenerating is a deliberate act that invalidates comparability with everything
+run before it.
+
+**What it invalidates.** Every `X_pca` on disk — and therefore every PCA number in these docs and in
+the report — predates this change. ⛔ Nothing is recomputed until the review is finished; see the
+banner in [`docs/TODO.md`](../TODO.md). Expect the **~78× input-scale asymmetry** between `X_pca`
+and `X_scGPT` (review item 4) to move too, since standardizing genes changes component magnitudes.
+
+**By-product — the HVG ranking scale.** `flavor="seurat"` `expm1`s the matrix back
+(`scanpy/preprocessing/_highly_variable_genes.py:373`, scanpy 1.12), bins genes by `log1p(mean)`, and
+z-scores log-dispersion within bin. A global constant on the input therefore shifts log-dispersion by
+a constant that the within-bin z-score removes exactly — *provided bin membership survives*, which
+holds while gene means are ≫ 1 but not once they are pushed below 1. Ranking and projection now read
+the same matrix either way, so there is no CPM-vs-CP10K mismatch left; what remains is that the
+`/10` divisor adopted above can itself move bin membership. See the warning in the previous section.
+
+### What scGPT is fed, and why its scale does not matter
+
+**scGPT needs none of this.** Its embedding path applies no normalization and no `log1p`
+(`scgpt/tasks/cell_emb.py` builds the model directly; `DataCollator(do_binning=True)` bins in the
+loader, `scgpt/data_collator.py:87-90`, `n_bins=51`).
+
+**Why the input scale does not matter — an argument from the source, not a measurement
+(restated 10.08.2026).** `binning` (`scgpt/preprocess.py:273`) takes the bin edges as quantiles of
+**the cell's own non-zero values** (`np.quantile(non_zero_row, np.linspace(0, 1, n_bins - 1))`) and
+digitizes that same row against them. Any strictly monotone transform of the row moves the values and
+the edges identically, so `np.digitize` returns the same integers — which covers CPM (a per-cell
+linear rescale) and `log1p` (a global monotone map) alike. The one thing that would break it is a
+transform that collapses distinct values onto equal floats, since that changes which values are tied.
+
+This paragraph replaces an earlier one that claimed the invariance had been *measured*; the claim was
+retracted 10.08.2026 and the reasons are in
+[Retracted claims](corrections-and-dead-ends.md#the-scgpt-binning-invariance-was-verified-on-200-cells).
+The conclusion is unchanged — only its status, from measurement to argument.
+
+**Ties are broken at random, which is why the embeddings are seeded.** `_digitize`
+(`scgpt/preprocess.py:239`) resolves values falling on a repeated bin edge with `np.random.rand`, so
+binning is **stochastic** wherever a cell has tied expression values — pervasive in single-cell data.
+`gen_embeds.py:243-250` seeds `np.random.seed(42)` alongside `torch.manual_seed(42)` for exactly this
+reason (and for the 1,199-gene subsampling); without it, embedding the same cell twice would give
+different bins.
+
 ### The fit is stored, not only the coordinates (10.08.2026)
 
 `obsm["X_pca*"]` records **where each cell landed**. That is the output of the projection and does not
@@ -312,35 +361,6 @@ factor of √(n/(n−1)), under 0.01 % on this atlas, so no conclusion depends o
 representations being compared were not produced by identical code. `_pca_fitted_on_train` now passes
 `ddof=1`, leaving *which cells are seen* as the only difference between the two fits. This changes
 `X_pca_train_*` in its last digits and takes effect with the sweep, like everything else here.
-
-**Splits are frozen to a file (05.08.2026).** The train/val/test partition is no longer redrawn from the
-data on each run: `create_splits.py::frozen_split` reads `splits/split_ctrp.csv` (versioned in the repo,
-not under the gitignored data root) and only redraws under `--regenerate-split`. The reason is that
-eligibility is *not* stable — a line qualifies if it carries at least one CTRP label, so changing the
-drug panel or `ctrp_to_h5ad`'s filters silently moves lines between train, val and test, and runs from
-either side of the change look comparable when they are not. A line present in the data but missing from
-the frozen file raises rather than being assigned. **This will hard-fail the panel rebuild**, which is
-the intended behaviour: regenerating is a deliberate act that invalidates comparability with everything
-run before it.
-
-**What it invalidates.** Every `X_pca` on disk — and therefore every PCA number in these docs and in
-the report — predates this change. ⛔ Nothing is recomputed until the review is finished; see the
-banner in [`docs/TODO.md`](../TODO.md). Expect the **~78× input-scale asymmetry** between `X_pca`
-and `X_scGPT` (review item 4) to move too, since standardizing genes changes component magnitudes.
-
-**By-product — the HVG ranking scale.** `flavor="seurat"` `expm1`s the matrix back
-(`scanpy/preprocessing/_highly_variable_genes.py:373`, scanpy 1.12), bins genes by `log1p(mean)`, and
-z-scores log-dispersion within bin. A global constant on the input therefore shifts log-dispersion by
-a constant that the within-bin z-score removes exactly — *provided bin membership survives*, which
-holds while gene means are ≫ 1 but not once they are pushed below 1. Ranking and projection now read
-the same matrix either way, so there is no CPM-vs-CP10K mismatch left; what remains is that the
-`/10` divisor adopted above can itself move bin membership. See the warning in the previous section.
-
-**scGPT needs none of this.** Its embedding path applies no normalization and no `log1p`
-(`scgpt/tasks/cell_emb.py` builds the model directly; `DataCollator(do_binning=True)` bins in the
-loader, `scgpt/data_collator.py:90`, `n_bins=51`). Binning uses quantiles of each cell's own
-non-zero values, so it is a rank transform and invariant to any monotone per-cell rescaling —
-verified on 200 cells, where CPM, raw counts, `normalize_total` and `log1p` give identical bins.
 
 ### The two representations — what they are scientifically
 

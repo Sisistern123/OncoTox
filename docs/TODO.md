@@ -128,17 +128,31 @@ every one of them was a step that looked settled and had never been checked.
           rescuable — 773 rather than 775, no effect at the precision anything quotes. Re-running the
           notebook is read-only and takes seconds, but it **overwrites a committed artifact**, so it
           waits for the sweep unless released separately.
-- [ ] **4 · Representations** — PCA components, scGPT embedding generation and its input format
-      (raw counts vs CPM — never confirmed), and **the ~78× input-scale asymmetry between the two under
-      one shared learning rate**, which is untested and qualifies every PCA-vs-scGPT claim we have made.
+- [ ] **4 · Representations** — three strands: **the ~78× input-scale asymmetry between the two arms
+      under one shared learning rate** (**A**, open — it is untested and qualifies every PCA-vs-scGPT
+      claim we have made, and the never-asked question of *how many* components belongs with it),
+      whether the PCA fit is recoverable at all (**B**, closed 10.08.2026), and what scGPT is fed
+      (**C**, closed 10.08.2026). **Only A blocks the item, and A needs training runs.**
   - [ ] **A · The input-scale asymmetry is still untested.** Needs training runs, so it goes with the sweep.
+        Note the 78× itself is stale — `sc.pp.scale` entered the PCA path 05.08.2026 and standardizing
+        genes changes component magnitudes, so the number has to be re-measured, not re-used. After the
+        sweep it is readable straight from the new record: `sqrt(variance[i])` **is** the standard
+        deviation of PCA coordinate *i*, so the arm's input scale no longer needs a multi-GB matrix load.
+    - [ ] **Recorded 10.08.2026 (Selin): how many components should PCA keep?** 512 was chosen to match
+          scGPT's embedding width — a fair basis for a controlled comparison, but not a statement about
+          the data, and the item has never asked it. Once the sweep writes `variance_ratio`, *what does
+          512 retain* and *where does the curve flatten* are a two-line read off `uns["pca_fits"]`.
+          Answer it with A, since changing the width changes the very asymmetry A measures.
   - [x] **B · The PCA fit is now stored, not just the coordinates — done in code 10.08.2026.**
         `obsm["X_pca*"]` held only where each cell landed; the loadings, the variance ratios and the
         standardization statistics were computed and thrown away, so the pipeline could answer neither
         *what fraction of variance does PCA(512) retain* nor *which genes dominate PC1*, and could not
         project a new cell into an existing space — which the cross-database and XAI stages both need.
         `add_pca.py::_pca_record` writes all of it to `uns["pca_fits"]` per key; `varm` was not an option
-        because the targets file's gene axis (4,576) differs from the PCA's (5,000). Structure, the
+        because the targets file's gene axis differs from the PCA's — the `scgpt` step drops OOV genes
+        from `.X` while PCA keeps the full HVG set, and *how many* that leaves moves with the
+        gene-symbol repair (item 3A), which is why the record carries its own gene vector.
+        Structure, the
         reprojection formula and the verification:
         [Step 02](./steps/02-preprocessing-and-embeddings.md#the-fit-is-stored-not-only-the-coordinates-10082026).
         Costs ~10 MB (`hvg5000`) / ~47 MB (`all_genes`) per fit. Takes effect at the sweep.
@@ -148,10 +162,21 @@ every one of them was a step that looked settled and had never been checked.
           produced by identical code. **Harmonized to `ddof=1` (Selin, 10.08.2026)**, leaving *which
           cells are seen* as the only difference between the fits. Changes `X_pca_train_*` in its last
           digits, at the sweep.
-    - [ ] **Open, not asked for yet:** how many values actually reach the ±10 clip
-          (Seurat's `ScaleData(scale.max = 10)` default). If it is a handful the cap is inert and the
-          choice of 10 does not matter; if it is percent-scale it is shaping the components. Read-only
-          count, no re-run.
+    - [x] ~~Count how many values actually reach the ±10 clip.~~ **Not needed (Selin, 10.08.2026)** —
+          the cap is Seurat's `ScaleData(scale.max = 10)` default and stays at the default; measuring
+          how often it binds would not change it.
+  - [x] **C · What scGPT is fed — settled 10.08.2026, no measurement needed.** This item asked
+        "raw counts vs CPM — never confirmed". **It was never a choice:** SCP542 distributes only
+        `CPM_data.txt`, so raw counts do not exist in this project. What remained was whether feeding
+        CPM puts us off-distribution from a model pretrained on binned counts, and it does not: bin
+        edges are quantiles of each cell's own non-zero values, so any strictly monotone transform
+        moves values and edges together and — at a given RNG state, see the tie-breaking below — the
+        bins are unchanged
+        ([Step 02](./steps/02-preprocessing-and-embeddings.md#what-scgpt-is-fed-and-why-its-scale-does-not-matter)). Also
+        established there: binning **breaks ties at random** (`scgpt/preprocess.py:239`), which is what
+        the `np.random.seed(42)` in `gen_embeds.py` is for. The docs' earlier claim that this had been
+        *measured* on 200 cells was retracted — no code behind it, and nothing to compare against:
+        [Retracted claims](./steps/corrections-and-dead-ends.md#the-scgpt-binning-invariance-was-verified-on-200-cells).
 - [ ] **5 · Target** — AUC vs EC50 vs Emax: AUC conflates potency with efficacy and the tested
       concentration range spans 0.13–600 µM. Winsorizing threshold. Are all statistics per fold?
 - [ ] **6 · Drug selection — REBUILD, this is the main deliverable.** Pool on coverage and spread only,
