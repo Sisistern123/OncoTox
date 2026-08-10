@@ -51,6 +51,11 @@ pdflatex main.tex
 
 Output: `main.pdf`. (On Overleaf/ShareLaTeX it renders directly, like the CV.)
 
+**`main.pdf` is not in git** (untracked since 10.08.2026): it is a build product, and while it was
+committed it went stale every time a `.tex` changed without someone remembering to rebuild. Build it
+from the source above. `project_planning_v2.pdf` *is* tracked — it is a source document, not something
+this repository produces.
+
 ## Updating figures
 
 The figures are copies from the notebook outputs — refresh them with:

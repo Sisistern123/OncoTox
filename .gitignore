@@ -47,7 +47,10 @@ runs/
 # personal presentation material (speaker notes + evidence appendix)
 docs/progress_report_*.md
 
-# LaTeX build artifacts (report/main.pdf is committed by hand)
+# LaTeX build artifacts. main.pdf is one of them: it was tracked until 10.08.2026 and went
+# stale whenever a .tex changed without a rebuild. Build it with `pdflatex main.tex` twice.
+# project_planning_v2.pdf stays tracked -- it is a source document, not a build product.
+report/main.pdf
 report/*.aux
 report/*.log
 report/*.out
