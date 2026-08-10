@@ -100,27 +100,9 @@ every one of them was a step that looked settled and had never been checked.
         **Six of 181 lines is not a random sample**, so this bounds nothing numerically — it says only
         that a substantial share of the target is screening noise, which items 5 (target), 6 (drug
         selection) and 11 (evaluation) should each read before drawing conclusions from a modest ρ.
-  - [ ] **B · Migrate to persistent identifiers.** The pipeline joins cell lines on `ccl_name_norm` —
-        lowercased, hyphens stripped — not on DepMap `ACH-` or Cellosaurus `CVCL_` IDs, and genes on
-        symbols rather than Ensembl. This is not cosmetic: the 190-vs-180 confusion came
-        from exactly here, and it compounds once PRISM and GDSC are joined, where cell-line synonyms
-        diverge and gene symbols drift across annotation releases. **Expect the migration to expose join
-        errors that are currently invisible**, possibly changing the line count and therefore every
-        number — which is the argument for doing it *before* the panel rebuild rather than after.
-        (FAIRER: **I**)
-        > ⚠️ **Corrected 10.08.2026.** This item used to claim the identifiers "exist in the catalog but
-        > only in the exploratory `drug_catalog`". **They do not exist anywhere.** Neither
-        > `v20.meta.per_cell_line.txt` (`master_ccl_id, ccl_name, ccl_availability, ccle_primary_site,
-        > ccle_primary_hist, ccle_hist_subtype_1`) nor SCP542's `Metadata.txt` carries an `ACH-` or
-        > `CVCL_` identifier. The only `ACH-` strings in the repository are PRISM's own row labels
-        > (`ACH-000361::P108::PR500A::REP1M`) appearing as transient cell output inside
-        > `notebooks/data_and_harmonization/drug_catalog.ipynb`; nothing is written to a catalog file,
-        > and no CTRPv2/SCP542 → DepMap mapping exists. So migrating **cell lines** is not a refactor —
-        > it needs an external resource (DepMap `sample_info.csv` or a Cellosaurus release), i.e. a new
-        > dataset with its own version, provenance and licence under the item-1 terms. **Compounds** are
-        > the opposite: CTRPv2 already ships `broad_cpd_id` (BRD) in `v20.meta.per_compound.txt`, unused;
-        > the production path joins on `cpd_name`, which is harmless today (545 names, zero collisions)
-        > and matters only at the cross-database step. Scope still to decide.
+  - [x] ~~**B · Migrate to persistent identifiers.**~~ **Dropped 10.08.2026 (Selin)** — the premise did
+        not survive the audit and the join it was meant to protect is now verified.
+        [Dead ends](./steps/corrections-and-dead-ends.md#migrating-the-cell-line-join-to-persistent-identifiers).
 - [ ] **3 · Preprocessing** — CPM, log1p, HVG selection and count, what `.X` holds at each stage, scGPT
       out-of-vocabulary genes. Does the HVG set depend on all cells including test?
   - [x] ~~**A · Apply the gene-symbol repair — BEFORE the clean sweep.**~~ **Done in code 05.08.2026**

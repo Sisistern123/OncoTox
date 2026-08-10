@@ -72,6 +72,7 @@ so the improvement is auditable.
 | What |
 |---|
 | [scDrugAtlas and ClinTox as data sources](#scdrugatlas-and-clintox-as-data-sources) |
+| [Migrating the cell-line join to persistent identifiers](#migrating-the-cell-line-join-to-persistent-identifiers) |
 | [Kinker's two named associations do not transfer to this task](#kinkers-two-named-associations-do-not-transfer-to-this-task) |
 | [`kx2-391` carries drug-specific signal](#kx2-391-carries-drug-specific-signal) |
 | [Considered and never pursued](#considered-and-never-pursued) — a bespoke transformer/VAE, DeepInsight |
@@ -871,6 +872,37 @@ because one bag is one line is one example.
 ## Dead ends
 
 Directions that were investigated and abandoned. Kept so they are not re-opened without a reason.
+
+### Migrating the cell-line join to persistent identifiers
+
+**Planned** since 28.07.2026 as review item 2B: replace the `ccl_name_norm` join key (lowercased,
+hyphens stripped) with DepMap `ACH-` or Cellosaurus `CVCL_` identifiers, and gene symbols with Ensembl
+IDs. The item asserted that the identifiers "exist in the catalog but only in the exploratory
+`drug_catalog`, never in the production path", making this a refactor. It also expected the migration
+to expose invisible join errors.
+
+**Dropped 10.08.2026 (Selin).** Both halves of the premise failed the audit:
+
+- **The identifiers do not exist.** `v20.meta.per_cell_line.txt` carries `master_ccl_id, ccl_name,
+  ccl_availability, ccle_primary_site, ccle_primary_hist, ccle_hist_subtype_1` — no `ACH-`, no
+  `CVCL_`. SCP542's `Metadata.txt` carries none either. The only `ACH-` strings in the repository are
+  PRISM's own row labels (`ACH-000361::P108::PR500A::REP1M`) appearing as transient cell output in
+  `notebooks/data_and_harmonization/drug_catalog.ipynb`; nothing is written to a catalog file. So the
+  migration was never a refactor — it required adopting an external resource (DepMap `sample_info.csv`
+  or a Cellosaurus release) as a new dataset, with its own version, provenance and licence.
+- **The invisible join errors were found without it.** The audit checked the join directly and it
+  holds: no normalization collisions on either side, and 189 of 190 name matches independently agree on
+  CCLE primary site. The one real defect it did expose, `H292`, was identified and fixed by name — with
+  Cellosaurus `CVCL_0455` used as *evidence for one alias*, which is a lookup, not a dependency
+  ([Step 01](01-datasets-and-harmonization.md#the-join-dropped-a-screened-cell-line-h292-10082026)).
+
+**What this does not close.** Compounds are a different case: CTRPv2 already ships `broad_cpd_id` (BRD)
+in `v20.meta.per_compound.txt` and the production path ignores it, joining on `cpd_name`. That is
+harmless today — 545 compound names, zero collisions, and drugs never join across sources — but it is
+exactly what the cross-database step needs
+([Step 06](06-planned-work.md#a-cross-database-integration)). If PRISM or GDSC are ever wired into
+training, the identifier question returns there, with BRD already in hand and only the cell-line side
+needing an external mapping.
 
 ### Kinker's two named associations do not transfer to this task
 
