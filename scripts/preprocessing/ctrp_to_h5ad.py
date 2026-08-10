@@ -62,6 +62,24 @@ from scripts.preprocessing.layout import (
 DEFAULT_MIN_CELL_LINES = 50
 DEFAULT_EXTRA_SINGLE_DRUG_COLS: tuple[str, ...] = ("paclitaxel",)
 
+# CTRPv2 and SCP542 share no persistent identifier, so the cell-line NAME is the only
+# join key (see _normalize_cell_line). Where CTRP spells a line differently from CCLE --
+# which is what SCP542's Cell_line column holds -- the line is silently dropped even
+# though it was screened. This table maps a normalized CTRP name onto its normalized
+# CCLE/SCP542 name. Every entry carries the evidence for the identification; do not add
+# one without it.
+#
+# h292 -> ncih292  (accepted 10.08.2026, audit item 02)
+#   Cellosaurus CVCL_0455 is "NCI-H292", listing both "H292" and "NCIH292" among its
+#   synonyms, disease "lung mucoepidermoid carcinoma", CCLE member, DepMap ACH-001075.
+#   CTRP's row (master_ccl_id 290) agrees on every field it carries:
+#   ccl_availability=ccle;public, ccle_primary_site=lung,
+#   ccle_hist_subtype_1=mucoepidermoid_carcinoma -- the only lung mucoepidermoid
+#   carcinoma among CTRP's 1,107 lines. CTRP writes 106 other lines as `NCIH...`; this is
+#   the single place it drops the prefix. Recovers 213 SCP542 cells and 454 drug labels,
+#   taking the trainable overlap from 180 to 181 cell lines.
+CTRP_CELL_LINE_ALIASES: dict[str, str] = {"h292": "ncih292"}
+
 
 def _normalize_cell_line(s: pd.Series) -> pd.Series:
     return s.astype(str).str.strip().str.lower().str.replace("-", "")
@@ -108,11 +126,17 @@ def _load_score_values(ctrp_dir: Path, score: str) -> pd.DataFrame:
 def _load_ctrp_long(ctrp_dir: Path, score: str) -> pd.DataFrame:
     """Return the merged CTRPv2 long table with normalized name columns."""
     ctrp_values = _load_score_values(ctrp_dir, score)
+    # v20.meta.per_experiment.txt carries one row per (experiment_id, experiment_date):
+    # 153 of its 907 experiments ran across two calendar days and so appear twice (1,061
+    # rows total). master_ccl_id is constant within an experiment_id, so the extra rows
+    # are exact duplicates for our purposes -- but merging on experiment_id without
+    # dropping them duplicated those curve fits and gave them double weight in the mean
+    # below. Verified 10.08.2026 (audit item 02): it shifted 460 of NCIH1299's targets.
     ctrp_exp_meta = pd.read_csv(
         ctrp_dir / "v20.meta.per_experiment.txt",
         sep="\t",
         usecols=["experiment_id", "master_ccl_id"],
-    )
+    ).drop_duplicates()
     ctrp_cell_meta = pd.read_csv(
         ctrp_dir / "v20.meta.per_cell_line.txt",
         sep="\t",
@@ -129,7 +153,11 @@ def _load_ctrp_long(ctrp_dir: Path, score: str) -> pd.DataFrame:
         .merge(ctrp_cell_meta, on="master_ccl_id", how="inner")
         .merge(ctrp_cpd_meta, on="master_cpd_id", how="inner")
     )
-    ctrp_full["ccl_name_norm"] = _normalize_cell_line(ctrp_full["ccl_name"])
+    # Aliases are applied on the CTRP side only: they map CTRP's spelling onto the
+    # CCLE name SCP542 uses, so both sides end up in the same key space.
+    ctrp_full["ccl_name_norm"] = _normalize_cell_line(ctrp_full["ccl_name"]).replace(
+        CTRP_CELL_LINE_ALIASES
+    )
     ctrp_full["cpd_name_norm"] = _normalize_drug(ctrp_full["cpd_name"])
     return ctrp_full
 

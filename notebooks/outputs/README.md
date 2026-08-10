@@ -8,7 +8,7 @@ they live in `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 
 | Directory | Written by | Contents |
 |---|---|---|
-| **`data/`** | `drug_coverage` | Target distribution and per-drug coverage on the raw CTRPv2 labels. |
+| **`data/`** | `drug_coverage`, `replicate_variation` | Target distribution and per-drug coverage on the raw CTRPv2 labels, plus how far CTRPv2's repeated measurements diverge (`replicate_variation.png/.csv` — 2,637 pairs screened twice, median disagreement 0.49× the drug's spread across cell lines). |
 | **`embeddings/`** | `verify_variants`, `gene_symbol_rescue` | Latent-space validation: PCA-vs-scGPT UMAPs, gene-set variants, and what the gene set actually delivered to scGPT (`gene_symbol_rescue.csv`, below). |
 | **`learnability/`** | `learnability_filter`, `learnable_subset_training` | The drug filter (545 → 10, `learnability = min(#killed, #spared)`) and the PCA-vs-scGPT result on that subset. `pca_vs_scgpt.png` also carries the line-level ridge control. |
 | **`target/`** | `target_comparison`, `ablations_and_rescue` §2 | Which target to train on; the per-drug **loss-weighting bug**; seed stability. |

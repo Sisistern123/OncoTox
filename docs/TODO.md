@@ -77,17 +77,50 @@ every one of them was a step that looked settled and had never been checked.
       version reference (Selin, 10.08.2026); no checksums generated for the three sources that shipped
       none; GDSC's `LN_IC50` processing stays undocumented — `GDSC_Raw_Data_Description.pdf` came with
       the download and may close it, but GDSC is not a modelling priority.
-- [ ] **2 · Harmonization** — cell-line and compound name matching, the 190 vs 180 discrepancy, duplicate
-      experiments averaged. Verify the join has not silently dropped lines.
+- [x] **2 · Harmonization — walked 10.08.2026, two defects fixed in code, replicate handling settled.**
+      Full record in
+      [Step 01](./steps/01-datasets-and-harmonization.md#the-join-audit--what-was-checked-and-what-held-10082026).
+      **Verified:** no normalized-name collisions on either side, no rows lost to the merges, and — the
+      check that had never been run — **no false matches**: 189 of the 190 name matches also agree on
+      CCLE primary site, the exception being a line for which CTRPv2 records no site. **Fixed:**
+      (a) CTRPv2 spells `NCI-H292` as `H292`, so the name join silently dropped a **screened** line —
+      an explicit sourced alias (Cellosaurus `CVCL_0455`) takes the trainable overlap **180 → 181**,
+      recovering 213 cells and 454 drug labels; (b) `v20.meta.per_experiment.txt` lists an experiment
+      once per calendar day it ran, so 153 experiments were double-counted in the per-(line, drug) mean,
+      moving 460 of `NCIH1299`'s targets and its rank on 427 of its 469 drugs. Both take effect **at the
+      sweep only**; `\NLines` in `report/results_numbers.tex` stays at 180 until an artifact supports 181.
+  - [x] **Replicate handling — settled 10.08.2026: keep averaging, but measure the disagreement.**
+        2,637 of 81,626 (line, drug) pairs were screened twice (never three times, so median = mean).
+        They come from just **six** cell lines, each re-screened against 534 of the 545 drugs. The two
+        measurements differ by a median of **0.49×** the drug's spread across cell lines, and **27.3 %
+        of them differ by more than that full spread**. Quantified in
+        `notebooks/data_and_harmonization/replicate_variation.ipynb` →
+        `outputs/data/replicate_variation.{png,csv}`; written up in
+        [Step 01](./steps/01-datasets-and-harmonization.md#genuine-repeats-are-averaged-and-they-disagree-more-than-the-targets-own-spread-10082026).
+        **Six of 181 lines is not a random sample**, so this bounds nothing numerically — it says only
+        that a substantial share of the target is screening noise, which items 5 (target), 6 (drug
+        selection) and 11 (evaluation) should each read before drawing conclusions from a modest ρ.
   - [ ] **B · Migrate to persistent identifiers.** The pipeline joins cell lines on `ccl_name_norm` —
         lowercased, hyphens stripped — not on DepMap `ACH-` or Cellosaurus `CVCL_` IDs, and genes on
-        symbols rather than Ensembl. The identifiers exist in the catalog but only in the exploratory
-        `drug_catalog`, never in the production path. This is not cosmetic: the 190-vs-180 confusion came
+        symbols rather than Ensembl. This is not cosmetic: the 190-vs-180 confusion came
         from exactly here, and it compounds once PRISM and GDSC are joined, where cell-line synonyms
         diverge and gene symbols drift across annotation releases. **Expect the migration to expose join
         errors that are currently invisible**, possibly changing the line count and therefore every
         number — which is the argument for doing it *before* the panel rebuild rather than after.
         (FAIRER: **I**)
+        > ⚠️ **Corrected 10.08.2026.** This item used to claim the identifiers "exist in the catalog but
+        > only in the exploratory `drug_catalog`". **They do not exist anywhere.** Neither
+        > `v20.meta.per_cell_line.txt` (`master_ccl_id, ccl_name, ccl_availability, ccle_primary_site,
+        > ccle_primary_hist, ccle_hist_subtype_1`) nor SCP542's `Metadata.txt` carries an `ACH-` or
+        > `CVCL_` identifier. The only `ACH-` strings in the repository are PRISM's own row labels
+        > (`ACH-000361::P108::PR500A::REP1M`) appearing as transient cell output inside
+        > `notebooks/data_and_harmonization/drug_catalog.ipynb`; nothing is written to a catalog file,
+        > and no CTRPv2/SCP542 → DepMap mapping exists. So migrating **cell lines** is not a refactor —
+        > it needs an external resource (DepMap `sample_info.csv` or a Cellosaurus release), i.e. a new
+        > dataset with its own version, provenance and licence under the item-1 terms. **Compounds** are
+        > the opposite: CTRPv2 already ships `broad_cpd_id` (BRD) in `v20.meta.per_compound.txt`, unused;
+        > the production path joins on `cpd_name`, which is harmless today (545 names, zero collisions)
+        > and matters only at the cross-database step. Scope still to decide.
 - [ ] **3 · Preprocessing** — CPM, log1p, HVG selection and count, what `.X` holds at each stage, scGPT
       out-of-vocabulary genes. Does the HVG set depend on all cells including test?
   - [x] ~~**A · Apply the gene-symbol repair — BEFORE the clean sweep.**~~ **Done in code 05.08.2026**

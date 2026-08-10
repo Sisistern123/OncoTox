@@ -203,8 +203,8 @@ being embedded, so nothing about it is fitted on this data.
 
 The choice of training target requires care. CTRPv2 provides a dose-averaged percent-viability score,
 denoted \code{mean\_pv}, and an integrated area under the fitted dose-response curve, \code{auc}. The
-initial experiments used \code{mean\_pv}; the final target is the curve-fit AUC standardized per drug
-across cell lines, \code{auc\_z}, defined for cell line $i$ and drug $j$ as
+initial experiments used \code{mean\_pv}; from 13.07.2026 the target was the curve-fit AUC standardized
+per drug across cell lines, \code{auc\_z}, defined for cell line $i$ and drug $j$ as
 $\mathrm{auc\_z}_{ij} = (\mathrm{auc}_{ij} - \mu_j)/\sigma_j$, where $\mu_j$ and $\sigma_j$ are the mean and
 standard deviation of that drug's AUC over the cell lines.
 
@@ -222,6 +222,50 @@ the relative sensitivity of a cell line for a given drug, which is the quantity 
 personalized prediction. Because the Spearman correlation within a drug is invariant to an affine per-drug
 transform, the standardization does not alter any single-drug evaluation metric; its only effect is on the
 multi-task coupling. The target is implemented in \code{scripts/preprocessing/ctrp\_to\_h5ad.py}.
+
+\begin{revisionblock}
+\textbf{\code{auc\_z} was retired on 27.07.2026; the target is now the raw curve-fit AUC, winsorized at
+1.1 (added 10.08.2026).} Every result reported here was produced on \code{auc\_z} and is unaffected by
+the change --- but the pipeline default is now \code{auc}, and the reasoning above no longer describes
+what it does. Decomposing \code{auc\_z} into its two operations shows that neither was ever visible to
+the evaluation. The centering is inert: the per-drug head bias absorbs the drug mean, and a per-drug
+Spearman correlation is invariant to a shift. The scaling is not a property of the target at all but a
+loss-weighting scheme in disguise, since dividing drug $j$ by $\sigma_j$ is exactly weighting its
+squared-error term by $1/\sigma_j^2$. Both are within-drug monotone transforms, so for a fixed model
+the raw AUC with per-drug loss weights and \code{auc\_z} score identically --- which is how the change
+was validated, by requiring it to reproduce the earlier numbers before anything new was measured.
+
+Two things motivated moving that weighting out of the target and into the loss. It can then be
+estimated per fold on training lines only, which closed a leak: $\mu_j$ and $\sigma_j$ had been
+computed once over all \NLines{} cell lines, validation and test included, and baked into the stored
+target matrix. And weighting by $1/\sigma_j^2$ turns out to be the wrong prior on a small panel, where
+it amplifies precisely the drugs whose spread is noise rather than signal; the variance imbalance that
+motivated it is a $K=\NDrugs{}$ problem, and on a literature-selected panel the ratio of per-drug
+standard deviations is a factor of about 2.5 rather than 80. The per-drug weight is therefore
+\emph{off} by default. Full decomposition and the superseded numbers:
+\code{docs/steps/03-model-and-training-design.md} and
+\code{docs/steps/corrections-and-dead-ends.md}.
+\end{revisionblock}
+
+A minority of cell-line--drug combinations were screened by CTRPv2 in two separate experiments. Their
+two measurements are averaged into the single value used as the target, without weighting by replicate
+count and without excluding pairs whose measurements disagree; where a combination was screened once,
+that measurement is used as is. The disagreement between repeated measurements is nonetheless
+substantial and is reported here rather than left implicit, because it sets the scale against which any
+correlation in Section~\ref{sec:results} should be read. Of the cell-line--drug pairs inside the
+SCP542 intersection, \NRepPairs{} were screened twice, never more. Expressed relative to the spread of
+that drug's response across cell lines --- which is precisely the quantity the model is asked to
+predict --- the two measurements differ by a median of \RepDiffMed{} of one standard deviation, and
+\RepDiffPct{}\% of repeated pairs differ by more than a full standard deviation. The median is used in
+preference to the mean because a small number of extreme pairs would inflate the latter; it is the
+middle pair, so half of the repeated measurements disagree by less than \RepDiffMed{} standard
+deviations and half by more. A caveat limits how
+far this generalizes: the repeats come from only \NRepLines{} cell lines, each re-screened against
+almost the whole compound set, and CTRPv2 did not select those lines at random. The figure therefore
+indicates that a material share of the target is screening noise, but it does not establish a numeric
+ceiling on the achievable correlation. Quantified in
+\code{notebooks/data\_and\_harmonization/replicate\_variation.ipynb}, with the underlying pairs in
+\code{notebooks/outputs/data/replicate\_variation.csv}.
 
 \subsection{Evaluation}
 

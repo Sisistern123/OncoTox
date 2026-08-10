@@ -45,7 +45,16 @@
 % on the matrices as they stand; below the rescuable count because collisions stay unmapped.
 \newcommand{\NVocabRepaired}{4{,}704}   % hvg5000, was \NVocab
 
-% === out-of-fold Spearman on auc_z, mean over the 10 learnable drugs 
+% === CTRPv2 replicate disagreement (notebooks/outputs/data/replicate_variation.csv, 10.08.2026)
+% Pairs screened in two separate CTRPv2 experiments, within the SCP542 overlap. RepDiffMed is
+% the median |rep1-rep2| divided by that drug's SD across cell lines; RepDiffPct the share of
+% pairs whose two measurements differ by more than that SD. All from replicate_variation.ipynb.
+\newcommand{\NRepPairs}{2{,}637}   % (cell line, drug) pairs screened twice
+\newcommand{\NRepLines}{six}       % distinct cell lines they come from (spelled: prose use)
+\newcommand{\RepDiffMed}{0.49}     % median disagreement, in units of the drug's across-line SD
+\newcommand{\RepDiffPct}{27.3}     % % of repeated pairs differing by more than that SD
+
+% === out-of-fold Spearman on auc_z, mean over the 10 learnable drugs
 % source: target/target_comparison.csv (mean of the per-drug `spearman` rows,
 %         filtered by score=auc_z, heads, rep)
 \newcommand{\rhoTenPca}{0.360}     % heads=K=10,  X_pca

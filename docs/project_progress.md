@@ -246,7 +246,10 @@ matched to scGPT, removing the dimensionality confound — [Step 05](./steps/05-
    (the real "combine all" is [Step 06](./steps/06-planned-work.md#a-cross-database-integration)).
 2. **Cell-line overlap: 190 vs 180** — 190 = name matches in CTRPv2's roster; 180 = lines with
    actual post-QC measurements (10 listed-but-unscreened lines drop out). It's **data availability,
-   not normalization** (verified 14.06). Use 180 (the trainable set).
+   not normalization** (verified 14.06). Use 180 (the trainable set) — **181 after the next sweep**,
+   since the join audit found one screened line that name matching had been dropping
+   ([Step 01](./steps/01-datasets-and-harmonization.md#the-join-dropped-a-screened-cell-line-h292-10082026),
+   10.08.2026).
 
 ---
 

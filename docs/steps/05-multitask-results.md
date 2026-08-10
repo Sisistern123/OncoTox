@@ -42,6 +42,12 @@ run adds is the split and the drug scope:
 CTRPv2 (180 = lines with actual post-QC measurements; the audit's 190 counts roster name-matches — see
 [Step 01](01-datasets-and-harmonization.md)).
 
+> ⚠️ **10.08.2026 — this becomes 181 at the next sweep, and every number on this page with it.** The
+> name join was dropping `NCIH292`, which CTRPv2 spells `H292`, and was double-counting experiments
+> listed once per calendar day. Both are fixed in `ctrp_to_h5ad.py`; no artifact reflects them yet, so
+> everything below still describes the 180-line matrix. Evidence and effect sizes:
+> [Step 01](01-datasets-and-harmonization.md#the-join-dropped-a-screened-cell-line-h292-10082026).
+
 **`split_ctrp` distribution (one cell-line-grouped **70/15/15** split, shared by all heads):**
 
 | split | lines | % of lines | cells | % of measured cells |

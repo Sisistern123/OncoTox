@@ -337,6 +337,137 @@ is **180**, not the audit's 190 — and the reason is **data availability, not n
 > roster-listed-but-unscreened lines are `abc1, hs939t, jhh7, mdamb436, mfe280, ncih1048, ncih2073,
 > ncih2347, rerflckj, ten`. Use **180** (the trainable set); 190 is just the name-match count.
 
+⚠️ **Superseded in code 10.08.2026, not yet in the artifacts: the overlap becomes 181.** One screened
+line was being dropped by the name join; see [`H292`](#the-join-dropped-a-screened-cell-line-h292-10082026)
+below. Every committed artifact, every number in `report/results_numbers.tex` and everything derived
+from them still rests on **180**; the code now produces **181**, and the two agree again only after the
+[clean sweep](../TODO.md).
+
+### The join audit — what was checked and what held (10.08.2026)
+
+Walked as review item 2. The name join is the only thing linking CTRPv2 to SCP542, and until this date
+it had never been checked for the failure mode that matters most: matching two lines that are *not* the
+same. It does not.
+
+| Check | Result |
+|---|---|
+| Normalized-name collisions, SCP542 | none — 198 names → 198 distinct keys |
+| Normalized-name collisions, CTRPv2 roster | none — 1,107 → 1,107 |
+| Normalized-name collisions, CTRPv2 compounds | none — 545 → 545 |
+| `Cell_line.split("_")[0]` truncating a line name | never — 58 SCP542 names carry more than one `_`, all of it in the CCLE tissue suffix |
+| Curve-fit rows lost to the three inner merges | none |
+| **False matches** | **none** — 189 of the 190 name matches also agree on CCLE primary site (SCP542's own name suffix vs CTRPv2 `ccle_primary_site`); the single exception is `EKVX`, where CTRPv2 records no site at all |
+
+Reproduced from the shipped files by
+`scripts/preprocessing/ctrp_to_h5ad.py::_load_ctrp_long` plus the checks in review item 2; the two
+defects it did find are below.
+
+### The join dropped a screened cell line: `H292` (10.08.2026)
+
+CTRPv2 spells one line differently from CCLE, and since the **name is the only join key**, the line was
+invisible to the pipeline although it had been screened:
+
+| | Name | Normalized key |
+|---|---|---|
+| SCP542 (CCLE naming) | `NCIH292_LUNG` | `ncih292` |
+| CTRPv2 (`master_ccl_id` 290) | `H292` | `h292` |
+
+The identification rests on three independent sources, all agreeing:
+
+- **Cellosaurus `CVCL_0455`** is *NCI-H292*, listing **both** `H292` and `NCIH292` among its synonyms,
+  disease *lung mucoepidermoid carcinoma*, a CCLE member, DepMap `ACH-001075`
+  (<https://www.cellosaurus.org/CVCL_0455>, retrieved 10.08.2026).
+- **CTRPv2's own row** agrees on every field it carries: `ccl_availability=ccle;public`,
+  `ccle_primary_site=lung`, `ccle_hist_subtype_1=mucoepidermoid_carcinoma` — the **only** lung
+  mucoepidermoid carcinoma among its 1,107 lines.
+- **CTRPv2's naming is otherwise consistent**: 106 roster entries are written `NCIH…`, and this is the
+  one place the prefix is dropped. (The only other bare `H<digit>` name, `H4`, is a genuinely different
+  line — a CNS glioma, not an NCI-H line — which is why no general "strip a leading `NCI`" rule was
+  adopted.)
+
+**Fix (accepted by Selin, 10.08.2026):** an explicit alias table, `CTRP_CELL_LINE_ALIASES` in
+`scripts/preprocessing/ctrp_to_h5ad.py`, applied to the CTRPv2 side inside `_load_ctrp_long`. The
+evidence above is recorded in the table itself, so a future entry cannot be added without its own.
+**Effect at the next sweep:** trainable overlap **180 → 181**, recovering **213 cells** and **454 drug
+labels**. `\NLines` in `report/results_numbers.tex` still reads 180 and must not be changed until an
+artifact supports 181.
+
+Eight SCP542 lines matched no CTRPv2 name at all. `ncih292` was this defect; the other **seven** are
+genuinely absent from CTRPv2 and stay unlabelled: `93vu, jhu006, jhu011, jhu029, ncih2077, scc47,
+scc90` — the JHU and SCC head-and-neck lines were never in the CTRPv2 panel. With
+the ten roster-listed-but-unscreened lines that leaves **17 of 198** SCP542 lines unlabelled — **6,073
+cells**, which `scripts/preprocessing/create_splits.py` excludes from every split via `has_any_label`,
+but which remain in the h5ad and therefore still enter HVG selection, scaling and the PCA fit
+([Step 02](02-preprocessing-and-embeddings.md)).
+
+### Replicate experiments were double-counted (10.08.2026)
+
+`v20.meta.per_experiment.txt` carries **one row per (`experiment_id`, `experiment_date`)**: 153 of its
+907 experiments ran across two calendar days and therefore appear twice, 1,061 rows in total. They are
+exact duplicates in every field the pipeline uses — `master_ccl_id` is constant within an
+`experiment_id` — but `_load_ctrp_long` merged the curve fits on `experiment_id` **without dropping
+them**, inflating 395,263 curve rows to 462,784, and the per-(line, drug) mean that follows is taken
+over *rows*. A duplicated experiment therefore counted twice.
+
+It bites only where a line has one duplicated experiment **and** a second, unduplicated one — exactly
+one line, `NCIH1299`, on **460 of its 545 drugs**. The values moved by a median of 0.013 and at most
+0.112, i.e. up to **0.95×** the mean per-drug spread across cell lines (0.117). Because the evaluation
+metric is a per-drug Spearman *across* lines, the consequential number is not the 0.57 % of targets
+touched but the ranking: `NCIH1299`'s rank moved on **427 of its 469** drugs, a median of **8** places
+out of 180. Per-drug means and SDs shifted by ≤ 0.0014, so `auc_z`'s centering was never affected.
+
+**Fixed 10.08.2026** by deduplicating the experiment table before the merge
+(`ctrp_to_h5ad.py::_load_ctrp_long`); the loader now returns 395,263 rows, exactly the number of
+post-QC curve fits. Applies identically to `auc`, `auc_z` and `mean_pv`. Like the alias above, it
+changes no committed artifact until the sweep.
+
+### Genuine repeats are averaged, and they disagree more than the target's own spread (10.08.2026)
+
+Separate from the double-counting above: some (cell line, drug) combinations really were screened
+**twice**, in two different experiments. `ctrp_to_h5ad.py::_build_drug_table` averages them into the
+single value that becomes the target. How far apart those two measurements are was never examined
+until now — quantified in `notebooks/data_and_harmonization/replicate_variation.ipynb`, artifacts
+`notebooks/outputs/data/replicate_variation.{png,csv}`.
+
+**2,637** of the 81,626 (cell line, drug) pairs were screened twice — never three times, so a median
+would be identical to the mean. They are **not spread over the panel**: they come from just **six**
+cell lines (`a375, aspc1, ccfsttg1, ncih1299, ncih460, oaw28`), each re-screened against 534 of the
+545 drugs.
+
+A raw difference in normalized AUC is not interpretable on its own — drugs differ by an order of
+magnitude in how much they vary across cell lines — so each difference is also expressed **relative to
+that drug's spread across the cell lines**, which is precisely the quantity the model is asked to
+predict. A relative difference of 1.0 means the same line measured twice differs as much as two
+randomly chosen lines typically do.
+
+| | median | p90 | max |
+|---|---|---|---|
+| absolute \|rep1 − rep2\| | 0.053 | 0.205 | 0.903 |
+| **relative to the drug's spread across lines** | **0.49×** | 1.75× | 7.01× |
+
+Order statistics, not averages — a handful of extreme pairs would drag a mean upward and misrepresent
+the typical case. **Median** = the middle pair: half the repeated pairs disagree by less than this and
+half by more, so the headline **0.49×** reads as *"a typical repeat differs by about half the spread
+the model is asked to predict"*. **p90** = only one repeated pair in ten disagrees by more than this.
+**max** = the single worst pair, shown so the tail is visible rather than hidden.
+
+**720 of the 2,637 repeats (27.3 %) differ by more than the full spread the model is trained to
+predict.** It is not uniform across the six lines: `ccfsttg1` disagrees by a median 0.19×, `a375` by
+0.77× and `ncih1299` by 0.74×. In the scatter (`replicate_variation.png`) the cloud is visibly loose
+around the identity line, and loosest in the dense region at AUC ≈ 0.8–1.0 where most drugs barely
+kill anything; the strong killers below 0.5 track the diagonal better.
+
+> ✅ **Decision (Selin, 10.08.2026): keep averaging.** The repeats are averaged as before, with no
+> weighting by replicate count and no exclusion of discordant pairs. What changes is that the
+> disagreement is now measured and on the record rather than invisible.
+
+**What this does and does not license.** It is an estimate of the screen's reproducibility on **six of
+181** cell lines; extending it to the other 175 is an assumption, not a result — CTRPv2 chose which
+lines to repeat, and that choice was not random. Read as an order of magnitude, it says a substantial
+part of what a model is asked to predict is screening noise, so a modest per-drug ρ is partly a
+property of the labels rather than of the representation. It does **not** support a numeric ceiling on
+achievable ρ; that would need the repeats to be a random sample of the panel, and they are not.
+
 From this overlap, a drug becomes a model **head** (one column of `obsm["Y_ctrp"]`, one row of the
 output layer — never an input feature) only if it was screened on ≥ `--min-cell-lines` overlapping
 lines; the headline run used `--all-drugs` (min 0) → **K = 545**
