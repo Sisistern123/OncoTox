@@ -349,16 +349,19 @@ seed. That stops holding across a re-preprocessing sweep, and the recipe behind 
 would be gone. Cost is ~10 MB per fit at `hvg5000` and ~47 MB at `all_genes`, against targets files of
 2.2 GB and 8.6 GB.
 
-**Verified** on synthetic data by applying the stored record back to the input matrix and checking it
-reproduces the stored coordinates (agreement to 3e-06 for `X_pca`, 7e-07 for `X_pca_train_ctrp`). The
-check found a real defect: the record's `mean`/`std` were recomputed by hand with numpy's `ddof=0`
-while `sc.pp.scale` uses `ddof=1`, so the stored recipe did not reproduce the stored coordinates. The
-record now reads scanpy's own `var["mean"]`/`var["std"]` instead of recomputing them.
+**Checked while it was written, not by a standing test.** During development the stored record was
+applied back to the input matrix on synthetic data to see whether it reproduced the stored coordinates.
+It did not, and the reason was a real defect: the record's `mean`/`std` were recomputed by hand with
+numpy's `ddof=0` while `sc.pp.scale` uses `ddof=1`. The record now reads scanpy's own
+`var["mean"]`/`var["std"]` instead of recomputing them, so the recipe and the transform it describes
+come from one source and cannot drift apart that way again. That throwaway check is not in the
+repository and no figure from it is quoted here — this is a note on how the code reached its present
+form, not a result that can be re-run.
 
 **Consequence — the two fits are now standardized identically (10.08.2026).** That defect exposed a
 pre-existing mismatch: `_pca_fitted_on_train` used `ddof=0`, `sc.pp.scale` uses `ddof=1`. The gap is a
-factor of √(n/(n−1)), under 0.01 % on this atlas, so no conclusion depends on it — but the two
-representations being compared were not produced by identical code. `_pca_fitted_on_train` now passes
+factor of √(n/(n−1)), under 0.01 % on this atlas, so no conclusion depends on it — but the two **PCA
+fits** were not produced by identical code. `_pca_fitted_on_train` now passes
 `ddof=1`, leaving *which cells are seen* as the only difference between the two fits. This changes
 `X_pca_train_*` in its last digits and takes effect with the sweep, like everything else here.
 

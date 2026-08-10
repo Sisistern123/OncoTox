@@ -152,14 +152,13 @@ every one of them was a step that looked settled and had never been checked.
         because the targets file's gene axis differs from the PCA's — the `scgpt` step drops OOV genes
         from `.X` while PCA keeps the full HVG set, and *how many* that leaves moves with the
         gene-symbol repair (item 3A), which is why the record carries its own gene vector.
-        Structure, the
-        reprojection formula and the verification:
+        Structure, the reprojection formula and how it was checked:
         [Step 02](./steps/02-preprocessing-and-embeddings.md#the-fit-is-stored-not-only-the-coordinates-10082026).
         Costs ~10 MB (`hvg5000`) / ~47 MB (`all_genes`) per fit. Takes effect at the sweep.
     - [x] **Found on the way: the two PCA fits were standardized differently.**
           `_pca_fitted_on_train` used numpy's `ddof=0`, `sc.pp.scale` uses `ddof=1`. Worth under 0.01 %
-          on this atlas, so no conclusion moves — but the two representations being compared were not
-          produced by identical code. **Harmonized to `ddof=1` (Selin, 10.08.2026)**, leaving *which
+          on this atlas, so no conclusion moves — but the two **PCA fits** were not produced by
+          identical code. **Harmonized to `ddof=1` (Selin, 10.08.2026)**, leaving *which
           cells are seen* as the only difference between the fits. Changes `X_pca_train_*` in its last
           digits, at the sweep.
     - [x] ~~Count how many values actually reach the ±10 clip.~~ **Not needed (Selin, 10.08.2026)** —
