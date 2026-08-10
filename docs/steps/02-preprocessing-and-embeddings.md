@@ -253,6 +253,16 @@ run's `run_meta.json` as `rep_key`.
 array. HVG selection also remains an all-cells step, for both arms. So the asymmetry above is reduced,
 not eliminated, and every CV number still carries it.
 
+**"All cells" includes cells that never train (noted 10.08.2026).** `convert` runs before the CTRP
+join, so the gene selection, `sc.pp.scale`'s per-gene mean/sd and the all-cells rotation are all fitted
+on the **full** 53,513 cells — including those of the SCP542 cell lines that carry no CTRPv2 label at
+all and are dropped from every split by `create_splits.py::has_any_label`. That is **18 lines /
+6,286 cells** in the files on disk, and **17 lines / 6,073 cells** after the `H292` fix takes effect
+([Step 01](01-datasets-and-harmonization.md#the-join-dropped-a-screened-cell-line-h292-10082026)) —
+11.4 % of the atlas. It is not a test leak: those cells appear in no split, so no held-out label is
+touched. But the representation is partly shaped by data the model never sees, which is a separate
+question from the leak above and is decided with it under review item 7.
+
 **Splits are frozen to a file (05.08.2026).** The train/val/test partition is no longer redrawn from the
 data on each run: `create_splits.py::frozen_split` reads `splits/split_ctrp.csv` (versioned in the repo,
 not under the gitignored data root) and only redraws under `--regenerate-split`. The reason is that

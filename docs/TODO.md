@@ -103,8 +103,19 @@ every one of them was a step that looked settled and had never been checked.
   - [x] ~~**B · Migrate to persistent identifiers.**~~ **Dropped 10.08.2026 (Selin)** — the premise did
         not survive the audit and the join it was meant to protect is now verified.
         [Dead ends](./steps/corrections-and-dead-ends.md#migrating-the-cell-line-join-to-persistent-identifiers).
-- [ ] **3 · Preprocessing** — CPM, log1p, HVG selection and count, what `.X` holds at each stage, scGPT
-      out-of-vocabulary genes. Does the HVG set depend on all cells including test?
+- [x] **3 · Preprocessing — answered by the 05.08.2026 transform audit; closed 10.08.2026.** The facts
+      this item asked for are all in [Step 02](./steps/02-preprocessing-and-embeddings.md): CPM arrives
+      already library-size normalized and the second normalization that had crept in was removed; the
+      log step is the dataset authors' own `log2(1 + CPM/10)`; HVG is selected **once**, at `convert`,
+      ranked on a log copy and applied to the CPM original
+      ([what it removes and what `.X` holds](./steps/02-preprocessing-and-embeddings.md#what-hvg-filtering-removes-and-what-x-holds-at-each-stage),
+      including the per-step table); the count of 5,000 has its own justification; and the scGPT OOV
+      set was found to be mostly a symbol-matching defect, repaired in code (item A below).
+      **The question it posed — does the HVG set depend on all cells including test? — is answered:
+      yes**, and so do `sc.pp.scale` and the all-cells rotation
+      ([what transform PCA sees](./steps/02-preprocessing-and-embeddings.md#what-transform-pca-sees--corrected-05082026)).
+      Establishing that closes item 3; **deciding what to do about it is item 7**, where it sits with
+      the other two open fits.
   - [x] ~~**A · Apply the gene-symbol repair — BEFORE the clean sweep.**~~ **Done in code 05.08.2026**
         (`scripts/preprocessing/gene_symbols.py`; `scp542_conversion.py` annotates,
         `gen_embeds.py::resolve_gene_names` resolves, own symbol first so nothing embedded today is
@@ -127,6 +138,21 @@ every one of them was a step that looked settled and had never been checked.
       spread threshold explicitly. Expect `nutlin-3`, `oxaliplatin`, `bortezomib` and others to re-enter.
 - [ ] **7 · Splits** — grouped by cell line, test held out, folds shared between model and baselines.
       Confirm nothing leaks through statistics computed outside the fold.
+  - [ ] **Handed over from item 3 (10.08.2026): three fits, one question — what may a fit see?** All
+        three are established facts, none is decided, and they should be decided together rather than
+        separately, or they will get three inconsistent answers. All are unsupervised (no fit sees a
+        response label), which is why standard pipelines tolerate them; and all bias **toward** the PCA
+        control, since scGPT's per-cell binning draws on no other cell, so any scGPT-over-PCA margin
+        measured today is conservative. Detail:
+        [Step 02](./steps/02-preprocessing-and-embeddings.md#what-transform-pca-sees--corrected-05082026).
+        1. **HVG selection is all-cells**, for both arms — the one fit the two representations share.
+        2. **The cross-validated PCA is all-cells.** The fixed splits were fixed 05.08.2026
+           (`X_pca_train_ctrp`); CV folds are drawn at training time, so five fold-specific matrices
+           cannot be stored and `resolve_rep` leaves them on the leaky `X_pca`. Every CV number carries it.
+        3. **Cells that never train are in all three fits** — the 17 lines / 6,073 cells (18 / 6,286 on
+           disk today) with no CTRPv2 label, 11.4 % of the atlas. Not a test leak; a separate question
+           about whether the representation should be shaped by data the model never sees.
+        Any change here alters the gene set and therefore every number, so it lands in the sweep.
 - [ ] **8 · Model** — architecture, capacity, and whether the shared-trunk multi-head design is still the
       right one for a small panel.
 - [ ] **9 · Loss** — masking, per-sample weighting (the density weighting was a null — drop or keep?),
