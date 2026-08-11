@@ -170,9 +170,14 @@ every one of them was a step that looked settled and had never been checked.
         [Retracted claims](./steps/corrections-and-dead-ends.md#the-scgpt-binning-invariance-was-verified-on-200-cells).
 - [ ] **5 · Target** — AUC vs EC50 vs Emax: AUC conflates potency with efficacy and the tested
       concentration range spans 0.13–600 µM. Winsorizing threshold. Are all statistics per fold?
+      Related open leak: the per-drug target mean/std are computed over every cell line, val and test
+      included. **If this audit changes the target, `report/sections/03_methods.tex` §Response target
+      changes with it** — it was rewritten 10.08.2026 to state raw `auc`.
 - [ ] **6 · Drug selection — REBUILD, this is the main deliverable.** Pool on coverage and spread only,
       **no kill counts at any point**, then apply the literature criterion to that pool. Decide the
       spread threshold explicitly. Expect `nutlin-3`, `oxaliplatin`, `bortezomib` and others to re-enter.
+      Part of a drug's apparent spread is screening noise — `outputs/data/replicate_variation.csv`
+      carries the per-pair disagreement and can be reused here rather than re-derived (item 2).
 - [ ] **7 · Splits** — grouped by cell line, test held out, folds shared between model and baselines.
       Confirm nothing leaks through statistics computed outside the fold.
   - [ ] **Handed over from item 3 (10.08.2026): three fits, one question — what may a fit see?** All
@@ -199,11 +204,81 @@ every one of them was a step that looked settled and had never been checked.
 - [ ] **11 · Evaluation** — metric, cell→line aggregation, baselines (ridge, `NaiveMeanEffects`),
       dispersion across folds *and* drugs, raw vs normalized.
 - [ ] **12 · Reproducibility** — seeds, determinism, what is derived in code versus typed by hand.
-      Anything that exists only as a shell command is not a result.
+      Anything that exists only as a shell command is not a result. *Seeds are now fixed
+      (`gen_embeds.py`, `add_pca.py`, the training `DataLoader`s) and determinism was decided
+      28.07.2026 as no-action, so what is left is the hand-copying:* **`report/results_numbers.tex` is
+      transcribed by hand from CSVs under `notebooks/outputs/` with no extraction script**, so every
+      macro can drift silently from its source — and it grew again on 10.08.2026 with four replicate
+      macros (`\NRepPairs`, `\NRepLines`, `\RepDiffMed`, `\RepDiffPct`). Related and already fixed:
+      `report/main.pdf` was tracked and went stale whenever a `.tex` changed; it is now untracked and
+      built from source.
+- [ ] **13 · Code redundancy, stale code, notebook restructuring** — not a pipeline stage, so it runs
+      last. The **code** half of Selin's "redundanz, staleness, file overload" note; the documentation
+      half was done 05.08.2026. Open: duplicated code across scripts and notebooks, code used nowhere,
+      restructuring and archiving of outdated notebooks, and whether too many files are produced for
+      nothing.
 
 **Working agreement for the session, restated because it was broken today:** no step of the analysis gets
 decided silently. If a choice affects what enters the model or how a number is computed, it is proposed
 first and agreed before it is executed.
+
+## The sweep — R1 to R6, in order (written down 11.08.2026)
+
+*This sequence existed only in the session task list until now, which meant it lived in a per-session
+cache and would not have survived the session. Nothing here may start before the review above is
+finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
+
+- [ ] **R1 · Decide the re-embedding scope — which variants get regenerated.** **Selin's decision, and
+      it sizes everything below**, because scGPT embedding is the expensive step. Five variants exist on
+      disk (`hvg1000/2000/3000/5000`, `all_genes` — `layout.py:31`, `VARIANT_N_TOP_GENES`). What each
+      option implies: **all five** keeps [Step 05](./steps/05-multitask-results.md)'s gene-set sweep
+      like-for-like; **`hvg5000` + `all_genes`** covers every number the report currently quotes but
+      leaves the sweep mixing old and new embeddings; **`hvg5000` only** is cheapest and voids the sweep.
+- [ ] **R2 · Re-run preprocessing end to end.** Driver `scripts/preprocessing/run_preprocessing.py`,
+      `STEP_ORDER = convert, scgpt, targets, splits, pca`; needs `--overwrite` and the separate
+      `--scgpt-python` venv. Every artifact under `data/processed/scRNAseq_SCP542/<variant>/` predates
+      the code that now produces it:
+  - `scp542_conversion.py` annotates `var["hgnc_symbol"]` (`gene_symbols.py`, 05.08.2026) → `SCP542_CCLE.h5ad`
+  - `gen_embeds.py` seeds with 42, runs on MPS, resolves through `resolve_gene_names` → embeddings and
+    the OOV table; **4,576 → 4,704** genes (`hvg5000`), **20,570 → 21,332** (`all_genes`)
+  - `add_pca.py` passes `random_state=42`, plus gene scaling, the post-HVG renormalization fix, the HVG
+    ranking scale, and `uns["pca_fits"]` (item 4B)
+  - `ctrp_to_h5ad.py` (audit 02): deduplicated experiment table + the `H292` alias → **180 → 181** lines,
+    213 cells and 454 labels gained, 460 of `NCIH1299`'s targets changed
+- [ ] **R3 · Refresh the committed read-only artifacts.** Held back only because they overwrite tracked
+      files. `gene_symbol_rescue.ipynb` → `gene_symbol_rescue.csv` (773 vs 775 — no effect at quoted
+      precision; on re-run it should import `load_rename_map` from `gene_symbols.py` rather than rebuild
+      the map, and it reads only the vocabulary and HGNC so it could be released early).
+      `verify_variants.ipynb` §7 `variants.png`, §8a `umap_cancertype_pca_vs_scgpt.png`, §8b
+      `umap_sweep_cancertype.png`, §10b `scgpt_nonzero_per_cell.npz` — all need R2 first, and §10a–c are
+      stale again despite running under the audit exception. **§8b and §10b cover all five variants**, so
+      if R1 regenerates only some they will mix new and old embeddings — check before rendering. §9 trains,
+      so it goes to R4.
+- [ ] **R4 · Retrain.** The `DataLoader`s now take an explicit generator and the inputs change under R2,
+      so no run under `runs/` is reproducible from current code. Requires the target (item 5) and the
+      panel (item 6) settled first, and **never both in one run**. Scope: the 8-run matrix + 5-fold CV
+      (`2_training.ipynb`, `train_multitask.py`) — expected to **overturn** the Steps 04–05 numbers, not
+      refresh them; `3_panel_training.ipynb` on the rebuilt panel; ridge / `NaiveMeanEffects` on the same
+      folds; `verify_variants.ipynb` §9; and 4A below. Blockers already recorded: **≥ 3 seeds** before any
+      scGPT − PCA margin is quoted, and train-only drug selection inside each fold.
+- [ ] **R5 · Re-run the analysis notebooks that read the retrained outputs.**
+      `drug_selection/`: `learnability_filter`, `panel_distributions`, `learnable_subset_training`.
+      `result_evaluation/`: `target_comparison`, `ablations_and_rescue`, `diagnostics` (§5 dispersion),
+      `dreval_benchmark`. `data_and_harmonization/drug_coverage` — **not optional**, the line count moves
+      180 → 181. `replicate_variation.ipynb` reads only the shipped CTRPv2 files and does not re-run.
+      **Render every figure and look at it before anything is reported from it.**
+- [ ] **R6 · Update the docs and the report from the refreshed artifacts.** Nothing is re-run here;
+      everything is re-read from what R2–R5 produced. `report/results_numbers.tex`: `\NLines` 180 → 181,
+      `\NVocab` 4,576 → measured (`\NVocabRepaired` then goes), every ρ / gap / DrEval macro — ideally
+      via the extraction script from item 12 rather than by hand. `report/sections/03_methods.tex`: the
+      revision block still says "no representation has been regenerated", false once R2 lands.
+      [Step 01](./steps/01-datasets-and-harmonization.md) the ⚠️ 181 marker;
+      [Step 02](./steps/02-preprocessing-and-embeddings.md) the ⛔/⚠️ blocks on truncated, unseeded,
+      symbol-limited embeddings; [Step 05](./steps/05-multitask-results.md) the ⚠️ 181 marker and every
+      pre-sweep dated marker; `project_progress.md`'s "181 after the next sweep" note;
+      [Corrections](./steps/corrections-and-dead-ends.md) — move the "repaired in code, takes effect at
+      the sweep" entries to applied. **Lift the 03.08 freeze banner here**; the 28.07 panel banner lifts
+      with item 6, not here. Rebuild `main.pdf` and check the log is clean.
 
 ## After the sweep — the one review item that needs new runs
 
