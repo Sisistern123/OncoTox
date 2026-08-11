@@ -57,220 +57,80 @@ and the train/val/test grouping.
 
 ## Target `y` — the response score, and at what resolution it is defined
 
-**This section is the canonical definition of the target; the other steps refer back to it.**
+**What the target *is* — its source, the two measures, the counts and the provenance — is stated once
+in [Step 01](01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026).
+This section covers only what that choice forces on the *model*.**
 
-> **Status, 27.07.2026 — `auc_z` is retired; the target is raw `auc`.** The sections below still
-> describe `auc_z` because it produced every result up to 14.07 and because the decomposition that
-> retired it is only readable against its definition. What changed:
->
-> - **Target = raw `auc`, winsorized at 1.1.** Decomposed, `auc_z`'s centering is inert (the head
->   bias absorbs the drug mean, and per-drug Spearman is shift-invariant) and its scaling is the
->   defect described under *Known problems* below. Both are within-drug monotone transforms, so
->   neither was ever visible to the metric: `auc_z` was a **loss-weighting scheme in disguise**.
-> - **The weighting moved into the loss**, where it can be estimated per fold on training lines
->   only — which is what closed the standing z-score leak (μ, σ were computed once over all 180
->   lines, val and test included, and baked into the h5ad).
-> - **Per drug: no weight.** The variance imbalance is a K=545 problem; on the 8-drug literature
->   panel the σ range is 2.5× rather than 81×.
-> - **Per sample: inverse label density** (`scripts/training/density_weighting.py`), the regression
->   analogue of class weighting. Measured outcome: predicted spread rose as designed, per-drug
->   Spearman did not move — a clean negative, not to be carried into Step 2.
-> Superseded numbers and the full decomposition:
-> [Corrections](corrections-and-dead-ends.md#auc_z-as-the-training-target).
-> Figures: `docs/figures/loss_01_objective.png`, `loss_02_weights.png`, `loss_03_effect.png`.
+The label is a **bulk, per-(cell line × drug)** quantity, never measured per single cell. Selected with
+`--score`; one targets h5ad per measure, so two can be trained head-to-head without rebuilding anything.
 
-**Two mechanics are forced by a target near 0.7 rather than 0.** Both are silent if missed — nothing
-errors, the model simply trains against a handicap — so they are recorded with the code that causes them:
-
-1. **The output layer must be excluded from weight decay.**
-   `optim.Adam(model.parameters(), ..., weight_decay=1e-3)` (`scripts/training/training_utils.py:179`)
-   decays **every** parameter, head biases included. On `auc_z` the optimal bias was 0, so the decay was
-   free; on raw `auc` the bias must sit near 0.7 and is actively pulled toward 0. Biases and LayerNorm
-   parameters therefore go in a `weight_decay=0` group — `TrainConfig.exclude_output_from_decay`, default
-   **off** so older runs reproduce unchanged.
-2. **Head biases must be initialized at the train-fold per-drug means.** `nn.Linear` initializes them in
-   ±0.125 against a target near 0.7, so the model otherwise starts far from the null predictor instead of
-   at it.
-
-**And one property that made the switch verifiable:** per-drug Spearman is invariant to within-drug
-affine transforms, so for a *fixed* model, raw `auc` with per-drug loss weights and the old `auc_z`
-target score **identically**. That is why the refactor could be validated by requiring it to reproduce
-the `auc_z` numbers before anything new was measured — any gap would have been either an implementation
-bug or the size of the z-score leak, and both were worth knowing separately.
-
-The label is a CTRPv2 **drug-response score**, always a **bulk, per-(cell line × drug)** quantity —
-*not* measured per single cell. Which score is selected with `--score`
-(`layout.CTRP_SCORES`), and every score is written to its **own** targets h5ad, so two scores can be
-trained head-to-head without rebuilding anything. In **all** of them a *higher* value = a *more
-resistant* line.
-
-| `--score` | Definition | Source table |
+| `--score` | Direction | Scale |
 |---|---|---|
-| **`auc`** (default since 27.07.2026) | `area_under_curve / conc_pts_fit` — the sigmoid-fit AUC, **normalized** by the size of the concentration grid | `v20.data.curves_post_qc.txt` |
-| `auc_z` | per-drug **z-score** of `auc`, over the 180 overlapping cell lines. Default 13.07–27.07, **retired** | ⟵ derived |
-| `mean_pv` | *legacy:* unweighted mean of `cpd_avg_pv` (percent viability) over the dose grid; clusters near 1.0 | `v20.data.per_cpd_post_qc.txt` |
+| **`auc_cc`** (default) | higher = **more resistant** | ~0.02–1.83, median 0.925. **1.0 is the no-effect level** — the curve fit pins the low-concentration asymptote to the vehicle |
+| `ln_ic50_cc` | lower = **more sensitive** — the opposite | log concentration, −11.4 to 8.6 |
 
-### How `auc_z` is computed, step by step
+⚠️ **The two run in opposite directions.** Anything that reads a sign — a loss term, a plot axis, a
+"most sensitive lines" table — is wrong for one of them unless it is written to ask which is loaded.
 
-CTRPv2 screens each (cell line × drug) over a **concentration series** and fits a sigmoid to it. The
-pipeline (`ctrp_to_h5ad.py`) turns that into one number per (cell line × drug) in four steps.
+### Every cell of a line carries the identical label
 
-**Step 1 — take the curve fit, not the raw dose points.** Read `area_under_curve` from
-`v20.data.curves_post_qc.txt` (`_load_score_values`), one row per (`experiment_id`, `master_cpd_id`).
-This is the integrated area under the **fitted** sigmoid, in log2-concentration space. It is not a
-percentage and **not bounded by 1** — for a 16-point grid it runs roughly 0–16.
+`ctrp_to_h5ad.py` pivots to a (cell line × drug) matrix and broadcasts each bulk value to every cell of
+the matching line (`Y_full = cl_drug_matrix.reindex(cell_line_norm.values)`). Two consequences run
+through the rest of this file:
 
-**Step 2 — divide out the concentration grid → `auc`.** CTRP integrates rather than averages, so the
-raw area grows with how many concentration points were fitted. `conc_pts_fit` varies **8–29** (usually
-16), so a raw AUC of 13 means different things for different compounds. Dividing removes it:
+- **Grouped splitting is mandatory** ([below](#why-splits-must-be-cell-line-grouped)) — a random cell
+  split would put the same label on both sides.
+- **Per-cell MSE is not the honest metric** (next section) — a line with 1,990 sequenced cells would
+  count 35× a line with 56, for one measurement.
 
-```
-auc = area_under_curve / conc_pts_fit        # ~0-1, viability-like: the mean height of the fitted curve
-```
+It is also what makes **research question 2 structurally unanswerable under this architecture**: the
+objective penalises exactly the within-line variation Q2 asks about. MIL is the instrument for that
+question, not a capacity lever — see [TODO](../TODO.md).
 
-The result reads like an average survival fraction across the tested range: **low `auc` = the drug
-kills that line, high `auc` = the line survives it.** (Observed: median 0.877, p05 0.536, p95 1.071 —
-values slightly above 1 occur where a line grows faster than the vehicle control.)
+### Two mechanics forced by a target centred near 0.9 rather than 0
 
-**Step 3 — one value per (cell line, drug).** Replicate experiments are averaged
-(`_build_drug_table`: `groupby(["ccl_name_norm","cpd_name_norm"]).mean()`), giving the (180 × 545)
-matrix the rest of the pipeline works from.
+Both are silent if missed — nothing errors, the model simply trains against a handicap — so they are
+recorded with the code that causes them.
 
-**Step 4 — z-score *within each drug*, across cell lines** (`_zscore_per_drug`):
+1. **The output layer must be excluded from weight decay.** `optim.Adam(..., weight_decay=1e-3)`
+   (`scripts/training/training_utils.py:179`) decays **every** parameter, head biases included. Each
+   head's bias must sit near its drug's mean — around 0.9 on `auc_cc` — and decay pulls it toward 0.
+   Biases and LayerNorm parameters therefore go in a `weight_decay=0` group:
+   `TrainConfig.exclude_output_from_decay`, default **off** so older runs reproduce unchanged.
+2. **Head biases must be initialized at the train-fold per-drug means.** `nn.Linear` initializes them
+   within ±0.125, so the model otherwise starts far from the null predictor rather than at it.
 
-```
-center[d] = mean of auc[:, d] over the cell lines screened against drug d   # -> uns["ctrp_score_center"]
-scale[d]  = std  of auc[:, d] over those same lines                         # -> uns["ctrp_score_scale"]
+⚠️ Neither carries over to `ln_ic50_cc` unchanged: its per-drug means are spread across a
+log-concentration scale instead of clustering near 0.9. That has to be checked before that measure is
+trained, not assumed.
 
-auc_z[l, d] = (auc[l, d] - center[d]) / scale[d]
-```
+### Per-drug Spearman is affine-invariant — and what that implies
 
-Note **which axis is standardized**: the statistics are taken **down the cell-line axis, separately
-for every drug** — *not* over the whole matrix, and *not* per cell line. Each drug ends up with mean 0
-and std 1 across the panel, so `auc_z` answers **"how sensitive is this line to this drug, relative to
-the typical line for this drug?"** −1 means one standard deviation more sensitive than that drug's
-average line; +1 means one more resistant.
+For a *fixed* model, any within-drug affine transform of the target scores **identically**. So a
+per-drug rescaling can never show up in the metric: it is a **loss-weighting scheme in disguise**, which
+is what retired `auc_z` ([Corrections](corrections-and-dead-ends.md#auc_z-as-the-training-target)).
 
-The statistics are computed **per cell line, not per cell** — a line with 500 cells must not pull the
-mean toward itself more than a line with 50, since both are one measurement. Degenerate drugs (zero
-spread) keep `scale = 1.0` rather than dividing by zero.
+It also means `auc_cc` vs `ln_ic50_cc` is a real comparison rather than a relabelling — the two are
+*not* affine images of one another, so they can rank cell lines differently.
 
-*Worked example — `dasatinib`* (`center = 0.631`, `scale = 0.155`): a resistant line with `auc = 0.85`
-becomes `(0.85 − 0.631) / 0.155 = +1.41`; a sensitive line with `auc = 0.40` becomes **−1.49**. Both
-are stored in `Y_ctrp` and broadcast to every cell of the line.
+### Is AUC the right target at all? — answered 11.08.2026
 
-**The map is exactly invertible**, which is why `center`/`scale` are saved: `auc = auc_z * scale +
-center` recovers the original units for any prediction (needed for cross-drug comparisons, which are
-meaningless on the z-scale — see below).
+Raised 27.07.2026 by Selin's supervisor and by DrEval itself, on two grounds. Both now have an answer:
 
-### Why `auc_z` was chosen, and why that reasoning no longer holds
+- **AUC conflates potency with efficacy.** True of any AUC: the area mixes *how little drug is needed*
+  with *how much killing is achievable*, so two pharmacologically opposite compounds can share one. The
+  pipeline now carries `ln_ic50_cc` beside `auc_cc` from the **same** CurveCurator fit, so the two are
+  compared rather than argued about. CTRPv2 publishes no IC50 of its own — it exists only in the re-fit.
+- **The tested concentration range is not standardized.** Across the 545 compounds the top test
+  concentration spans **0.13 µM to 600 µM**. This does not break comparisons *between* drugs, since the
+  metric is within-drug — but it bites *within* one: a range badly matched to a compound's potency
+  compresses every line toward one end of the curve, shrinking the spread the model is asked to predict
+  toward the noise floor. **Unresolved, and recorded as a limitation rather than a defect**;
+  re-integrating over a per-drug common window was considered and not adopted ([Step 01](01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026)).
 
-The three arguments originally made for it — equalizing the heads in the shared loss, making the metric
-readable at MSE = 1.0, and removing the per-drug potency offset — together with the known defects that
-retired it, are in [Corrections](corrections-and-dead-ends.md#auc_z-as-the-training-target).
-
-### Measured: all three targets head-to-head (`notebooks/archive/target_comparison.ipynb`, 13.07.2026)
-
-The argument above was tested, not assumed. All three scores were trained with the identical model and
-scored on **one common yardstick — the curve-fit `auc` ranking of cell lines** (`mean_pv` is *not* an
-affine map of `auc` — within a drug they agree only ρ ≈ 0.72 — so scoring each model against its own
-target would make the columns answer different questions; `auc`/`auc_z` *do* share a ranking exactly).
-Out-of-fold Spearman on the 5 learnable drugs, ±95% bootstrap CI over the ~150 held-out lines:
-
-| | `mean_pv` (legacy) | `auc` (curve fit) | `auc_z` (z-scored) |
-|---|---|---|---|
-| **K=5** · PCA | 0.450 [0.39, 0.50] | 0.439 [0.38, 0.49] | 0.424 [0.36, 0.48] |
-| **K=5** · scGPT | 0.481 [0.42, 0.53] | 0.482 [0.42, 0.53] | **0.488** [0.43, 0.54] |
-| **K=545** · PCA | **+0.027** [−0.04, 0.10] | **+0.016** [−0.06, 0.09] | **+0.378** [0.31, 0.44] |
-| **K=545** · scGPT | **−0.070** [−0.14, 0.00] | **−0.087** [−0.15, −0.02] | **+0.430** [0.37, 0.48] |
-
-(Pearson agrees throughout, within ±0.02 — neither metric is doing anything special. Per-drug spread is
-wide, 0.10–0.65, so the dots in the notebook figure matter as much as the bars.)
-
-**Two results, one of which corrects an earlier claim in these docs:**
-
-1. **The z-scoring is load-bearing — and it is the *whole* effect.** At K=545 both unstandardized targets
-   collapse to zero (or below) while `auc_z` holds at ~0.4. With per-drug spreads spanning 9× (0.034 →
-   0.302, ~80× in squared error), the wide-spread heads monopolize the shared trunk's gradient **because
-   of their units, not their learnability**, and nothing transferable is learned.
-2. ⚠️ **The curve fit buys no measurable accuracy.** An earlier version of this section credited
-   `area_under_curve` over the dose-averaged `mean_pv`. **That is falsified:** trained head-to-head,
-   `mean_pv` and raw `auc` are statistically identical at *both* K (0.450 vs 0.439 at K=5; +0.027 vs
-   +0.016 at K=545 — CIs fully overlapping). Reason 1 in the list above is **principled, not empirical**:
-   keep the curve fit for the post-QC sigmoid, the confidence intervals, and because it is the metric
-   family GDSC2 reports (which [Step 06](06-planned-work.md#a-cross-database-integration) needs) — but do **not** claim
-   it improves accuracy. It does not.
-
-> **The decision this table produced — keep `auc_z` as the default — was superseded on 27.07.2026**
-> ([Corrections](corrections-and-dead-ends.md#auc_z-as-the-training-target)). The measurements above stand;
-> only the conclusion drawn from them changed.
-
-**And it retro-diagnoses the project's central null result.** [Step 05](05-multitask-results.md) §3
-("neither rep ranks cell lines", ρ ≈ 0 across 545 drugs) ran at **K=545 on `mean_pv`** — the grey column
-above, which sits at **−0.070 / +0.027**. The table **reproduces that null on demand**, and shows it
-vanishes the moment the heads are standardized. It was never clean evidence about scGPT vs PCA; it was
-substantially an artifact of an **unstandardized multi-task loss**.
-
-> The two scores are **not** interchangeable. Globally they correlate at ρ ≈ 0.97, but that is
-> inflated by between-drug potency differences. *Within* a drug, across cell lines — the only
-> variation the model must actually predict — the median Spearman between `auc_z` and `mean_pv` is
-> only **0.72** (min 0.42). Steps 04–05 were trained on `mean_pv` and are **not** directly comparable
-> to `auc_z` numbers.
->
-> **Known caveat:** the z-score statistics are computed over *all* overlapping lines, including those
-> that later land in val/test. This is standard practice, but it is technically mild leakage (the
-> held-out labels' mean/spread inform the normalization). Making it train-only requires computing the
-> splits before the targets step.
-
-`scripts/preprocessing/ctrp_to_h5ad.py` turns the chosen score into per-cell labels:
-
-1. **Aggregate** to one value per (cell line, drug), averaging replicate experiments —
-   `groupby(["ccl_name_norm","cpd_name_norm"]).mean()` in `_build_drug_table`.
-2. **Standardize** per drug if `--score auc_z` (statistics computed per *cell line*, so a line with
-   many cells does not pull its own mean).
-3. **Pivot** to a (cell line × drug) matrix, column order pinned to `uns["ctrp_drugs"]`.
-4. **Broadcast** each bulk value to every cell of the matching line —
-   `Y_full = cl_drug_matrix.reindex(cell_line_norm.values)`.
-
-⇒ **every cell of a line carries the identical label vector.** Two consequences follow: grouped
-splitting becomes mandatory (below), and per-cell MSE is not the honest metric (next section).
-
-The result is stored as `obsm["Y_ctrp"]` `(n_cells, K)` float32, NaN where unscreened, with the
-length-K column→drug map in `uns["ctrp_drugs"]` and the score name in `uns["ctrp_score"]`. A drug
-column is kept only if screened on ≥ `--min-cell-lines` overlapping lines (default 50; the K=545 runs
-used `--all-drugs`, i.e. min 0). The legacy flat columns `obs["viability_<drug>"]` /
-`obs["train_mask_<drug>"]` hold **whichever score was selected** — the `viability_` prefix is
-historical. Cancer type is never a label or a feature — it only colors the UMAPs in
-[Step 02](02-preprocessing-and-embeddings.md).
-
-### Known problems with `auc_z`
-
-Moved to [Corrections](corrections-and-dead-ends.md#auc_z-as-the-training-target) — the noise amplification, the fact that the target discards potency so nothing
-downstream may select on it, the unimplemented candidate fixes, and what is and is not estimable about
-`σ_noise`.
-
-### Is AUC the right target at all? (27.07.2026)
-
-Raised independently by (a) Selin's supervisor, co-author on the DrEval paper, and (b) DrEval itself,
-which lists *inconsistent viability data* among its six obstacles and recommends **CurveCurator** for
-standardized dose-response fitting. Two concrete, verified issues:
-
-**AUC conflates potency with efficacy.** The area under a dose-response curve mixes *how little drug is
-needed* (EC50) with *how much killing is achievable* (Emax). Two pharmacologically opposite drugs can
-share an AUC. CTRP's own fit already separates them, and the columns are sitting in the file we already
-parse: `apparent_ec50_umol` (potency), `pred_pv_high_conc` (predicted viability at the top dose ≈ Emax),
-`p3_total_decline`. Either is a cleaner regression target than their integral.
-
-**The tested concentration range is not standardized.** Across the 545 compounds the top test
-concentration spans **0.13 µM to 600 µM** (`top_test_conc_umol`; 283 compounds at 66 µM, 113 at 33 µM,
-the rest scattered). Note carefully what this does and does not break: because `auc_z` standardizes
-*within* each drug, cross-drug incomparability is already removed. What it does break is *within*-drug —
-a range badly matched to a compound's potency compresses every line into the top or bottom of the curve,
-shrinking `auc_std` toward the noise floor. **The dose grid is therefore a direct cause of problem 2
-above**, and the two issues should be treated together rather than as separate complaints.
-
-**Decision: not resolved here.** Changing the target is a larger move than changing the scale and
-interacts with S1 (the DrEval-aligned residual target); both are tracked in [TODO](../TODO.md).
+The retired measures — `auc`, `auc_z`, `mean_pv` — their definitions, the head-to-head comparison that
+once chose between them, and the normalisation defect that voided `auc`, are all in
+[Corrections](corrections-and-dead-ends.md#the-auc-target-was-divided-by-the-wrong-quantity).
 
 ---
 
@@ -338,10 +198,10 @@ Anatomy of the objective: `docs/figures/loss_01_objective.png`; the weight curve
 
 **Two aggregations are reported — do not conflate them:**
 
-| Name | Where | Definition | K=545 scGPT (`mean_pv`) |
-|---|---|---|---|
-| **Entry-pooled MSE** | `best_val_mse`, `history.csv` | `Σ sq·M / Σ M` over all observed entries | **0.0105** |
-| **Macro per-drug MSE** | `model_mean_mse` / `baseline_mean_mse` | per-drug `Σ_cells sq_k / n_k`, then `np.nanmean` over drugs (equal weight per drug) | **0.0103** |
+| Name | Where | Definition |
+|---|---|---|
+| **Entry-pooled MSE** | `best_val_mse`, `history.csv` | `Σ sq·M / Σ M` over all observed entries |
+| **Macro per-drug MSE** | `model_mean_mse` / `baseline_mean_mse` | per-drug `Σ_cells sq_k / n_k`, then `np.nanmean` over drugs (equal weight per drug) |
 
 Only the **macro per-drug** numbers feed the **per-drug-mean baseline** comparison
 (`train_multitask._per_drug_constant_mse`). That baseline is a null model: for each drug it predicts
@@ -349,15 +209,13 @@ the constant train-set mean score over that drug's observed cells. "**Heads beat
 then counts drugs whose model per-drug val MSE beats that constant (scGPT 142/545, PCA 97/545 —
 [Step 05](05-multitask-results.md)).
 
-**Beating that baseline, not the raw MSE, is the honest metric** — and the target scale decides how
-obvious that is:
-
-- On the legacy `mean_pv`, absolute MSE ≈ 0.01 looked impressively tiny but was meaningless: labels
-  cluster near 1.0, so the constant baseline already reached ≈ 0.0097.
-- On **`auc_z` the two coincide by construction**: a z-scored target has unit variance, so predicting
-  a drug's mean scores **MSE ≈ 1.0** and any MSE below 1 is real per-drug signal. (Observed: 0.92 for
-  the val baseline, since val holds only 27 lines.) This readability is a direct benefit of the
-  z-scoring.
+**Beating that baseline, not the raw MSE, is the honest metric**, and on `auc_cc` the raw number is
+actively misleading: the labels cluster near 0.9 with a small spread, so an absolute MSE around 0.01
+looks impressively tiny while the constant baseline already reaches nearly the same value. A
+standardized target would make the two coincide by construction — unit variance means the baseline
+scores 1.0 and anything below is signal — but that readability was the one real benefit of `auc_z`, and
+it did not survive its costs ([Corrections](corrections-and-dead-ends.md#auc_z-as-the-training-target)).
+Read the baseline comparison, never the MSE alone.
 
 ---
 

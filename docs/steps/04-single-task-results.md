@@ -1,112 +1,73 @@
 # Step 04 — Single-task results (paclitaxel) & the data-leak fix
 
 *Part of [OncoTox project progress](../project_progress.md). Covers: the single-task paclitaxel
-baseline, the random-split data leak and its grouped-split fix, regularization, and the
-progression of best single-task val MSE through the HVG-5000 + model upgrade.*
+baseline, and the random-split data leak that the grouped split fixed — the methodological result this
+page exists for.*
 
 This is plan-Phase-2 (single-task continuous regression). Model/training design is in
 [Step 03](03-model-and-training-design.md).
 
-> ⚠️ **Legacy target score.** Every number on this page was trained on **`mean_pv`** (mean percent
-> viability over the dose grid), the only target until 13.07.2026. The default is now raw **`auc`**
-> ([Step 03](03-model-and-training-design.md)). Absolute MSEs are **not comparable** across the two, and
-> the scores rank cell lines differently — within a drug they agree at only ρ ≈ 0.72, so this is not
-> cosmetic ([Corrections](corrections-and-dead-ends.md#the-steps-0405-numbers-as-a-comparable-baseline)).
-> Reproduce this page exactly with `--score mean_pv`.
-
-> **Which single-task is this?** The numbers below are the **earlier dedicated-`split_paclitaxel`
-> baseline** (its own split over paclitaxel-labelled lines). The **8-run experiment matrix's**
-> single-task cells use the *shared* `split_ctrp` and live in
-> [Step 05](05-multitask-results.md) (refreshed 13.06.2026, with the corrected `X_pca`). The two are
-> on different splits and are not directly comparable.
-
-> **Scope — 1 database, 1 score.** Everything here predicts a **single** CTRPv2 metric for the
-> **single** drug paclitaxel. This is the narrowest slice of
-> the project: one dataset, one response type, one compound. The widening happens in
-> [Step 05](05-multitask-results.md) (still CTRPv2 only, across drugs) and ultimately in
-> [Step 06](06-planned-work.md#a-cross-database-integration) (the true "combine all databases + metrics" goal).
+> ⛔ **Every number this page used to carry is void and cannot be regenerated.** All of them were
+> trained on **`mean_pv`**, which was removed with its reader code on 11.08.2026 when the target moved
+> to DrEval's reprocessed CTRPv2
+> ([Step 01](01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026)).
+> `--score mean_pv` now raises, so this page's earlier instruction to reproduce it that way was not
+> merely stale but false. The measurements are kept as a record in
+> [Corrections](corrections-and-dead-ends.md#the-steps-0405-numbers-as-a-comparable-baseline);
+> what remains here is the design and the one finding that does not depend on the target.
 
 ---
 
-## Single-task paclitaxel baseline + data-leak fix (08.05.2026)
+## The setup
 
-The first predictor regresses per-cell **paclitaxel viability** — the column
-`obs["viability_paclitaxel"]`, i.e. the bulk `mean_pv` broadcast to every cell of the matching
-line. It is loaded by `ScGPTDrugDataset` (`scripts/model/dataset.py`, `target_drug="paclitaxel"`)
-and trained with `train_multitask.py --use-rep {X_scGPT|X_pca} --drugs paclitaxel`
-(`output_dim = 1`). This was deliberately built **smallest-first** (plan §Prototyping) and used as
-a methodological probe before scaling out.
+The first predictor regresses per-cell **paclitaxel response** — the column
+`obs["viability_paclitaxel"]`, i.e. the bulk per-line value broadcast to every cell of the matching
+line. It is loaded by `ScGPTDrugDataset` (`scripts/model/dataset.py`, `target_drug="paclitaxel"`) and
+trained with `train_multitask.py --use-rep {X_scGPT|X_pca} --drugs paclitaxel` (`output_dim = 1`).
+Built **smallest-first** (plan §Prototyping) as a methodological probe before scaling out.
 
-- Total cells **53,513**; cells with a valid paclitaxel label **44,367**.
+The split is `obs["split_paclitaxel"]`, its own dedicated split over paclitaxel-labelled lines,
+written by `create_splits.py` `run()`: sklearn `train_test_split` over **whole cell lines**
+(`random_state=42`, group = `Cell_line`, 70/15/15 as `test_size=0.30` then `0.50`).
 
-**Step 1 — random 70/15/15 split (the deliberate mistake):** `split_paclitaxel` →
-train 31,056 / val 6,655 / test 6,656 / unassigned 9,146.
+> **Which single-task is this?** This dedicated-`split_paclitaxel` baseline, **not** the 8-run
+> experiment matrix's single-task cells, which use the *shared* `split_ctrp` and live in
+> [Step 05](05-multitask-results.md). The two are on different splits and are not comparable — an
+> apples-to-apples *"does multi-task help paclitaxel?"* comparison still needs a single-task re-run on
+> `split_ctrp`.
 
-- scGPT: train MSE 0.0132 / val 0.0137
-- PCA: train MSE 0.0022 / **val 0.0011** ← implausibly good
-
-→ **Data leakage**: with cells split randomly, the same cell line lands in both train and val.
-Since the label is constant within a line and PCA isolates each line as a tissue "island", the model
-reduces to a nearest-neighbour lookup of the memorized per-line label — the val score measures
-memorization, not generalization. The implausibly low PCA val MSE is the tell.
-
-**Step 2 — cell-line-grouped split** — the correct cross-validation design for this label
-structure: `create_splits.py` `run()` partitions **whole cell lines** with sklearn
-`train_test_split` (`random_state=42`, group = `Cell_line`; 70/15/15 = test_size 0.30 then 0.50)
-into `obs["split_paclitaxel"]`, so no line appears in two splits:
-
-- **170 cell lines with paclitaxel labels → 119 train / 25 val / 26 test**
-- Cells: **train 31,824 / val 5,035 / test 7,508 / unassigned 9,146**
-- Re-trained unregularized (old 256-dim MLP): scGPT val 0.0437, PCA val 0.0390 → PCA's
-  generalization collapsed, confirming prior cheating.
-
-**Step 3 — aggressive regularization** (hidden 256→64, dropout 0.3→0.5, weight_decay
-1e-5→1e-3):
-
-| Model | Train MSE (ep 50) | Val MSE | Train/val gap |
-|---|---|---|---|
-| scGPT | 0.0260 | ~0.0371 (ep 10) | **≈ 0.013** |
-| PCA | 0.0082 | ~0.0380 (ep 10) | **≈ 0.029** |
-
-✅ On-plan + **core hypothesis confirmed**: near-equal val MSE, but scGPT overfits far less
-— exactly the Fig. 4 prediction that PCA cheats by classifying cell line.
-
-> ⚠️ **Addition (good practice):** the random-split → leak-diagnosis → grouped-split arc
-> isn't written in the plan, but it's the "find failures cheaply, document even suboptimal
-> versions" discipline the plan asks for. Worth keeping as a result.
+> **Scope — 1 database, 1 score.** One CTRPv2 metric, one compound: the narrowest slice of the
+> project. The widening happens in [Step 05](05-multitask-results.md) (still CTRPv2, across drugs) and
+> ultimately in [Step 06](06-planned-work.md#a-cross-database-integration).
 
 ---
 
-## Best single-task val MSE — progression (with HVG-5000 + model upgrade, 25.05.2026)
+## The data leak, and why the grouped split was forced (08.05.2026)
 
-After the HVG-5000 variant ([Step 02](02-preprocessing-and-embeddings.md)) and the
-LayerNorm/GELU model + scheduler/early-stop training upgrade
-([Step 03](03-model-and-training-design.md)):
+**This is the result the page exists for, and it survives the target change** — it follows from the
+*structure* of the label, not from which score was loaded.
 
-**Paclitaxel single-task results — progression of best val MSE:**
+**Step 1 — random 70/15/15 split over cells (the deliberate mistake).** PCA's validation MSE came out
+implausibly low — far better than scGPT's, and better than any honest generalization number should be.
 
-| Setup | PCA best val | scGPT best val |
-|---|---|---|
-| No-HVG, regularized (08.05) | ~0.0375 (ep 10) | ~0.0371 (ep 10) |
-| HVG-5000, old model (BatchNorm/ReLU) | 0.0362 (ep 5) | 0.0354 (ep 50) |
-| **HVG-5000, upgraded model** | **0.0351 (ep 8)** | **0.0336 (ep 14)** |
+**Why.** With cells split at random, the same cell line lands in both train and validation. The label
+is **constant within a line** ([Step 03](03-model-and-training-design.md#every-cell-of-a-line-carries-the-identical-label)),
+and PCA isolates each line as its own tissue "island" in the embedding, so the model reduces to a
+nearest-neighbour lookup of a label it has already memorized. The validation score measured
+memorization, not generalization; the implausibly low PCA number was the tell.
 
-Both arms early-stopped under the upgraded training setup — PCA at epoch 18 (best epoch 8), scGPT at
-epoch 24 (best epoch 14), both after 10 epochs without val improvement. The `runs/` directories are
-gitignored and no longer present, so these best-epoch values are all that survives of those curves.
+**Step 2 — cell-line-grouped split**, the correct design for this label structure: whole cell lines
+are partitioned, so no line appears in two splits. PCA's validation MSE **collapsed**, confirming the
+cheating; scGPT's barely moved.
 
-These are the **single-task reference points** (`split_paclitaxel`, 5,035 val cells), loaded by
-`ScGPTDrugDataset` over `obsm["X_scGPT"]` / `obsm["X_pca"]`.
+**Step 3 — aggressive regularization** (hidden 256→64, dropout 0.3→0.5, weight decay 1e-5→1e-3).
+Validation MSE ended up near-equal for the two representations, but **PCA's train/val gap was roughly
+twice scGPT's** — the core hypothesis, and the plan's Fig. 4 prediction: PCA cheats by classifying cell
+line, scGPT overfits far less.
 
-> **Not part of the 13.06 matrix rerun.** This `split_paclitaxel` progression is the legacy
-> dedicated-split baseline; the matrix rerun used the shared `split_ctrp` (its single-task
-> PCA-vs-scGPT numbers are in [Step 05](05-multitask-results.md)). *(The PCA column read "open — rerun"
-> until 30.07.2026; the values were recovered from the dated log before it was retired, so no re-run is
-> needed.)*
+✅ On-plan, and the random-split → leak-diagnosis → grouped-split arc is not in the plan but is the
+"find failures cheaply, document even suboptimal versions" discipline it asks for. Worth keeping as a
+result in its own right.
 
-✅ On-plan (still single-task CTRPv2 viability on the overlap; best result to date).
-
-> ⚠️ **Not directly comparable to the multi-task K=1 numbers:** these use `split_paclitaxel`
-> (25/26 held-out lines); the multi-task paclitaxel head in [Step 05](05-multitask-results.md)
-> uses `split_ctrp` (27 held-out lines). An apples-to-apples "does multi-task help paclitaxel?"
-> comparison still needs a single-task re-run on `split_ctrp`.
+**What has to be re-measured at the sweep:** every MSE, every gap, and the split sizes — the overlap
+moves from 180 to 181 cell lines and the labelled-cell count moves with it.

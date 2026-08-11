@@ -17,12 +17,19 @@ K=545) rows of the 8-run experiment matrix**
 > [Step 06](06-planned-work.md#a-cross-database-integration) and is **not yet started**. Do not read the 545-head
 > run as "multi-task complete."
 
-> ⚠️ **Legacy target score.** Every number on this page was trained on **`mean_pv`**, the only target
-> until 13.07.2026; the default is now raw **`auc`** ([Step 03](03-model-and-training-design.md)),
-> via `auc_z`, which was the default 13.07–27.07 and is retired.
-> Absolute MSEs across the two scores are **not comparable** (a z-scored target has unit variance, so
-> its baseline sits near 1.0 rather than 0.0097) — only *heads beating baseline* and the per-drug
-> correlations transfer. Reproduce this page exactly with `--score mean_pv`.
+> ⛔ **Every number on this page is void, and none of it can be regenerated.** All of it was trained on
+> **`mean_pv`**, the only target until 13.07.2026. That measure — along with `auc` and `auc_z` — was
+> removed with its reader code on 11.08.2026 when the target moved to DrEval's reprocessed CTRPv2
+> ([Step 01](01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026)),
+> so `--score mean_pv` now raises. This page's earlier instruction to reproduce it that way was not
+> merely stale but false.
+>
+> **The content is kept until the sweep regenerates it** (decided 11.08.2026, Selin): the run-versioning
+> ledger, the split and drug-scope design, the panel and DrEval sections carry structure that is not
+> just numbers, and gutting it now means rebuilding it in a fortnight. Read every figure on this page as
+> *what was measured then*, never as a current result. Why the two scores are not interchangeable, and
+> what does and does not transfer across them:
+> [Corrections](corrections-and-dead-ends.md#the-steps-0405-numbers-as-a-comparable-baseline).
 
 ---
 
@@ -273,7 +280,7 @@ lines** — max 179, median 171 — **382 drugs clear 90 %** coverage, 80 drugs 
 std < 0.05. The ~16-line drugs (n_val 221) are the unreliable heads that dominate the
 worse-than-baseline lists. Per-drug values are in `outputs/*_drug_learnability.csv`.
 
-**The result (`learnable_subset_training`).** Both reps trained on those 5 heads (matched trunk, `--score auc_z`); the honest
+**The result (`learnable_subset_training`).** Both reps trained on those 5 heads (matched trunk, on the then-current `auc_z`); the honest
 metric is per-drug Spearman on **cross-validated out-of-fold predictions** — 5-fold GroupKFold over the
 153 train+val lines, so every line is ranked by a model that never saw it (~150 lines per drug, versus
 the 27 the fixed val split would allow):

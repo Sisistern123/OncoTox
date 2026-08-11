@@ -603,25 +603,11 @@ for `hvg5000` (`du -sh data/processed/scRNAseq_SCP542/*/`, 03.08.2026).
 > the three. See [Compute environment and its limits](#compute-environment-and-its-limits-03082026) for
 > the measured numbers.
 
-> ⚠️ **What is stale in the evidence above** (03.08.2026):
->
-> - **The quoted numbers are superseded.** They were trained on the **`mean_pv`** target (cached at
->   `outputs/legacy/training_545_mean_pv/hvg_sweep.csv`), retired as the default on 27.07.2026. §9 was
->   re-targeted to **`auc`** on 03.08.2026 and no longer reads that cache, so **the sweep has no live
->   numbers until it is re-run**. The conclusion is expected to carry over — `mean_pv` and raw `auc`
->   were shown statistically identical everywhere
->   ([Corrections](corrections-and-dead-ends.md#the-curve-fit-preserves-signal-the-dose-average-destroys),
->   `notebooks/archive/target_comparison.ipynb`, 13.07.2026) — but that is an expectation,
->   not a result.
-> - Until 03.08.2026 the sweep cell was **internally inconsistent**: its load branch read the
->   `mean_pv` cache while its compute branch resolved the targets file through
->   `layout.DEFAULT_CTRP_SCORE`, which had changed to `auc`. Re-running it would have written `auc`
->   numbers into a `mean_pv`-labelled file with identical column names. §9 now pins `SCORE` explicitly.
-> - The `all_genes` **scGPT** embeddings were generated **without a seed**, so that column of the sweep
->   is not exactly reproducible. Fixed going forward (seed 42); the existing numbers predate the fix.
-> - The **PCA** column will need re-running once the pending `add_pca.py` changes (gene scaling before
->   PCA, post-HVG renormalization) are settled — both alter `X_pca` for every variant. The scGPT column
->   is unaffected by them.
+> ⛔ **The sweep has no live numbers.** Those above were trained on `mean_pv`, removed with its reader
+> code on 11.08.2026, so they cannot be regenerated; §9 now pins `SCORE = 'auc_cc'` and must be re-run.
+> The `all_genes` column additionally predates the seeding fix and the gene-symbol repair, so it was
+> never exactly reproducible ([below](#decision--one-seeded-draw-at-1200-all_genes-is-a-sanity-check-03082026)).
+> **The conclusion is expected to carry over but is not currently evidenced.**
 
 > ⚠️ **Addition + history:** the first build (21.04–07.05.2026) used the **full transcriptome**
 > (53,513 × 22,722, no HVG). HVG-5000 was added **inside `convert`** on 25.05.2026 — fewer scGPT
@@ -717,35 +703,39 @@ Per variant, the two expensive files are built **once** and shared by every scor
 `SCP542_CCLE.h5ad` → `..._scGPT_human_embeddings.h5ad`. The targets step then forks per score into
 the trainable file (`X_scGPT`, `X_pca`, `Y_ctrp`, `M_ctrp`, `split_ctrp`, `split_paclitaxel`):
 
-- `..._with_targets_auc.h5ad` — **default since 27.07.2026** (`--score auc`), raw curve-fit AUC
-- `..._with_targets_auc_z.h5ad` — `--score auc_z`, **retired** as the default on 27.07.2026 (its
-  scaling amplified noise-dominated drugs in the shared loss; see
-  [Corrections](corrections-and-dead-ends.md#auc_z-as-the-training-target))
-- `..._with_targets.h5ad` — `--score mean_pv` (legacy name kept, so the Step 04–05 runs still resolve)
+- `..._with_targets_auc_cc.h5ad` — **the default** (`--score auc_cc`), CurveCurator AUC
+- `..._with_targets_ln_ic50_cc.h5ad` — `--score ln_ic50_cc`, the same fit's IC50 (incomplete by
+  construction; see [Step 01](01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026))
+
+⛔ Files named `..._with_targets_auc.h5ad`, `..._auc_z.h5ad` and `..._with_targets.h5ad` may still sit
+on disk from before 11.08.2026. They hold **different quantities under similar names** and no code
+produces them any more — `auc`, `auc_z` and `mean_pv` were removed with their readers
+([Corrections](corrections-and-dead-ends.md#the-auc-target-was-divided-by-the-wrong-quantity)). They
+are the reason the new measures carry the `_cc` suffix instead of reusing `auc`.
 
 ### Reproduce
 
 A documented, runnable walk-through of these commands lives in `notebooks/1_preprocessing.ipynb`, which
 drives the same `run_preprocessing.py` entry points the CLI uses, so the notebook and the command line
-cannot drift. `--score` defaults to `auc`; passing it explicitly is what makes a comparison run
+cannot drift. `--score` defaults to `auc_cc`; passing it explicitly is what makes a comparison run
 unambiguous:
 ```bash
 # From scratch (runs convert+HVG → embeddings → targets → splits → pca).
 # The scgpt step needs the separate scGPT env, hence --scgpt-python.
 # PCA width defaults to 512 (--pca-n-comps) to match the scGPT embedding.
 uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \
-    --score auc --scgpt-python /path/to/scgpt-venv/bin/python
+    --score auc_cc --scgpt-python /path/to/scgpt-venv/bin/python
 
-# Add a second target score on top of existing convert+embeddings (this is the
-# score-comparison build; convert/scgpt are untouched and reused).
+# Add the second measure on top of existing convert+embeddings (this is the
+# measure-comparison build; convert/scgpt are untouched and reused).
 uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \
-    --score mean_pv --start-at targets --skip-scgpt
+    --score ln_ic50_cc --start-at targets --skip-scgpt
 
 # Recompute only the 512-d PCA baseline in-place (what the 512-d switch needed).
 uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 \
     --start-at pca --skip-scgpt --force-pca --pca-n-comps 512
 
 # training (--score selects which targets file to train on)
-uv run scripts/training/train_multitask.py --use-rep X_scGPT --score auc     # all 545 drugs
-uv run scripts/training/train_multitask.py --use-rep X_pca --score auc_z --drugs paclitaxel
+uv run scripts/training/train_multitask.py --use-rep X_scGPT --score auc_cc   # every kept drug
+uv run scripts/training/train_multitask.py --use-rep X_pca --score ln_ic50_cc --drugs paclitaxel
 ```
