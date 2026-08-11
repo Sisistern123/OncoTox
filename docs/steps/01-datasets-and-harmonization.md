@@ -30,8 +30,10 @@ datasets are all **bulk, cell-line-level** drug screens:
   `area_under_curve`, `apparent_ec50_umol`, slope, and per-parameter confidence intervals — in
   `v20.data.curves_post_qc.txt`. Either is joined to names via `v20.meta.per_experiment.txt` →
   `v20.meta.per_cell_line.txt` (`ccl_name`) and `v20.meta.per_compound.txt` (`cpd_name`). It is an
-  **efficacy** metric. *Which* of these becomes the label — and why the AUC fit wins — is
-  [Step 03](03-model-and-training-design.md).
+  **efficacy** metric. ⚠️ Since 11.08.2026 the label comes from **neither** of these directly: the
+  target is CurveCurator's re-fit of the same raw measurements
+  ([below](#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026)). What that choice forces on the
+  model is [Step 03](03-model-and-training-design.md).
 - **GDSC2** reports `LN_IC50` (natural-log half-maximal inhibitory concentration) and AUC — the same
   curve-fit family as CTRP's `area_under_curve`, which is what makes
   [Step 06](06-planned-work.md#a-cross-database-integration) tractable.
@@ -307,9 +309,16 @@ choosing CTRPv2 as the starting database:
 | CTRPv2 | `cpd_avg_pv` | 1,521,028 / 7,227,951 | 21.04 % | **100 %** |
 | PRISM | extended primary matrix | 1,210,432 / 4,213,048 | 28.73 % | 97.95 % |
 
-The decisive number is CTRPv2's **100 % non-null within the SCP542 overlap**: the 190-line × 545-drug
-block is a **complete target matrix**, exactly the dense, highest-confidence intersection the plan
-wants for the initial baseline.
+The decisive number is CTRPv2's **100 % non-null within the SCP542 overlap** — by far the densest of
+the three, which is what motivated starting there.
+
+⚠️ **But that 100 % is `cpd_avg_pv`, the raw dose grid, and it is not the density of the target.** Every
+pair that was screened has dose points; a **curve-fit** measure additionally drops pairs whose fit
+failed QC. The trainable matrix is **84.7 %** dense for `auc_cc` and **64.5 %** for `ln_ic50_cc`
+([below](#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026)). This section previously called it a
+"complete target matrix" — that has been wrong since the target became a curve fit on 27.07.2026, and
+is corrected here 11.08.2026. The comparison between the three databases stands; the word *complete*
+does not.
 
 ✅ On-plan: satisfies sub-goal 1 (harmonization incl. BRD + DrugBank) and supplies the Fig. 1/2
 numbers sub-goal 3 rests on.
@@ -330,19 +339,16 @@ Today the trained model depends on Step 01 through exactly **one** thing: the ce
 the **targets** step ([Step 02](02-preprocessing-and-embeddings.md)). At pipeline run time the overlap
 is **180**, not the audit's 190 — and the reason is **data availability, not normalization**:
 
-> ✅ **190 vs 180 — resolved (14.06.2026).** Both normalizations (with/without stripping `-`) give
-> **190** SCP542 names that appear in CTRPv2's cell-line roster (`v20.meta.per_cell_line.txt`). But
-> only **180** of those were actually **screened post-QC** — identical whether counted from the raw
-> dose grid or the curve fits, so the 13.07.2026 switch to `auc_z` did not change the trainable set.
-> The **10**
-> roster-listed-but-unscreened lines are `abc1, hs939t, jhh7, mdamb436, mfe280, ncih1048, ncih2073,
-> ncih2347, rerflckj, ten`. Use **180** (the trainable set); 190 is just the name-match count.
-
-⚠️ **Superseded in code 10.08.2026, not yet in the artifacts: the overlap becomes 181.** One screened
-line was being dropped by the name join; see [`H292`](#the-join-dropped-a-screened-cell-line-h292-10082026)
-below. Every committed artifact, every number in `report/results_numbers.tex` and everything derived
-from them still rests on **180**; the code now produces **181**, and the two agree again only after the
-[clean sweep](../TODO.md).
+> ✅ **190 vs 180 vs 181 — the whole funnel (resolved 14.06.2026, extended 11.08.2026).** Both
+> normalizations (with/without stripping `-`) give **190** SCP542 names present in CTRPv2's cell-line
+> roster, but only **180** of those were actually **screened**. The 10 roster-listed-but-unscreened
+> lines are `abc1, hs939t, jhh7, mdamb436, mfe280, ncih1048, ncih2073, ncih2347, rerflckj, ten`.
+> The pipeline then recovers one more via the `h292 → ncih292` alias
+> ([below](#the-join-dropped-a-screened-cell-line-h292-10082026)), giving the **181** it produces today.
+> **190 is only a name-match count and is never the trainable set.**
+>
+> ⚠️ Every committed artifact, and `\NLines` in `report/results_numbers.tex`, still rests on **180**.
+> Code and artifacts agree again only after the [clean sweep](../TODO.md).
 
 ### The target moved to DrEval's reprocessed CTRPv2 (11.08.2026)
 
