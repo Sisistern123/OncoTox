@@ -50,6 +50,7 @@ so the improvement is auditable.
 
 | Date | What |
 |---|---|
+| 11.08.2026 | [The `auc` target was divided by the wrong quantity](#the-auc-target-was-divided-by-the-wrong-quantity) — `conc_pts_fit` counts points surviving outlier censoring, not the width of the integral; **every `auc` number is void**, and the target source was replaced rather than the divisor fixed |
 | 05.08.2026 | [scGPT discarded genes that are in its vocabulary under their current symbols](#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols) — exact symbol match against an older annotation; **repaired in code 05.08.2026, takes effect at the sweep** |
 | 28.07.2026 | [The 8-drug literature panel, and every number computed on it](#the-8-drug-literature-panel-and-every-number-computed-on-it) — drawn from a pre-filtered pool |
 | 27.07.2026 | [The kill/spare learnability gate measured potency, not rankability](#the-learnability-gate-measured-potency-not-rankability) — survived months |
@@ -397,9 +398,61 @@ ridge both replicate ([retraction](#scgpt-clears-the-ridge-control-was-a-first))
 is drug-specific rather than cell-line fragility. **What it did not touch:** research question 2, which
 remains structurally untestable under a constant-within-line label.
 
+### The `auc` target was divided by the wrong quantity
+
+**Overturned 11.08.2026**, during audit item 5 (Target). **Every number computed on the `auc` target is
+void** — Steps 04 and 05, the report, and every figure derived from them. This was not repaired: the
+target source was replaced instead (below), so the defective code path leaves the tree rather than
+getting a corrected divisor.
+
+**What the code did.** `scripts/preprocessing/ctrp_to_h5ad.py` built `obsm["Y_ctrp"]` as
+
+```python
+curves["score"] = curves["area_under_curve"] / curves["conc_pts_fit"]
+```
+
+The intent, stated in the comment above it, was correct: CTRP's `area_under_curve` is an *integrated*
+area, so it grows with the extent of the concentration range and must be reduced to an average before
+compounds sit on a common axis.
+
+**Why it is wrong: `conc_pts_fit` is not the extent of the range.** CTRP's own column documentation
+(`v20._COLUMNS.txt`, 17.12.2015, distributed with `CTRPv2.0_2015_ctd2_ExpandedDataset`) defines it as
+*"number of concentration-response points participating in curve fit"*. The CTRPv2 publications say
+where that number comes from — the design is fixed, and the count varies only because points are
+discarded during fitting:
+
+> "The effects of small molecules were measured over a **16-point concentration range (2-fold
+> dilution)** in duplicate." … "we used **Cook's distance during the curve-fit procedure to censor
+> outlier points**, but did not allow the highest two concentration points to be censored this way." …
+> "average 15.6 concentration points each"
+>
+> — Seashore-Ludlow et al., *Cancer Discovery* **5**(11):1210–1223 (2015), Methods. The same 16-point
+> design and "integration under the 16-point curve" in Rees et al., *Nature Chemical Biology*
+> **12**:109–116 (2016), Methods.
+
+So the divisor counts **the points that survived outlier censoring**, while the integral's width is the
+concentration range — which censoring of interior points does not change. Dividing a fixed-width
+integral by a quality-dependent count inflates the target for precisely those cell lines whose
+measurements were noisy enough to lose points: a curve reduced from 16 points to 13 is divided by 13
+instead of 16, so its value rises by 23 % with no change in biology. **Noisier measurements read as more
+drug-resistant.**
+
+That lands on the reported metric directly. Ranking cell lines *within* a compound is what the Spearman
+figures in Steps 04–05 measure, and the inflation varies between the cell lines of a compound rather
+than shifting the compound as a whole.
+
+**On the size of it.** The magnitude was measured on 11.08.2026 while the defect was found — how many
+curves lost points, and how far the corrected ranking departs from the current one. **Those checks were
+one-off scripts and are not in the repository, so no figure from them is quoted here.** The mechanism
+above is sourced and sufficient to void the numbers; the replacement target makes re-measuring the old
+one pointless.
+
+**What replaced it.** The target source moved to DrEval's reprocessed CTRPv2 (decided 11.08.2026,
+Selin), pinned to Zenodo record `21807175`. See [Retired code paths](#retired-code-paths).
+
 ### `auc_z` as the training target
 
-**Established** 13.07.2026 (`notebooks/result_evaluation/target_comparison.ipynb`) — per-drug z-scored AUC,
+**Established** 13.07.2026 (`notebooks/archive/target_comparison.ipynb`) — per-drug z-scored AUC,
 `auc_z[l,d] = (auc[l,d] − mean_d) / std_d`, computed by `_zscore_per_drug` in
 `scripts/preprocessing/ctrp_to_h5ad.py`. It was adopted because raw `auc` collapsed at 545 heads
 (scGPT −0.087, PCA +0.016) while `auc_z` held (+0.430 / +0.378) on the same drugs, model and split —
@@ -505,7 +558,7 @@ for either representation.
 2. **The multi-task loss was unstandardized.** These runs used `mean_pv`, whose per-drug variance is
    wildly heterogeneous (spreads span 9×, ~80× in squared error), so a minority of wide-spread heads
    monopolized the shared trunk's gradient **by unit size, not by learnability**.
-   `notebooks/result_evaluation/target_comparison.ipynb` reproduces the failure on demand: raw `auc` at K=545 gives −0.087
+   `notebooks/archive/target_comparison.ipynb` reproduces the failure on demand: raw `auc` at K=545 gives −0.087
    (scGPT) / +0.016 (PCA), while a standardized target on the *same* drugs, model and split reaches
    +0.430 / +0.378.
 
@@ -641,7 +694,7 @@ that nothing replaced them — they were simply not true.
 [Step 05](05-multitask-results.md), when the target moved from `mean_pv` to the curve-fit AUC: that the
 dose-averaged viability was destroying signal the sigmoid fit preserves.
 
-**Falsified the same day** (`notebooks/result_evaluation/target_comparison.ipynb`, re-run with all three targets, 95 %
+**Falsified the same day** (`notebooks/archive/target_comparison.ipynb`, re-run with all three targets, 95 %
 bootstrap CIs, per-drug dots and a 3-seed check). Trained head-to-head, `mean_pv` and raw `auc` are
 statistically identical *everywhere* — K=5: 0.450 vs 0.439 (PCA), 0.481 vs 0.482 (scGPT); K=545: +0.027 /
 −0.070 vs +0.016 / −0.087. CIs fully overlap.
@@ -693,7 +746,7 @@ pre-filtered by a discredited criterion — surfaced only on 27–28.07 and void
 **Claimed** as an open TODO item: predictions are shrunk toward each drug's mean, so loosen the
 regularization.
 
-**Withdrawn** 13.07.2026 (`notebooks/result_evaluation/ablations_and_rescue.ipynb` §1). `pred_std ≈ ρ × true_std` (scGPT: 0.47
+**Withdrawn** 13.07.2026 (`notebooks/archive/ablations_and_rescue.ipynb` §1). `pred_std ≈ ρ × true_std` (scGPT: 0.47
 against ρ = 0.48) is exactly what an MSE-optimal predictor **must** do — the conditional mean shrinks
 toward the prior in proportion to how little signal exists. It is correct calibration, not timidity, and
 loosening dropout *raises* MSE. To report in AUC units, divide by ρ; Spearman is unchanged.
@@ -838,7 +891,7 @@ residual target: we would not be discarding a biological program we want to keep
 **Hypothesis** (13.07.2026). Predictions are shrunk and the model plateaus, so the network is either
 over-regularized or short of capacity.
 
-**Refuted** (`notebooks/result_evaluation/ablations_and_rescue.ipynb`), four knobs on the corrected setting, out-of-fold per-drug
+**Refuted** (`notebooks/archive/ablations_and_rescue.ipynb`), four knobs on the corrected setting, out-of-fold per-drug
 Spearman:
 
 | knob | range tested | PCA | scGPT |
@@ -1007,9 +1060,13 @@ no longer exist at those paths.
 |---|---|---|
 | `train_baseline.py`, `train_scGPT.py` | 26.05.2026 | `train_multitask.py --drugs paclitaxel --use-rep X_pca\|X_scGPT` — K=1 reduces exactly to plain MSE |
 | `notebooks/hvg_vs_all_genes_umap.ipynb`, `notebooks/scgpt_umap.ipynb` | 27.06.2026 | consolidated into `notebooks/data_and_harmonization/verify_variants.ipynb` |
-| `notebooks/10_ablations.ipynb` | — | consolidated into `notebooks/result_evaluation/ablations_and_rescue.ipynb` |
+| `notebooks/10_ablations.ipynb` | — | consolidated into `notebooks/archive/ablations_and_rescue.ipynb` |
 | `notebooks/01_scDAExploration.ipynb` | 30.07.2026 | renamed to `notebooks/archive/scdrugatlas_exploration.ipynb`. It explores **scDrugAtlas**, not SCP542 — the index's notebook table mislabelled it for months. Archived because the data source itself was [rejected](#scdrugatlas-and-clintox-as-data-sources), not because the notebook is wrong |
 | `notebooks/03_analysis.ipynb` | 30.07.2026 | **un-archived** and renamed to `notebooks/archive/ctrp_prism_repurposing.ipynb`. Read-only CTRP→PRISM and clinical-phase mapping; writes nothing, but it is the only notebook that loads `GDSC2_fitted_dose_response_27Oct23.xlsx`, which the "externalize the spread requirement" item needs |
+| `notebooks/result_evaluation/target_comparison.ipynb` | 11.08.2026 | **archived to `notebooks/archive/`.** It compared `mean_pv` vs `auc` vs `auc_z`; all three were removed with their reader code on 11.08.2026, so `layout.CTRP_SCORES` now rejects every target it asks for and the notebook cannot run. Its conclusion — retire `auc_z` — is [above](#auc_z-as-the-training-target) |
+| `notebooks/data_and_harmonization/replicate_variation.ipynb` | 11.08.2026 | **archived to `notebooks/archive/`.** It measured how far apart two screenings of the same (cell line, drug) fall, and it existed because `_build_drug_table` **averaged** them. It no longer does: DrEval fit one curve across replicates, and `_deduplicate_measurements` raises rather than reconciling. Its measurements are kept, reframed as the evidence for the target switch, in [Step 01](01-datasets-and-harmonization.md#genuine-repeats-are-averaged-and-they-disagree-more-than-the-targets-own-spread-10082026) |
+| `notebooks/result_evaluation/ablations_and_rescue.ipynb` | 11.08.2026 | **archived to `notebooks/archive/`.** Its argument — why the 545-head model failed and what rescued it — is a head-to-head between `auc` and `auc_z` across five code cells, and both targets were removed the same day, so it cannot run. Re-wiring it to `auc_cc` / `ln_ic50_cc` would not preserve the argument but replace it with a different question. The σ²-weighting finding it demonstrated is [above](#auc_z-as-the-training-target) |
+| `ctrp_to_h5ad._load_score_values`, `._load_ctrp_long`, `._zscore_per_drug` | 11.08.2026 | deleted, not archived — the readers for CTRPv2's own `v20.*` tables and the `auc_z` standardisation. Superseded by `_load_drevalpy_long` + `_deduplicate_measurements` ([Step 01](01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026)). In git history; the defect that ended them is [above](#the-auc-target-was-divided-by-the-wrong-quantity) |
 | `scratchpad/learnability_validity.py` | never committed | gone; its figures are [retracted](#the-learnability-filter-was-validated-against-the-ρ-the-model-achieves) |
 
 ---

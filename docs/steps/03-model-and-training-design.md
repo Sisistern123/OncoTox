@@ -169,7 +169,7 @@ The three arguments originally made for it — equalizing the heads in the share
 readable at MSE = 1.0, and removing the per-drug potency offset — together with the known defects that
 retired it, are in [Corrections](corrections-and-dead-ends.md#auc_z-as-the-training-target).
 
-### Measured: all three targets head-to-head (`notebooks/result_evaluation/target_comparison.ipynb`, 13.07.2026)
+### Measured: all three targets head-to-head (`notebooks/archive/target_comparison.ipynb`, 13.07.2026)
 
 The argument above was tested, not assumed. All three scores were trained with the identical model and
 scored on **one common yardstick — the curve-fit `auc` ranking of cell lines** (`mean_pv` is *not* an
@@ -409,7 +409,7 @@ notebook and command line cannot diverge.
 
 ## These hyperparameters are not worth tuning (ablated 13.07.2026)
 
-`notebooks/result_evaluation/ablations_and_rescue.ipynb` sweeps four model-side knobs on the 5 learnable drugs, scored with
+`notebooks/archive/ablations_and_rescue.ipynb` sweeps four model-side knobs on the 5 learnable drugs, scored with
 out-of-fold per-drug Spearman (the metric of [Step 05](05-multitask-results.md)). **Every axis is flat,
 and the defaults above are at or within noise of the best setting on all of them:**
 

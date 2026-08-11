@@ -14,7 +14,7 @@ Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition**.
 | Dataset | Role | Key numbers | Used? |
 |---|---|---|---|
 | **SCP542** scRNA-seq (Kinker et al. 2020; used in PERCEPTION) | single-cell input | **53,513 cells × 22,722 genes**, **198 unique cell lines** | ✅ primary |
-| **CTRPv2** (Cancer Therapeutics Response Portal v2) | dose-response labels | 1,107 cell lines, **545 compounds**; training target `auc_z` ([Step 03](03-model-and-training-design.md)) | ✅ primary |
+| **CTRPv2** (Cancer Therapeutics Response Portal v2) | dose-response labels | 1,107 cell lines, **545 compounds**; training target `auc_cc`, with `ln_ic50_cc` as the alternative — both from DrEval's CurveCurator re-fit ([below](#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026)) | ✅ primary |
 | **PRISM** Repurposing (Public 24Q2) | multiplexed viability (LFC) | 915 cell lines, 6,575 compounds | downloaded, not used |
 | **GDSC2** | `LN_IC50` / AUC | 967 cell lines, 295 drugs | downloaded, not used |
 
@@ -84,7 +84,8 @@ here so neither is mistaken later for something the analysis depends on:
 | Source | Retrieved | From |
 |---|---|---|
 | **SCP542** scRNA-seq (53,513 cells × 22,722 genes) | 30.03.2026 | Broad Single Cell Portal, study **SCP542** *"pan-cancer cell line heterogeneity"* — <https://singlecell.broadinstitute.org/single_cell/study/SCP542/pan-cancer-cell-line-heterogeneity>. Source publication Kinker et al., *Nat Genet* 2020, <https://doi.org/10.1038/s41588-020-00726-6>. This is the dataset the PERCEPTION paper used. **Also deposited at GEO under accession `GSE157220`** (from the paper's Data availability statement, p. 13) — the only persistent accession among our four primary sources, and the durable route if the portal study is ever revised or withdrawn. ⚠️ The portal exposes **no version or revision identifier**, so the retrieval date is the only version reference this source has; recorded as sufficient (Selin, 10.08.2026). Files taken: `expression/CPM_data.txt` (5.4 GB, the matrix everything downstream uses), `metadata/Metadata.txt`, `other/UMIcount_data.txt` (3.5 GB raw UMI counts — **downloaded but never used**; see [Step 02](02-preprocessing-and-embeddings.md#the-expression-transform-is-the-datasets-own-05082026)), plus the per-cancer-type tSNE cluster files. `file_supplemental_info.tsv` lists the study's full file set. |
-| **CTRPv2** viability + compound annotations | 30.03.2026 | DepMap portal, all-data tab — <https://depmap.org/portal/data_page/?tab=allData>. Release `CTRPv2.0_2015_ctd2_ExpandedDataset`. Cell lines join via `v20.meta.per_cell_line` (`master_ccl_id`) and experiments via `v20.meta.per_experiment`. The 15 files carry their upstream 2015 dates, and the release ships **`MANIFEST.txt` with an MD5 per file** — the only integrity anchor any source provided. ✅ **All 15 verified against it 10.08.2026: every checksum matches**, so this copy is byte-identical to the release the Broad published. The other three sources shipped no checksums and no comparable check is possible for them. |
+| **CTRPv2** viability + compound annotations — **no longer the target source** (see the row below); retained for compound metadata (`broad_cpd_id`) and read by several analysis notebooks | 30.03.2026 | DepMap portal, all-data tab — <https://depmap.org/portal/data_page/?tab=allData>. Release `CTRPv2.0_2015_ctd2_ExpandedDataset`. Cell lines join via `v20.meta.per_cell_line` (`master_ccl_id`) and experiments via `v20.meta.per_experiment`. The 15 files carry their upstream 2015 dates, and the release ships **`MANIFEST.txt` with an MD5 per file** — the only integrity anchor any source provided. ✅ **All 15 verified against it 10.08.2026: every checksum matches**, so this copy is byte-identical to the release the Broad published. The other three sources shipped no checksums and no comparable check is possible for them. |
+| **CTRPv2 responses, reprocessed by DrEval** — ⭐ **the training target since 11.08.2026** | 11.08.2026 | Zenodo record **`21807175`** (*"Dataset for drevalpy"*, published 2026-08-05), DOI <https://doi.org/10.5281/zenodo.21807175>. Files `CTRPv2.zip` and `meta.zip`, fetched and **MD5-verified against the record's published checksums** by `scripts/preprocessing/fetch_ctrp_response.py`, which writes `provenance.json` beside the data. Not obtained via `drevalpy.datasets.loader.load_ctrpv2()`: that resolves the *concept* DOI to whatever release is current and re-downloads unconditionally, so the version it returns changes silently — a target whose version cannot be named is not a citable source. The record is pinned in `layout.ZENODO_RESPONSE_RECORD`; bumping it is a target change. **What it contains:** CTRPv2's own raw dose-response measurements, normalised per replicate against the no-drug control and re-fitted with CurveCurator — see [what changed and why](#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026). `meta.zip` also carries **Cellosaurus release 52.0 (10 April 2025, CC BY 4.0)**, pinned by this record because Cellosaurus publishes no stable per-release download URL of its own. |
 | **PRISM** Repurposing, Public 24Q2 | 30.03.2026 | DepMap — `Repurposing_Public_24Q2_Extended_Primary_Data_Matrix.csv`. Taken specifically because it covers **failed** drugs as well as approved ones. The full 24Q2 file set was downloaded (LFC, LMFI, QC, metadata); only the extended primary matrix is read. |
 | **GDSC2** IC50 + raw data | 26.03.2026 | Sanger Cell Model Passports — <https://cellmodelpassports.sanger.ac.uk/downloads>. Release **27 Oct 2023**: `GDSC2_fitted_dose_response_27Oct23.xlsx` ("GDSC2 IC50 Data") and `GDSC2_public_raw_data_27Oct23/` ("GDSC2 Raw Data", 2.1 GB + description PDF). |
 | **Clinical-phase annotations** | 30.03.2026 | Broad Drug Repurposing Hub — <https://repo-hub.broadinstitute.org/repurposing#download-data>. File `repo-drug-annotation-20200324.txt`, i.e. the **24.03.2020** annotation release. |
@@ -343,6 +344,90 @@ below. Every committed artifact, every number in `report/results_numbers.tex` an
 from them still rests on **180**; the code now produces **181**, and the two agree again only after the
 [clean sweep](../TODO.md).
 
+### The target moved to DrEval's reprocessed CTRPv2 (11.08.2026)
+
+**Decided 11.08.2026 (Selin).** The training target is no longer derived from CTRPv2's own 2015
+distribution. It now comes from **DrEval's reprocessing of the same underlying screen**, pinned to
+Zenodo record [`21807175`](https://doi.org/10.5281/zenodo.21807175) and fetched by
+`scripts/preprocessing/fetch_ctrp_response.py` (the `fetch` step, [Step 02](02-preprocessing-and-embeddings.md)).
+
+**What DrEval do differently.** They download CTRPv2's *raw* dose-response measurements, normalise each
+replicate against its own no-drug control, and fit one curve across replicates with CurveCurator —
+rather than averaging replicates first, which is what CTRP did and what the field does generally:
+
+> "Instead of aggregating replicates prior to normalization and curve fitting, **as is the standard
+> practice**, DrEval includes replicate variability into quality control measures. This source of
+> experimental variability is often overlooked when aggregating replicates prior to fitting, which
+> leads to **inaccurate or misleading drug response measures** in the case of large discrepancies
+> between replicates."
+>
+> — DrEval, Methods, "Benchmark data" (`papers/DrEval_s41467-026-72903-w.pdf`). Curve fitting via
+> CurveCurator; datasets on Zenodo, concept DOI `10.5281/zenodo.12633909`.
+
+They do **not** criticise CTRPv2's normalisation, and CTRP's published `area_under_curve` is not
+mentioned in their paper — their stated motivation is cross-dataset consistency. The reason we
+switched is separate and is recorded as an error, not an improvement: our own use of that column was
+defective ([corrections](corrections-and-dead-ends.md#the-auc-target-was-divided-by-the-wrong-quantity)).
+
+**The two measures now available**, both columns of the same CurveCurator fit
+(`layout.CTRP_SCORES`, `ctrp_to_h5ad.SCORE_COLUMNS`):
+
+| | column | direction | completeness |
+|---|---|---|---|
+| **`auc_cc`** (default) | `AUC_curvecurator` | **higher = more resistant**; 1.0 is the no-effect level, because the fit pins the low-concentration asymptote to the vehicle value | every curve |
+| `ln_ic50_cc` | `LN_IC50_curvecurator` | **lower = more sensitive** — the opposite direction | 59.7 % of curves |
+
+`ln_ic50_cc` is incomplete by construction, not by accident: DrEval discard an IC50 falling more than
+an order of magnitude outside the measured dose range, which is most compounds that never reach
+half-killing. **CTRPv2 itself publishes no IC50 at all** — its curve table carries `apparent_ec50_umol`
+(50 % of the *fitted decline*, not of absolute viability), so `ln_ic50_cc` exists only in the
+reprocessing.
+
+**What the target build produces.** Counts from
+`notebooks/data_and_harmonization/cell_line_join_verification.ipynb` §3, which calls the pipeline's own
+loader, de-duplication and drug filter rather than reimplementing them:
+
+| measure | lines | drugs | observed | density | min | median | max |
+|---|---|---|---|---|---|---|---|
+| `auc_cc` | 181 | 534 | 81,906 | 84.7 % | 0.020 | 0.925 | 1.830 |
+| `ln_ic50_cc` | 181 | 365 | 42,584 | 64.5 % | −11.385 | 2.487 | 8.634 |
+
+**Why the counts differ from CTRPv2's own**, same notebook section:
+
+| observation | why |
+|---|---|
+| 886 cell lines, not the roster's 1,107 | 887 lines have at least one curve fit; DrEval's re-fit keeps 886 — only `KRIJ` is absent |
+| 395,024 rows against CTRP's 395,263 post-QC fits | **not a subset.** 2,668 (line, drug) pairs exist only in CTRP's post-QC set and 2,375 only in DrEval's, with 384,462 in common. The difference is *symmetric* because DrEval re-fit under CurveCurator's quality control instead of adopting CTRP's — so the two are not the same curve set, which is a consequence of the switch rather than a fault in it |
+| 8,187 duplicate rows for `auc_cc`, 4,346 for `ln_ic50_cc` | `CTRPv2.csv` repeats rows: 15,946 of them duplicate another row across **all 46 columns**, in 7,331 pairs and 428 triples. Dropping the rows with no IC50 first removes many partners, hence the smaller count. The pipeline drops exact duplicates and **raises** on any pair that disagrees — none does |
+| 534 of 545 drugs (`auc_cc`) | 11 drugs reach fewer than 50 of the 181 overlapping lines |
+| 365 of **539** (`ln_ic50_cc`) | the denominator is not 545: six drugs have no valid IC50 anywhere in the overlap |
+| 181 overlapping lines, where the raw name join gives 180 | the pipeline applies the `h292 → ncih292` alias ([below](#the-join-dropped-a-screened-cell-line-h292-10082026)) |
+| `auc_cc` tops out at 1.830 where the old `auc` reached 2.310 | the old upper tail was substantially the divisor artifact |
+
+**No winsorization and no quality filter (decided 11.08.2026, Selin).** The target is used as
+published: nothing is clipped, and no row is dropped on fit quality, although `CTRPv2.csv` ships
+`R2`, `RMSE`, `pValue` and `SignalQuality` per curve. This follows the benchmark rather than inventing
+a rule:
+
+> "The datasets can be filtered for quality using the statistical measures provided by CurveCurator
+> … If not stated differently, **we did not apply any quality filter in our benchmark experiments to
+> maintain comparability to previous studies and avoid data loss**."
+>
+> — DrEval, Methods, "Benchmark data"
+
+**What this retires.** The pipeline previously carried `DEFAULT_WINSOR = 1.1` — clip the response at
+1.1 — which had no source beyond a code comment, and whose stated purpose was to stop inverse-density
+loss weighting from handing the sparse upper tail the largest weights. Three things ended it: the
+threshold was never sourced; that weighting is itself a
+[refuted hypothesis](corrections-and-dead-ends.md#inverse-density-loss-weighting-improves-ranking);
+and most of the old upper tail was the divisor artifact rather than data. On `auc_cc` the tail is
+thin — **3.65 %** of measurements exceed 1.1, 0.82 % exceed 1.2, p99 = 1.185
+(`cell_line_join_verification.ipynb` §3 builds the distribution). If audit 09 keeps density weighting,
+whether to clip the weighting's *input* — never the target — is reopened there.
+
+**Also gained.** Every row carries a **Cellosaurus accession**, and `meta.zip` ships Cellosaurus 52.0,
+so the name join can now be checked against an external authority — see the join audit below.
+
 ### The join audit — what was checked and what held (10.08.2026)
 
 Walked as review item 2. The name join is the only thing linking CTRPv2 to SCP542, and until this date
@@ -402,6 +487,12 @@ but which remain in the h5ad and therefore still enter HVG selection, scaling an
 
 ### Replicate experiments were double-counted (10.08.2026)
 
+> ⛔ **Moot since 11.08.2026. The code this describes no longer exists.** `_load_ctrp_long` and the `v20.*` readers were removed
+> on 11.08.2026 when the target moved to DrEval's reprocessing ([above](#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026)),
+> which reads a single response table and never merges an experiment roster. The bug cannot recur, and
+> the fix it describes is no longer in the tree. Kept because the numbers below quantify how much a
+> silent duplication can move a *ranking* — the point that made it worth finding.
+
 `v20.meta.per_experiment.txt` carries **one row per (`experiment_id`, `experiment_date`)**: 153 of its
 907 experiments ran across two calendar days and therefore appear twice, 1,061 rows in total. They are
 exact duplicates in every field the pipeline uses — `master_ccl_id` is constant within an
@@ -423,11 +514,30 @@ changes no committed artifact until the sweep.
 
 ### Genuine repeats are averaged, and they disagree more than the target's own spread (10.08.2026)
 
+> ✅ **Resolved 11.08.2026 — not superseded, and it is the strongest evidence for the target switch.** This section
+> measured how far apart two screenings of the same (cell line, drug) fall, and found a typical
+> disagreement of **0.49×** the spread the model is asked to predict. The old pipeline averaged them,
+> which discards exactly that information. DrEval's reprocessing instead fits **one curve across the
+> replicates** and folds their disagreement into the fit's quality measures — which is precisely the
+> practice their Methods argue for, quoted [above](#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026).
+>
+> Confirmed on the data 11.08.2026: the six re-screened lines named below are among the **19** cell
+> lines whose rows appear more than once in DrEval's `CTRPv2.csv`, and every such group is an **exact
+> duplicate across all 46 columns**. A repeat therefore now arrives as one fitted value repeated per
+> source experiment, not two values to be averaged. The pipeline drops the exact duplicates and
+> **raises** if any pair ever disagrees, so the averaging this section warned about cannot silently
+> return (`ctrp_to_h5ad._deduplicate_measurements`).
+>
+> The numbers below stand as the measurement of the problem; they are no longer a description of what
+> the pipeline does.
+
 Separate from the double-counting above: some (cell line, drug) combinations really were screened
 **twice**, in two different experiments. `ctrp_to_h5ad.py::_build_drug_table` averages them into the
 single value that becomes the target. How far apart those two measurements are was never examined
-until now — quantified in `notebooks/data_and_harmonization/replicate_variation.ipynb`, artifacts
-`notebooks/outputs/data/replicate_variation.{png,csv}`.
+until now — quantified in `notebooks/archive/replicate_variation.ipynb`, artifacts
+`notebooks/outputs/data/replicate_variation.{png,csv}`. **That notebook was archived on 11.08.2026**:
+it reads CTRPv2's own `v20.*` tables, which are no longer the target source, so it can no longer be
+re-run against what the pipeline uses. The numbers below are its output and stand as measured.
 
 **2,637** of the 81,626 (cell line, drug) pairs were screened twice — never three times, so a median
 would be identical to the mean. They are **not spread over the panel**: they come from just **six**

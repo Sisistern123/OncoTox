@@ -52,7 +52,7 @@ value is already recorded in docs/steps/05 (raw auc scores -0.069 there against 
     uv run scripts/evaluation/dreval_normalize.py --heads panel --drugs methotrexate dasatinib \\
         paclitaxel vincristine afatinib topotecan tanespimycin selumetinib
 
-The training defaults follow the current setup (27.07.2026): winsorized at 1.1, output layer out of
+The training defaults follow the current setup: **no winsorization since 11.08.2026**, output layer out of
 weight decay, head bias at the train-fold per-drug means, 25 epochs. Otherwise a refit would
 normalize a model that is no longer in use.
 
@@ -168,7 +168,7 @@ def oof_line_predictions(
     # 25, not 50: over 36 recorded runs the best epoch was median 6 / max 11 and early stopping
     # (patience 10) has never reached 25, so the extra epochs were pure wall-clock.
     epochs: int = 25,
-    winsor: float | None = 1.1,
+    winsor: float | None = None,
     exclude_output_from_decay: bool = True,
     init_head_bias: bool = True,
 ) -> dict[str, pd.DataFrame]:
@@ -176,14 +176,15 @@ def oof_line_predictions(
 
     Prefer :func:`load_oof_csv` when predictions already exist — this function is the expensive path.
 
-    Defaults match the current training setup (27.07.2026, ``notebooks/14_panel_training.ipynb``) so
-    that a refit normalizes the model actually in use. On a raw-AUC target that means: responses
-    winsorized at ``winsor`` (above ~1.1 the compound apparently improved growth over control, i.e.
-    assay artifact), the output layer kept out of weight decay (its bias must sit near each drug's
-    mean, and decay pulls it to 0), and that bias initialized to the train-fold per-drug means so the
-    model starts at the null predictor rather than at zero. Pass ``winsor=None,
-    exclude_output_from_decay=False, init_head_bias=False, epochs=50`` to reproduce the pre-27.07
-    protocol of ``notebooks/11_auc_vs_aucz.ipynb`` instead.
+    Defaults match the current training setup: the output layer is kept out of weight decay (its bias
+    must sit near each drug's mean, and decay pulls it to 0) and that bias is initialized to the
+    train-fold per-drug means, so the model starts at the null predictor rather than at zero.
+
+    ``winsor`` defaults to **None since 11.08.2026** (Selin): the target is used as published, with no
+    clipping and no quality filter, following DrEval's own practice. It remains a parameter so the
+    pre-11.08 protocol can be reproduced by passing ``winsor=1.1`` -- but that is a historical
+    reproduction, not a setting to adopt. See
+    ``docs/steps/01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026``.
 
     :returns: drug -> DataFrame(cell_line, y_true, y_pred); ``y_true`` is always on the curve-fit
         ``auc`` scale so models trained on different scores share one yardstick.

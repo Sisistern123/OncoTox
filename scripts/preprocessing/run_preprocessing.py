@@ -8,6 +8,13 @@ Paths are derived once from ``--data-root`` (default in ``layout.py``) and
 Expensive steps (convert, scGPT) refuse to overwrite existing files unless
 ``--overwrite`` is passed. ``hvg5000`` and ``all_genes`` never share a folder.
 
+The first step, ``fetch``, downloads the CTRPv2 drug-response data from a **pinned** Zenodo record and
+verifies it against that record's published checksums (see ``fetch_ctrp_response``). It is idempotent
+-- an archive already cached and matching its MD5 is neither re-downloaded nor re-extracted -- so
+running the pipeline from an empty data directory reproduces the target with no manual step, and the
+response data's version is fixed by code rather than by whatever happens to be on disk. It is the only
+step that touches the network; pass ``--start-at convert`` to skip it.
+
 Examples::
 
     uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \\
@@ -32,6 +39,7 @@ from scripts.preprocessing import (  # noqa: E402
     add_pca,
     create_splits,
     ctrp_to_h5ad,
+    fetch_ctrp_response,
     scp542_conversion,
 )
 from scripts.preprocessing.layout import (  # noqa: E402
@@ -43,12 +51,13 @@ from scripts.preprocessing.layout import (  # noqa: E402
     guard_output,
 )
 
-STEP_ORDER = ["convert", "scgpt", "targets", "splits", "pca"]
+STEP_ORDER = ["fetch", "convert", "scgpt", "targets", "splits", "pca"]
 
 
-def _print_step(idx: int, total: int, label: str) -> None:
+def _print_step(step: str, label: str) -> None:
+    """Number the banner from ``STEP_ORDER`` so inserting a step cannot leave it stale."""
     bar = "=" * 70
-    print(f"\n{bar}\n[{idx}/{total}] {label}\n{bar}")
+    print(f"\n{bar}\n[{STEP_ORDER.index(step) + 1}/{len(STEP_ORDER)}] {label}\n{bar}")
 
 
 def _run_scgpt(
@@ -151,7 +160,7 @@ def main():
         action="store_true",
         help="Allow convert/scGPT to replace existing raw or embedding h5ad files.",
     )
-    parser.add_argument("--start-at", choices=STEP_ORDER, default="convert")
+    parser.add_argument("--start-at", choices=STEP_ORDER, default="fetch")
 
     args = parser.parse_args()
     paths = PipelinePaths.build(args.data_root, args.variant, args.score)
@@ -162,15 +171,21 @@ def main():
     hvg = n_top if n_top and n_top > 0 else None
     min_cell_lines = 0 if args.all_drugs else args.min_cell_lines
     start_idx = STEP_ORDER.index(args.start_at)
-    total = len(STEP_ORDER)
 
     print(f"data_root : {paths.data_root}")
     print(f"variant   : {paths.variant} -> {paths.processed_dir}")
     print(f"score     : {paths.score} -> {paths.targets_h5ad.name}")
 
+    if start_idx <= STEP_ORDER.index("fetch"):
+        # Idempotent: cached archives are MD5-verified and not re-downloaded. Kept at the head so a
+        # run from an empty data directory reproduces the target without any manual step, and so the
+        # response data's version is fixed by code rather than by whatever happens to be on disk.
+        _print_step("fetch", f"fetch_ctrp_response (Zenodo {fetch_ctrp_response.ZENODO_RECORD})")
+        fetch_ctrp_response.fetch_ctrp_response(paths.metadata_dir)
+
     if start_idx <= STEP_ORDER.index("convert"):
         hvg_label = f"top-{hvg} HVGs" if hvg else "no HVG filter"
-        _print_step(1, total, f"scp542_conversion ({hvg_label})")
+        _print_step("convert", f"scp542_conversion ({hvg_label})")
         guard_output(paths.raw_h5ad, overwrite=args.overwrite, step="scp542_conversion")
         scp542_conversion.run(
             str(paths.expr_file),
@@ -181,11 +196,11 @@ def main():
 
     if start_idx <= STEP_ORDER.index("scgpt"):
         if args.skip_scgpt:
-            _print_step(2, total, "scGPT (skipped)")
+            _print_step("scgpt", "scGPT (skipped)")
             if not paths.embed_h5ad.exists():
                 raise RuntimeError(f"--skip-scgpt but missing:\n  {paths.embed_h5ad}")
         else:
-            _print_step(2, total, "scGPT embeddings")
+            _print_step("scgpt", "scGPT embeddings")
             _run_scgpt(
                 args.scgpt_python,
                 Path(args.scgpt_script),
@@ -196,20 +211,25 @@ def main():
             )
 
     if start_idx <= STEP_ORDER.index("targets"):
-        _print_step(3, total, f"ctrp_to_h5ad (score={args.score}, min_cell_lines={min_cell_lines})")
+        _print_step("targets", f"ctrp_to_h5ad (score={args.score}, min_cell_lines={min_cell_lines})")
         if not paths.embed_h5ad.exists():
             raise RuntimeError(f"Missing embeddings input:\n  {paths.embed_h5ad}")
+        if not paths.ctrp_response_csv.exists():
+            raise RuntimeError(
+                f"Missing response table:\n  {paths.ctrp_response_csv}\n"
+                f"Run the 'fetch' step (--start-at fetch) to download it."
+            )
         ctrp_to_h5ad.run(
             str(paths.embed_h5ad),
             str(paths.targets_h5ad),
-            str(paths.ctrp_dir),
+            str(paths.ctrp_response_csv),
             min_cell_lines=min_cell_lines,
             extra_single_drug_cols=(args.target_drug,) if args.target_drug else (),
             score=args.score,
         )
 
     if start_idx <= STEP_ORDER.index("splits"):
-        _print_step(4, total, "create_splits")
+        _print_step("splits", "create_splits")
         if not paths.targets_h5ad.exists():
             raise RuntimeError(f"Missing targets h5ad:\n  {paths.targets_h5ad}")
         if args.target_drug:
@@ -225,7 +245,7 @@ def main():
             )
 
     if start_idx <= STEP_ORDER.index("pca"):
-        _print_step(5, total, f"add_pca (force={args.force_pca}, n_comps={args.pca_n_comps})")
+        _print_step("pca", f"add_pca (force={args.force_pca}, n_comps={args.pca_n_comps})")
         # PCA baseline is computed on the HVG-filtered convert counts (paths.raw_h5ad),
         # NOT the targets .X (which has had scGPT-OOV genes dropped) -- keeps PCA on the
         # single HVG filter for a clean PCA-vs-scGPT comparison.

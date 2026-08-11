@@ -1,19 +1,29 @@
 """Map CTRPv2 drug-response targets onto cells in the embedded SCP542 AnnData.
 
-The target score is selected with ``score`` (CLI: ``--score``). In all cases a
-*higher* value means a *less* sensitive (more resistant) cell line:
+**Source (since 11.08.2026): DrEval's reprocessed CTRPv2**, not CTRPv2's own 2015 distribution.
+DrEval take CTRPv2's raw dose-response measurements, normalise each replicate against its no-drug
+control, and re-fit every curve with CurveCurator -- including replicate variability in the fit rather
+than averaging replicates before fitting, "as is the standard practice", which they argue "leads to
+inaccurate or misleading drug response measures in the case of large discrepancies between
+replicates" (``papers/DrEval_s41467-026-72903-w.pdf``, Methods, "Benchmark data"). The table is
+pinned to one Zenodo record and fetched by ``fetch_ctrp_response``.
 
-* ``auc_z``   -- per-drug z-scored ``auc`` (**retired as the default 27.07.2026**). Standardizing within each
-  drug puts every multi-task head on the same scale, so the MSE of a
-  well-covered drug does not dominate the loss, and it removes the per-drug
-  potency offset the model cannot infer from expression anyway.
-* ``auc``     -- ``area_under_curve / conc_pts_fit`` from the post-QC sigmoid
-  fits (``v20.data.curves_post_qc.txt``). CTRP's raw AUC is an *integrated*
-  area, so it scales with how many concentration points were fitted (8-29,
-  usually 16); dividing by ``conc_pts_fit`` puts drugs on a common axis.
-* ``mean_pv`` -- legacy score: the unweighted mean of ``cpd_avg_pv`` over the
-  dose grid (``v20.data.per_cpd_post_qc.txt``). Kept so the pre-AUC results
-  stay reproducible; correlates ~0.97 with raw AUC but ignores the curve fit.
+The measure is selected with ``score`` (CLI: ``--score``):
+
+* ``auc_cc``     -- ``AUC_curvecurator``: area under the fitted curve, viability normalised against
+  the vehicle control. A *higher* value means a *less* sensitive (more resistant) cell line, and 1.0
+  is the no-effect level, because CTRP's fit pins the low-concentration asymptote to the DMSO value
+  (Seashore-Ludlow et al., *Cancer Discov* 5(11):1210-1223, 2015, Methods).
+* ``ln_ic50_cc`` -- ``LN_IC50_curvecurator``: natural log of the IC50 from the same fit. Here a
+  *lower* value means *more* sensitive -- the opposite direction. Missing for ~40 % of curves by
+  construction; CTRPv2 itself publishes no IC50.
+
+**What this replaced, and why it is a replacement rather than a repair.** Until 11.08.2026 the target
+was CTRP's published ``area_under_curve`` divided by ``conc_pts_fit``. That divisor counts the
+concentration points which survived outlier censoring during CTRP's curve fit, not the width of the
+integral, so the target was inflated for cell lines whose measurements were noisy enough to lose
+points. Every number computed on it is void -- see
+``docs/steps/corrections-and-dead-ends.md#the-auc-target-was-divided-by-the-wrong-quantity``.
 
 Two outputs are written into the AnnData (both happen by default):
 
@@ -22,11 +32,10 @@ Two outputs are written into the AnnData (both happen by default):
     * ``adata.obsm["M_ctrp"]``  : bool    (n_cells, K), True where Y_ctrp is observed.
     * ``adata.uns["ctrp_drugs"]``: list[str] of length K (normalized drug names),
       giving the column order of Y_ctrp / M_ctrp.
-    * ``adata.uns["ctrp_score"]``: which score Y_ctrp holds.
-    * ``adata.uns["ctrp_score_center"]`` / ``["ctrp_score_scale"]``: per-drug mean
-      and std of the pre-z-score ``auc`` (length K, aligned with ``ctrp_drugs``),
-      so predictions can be mapped back to AUC units. Both are 0/1 filler when
-      ``score != "auc_z"``.
+    * ``adata.uns["ctrp_score"]``: which measure Y_ctrp holds.
+    * ``adata.obs["cellosaurus_id"]``: the cell line's Cellosaurus accession -- **recorded, never
+      joined on**; the join key is still the normalized name. See
+      ``notebooks/data_and_harmonization/cell_line_join_verification.ipynb``.
 
    Drugs are kept only if at least ``min_cell_lines`` distinct SCP542-overlapping
    cell lines were screened against them (default 50) so we don't add heads with
@@ -36,10 +45,17 @@ Two outputs are written into the AnnData (both happen by default):
     * ``adata.obs["viability_<drug>"]``    : per-cell target, NaN when missing.
     * ``adata.obs["train_mask_<drug>"]``   : per-cell bool, True when present.
 
-   The ``viability_`` prefix is historical -- the column holds whichever score
+   The ``viability_`` prefix is historical -- the column holds whichever measure
    was selected, not necessarily a percent viability. Controlled by
    ``extra_single_drug_cols``. Defaults to ("paclitaxel",) so the 25.05.2026
    baseline remains reproducible without any code changes.
+
+**Measures that were removed, not kept.** ``auc`` and the legacy ``mean_pv`` went with the CTRP-file
+readers on 11.08.2026. ``auc_z`` (per-drug z-scored ``auc``) was the default from 13.07.2026 until
+retired on 27.07.2026, and its code was removed on 11.08.2026: any normalization across drugs belongs
+in the loss, where it can be estimated per fold, rather than baked into the stored target. The ``uns``
+keys that existed only to invert it -- ``ctrp_score_center`` / ``ctrp_score_scale`` -- went with it.
+h5ads written before that date still carry them, and nothing reads them.
 """
 
 from __future__ import annotations
@@ -89,77 +105,97 @@ def _normalize_drug(s: pd.Series) -> pd.Series:
     return s.astype(str).str.strip().str.lower()
 
 
-def _load_score_values(ctrp_dir: Path, score: str) -> pd.DataFrame:
-    """Return one ``score`` value per (experiment_id, master_cpd_id).
+#: Which column of ``CTRPv2.csv`` each response measure reads. Both come from the same CurveCurator
+#: fit, so selecting between them changes only what is summarised from that fit -- not which curves
+#: were fitted, nor how.
+SCORE_COLUMNS: dict[str, str] = {
+    "auc_cc": "AUC_curvecurator",
+    "ln_ic50_cc": "LN_IC50_curvecurator",
+}
 
-    ``auc``/``auc_z`` read the post-QC sigmoid fits and normalize the integrated
-    area by the number of fitted concentration points; ``mean_pv`` averages the
-    raw dose grid (legacy behaviour).
+
+def _load_drevalpy_long(response_csv: Path, score: str) -> pd.DataFrame:
+    """Read DrEval's reprocessed CTRPv2 into a long table with normalized name columns.
+
+    One row per measurement as published. A (cell line, drug) pair can appear more than once --
+    on record 21807175 always as an exact duplicate row -- so :func:`_deduplicate_measurements`
+    reduces it afterwards.
+
+    Columns returned: ``ccl_name_norm``, ``cpd_name_norm``, ``score``, ``r2``, ``cellosaurus_id``.
+
+    Two columns are joined on rather than CTRP's own name fields:
+
+    * ``ccl_name`` is CTRP's spelling, **not** DrEval's display ``cell_line_name``. The display name
+      loses 19 SCP542 lines to punctuation (``MDA-MB-361`` vs ``MDAMB361``); CTRP's spelling is what
+      ``_normalize_cell_line`` was built against and matches 180 of 198.
+    * ``cellosaurus_id`` is carried through but **never joined on** -- resolving accessions is
+      strictly worse as a key (172 of 198). It rides along so the target carries a persistent
+      identifier, and so the join can be verified against one
+      (``notebooks/data_and_harmonization/cell_line_join_verification.ipynb``).
+
+    Rows with no value for the requested measure are dropped here rather than silently becoming
+    unobserved entries. That matters for ``ln_ic50_cc``, which is absent for ~40 % of curves by
+    construction -- see :data:`scripts.preprocessing.layout.CTRP_SCORES`.
     """
-    if score == "mean_pv":
-        per_cpd = pd.read_csv(
-            ctrp_dir / "v20.data.per_cpd_post_qc.txt",
-            sep="\t",
-            usecols=["experiment_id", "master_cpd_id", "cpd_avg_pv"],
+    column = SCORE_COLUMNS[score]
+    df = pd.read_csv(
+        response_csv,
+        usecols=["ccl_name", "drug_name", "cellosaurus_id", "R2", column],
+    )
+    n_all = len(df)
+    df = df.dropna(subset=[column])
+    if len(df) < n_all:
+        print(
+            f"  {n_all - len(df):,} of {n_all:,} rows have no {column} "
+            f"({100 * (n_all - len(df)) / n_all:.1f} %) and are dropped."
         )
-        return (
-            per_cpd.groupby(["experiment_id", "master_cpd_id"], as_index=False)["cpd_avg_pv"]
-            .mean()
-            .rename(columns={"cpd_avg_pv": "score"})
+
+    df = df.rename(columns={column: "score", "R2": "r2"})
+    # Aliases are applied on the CTRP side only: they map CTRP's spelling onto the CCLE name SCP542
+    # uses, so both sides end up in the same key space.
+    df["ccl_name_norm"] = _normalize_cell_line(df["ccl_name"]).replace(CTRP_CELL_LINE_ALIASES)
+    df["cpd_name_norm"] = _normalize_drug(df["drug_name"])
+    print(
+        f"  {len(df):,} measurements | {df.ccl_name_norm.nunique():,} cell lines | "
+        f"{df.cpd_name_norm.nunique():,} drugs"
+    )
+    return df[["ccl_name_norm", "cpd_name_norm", "score", "r2", "cellosaurus_id"]]
+
+
+def _deduplicate_measurements(long: pd.DataFrame) -> pd.DataFrame:
+    """One row per (cell line, drug), by dropping **exact** duplicates -- and refusing anything else.
+
+    ``CTRPv2.csv`` repeats rows: on record 21807175, 15,946 of its 395,024 rows are duplicates of
+    another row across **all 46 columns** -- same compound identifiers, same fitted values, same
+    ``R2`` -- forming 7,331 pairs and 428 triples. They are row duplication in the published table,
+    not repeat experiments of the same pair, so removing them changes no value.
+
+    **Decided 11.08.2026 (Selin): de-duplicate exact rows, and raise on anything else.** A rule that
+    silently reconciles disagreeing rows -- averaging them, or keeping the better ``R2`` -- would keep
+    working if a future record started carrying genuinely different repeats, and the target would
+    change with nothing to show for it. Failing loudly turns that into an error someone has to decide
+    about, which is the only thing that makes the decision revisitable.
+
+    :raises ValueError: if a (cell line, drug) pair survives with rows that are not identical.
+    """
+    keys = ["ccl_name_norm", "cpd_name_norm"]
+    n_before = len(long)
+    out = long.drop_duplicates().sort_values(keys, kind="mergesort").reset_index(drop=True)
+    if n_before > len(out):
+        print(
+            f"  {n_before - len(out):,} of {n_before:,} rows are exact duplicates of another row "
+            f"({100 * (n_before - len(out)) / n_before:.1f} %) and are dropped."
         )
 
-    curves = pd.read_csv(
-        ctrp_dir / "v20.data.curves_post_qc.txt",
-        sep="\t",
-        usecols=["experiment_id", "master_cpd_id", "conc_pts_fit", "area_under_curve"],
-    )
-    n_bad = int(curves["area_under_curve"].isna().sum())
-    if n_bad:
-        print(f"  Dropping {n_bad} curve fits with no area_under_curve.")
-        curves = curves.dropna(subset=["area_under_curve"])
-    # CTRP's area_under_curve is integrated, not averaged, so it grows with the
-    # size of the concentration grid (conc_pts_fit is 8-29, usually 16).
-    curves["score"] = curves["area_under_curve"] / curves["conc_pts_fit"]
-    return curves[["experiment_id", "master_cpd_id", "score"]]
-
-
-def _load_ctrp_long(ctrp_dir: Path, score: str) -> pd.DataFrame:
-    """Return the merged CTRPv2 long table with normalized name columns."""
-    ctrp_values = _load_score_values(ctrp_dir, score)
-    # v20.meta.per_experiment.txt carries one row per (experiment_id, experiment_date):
-    # 153 of its 907 experiments ran across two calendar days and so appear twice (1,061
-    # rows total). master_ccl_id is constant within an experiment_id, so the extra rows
-    # are exact duplicates for our purposes -- but merging on experiment_id without
-    # dropping them duplicated those curve fits and gave them double weight in the mean
-    # below. Verified 10.08.2026 (audit item 02): it shifted 460 of NCIH1299's targets.
-    ctrp_exp_meta = pd.read_csv(
-        ctrp_dir / "v20.meta.per_experiment.txt",
-        sep="\t",
-        usecols=["experiment_id", "master_ccl_id"],
-    ).drop_duplicates()
-    ctrp_cell_meta = pd.read_csv(
-        ctrp_dir / "v20.meta.per_cell_line.txt",
-        sep="\t",
-        usecols=["master_ccl_id", "ccl_name"],
-    )
-    ctrp_cpd_meta = pd.read_csv(
-        ctrp_dir / "v20.meta.per_compound.txt",
-        sep="\t",
-        usecols=["master_cpd_id", "cpd_name"],
-    )
-
-    ctrp_full = (
-        ctrp_values.merge(ctrp_exp_meta, on="experiment_id", how="inner")
-        .merge(ctrp_cell_meta, on="master_ccl_id", how="inner")
-        .merge(ctrp_cpd_meta, on="master_cpd_id", how="inner")
-    )
-    # Aliases are applied on the CTRP side only: they map CTRP's spelling onto the
-    # CCLE name SCP542 uses, so both sides end up in the same key space.
-    ctrp_full["ccl_name_norm"] = _normalize_cell_line(ctrp_full["ccl_name"]).replace(
-        CTRP_CELL_LINE_ALIASES
-    )
-    ctrp_full["cpd_name_norm"] = _normalize_drug(ctrp_full["cpd_name"])
-    return ctrp_full
+    conflicting = out[out.duplicated(keys, keep=False)]
+    if not conflicting.empty:
+        sample = conflicting.sort_values(keys).head(6).to_string(index=False)
+        raise ValueError(
+            f"{conflicting.drop_duplicates(keys).shape[0]:,} (cell line, drug) pairs have more than "
+            f"one non-identical measurement. The pipeline has no rule for reconciling them, "
+            f"deliberately -- decide how to aggregate before proceeding.\n{sample}"
+        )
+    return out
 
 
 def _build_drug_table(
@@ -177,11 +213,9 @@ def _build_drug_table(
         replicate experiments are averaged).
     kept_drugs : ordered list of drug names (normalized) to use as Y_ctrp columns.
     """
-    long_overlap = (
-        ctrp_full[ctrp_full["ccl_name_norm"].isin(overlap_cell_lines_norm)]
-        .groupby(["ccl_name_norm", "cpd_name_norm"], as_index=False)["score"]
-        .mean()
-    )
+    # Already one row per (cell line, drug) -- :func:`_deduplicate_measurements` did that, and did it on
+    # the full table so the choice of surviving row cannot depend on which cell lines overlap.
+    long_overlap = ctrp_full[ctrp_full["ccl_name_norm"].isin(overlap_cell_lines_norm)]
 
     if target_drugs is not None:
         target_drugs_norm = [d.strip().lower() for d in target_drugs]
@@ -205,54 +239,25 @@ def _build_drug_table(
     return long_overlap, kept_drugs
 
 
-def _zscore_per_drug(
-    long_overlap: pd.DataFrame, kept_drugs: list[str]
-) -> tuple[pd.DataFrame, np.ndarray, np.ndarray]:
-    """Standardize ``score`` within each drug, over the overlapping cell lines.
-
-    Statistics are computed per cell line (not per cell), so a cell line
-    contributing many cells does not pull the mean toward itself. A drug whose
-    scores have zero spread would blow up, so its scale is left at 1.0 --
-    ``min_cell_lines`` plus the learnability filter should remove those anyway.
-
-    Returns the standardized table plus the per-drug ``center`` and ``scale``
-    arrays (aligned with ``kept_drugs``) needed to map predictions back to AUC.
-    """
-    grouped = long_overlap.groupby("cpd_name_norm")["score"]
-    center = grouped.mean().reindex(kept_drugs)
-    scale = grouped.std(ddof=0).reindex(kept_drugs)
-
-    degenerate = scale[(scale.isna()) | (scale <= 0)].index.tolist()
-    if degenerate:
-        print(
-            f"  Warning: {len(degenerate)} drugs have zero AUC spread across cell lines; "
-            f"leaving their scale at 1.0 (e.g. {degenerate[:5]})."
-        )
-    scale = scale.where(scale > 0, 1.0)
-
-    out = long_overlap.copy()
-    out["score"] = (
-        out["score"] - out["cpd_name_norm"].map(center)
-    ) / out["cpd_name_norm"].map(scale)
-    return out, center.to_numpy(dtype=np.float32), scale.to_numpy(dtype=np.float32)
-
-
 def run(
     input_h5ad: str,
     output_h5ad: str,
-    ctrp_dir: str,
+    response_csv: str,
     min_cell_lines: int = DEFAULT_MIN_CELL_LINES,
     target_drugs: Sequence[str] | None = None,
     extra_single_drug_cols: Sequence[str] = DEFAULT_EXTRA_SINGLE_DRUG_COLS,
     score: str = DEFAULT_CTRP_SCORE,
 ):
-    """Map CTRPv2 drug-response scores onto cells in the embedded AnnData.
+    """Map CTRPv2 drug-response measures onto cells in the embedded AnnData.
 
     Parameters
     ----------
+    response_csv:
+        DrEval's reprocessed CTRPv2 table (``CTRPv2.csv``), fetched and MD5-verified by
+        ``fetch_ctrp_response`` from a pinned Zenodo record.
     score:
-        Which CTRPv2 response score to use as the target: ``auc`` (default since 27.07.2026),
-        ``auc``, or the legacy ``mean_pv``. See the module docstring.
+        Which response measure to use as the target: ``auc_cc`` (default) or ``ln_ic50_cc``.
+        See :data:`scripts.preprocessing.layout.CTRP_SCORES`.
     target_drugs:
         If provided, restrict the multi-drug matrix to these drug names (after
         lower-casing). When ``None`` (default), include every CTRPv2 drug that
@@ -271,8 +276,8 @@ def run(
     print("Loading AnnData...")
     adata = sc.read_h5ad(input_h5ad)
 
-    print(f"Loading CTRPv2 metadata (score={score})...")
-    ctrp_full = _load_ctrp_long(Path(ctrp_dir), score)
+    print(f"Loading CTRPv2 responses from {Path(response_csv).name} (score={score})...")
+    ctrp_full = _deduplicate_measurements(_load_drevalpy_long(Path(response_csv), score))
 
     cell_line_norm = (
         adata.obs["Cell_line"]
@@ -294,13 +299,6 @@ def run(
         target_drugs=target_drugs,
     )
 
-    if score == "auc_z":
-        print("Z-scoring AUC within each drug (over overlapping cell lines)...")
-        long_overlap, center, scale = _zscore_per_drug(long_overlap, kept_drugs)
-    else:
-        center = np.zeros(len(kept_drugs), dtype=np.float32)
-        scale = np.ones(len(kept_drugs), dtype=np.float32)
-
     print(f"Building (cell line x drug) {score} matrix...")
     cl_drug_matrix = long_overlap.pivot(
         index="ccl_name_norm", columns="cpd_name_norm", values="score"
@@ -317,8 +315,22 @@ def run(
     adata.obsm["M_ctrp"] = M.astype(bool)
     adata.uns["ctrp_drugs"] = list(kept_drugs)
     adata.uns["ctrp_score"] = score
-    adata.uns["ctrp_score_center"] = center
-    adata.uns["ctrp_score_scale"] = scale
+
+    # Persistent identifier per cell line, taken from the response table. **Recorded, never joined
+    # on** -- accessions resolve fewer SCP542 lines than names do (172 vs 180 of 198), so they make a
+    # worse key; they are here so the target carries a citable identifier and so the name join can be
+    # checked against an external authority. Verification and the ambiguity rules:
+    # notebooks/data_and_harmonization/cell_line_join_verification.ipynb.
+    line_to_cvcl = ctrp_full.drop_duplicates("ccl_name_norm").set_index("ccl_name_norm")[
+        "cellosaurus_id"
+    ]
+    adata.obs["cellosaurus_id"] = pd.array(
+        cell_line_norm.map(line_to_cvcl).to_numpy(), dtype="string"
+    )
+    n_lines_with_id = int(adata.obs.loc[:, ["Cell_line", "cellosaurus_id"]]
+                          .drop_duplicates()["cellosaurus_id"].notna().sum())
+    print(f"  Cellosaurus accessions attached for {n_lines_with_id} cell lines "
+          f"(cells: {int(adata.obs['cellosaurus_id'].notna().sum()):,} / {adata.n_obs:,}).")
 
     has_any_label = M.any(axis=1)
     print(
@@ -385,10 +397,10 @@ def _parse_args():
         help="Output h5ad (default: <variant>/..._with_targets.h5ad).",
     )
     parser.add_argument(
-        "--ctrp-dir",
+        "--response-csv",
         type=Path,
         default=None,
-        help="CTRPv2 directory (default: <data-root>/metadata/CTRPv2...).",
+        help="DrEval CTRPv2 response table (default: the pinned cache under <data-root>/metadata/).",
     )
     parser.add_argument(
         "--min-cell-lines",
@@ -423,7 +435,7 @@ if __name__ == "__main__":
     run(
         input_h5ad=str(args.input or paths.embed_h5ad),
         output_h5ad=str(args.output or paths.targets_h5ad),
-        ctrp_dir=str(args.ctrp_dir or paths.ctrp_dir),
+        response_csv=str(args.response_csv or paths.ctrp_response_csv),
         min_cell_lines=min_cell_lines,
         target_drugs=args.drugs,
         extra_single_drug_cols=tuple(args.single_drug_cols),

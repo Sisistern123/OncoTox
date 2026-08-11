@@ -16,16 +16,31 @@ DEFAULT_SCGPT_MODEL_DIR = Path("/Users/selin/Desktop/OncoTox/scGPT/scGPT_human")
 VARIANTS = ("hvg1000", "hvg2000", "hvg3000", "hvg5000", "all_genes")
 DEFAULT_VARIANT = "hvg5000"
 
-# CTRPv2 response score used as the training target (see ctrp_to_h5ad.py):
-#   auc     : normalized AUC, area_under_curve / conc_pts_fit  (default since 27.07.2026)
-#   auc_z   : per-drug z-scored normalized AUC  (retired -- see below)
-#   mean_pv : legacy score -- mean cpd_avg_pv over the dose grid
-CTRP_SCORES = ("auc", "auc_z", "mean_pv")
-# Raw curve-fit AUC, 27.07.2026. `auc_z` was the default from 13.07 and is retired: its centering is
-# inert (the per-drug head bias absorbs it) and its scaling amplified noise-dominated drugs in the
-# shared loss. The standardization it provided is unnecessary on a variance-homogeneous drug panel and
-# belongs in the loss, not the target, where it can be estimated per fold. See Step 03.
-DEFAULT_CTRP_SCORE = "auc"
+#: Zenodo record holding DrEval's reprocessed CTRPv2 response data and the Cellosaurus release it
+#: ships with. **Pinned deliberately**: drevalpy's own loader resolves the concept DOI to whatever is
+#: latest, so the version it returns changes under you. Bumping this is a target change -- everything
+#: downstream has to be re-run, and `docs/steps/01` has to record the new record and retrieval date.
+#: Record 21807175 = "Dataset for drevalpy", published 2026-08-05, retrieved 11.08.2026.
+ZENODO_RESPONSE_RECORD = 21807175
+#: Cache directory carries the record, so an older copy is visible rather than silently overwritten.
+FETCH_CACHE_DIRNAME = f"drevalpy_CTRPv2_zenodo_{ZENODO_RESPONSE_RECORD}"
+
+# CTRPv2 response measure used as the training target. Both come from DrEval's re-fit of CTRPv2's raw
+# dose-response data with CurveCurator, and both are columns of its published CTRPv2.csv:
+#   auc_cc     : `AUC_curvecurator`     -- area under the fitted curve, viability normalised per
+#                replicate against the no-drug control. Complete for every curve.
+#   ln_ic50_cc : `LN_IC50_curvecurator` -- natural log of the IC50 from the same fit. Missing for
+#                ~40 % of curves by construction: DrEval discard an IC50 that falls more than an
+#                order of magnitude outside the measured dose range, which is most compounds that
+#                never reach half-killing. CTRPv2 itself publishes no IC50 at all.
+CTRP_SCORES = ("auc_cc", "ln_ic50_cc")
+# The `_cc` suffix is load-bearing. Until 11.08.2026 the default was `auc`, meaning CTRP's published
+# `area_under_curve` divided by `conc_pts_fit` -- a defective normalisation (the divisor counts the
+# points that survived outlier censoring, not the width of the integral), so every number computed on
+# it is void. Reusing the name for CurveCurator's AUC would have made the old and new artifacts
+# indistinguishable on disk. Both `auc` and the legacy `mean_pv` were removed with their reader code
+# on 11.08.2026 (Selin). See docs/steps/corrections-and-dead-ends.md.
+DEFAULT_CTRP_SCORE = "auc_cc"
 
 # hvg1000/2000/3000 added for the HVG-count sweep (find scGPT's filtering sweet spot).
 VARIANT_N_TOP_GENES: dict[str, int | None] = {
@@ -42,9 +57,12 @@ H5AD_TARGETS = "SCP542_CCLE_scGPT_human_embeddings_with_targets.h5ad"
 
 
 def targets_filename(score: str) -> str:
-    """Targets h5ad name for a CTRP score. ``mean_pv`` keeps the pre-AUC filename."""
-    if score == "mean_pv":
-        return H5AD_TARGETS
+    """Targets h5ad name for a response measure -- one file per measure, never shared.
+
+    The measure is in the filename because it is the only thing distinguishing two otherwise
+    identical h5ads, and a target you cannot identify from the path is one that gets mixed into a
+    comparison by accident.
+    """
     return H5AD_TARGETS.replace(".h5ad", f"_{score}.h5ad")
 
 
@@ -82,8 +100,35 @@ class PipelinePaths:
         return self.data_root / "scRNAseq_SCP542" / "metadata" / "Metadata.txt"
 
     @property
+    def metadata_dir(self) -> Path:
+        """Where third-party reference data is cached, one directory per pinned release."""
+        return self.data_root / "metadata"
+
+    @property
     def ctrp_dir(self) -> Path:
-        return self.data_root / "metadata" / "CTRPv2.0_2015_ctd2_ExpandedDataset"
+        """CTRPv2's own 2015 distribution.
+
+        **No longer the source of the training target** (see ``drevalpy_dir``). Kept because it is
+        still the only source of CTRP's compound metadata -- ``v20.meta.per_compound.txt`` carries the
+        ``broad_cpd_id`` the cross-database step needs -- and several analysis notebooks read it.
+        """
+        return self.metadata_dir / "CTRPv2.0_2015_ctd2_ExpandedDataset"
+
+    @property
+    def drevalpy_dir(self) -> Path:
+        """DrEval's reprocessed CTRPv2, pinned to one Zenodo record and fetched by the ``fetch`` step."""
+        return self.metadata_dir / FETCH_CACHE_DIRNAME
+
+    @property
+    def ctrp_response_csv(self) -> Path:
+        """The response table the target is built from: one row per (cell line, drug, experiment)."""
+        return self.drevalpy_dir / "CTRPv2" / "CTRPv2.csv"
+
+    @property
+    def cellosaurus_file(self) -> Path:
+        """Cellosaurus release shipped with the same record -- pinned by it, since Cellosaurus
+        publishes no stable per-release download URL of its own."""
+        return self.drevalpy_dir / "meta" / "cellosaurus.txt"
 
     @property
     def processed_dir(self) -> Path:
@@ -135,7 +180,7 @@ def add_data_args(
         default=score_default,
         help=(
             "CTRPv2 response score used as the target. Each score gets its own targets "
-            "h5ad, so auc_z and mean_pv runs can be compared head-to-head."
+            "h5ad, so auc and mean_pv runs can be compared head-to-head."
         ),
     )
 

@@ -14,26 +14,35 @@ Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition**.
 One entry point builds a complete, trainable h5ad from raw files:
 `scripts/preprocessing/run_preprocessing.py`. It derives all paths once from
 `(--data-root, --variant, --score)` via `layout.py`, then runs **five steps in a fixed order** —
-`STEP_ORDER = [convert → scgpt → targets → splits → pca]` — writing only under
-`processed/scRNAseq_SCP542/<variant>/`. You normally never call the individual scripts by hand:
-the gene-set variant is chosen with `--variant {hvg5000,all_genes}`, the **response score** with
-`--score {auc_z,auc,mean_pv}` ([Step 03](03-model-and-training-design.md)), the drug scope with
+`STEP_ORDER = [fetch → convert → scgpt → targets → splits → pca]` — writing only under
+`processed/scRNAseq_SCP542/<variant>/`, except `fetch`, which caches third-party data under
+`metadata/`. You normally never call the individual scripts by hand:
+the gene-set variant is chosen with `--variant {hvg5000,all_genes}`, the **response measure** with
+`--score {auc_cc,ln_ic50_cc}` ([Step 03](03-model-and-training-design.md)), the drug scope with
 `--all-drugs` / `--min-cell-lines`, `--start-at <step>` resumes mid-pipeline, `--skip-scgpt` reuses
 existing embeddings, and `--overwrite` is required to replace the guarded `convert`/`scgpt` outputs
 (everything is seeded via `--seed`, default 42).
 
 `--variant` and `--score` are the **two axes of the output layout**: the variant picks the folder,
 the score picks the targets filename. Every script that touches a targets file takes both flags
-(`layout.add_data_args`), so a `mean_pv` run and an `auc_z` run can coexist and be compared without
-rebuilding the expensive `convert`/`scgpt` outputs, which they **share**.
+(`layout.add_data_args`), so an `auc_cc` run and an `ln_ic50_cc` run can coexist and be compared
+without rebuilding the expensive `convert`/`scgpt` outputs, which they **share**.
+
+Since 11.08.2026 the measure names carry a `_cc` suffix, for CurveCurator. That is deliberate rather
+than cosmetic: the previous `auc` was a *different quantity* computed from CTRP's own distribution and
+was defective, so reusing the name would have left old and new targets indistinguishable on disk under
+identical filenames. `auc`, `auc_z` and `mean_pv` were all removed with their reader code
+([Step 01](01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026),
+[corrections](corrections-and-dead-ends.md#the-auc-target-was-divided-by-the-wrong-quantity)).
 
 ### What each step reads and writes (in order)
 
 | # | Step / script | Reads | Writes (added to the h5ad) |
 |---|---|---|---|
+| 0 | **fetch** — `fetch_ctrp_response.py` | Zenodo record **`21807175`**, pinned in `layout.ZENODO_RESPONSE_RECORD` | `metadata/drevalpy_CTRPv2_zenodo_21807175/`: the CTRPv2 response table and Cellosaurus 52.0, each **MD5-verified against the record's published checksums**, plus a `provenance.json` recording record, DOI and retrieval date. Idempotent — a cached archive matching its MD5 is neither re-downloaded nor re-extracted, so this costs a checksum pass. The **only** step that touches the network; `--start-at convert` skips it. |
 | 1 | **convert** — `scp542_conversion.py` | `expression/CPM_data.txt` (genes×cells) + `metadata/Metadata.txt` | `SCP542_CCLE.h5ad`: cells×genes, `.X` = **CPM**. **HVG filtering happens here** (see below); records `uns["hvg_n_top_genes"]`. Since 05.08.2026 also `var["hgnc_symbol"]` — the current HGNC symbol per row, read only by step 2. |
 | 2 | **scgpt** — `scripts/preprocessing/gen_embeds.py`, run under the separate scGPT venv via `--scgpt-python` (vendored into the repo 03.08.2026; it was previously an untracked file outside it) | the **convert output** `SCP542_CCLE.h5ad` | `..._scGPT_human_embeddings.h5ad`: adds `obsm["X_scGPT"]` (**512-dim**) **and drops scGPT-OOV genes from `.X`** (hvg5000: 5,000→4,576). |
-| 3 | **targets** — `ctrp_to_h5ad.py` | the embeddings h5ad + the CTRPv2 tables (curve fits for `auc`/`auc_z`, dose grid for `mean_pv`) | `..._with_targets[_<score>].h5ad`: adds `obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, `uns["ctrp_score"]` + the de-standardization stats ([Step 03](03-model-and-training-design.md) for mechanics). |
+| 3 | **targets** — `ctrp_to_h5ad.py` | the embeddings h5ad + the fetched response table `CTRPv2.csv` (one column per measure, both from the same CurveCurator fit) | `..._with_targets_<score>.h5ad`: adds `obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, `uns["ctrp_score"]`, and `obs["cellosaurus_id"]` — the persistent accession per cell line, **recorded but never joined on**. Exact duplicate rows are dropped and a disagreeing pair **raises**. Resulting matrices, counts and every discrepancy against CTRPv2's own distribution: [Step 01](01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026). |
 | 4 | **splits** — `create_splits.py` | the targets h5ad (in place) | `obs["split_paclitaxel"]` (`run`) + `obs["split_ctrp"]` (`run_multi`) — cell-line-grouped. |
 | 5 | **pca** — `add_pca.py` | the targets h5ad + the **convert counts** `SCP542_CCLE.h5ad` | `obsm["X_pca"]`: `log2(1 + CPM/10)` → `sc.pp.scale(max_value=10)` → `sc.pp.pca` (**512 comps**, matching the scGPT width) computed on the **HVG-filtered convert counts** (5,000 genes), *not* the targets `.X` — plus one train-fitted `X_pca_train_<split>` per fixed split, and a `uns["pca_fits"]` record per key (both below). Targets `.X` left unchanged. |
 
@@ -602,7 +611,7 @@ for `hvg5000` (`du -sh data/processed/scRNAseq_SCP542/*/`, 03.08.2026).
 >   numbers until it is re-run**. The conclusion is expected to carry over — `mean_pv` and raw `auc`
 >   were shown statistically identical everywhere
 >   ([Corrections](corrections-and-dead-ends.md#the-curve-fit-preserves-signal-the-dose-average-destroys),
->   `notebooks/result_evaluation/target_comparison.ipynb`, 13.07.2026) — but that is an expectation,
+>   `notebooks/archive/target_comparison.ipynb`, 13.07.2026) — but that is an expectation,
 >   not a result.
 > - Until 03.08.2026 the sweep cell was **internally inconsistent**: its load branch read the
 >   `mean_pv` cache while its compute branch resolved the targets file through

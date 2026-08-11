@@ -94,7 +94,7 @@ every one of them was a step that looked settled and had never been checked.
         They come from just **six** cell lines, each re-screened against 534 of the 545 drugs. The two
         measurements differ by a median of **0.49×** the drug's spread across cell lines, and **27.3 %
         of them differ by more than that full spread**. Quantified in
-        `notebooks/data_and_harmonization/replicate_variation.ipynb` →
+        `notebooks/archive/replicate_variation.ipynb` →
         `outputs/data/replicate_variation.{png,csv}`; written up in
         [Step 01](./steps/01-datasets-and-harmonization.md#genuine-repeats-are-averaged-and-they-disagree-more-than-the-targets-own-spread-10082026).
         **Six of 181 lines is not a random sample**, so this bounds nothing numerically — it says only
@@ -269,9 +269,15 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       scGPT − PCA margin is quoted, and train-only drug selection inside each fold.
 - [ ] **R5 · Re-run the analysis notebooks that read the retrained outputs.**
       `drug_selection/`: `learnability_filter`, `panel_distributions`, `learnable_subset_training`.
-      `result_evaluation/`: `target_comparison`, `ablations_and_rescue`, `diagnostics` (§5 dispersion),
-      `dreval_benchmark`. `data_and_harmonization/drug_coverage` — **not optional**, the line count moves
-      180 → 181. `replicate_variation.ipynb` reads only the shipped CTRPv2 files and does not re-run.
+      `result_evaluation/`: `diagnostics` (§5 dispersion), `dreval_benchmark`.
+      `data_and_harmonization/drug_coverage` — **not optional**, the line count moves 180 → 181.
+      **Three notebooks have had their stored outputs cleared** (11.08.2026), because their score
+      literal changed to `auc_cc` and the old results could not be refreshed under the freeze — the
+      code is correct and only the results are missing: `3_panel_training` (c1),
+      `drug_selection/panel_distributions` (c1), `data_and_harmonization/verify_variants` (c24).
+      `target_comparison`, `ablations_and_rescue` and `replicate_variation` are **archived** and do not
+      re-run — all three read targets that no longer exist
+      ([why](./steps/corrections-and-dead-ends.md#retired-code-paths)).
       **Render every figure and look at it before anything is reported from it.**
 - [ ] **R6 · Update the docs and the report from the refreshed artifacts.** Nothing is re-run here;
       everything is re-read from what R2–R5 produced. `report/results_numbers.tex`: `\NLines` 180 → 181,

@@ -36,13 +36,12 @@ drift — they are documentation *and* a re-run, not a fork.
 | `drug_catalog.ipynb` | Cross-database compound harmonization (CTRP / GDSC / PRISM / DrugBank) → writes `data/drug/*`. The **only** analysis notebook whose outputs another step consumes |
 | `drug_coverage.ipynb` | Per-drug coverage and response spread; the label distribution behind "why the task is hard". ⚠️ Its *learnability* section was built on `mean_pv` and is superseded; the target-distribution figures still stand |
 | `verify_variants.ipynb` | QC of `hvg5000` vs `all_genes`, the PCA-vs-scGPT UMAP latent validation, and (§9) the gene-set sweep — heads-beating vs gene count under CV, moved here from `2_training` §4 on 03.08.2026 and re-targeted to `auc` |
+| `cell_line_join_verification.ipynb` | **Does the name join pair the right two lines?** Resolves SCP542's names against the pinned Cellosaurus release and checks them against the accessions DrEval ship, with an independent tissue cross-check; §3 records what the target build produces for each measure. Runs `scripts/preprocessing/cellosaurus.py`, so the rules it documents are the rules the pipeline uses |
 
 ### `result_evaluation/` — is the number real?
 
 | Notebook | Question it answers |
 |---|---|
-| `target_comparison.ipynb` | **Which target?** `mean_pv` vs `auc` vs `auc_z` at K=10 and K=545, with bootstrap CIs, Pearson alongside Spearman, and seed stability |
-| `ablations_and_rescue.ipynb` | **Why did the 545-head model fail, and what fixes it?** The implicit σ²-weighting of the loss, the causal rescue test on the broken setting, the model-knob ablations on the corrected one, and the ridge control |
 | `dreval_benchmark.ipynb` | **How strong is this by the field's standard?** Our data and model through the real **DrEval** package (`drevalpy` 1.5.1): their LCO splits, their baselines, their metrics |
 | `diagnostics.ipynb` | The drug-selection gate defect, the proliferation test, and result dispersion across folds *and* drugs |
 
@@ -60,14 +59,23 @@ and all three get re-run after the rebuild.
 
 ### `archive/` — nothing here is load-bearing
 
-**The dividing line: everything outside `archive/` is cited by a step file and something documented
-depends on it. Nothing in `archive/` is.** That is the test, applied by checking which notebooks the step
-files actually reference — not by judging how interesting they look.
+**Two grounds for being here, and only two.**
+
+1. **Nothing documented depends on it.** No step file cites it. This is the original test, applied by
+   checking which notebooks the step files actually reference — not by judging how interesting they
+   look.
+2. **It cannot be re-run**, because the data or the target it reads no longer exists (added
+   11.08.2026). A notebook can land here under this ground *while still being cited*, since archiving
+   does not retract the numbers it produced. Where that happens, the citing step file must say the
+   notebook is archived and why, so a reader who follows the path is not left thinking it is runnable.
 
 | Notebook | Why it is here |
 |---|---|
 | `scdrugatlas_exploration.ipynb` | Explores **scDrugAtlas**, a data source that was evaluated and [rejected](../docs/steps/corrections-and-dead-ends.md#scdrugatlas-and-clintox-as-data-sources). Kept as the record of that decision. *(Long mislabelled in the docs as SCP542 exploration — "scDA" is scDrugAtlas.)* |
 | `ctrp_prism_repurposing.ipynb` | CTRP→PRISM repurposing and clinical-phase mapping. Read-only, writes no artifact, and no step depends on it. Worth knowing it exists: it is the only notebook that loads `GDSC2_fitted_dose_response_27Oct23.xlsx`, which the "externalize the spread requirement" task will need |
+| `target_comparison.ipynb` | **Ground 2**, archived 11.08.2026. `mean_pv` vs `auc` vs `auc_z` at K=10 and K=545. All three targets were removed that day, so `layout.CTRP_SCORES` rejects every one it asks for and it cannot run. Its conclusion — retire `auc_z` — is in [Corrections](../docs/steps/corrections-and-dead-ends.md#auc_z-as-the-training-target) |
+| `replicate_variation.ipynb` | **Ground 2**, archived 11.08.2026. How far apart two screenings of the same (cell line, drug) fall — it existed because the pipeline *averaged* them, and it no longer does. Its measurements are kept in [Step 01](../docs/steps/01-datasets-and-harmonization.md#genuine-repeats-are-averaged-and-they-disagree-more-than-the-targets-own-spread-10082026), reframed as the evidence for the target switch |
+| `ablations_and_rescue.ipynb` | **Ground 2**, archived 11.08.2026. *Why did the 545-head model fail, and what fixes it?* — the implicit σ²-weighting of the loss, the causal rescue test, the model-knob ablations, the ridge control. The whole argument is a head-to-head between `auc` and `auc_z`, both removed, so it cannot run. Re-wiring it to `auc_cc` / `ln_ic50_cc` would not preserve the argument; it would ask a different question |
 
 Two things are **not** grounds for archiving. **Superseded conclusions** — `2_training`'s results are void
 but its harness is the only way to re-run the matrix, so it stays in the pipeline. **A discredited
