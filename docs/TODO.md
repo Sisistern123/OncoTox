@@ -196,7 +196,13 @@ every one of them was a step that looked settled and had never been checked.
            about whether the representation should be shaped by data the model never sees.
         Any change here alters the gene set and therefore every number, so it lands in the sweep.
 - [ ] **8 · Model** — architecture, capacity, and whether the shared-trunk multi-head design is still the
-      right one for a small panel.
+      right one for a small panel. **This is where MIL falls.** The per-cell framing is an architectural
+      choice: every cell of a line carries that line's label, so the design cannot express within-line
+      variation — which is what makes **Q2 unanswerable under it**, and what MIL exists to change. This
+      item decides whether the current architecture stands until MIL is built, and what MIL has to
+      replace; the design itself, its controls and the open decision on what counts as a positive Q2
+      result stay in one place, *Agreed plan, Step 2*. Note the objective side of the same fact — that
+      the loss actively penalizes the within-line variation — belongs to item 9.
 - [ ] **9 · Loss** — masking, per-sample weighting (the density weighting was a null — drop or keep?),
       per-line weighting (the 82× artifact), and what the objective actually rewards.
 - [ ] **10 · Training** — optimizer, weight decay groups, epochs, early stopping, and the `mps`
