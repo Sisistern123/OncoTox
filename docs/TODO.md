@@ -372,8 +372,9 @@ matters — folded into review items 10 and 12.
 
 > **Framing that governs this list:** *more performance ≠ a bigger model.* Model-side tuning is
 > demonstrably closed (see "Model-side tuning is closed" below); the levers are label-/data-side.
-> The audience's "bigger MLP / more capacity" suggestion was already tested and is flat — only MIL
-> (S2) is a genuinely untested capacity lever.
+> The audience's "bigger MLP / more capacity" suggestion was already tested and is flat. *(This line
+> previously named MIL as the one remaining capacity lever. Corrected 11.08.2026: MIL is Q2's
+> instrument, not a performance lever — see S2. There is no untested capacity lever.)*
 >
 > **Update 25.07.2026:** the report's first next-step — *drug selection from the literature instead of my
 > filter* — is **done as a definition** (8-drug panel, see "Next focus" below); the training run on it is
@@ -387,10 +388,11 @@ matters — folded into review items 10 and 12.
    option in `ctrp_to_h5ad.py` (pattern: `_zscore_per_drug`, `DEFAULT_CTRP_SCORE`); compare in `dreval_benchmark`.
    Success = normalized DrEval ρ rises above the current scGPT value without inflating the raw
    correlation (the bar itself lives in [Step 05](./steps/05-multitask-results.md), not here).
-2. **S2 — MIL / attention pooling over a line's cells** — the only untested capacity lever (bag of cells
-   → line label). Must beat the ridge baseline **and** the per-cell MLP. On the literature panel
-   (27.07.2026) that is ridge 0.306 / 0.299 and MLP 0.316 / 0.377 for PCA / scGPT — the 0.342 quoted
-   here previously was the old 10-drug panel. *(Detailed item under "Model-side tuning".)*
+2. **S2 — MIL / attention pooling over a line's cells (bag of cells → line label).** **Not a performance
+   item — it is the instrument for Q2**, reframed 11.08.2026; ρ against ridge and the per-cell MLP is a
+   floor, not the success criterion. Full item, with the open decision on what a positive Q2 result is:
+   *Agreed plan, Step 2*. *(The control values this entry used to quote were measured on the voided
+   panel and are withdrawn.)*
 3. **S3 — More independent cell lines** — SCP542×CTRPv2 caps at 180; CTRPv2 has ~1,100. Attacks the
    real ceiling. *(Overlaps the scDEAL/label-side lever under "Levers / later".)*
 4. **S4 — Diagnostic explainability (now, low-risk)** — where errors concentrate (drugs/tissues/lines
@@ -442,10 +444,27 @@ clean null — is written up in [Step 05](./steps/05-multitask-results.md) and
       number.**
 - [ ] **Report raw + normalized** (DrEval) on this panel, once seeds are in.
 
-**Step 2 — MIL / attention pooling, against the target fixed in Step 1.** Controls that must both be
-beaten: the per-cell MLP and RidgeCV on cell-line mean embeddings. If MIL beats neither, the single-cell
-resolution has again failed to justify itself and that is the reportable result.
+**Step 2 — MIL / attention pooling: the instrument for Q2, against the target fixed in Step 1.**
 
+**Reframed 11.08.2026 (Selin): MIL is how Q2 gets answered, not a capacity lever.** The per-cell MLP
+hands every cell of a line the same label, so the objective penalizes precisely the within-line variation
+Q2 asks about — under that architecture Q2 is not merely unanswered, it is unanswerable. A bag of cells →
+one line label is the smallest change that lets the model express heterogeneity rather than be punished
+for it. What this item said before the reframing — *"if MIL beats neither control, the single-cell
+resolution has again failed to justify itself"* — scored a Q2 experiment on a Q1 criterion.
+
+- **The controls are a floor, not the criterion.** RidgeCV on cell-line mean embeddings and the per-cell
+  MLP still run on the same panel and the same folds: if MIL lands far below them, its attention weights
+  are not evidence of anything. But *tying* them is not a failure here — it says the heterogeneity
+  signal does not raise line-level ρ, which is a narrower claim than the one this item used to make.
+  Their values are pending: the numbers previously quoted here were measured on the
+  [voided panel](./steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it),
+  so the floor is re-measured after item 6 rebuilds the panel and R4 retrains.
+- **⚠ Open decision — what counts as a positive Q2 result, fixed before the run.** Under the Q1 framing
+  the readout was ρ against the controls; under this one it is not, and nothing has replaced it. Whatever
+  is chosen needs a control that says what *no* heterogeneity signal looks like (a shuffled-cell or
+  uniform-attention null), or a structured-looking attention map will be read as a positive result by
+  default. **Selin's call, and it has to be made before the run rather than after seeing one.**
 - MIL makes the per-line weighting problem disappear structurally (one bag = one example), so the
   82× cells×labels imbalance needs no separate fix under it.
 - Open design decisions, to settle before building: fixed bag size with per-epoch subsampling (acts as
@@ -535,10 +554,12 @@ what each result rules out:
 and [Corrections](./steps/corrections-and-dead-ends.md#the-model-is-over-regularized-or-too-small).
 **Don't spend more time on architecture or hyperparameters** — the remaining levers are label-side.
 
-- [ ] **Make the single-cell dimension earn itself** — averaging a line's cells into one vector currently
-      loses nothing. Test MIL / attention pooling over a line's cells (predict the line label from a *bag*
-      of cells), which at least matches the true label resolution. If that doesn't beat ridge either, the
-      per-cell framing needs a different justification.
+- [ ] **Averaging a line's cells into one vector currently loses nothing** — `RidgeCV` on the 150
+      line-mean embeddings ties the per-cell MLP, so at line-level ρ the single-cell dimension is not
+      earning itself. *(This item used to propose MIL as the fix. Moved 11.08.2026: MIL is Q2's
+      instrument, not a performance lever — the item lives in* Agreed plan, Step 2 *and is not scored
+      on beating ridge.)* What stays open here is narrower: if line-level ρ is all that is ever
+      reported, the per-cell framing needs a justification that does not depend on Q2 succeeding.
 - [ ] **Add ridge (line-level) to `2_training`'s comparison tables** so every future claim is scored against it.
 - [ ] *(Optional)* **z-score train-only.** The per-drug mean/std currently use all 180 lines, val/test
       included — mild leakage. Fixing it means computing splits before the targets step.
