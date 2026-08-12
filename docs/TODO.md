@@ -809,10 +809,20 @@ every one of them was a step that looked settled and had never been checked.
         Sequenced **after item 8C**, which re-derives the ridge comparison at R4 on the rebuilt panel,
         and **after `5_evaluation` exists**, which item 11 already blocks.
 - [x] **12 · Reproducibility — walked 12.08.2026; CLOSED 13.08.2026. Nothing here gates R2.** Seeds
-      swept across 22 script modules and 14 live notebooks for every stochastic call site: **19 checked,
-      17 seeded, 2 flagged and both false positives on inspection** — one a docstring containing the
-      string "PCA(512)", one `RidgeCV`, which takes no `random_state` because its solver is closed-form.
-      So **0 genuinely unseeded of 19**. Determinism: the 28.07.2026 no-action decision holds — `set_seed`
+      swept across 22 script modules and 14 live notebooks for every stochastic call site, and
+      **independently re-verified**: every `random_state` in `scripts/` takes `seed`; both
+      `DataLoader(shuffle=True)` sites pass an explicit `torch.Generator().manual_seed(config.seed)`;
+      `GroupKFold` does not shuffle; `GroupShuffleSplit` passes `random_state=seed`; every scanpy
+      `neighbors`/`umap` call in the notebooks passes `SEED`; and `dreval_benchmark`'s `split_dataset`
+      passes `random_state=42`. **Nothing is unseeded.** Two candidates were flagged and both are false
+      positives on inspection — a docstring containing the string "PCA(512)", and `RidgeCV`, which takes
+      no `random_state` because its solver is closed-form.
+      ⚠️ **The sweep's denominator is not recorded and could not be re-derived** (13.08.2026). The
+      original pass reported "19 sites checked"; a second session re-verified every claim *about* those
+      sites but could not reproduce the count, because what counted as a site was never written down.
+      The list above is what is independently checkable and is stated instead. Same class as the
+      weight-decay figures removed under item 10 — a number quoted from a pass whose definition did not
+      survive it. Determinism: the 28.07.2026 no-action decision holds — `set_seed`
       sets random/numpy/torch/cuda/mps and forces no flags, exactly as specified — and its second clause,
       *measure the non-determinism where it matters*, was discharged by audit 10, which found the
       training loop bit-reproducible on `mps` at a fixed seed. `frozen_split` **raises** rather than
