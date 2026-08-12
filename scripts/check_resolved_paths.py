@@ -88,7 +88,7 @@ KNOWN_ROOTS = {
     "NB_DIR": "notebooks",
     "HERE": "docs",
     "PANEL_OUT": "notebooks/outputs/panel",
-    "LEGACY_PANEL": "notebooks/outputs/legacy/panel_void_8drug",
+    "LEGACY_PANEL": "notebooks/outputs/archive/panel_void_8drug",
 }
 
 #: Gitignored or externally-supplied trees: absent by design, so a miss there is not a defect.

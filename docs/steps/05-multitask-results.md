@@ -139,7 +139,7 @@ of 1.0.
 - **Δmse (model − baseline)** — the **continuous** counterpart of heads-beating: the mean over drugs of
   `model_mse − baseline_mse`. **Negative ⇒ model better** than the constant on average; it is not
   thresholded, so it doesn't suffer the count's instability (its CV std is small relative to the mean).
-  Reported as CV mean ± std; the per-fold `legacy/training_545_mean_pv/cv_folds.csv` also carries `median_delta` and `frac_beat`
+  Reported as CV mean ± std; the per-fold `archive/training_545_mean_pv/cv_folds.csv` also carries `median_delta` and `frac_beat`
   (= `heads_beat / n_total`).
 
 - **Overfitting gap** — `val_mse − train_mse` at the best epoch (single-task). Larger ⇒ more
@@ -326,7 +326,7 @@ readable directly.) Per drug: `ml162` 0.59/**0.65**, `1s,3r-rsl-3` 0.58/**0.59**
   whose variance has a transcriptional cause, not merely high-variance drugs.
 - **First non-tie between the reps — and it survives a seed check (13.07.2026).** scGPT leads on every
   aggregate and on 4/5 drugs, most clearly where PCA collapses (`kx2-391`, 0.28 vs 0.11). Repeating the
-  **K=545 `auc_z`** configuration over **3 seeds** (`target_comparison`, `outputs/legacy/target/seed_stability.csv`):
+  **K=545 `auc_z`** configuration over **3 seeds** (`target_comparison`, `outputs/archive/target/seed_stability.csv`):
 
   | seed | PCA | scGPT | gap |
   |---|---|---|---|
@@ -616,7 +616,7 @@ correction to an earlier claim that credited the curve fit rather than the stand
 > decision: [TODO](../TODO.md), R1.
 
 > ⛔ **03.08.2026 — the numbers in this table are superseded.** They were produced on the retired
-> **`mean_pv`** target and cached at `outputs/legacy/training_545_mean_pv/hvg_sweep.csv`. The sweep
+> **`mean_pv`** target and cached at `outputs/archive/training_545_mean_pv/hvg_sweep.csv`. The sweep
 > moved to `notebooks/analysis/qc/verify_variants.ipynb` §9 and was re-targeted to **`auc`**,
 > which no longer reads that cache — so the sweep currently has **no live numbers**. The table is kept
 > as the record of what was believed on 28.06.2026; do not quote it as current. Two further caveats

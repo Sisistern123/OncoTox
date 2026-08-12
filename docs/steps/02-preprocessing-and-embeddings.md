@@ -340,7 +340,7 @@ previously stated the file was versioned in the repo, which was untrue when writ
 
 The consequence is bounded and was accepted rather than patched (Selin, 12.08.2026): the assignment on
 disk is reproducible from the targets h5ad at seed 42, and it is in any case recoverable from a
-committed artifact — `outputs/legacy/panel_void_8drug/panel_oof_predictions.csv` names all **153** train+val lines, so the
+committed artifact — `outputs/archive/panel_void_8drug/panel_oof_predictions.csv` names all **153** train+val lines, so the
 test set is the labelled lines it omits. Nothing is lost by letting the sweep redraw, and every number
 scored on the current split is void on target and panel grounds anyway. **`frozen_split` writes the file
 itself when it is missing, so R2 creates it; it is committed then**, which is the point at which the

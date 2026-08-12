@@ -119,7 +119,7 @@
 > - `notebooks/README.md` §4 and `4a_percell_training.ipynb` §B both claimed §B's outputs go to
 >   **`outputs/matrix/`**, a directory that has never existed — the documentation of the `OUT_MATRIX`
 >   defect fixed in `f6cbef4`, left behind when the code was fixed. Both now name
->   `outputs/legacy/training_545_mean_pv/`, which is also where the previous run's artifacts sit, so §B
+>   `outputs/archive/training_545_mean_pv/`, which is also where the previous run's artifacts sit, so §B
 >   **overwrites in place**.
 > - `report/README.md` documented `pdflatex` twice and *"no `bibtex` run needed — references are a manual
 >   `thebibliography`"*. `07_bibliography.tex` is `\bibliographystyle` + `\bibliography{../references}`,
@@ -310,7 +310,7 @@ every one of them was a step that looked settled and had never been checked.
         measurements differ by a median of **0.49×** the drug's spread across cell lines, and **27.3 %
         of them differ by more than that full spread**. Quantified in
         `notebooks/archive/replicate_variation.ipynb` →
-        `outputs/legacy/replicate_variation.{png,csv}`; written up in
+        `outputs/archive/replicate_variation.{png,csv}`; written up in
         [Step 01](./steps/01-datasets-and-harmonization.md#genuine-repeats-are-averaged-and-they-disagree-more-than-the-targets-own-spread-10082026).
         **Six of 181 lines is not a random sample**, so this bounds nothing numerically — it says only
         that a substantial share of the target is screening noise, which items 5 (target), 6 (drug
@@ -473,7 +473,7 @@ every one of them was a step that looked settled and had never been checked.
         [Step 02](./steps/02-preprocessing-and-embeddings.md) and `report/sections/03_methods.tex` both
         stated it *was* versioned. So `frozen_split` has taken its redraw branch on every run and the
         guard has never been in force. **Both claims corrected.** Freezing the current assignment was
-        considered and rejected: it is recoverable anyway — `outputs/legacy/panel_void_8drug/panel_oof_predictions.csv`
+        considered and rejected: it is recoverable anyway — `outputs/archive/panel_void_8drug/panel_oof_predictions.csv`
         names all 153 train+val lines, so the test set is the labelled lines it omits — and every number
         scored on it is void on target and panel grounds. R2 creates the file itself; committing it
         there is where the guard starts to protect something (added to R2).
@@ -922,7 +922,7 @@ every one of them was a step that looked settled and had never been checked.
       05.08.2026. Done across 12.08: the notebooks restructured into the five-stage pipeline
       (`1_data` → `5_evaluation`, analysis regrouped under `analysis/{qc,harmonization,evaluation}`),
       `1_preprocessing` and the `run_preprocessing.py` CLI archived in favour of
-      `scripts/preprocessing/pipeline.py`, dead outputs moved to `notebooks/outputs/legacy/`, dead code
+      `scripts/preprocessing/pipeline.py`, dead outputs moved to `notebooks/outputs/archive/`, dead code
       archived (`ScGPTDrugDataset` and the single-drug chain), and `scripts/check_resolved_paths.py`
       added — a pre-merge check for paths built from variables, written after three such defects in one
       week, one of which would have silently recomputed a cross-validation while reporting that it had
@@ -931,7 +931,7 @@ every one of them was a step that looked settled and had never been checked.
       absolute `/Users` paths across 6 live notebooks — `drug_catalog` holds 14 of them and needs a
       rewrite rather than path edits, since it also reads CTRPv2's retired `v20.*` tables and inputs
       that are not in the repository; four cwd-dependent relative writes, two of which write **into**
-      `outputs/legacy/` from a live notebook; three notebooks pointing `OUT` at the flat `outputs/`
+      `outputs/archive/` from a live notebook; three notebooks pointing `OUT` at the flat `outputs/`
       root (latent — every current call site re-appends its subdirectory); and two orphaned report
       figures referenced by no `.tex`.
 
@@ -1451,7 +1451,7 @@ comparison are written up in [Step 03](./steps/03-model-and-training-design.md) 
       **GDSC2** (`data/GDSC2_fitted_dose_response_27Oct23.xlsx`) or PRISM instead of on the CTRP labels we
       train on. Cheaper than fold-internal selection and would make the panel genuinely label-blind.
 - [ ] **Loosen to ~20–50 drugs** — a handful is a diagnostic, not a model. Where does the signal die as
-      the criterion relaxes? (`outputs/legacy/learnability/ctrp_drug_learnability_auc.csv` is already ranked for
+      the criterion relaxes? (`outputs/archive/learnability/ctrp_drug_learnability_auc.csv` is already ranked for
       this, though it is ranked on the [discredited gate](./steps/corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability).)
 - [ ] **Re-run the full 8-run matrix + CV on the current target** for a like-for-like against the
       `mean_pv` Steps 04–05 numbers. **Expect this to overturn them, not refresh them**

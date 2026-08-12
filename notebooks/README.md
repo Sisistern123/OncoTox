@@ -49,9 +49,9 @@ second copy of it in a CLI was a second thing to keep in step.
 > §B keeps `cv_evaluate` rather than moving to `oof_predictions`: the two became consistent on
 > 12.08.2026 (both initialise the head bias and share `cv.grouped_folds`), and only their *return*
 > differs — §A needs predictions, §B needs per-fold metrics such as `gap`, which `oof_predictions` does
-> not return. Outputs go to `outputs/legacy/training_545_mean_pv/`, not §A's `outputs/panel/`.
+> not return. Outputs go to `outputs/archive/training_545_mean_pv/`, not §A's `outputs/panel/`.
 >
-> §B's outputs staying under `legacy/` is accepted, not a loose end (Selin, 12.08.2026).
+> §B's outputs staying under `archive/` (named `legacy/` when this was decided) is accepted, not a loose end (Selin, 12.08.2026).
 >
 > *(Corrected 12.08.2026: this read `outputs/matrix/`, a directory that has never existed. `OUT_MATRIX`
 > named `outputs`/`matrix` while the call sites supplied `legacy`/`training_545_mean_pv` themselves, so

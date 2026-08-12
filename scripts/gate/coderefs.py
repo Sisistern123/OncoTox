@@ -40,8 +40,8 @@ for p in sorted(ROOT.rglob("*")):
         if "/" not in ref:          # bare filenames are usually prose, too noisy
             continue
         # Same multi-root resolution as artifacts.py: docs cite these in short form relative to
-        # the directory a reader is assumed to be in, so `legacy/target/x.png` in a docs/ file
-        # means notebooks/outputs/legacy/target/x.png. Resolving against ROOT and the citing
+        # the directory a reader is assumed to be in, so `archive/target/x.png` in a docs/ file
+        # means notebooks/outputs/archive/target/x.png. Resolving against ROOT and the citing
         # file's parent alone reports the whole convention as broken.
         n_checked += 1
         roots = ('', 'notebooks/', 'docs/', 'notebooks/outputs/', 'docs/figures/', 'report/')

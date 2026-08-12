@@ -88,7 +88,7 @@ cp ../notebooks/outputs/embeddings/umap_cancertype_pca_vs_scgpt.png figures/fig_
 
 ⚠️ **`figures/fig_rescue.png` and `figures/fig_dreval.png` are orphans** — referenced by no
 `.tex` file, and both left over from the results withdrawn on 12.08.2026. Their sources are
-dead too: `fig_rescue.png` came from `outputs/legacy/ablations/rescue_k545.png`, whose notebook
+dead too: `fig_rescue.png` came from `outputs/archive/ablations/rescue_k545.png`, whose notebook
 is archived and cannot be re-run, and `fig_dreval.png` from `outputs/dreval/dreval_lco.png`,
 computed on the retired target and the voided panel. Whether they return, and from which
 artifact, is decided when §Results is rewritten at **R6**; refresh commands for them are not

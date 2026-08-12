@@ -228,8 +228,8 @@ on:
 > **One GDSC-derived artifact exists and is not part of the modelling work.** An initial
 > informative-drug list was produced from `notebooks/analysis/harmonization/drug_coverage.ipynb` and shared
 > on request outside this project — a CTRPv2 version and a GDSC version
-> (`notebooks/outputs/legacy/gdsc_drug_learnability.csv`, alongside
-> `ctrp_drug_learnability_mean_pv.csv`; both moved to `legacy/` when the outputs were reorganized). Both
+> (`notebooks/outputs/archive/gdsc_drug_learnability.csv`, alongside
+> `ctrp_drug_learnability_mean_pv.csv`; both moved to `archive/` when the outputs were reorganized). Both
 > were shared as **explicitly not final**, and the GDSC one for that use only; no GDSC drug list has
 > ever fed this project's drug selection or training. GDSC remains downloaded-but-unused, and is not a
 > modelling priority.
@@ -726,7 +726,7 @@ Separate from the double-counting above: some (cell line, drug) combinations rea
 **twice**, in two different experiments. `ctrp_to_h5ad.py::_build_drug_table` averages them into the
 single value that becomes the target. How far apart those two measurements are was never examined
 until now — quantified in `notebooks/archive/replicate_variation.ipynb`, artifacts
-`notebooks/outputs/legacy/replicate_variation.{png,csv}`. **That notebook was archived on 11.08.2026**:
+`notebooks/outputs/archive/replicate_variation.{png,csv}`. **That notebook was archived on 11.08.2026**:
 it reads CTRPv2's own `v20.*` tables, which are no longer the target source, so it can no longer be
 re-run against what the pipeline uses. The numbers below are its output and stand as measured.
 

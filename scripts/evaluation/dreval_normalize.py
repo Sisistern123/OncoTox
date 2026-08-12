@@ -49,7 +49,7 @@ file: ``weighted=True`` is exactly ``alpha=0.5``**, because ``DEFAULT_ALPHA`` is
 column separates ``mlp`` / ``ridge`` / ``mil``, which previously shared the weighting column via a
 ``'ridge'`` string sentinel.
 
-⚠️ **The committed ``outputs/legacy/panel_void_8drug/panel_oof_predictions.csv`` is now doubly
+⚠️ **The committed ``outputs/archive/panel_void_8drug/panel_oof_predictions.csv`` is now doubly
 incompatible** -- it has no ``fold`` column *and* its ``weighted`` is a bool of the retired kind. It is
 void on target and panel grounds anyway, so nothing is lost; it is stated here so the second
 incompatibility is read rather than discovered.
@@ -59,7 +59,7 @@ folds a prediction did *not* come from; fitting it on the same out-of-fold rows 
 from would let held-out labels define the baseline they are scored against. The writer emits it:
 ``cv.oof_predictions`` records each fold's held-out lines and ``cv.line_level_predictions(folds=...)``
 stamps them onto every row (wired 12.08.2026). ⚠️ **The committed
-``outputs/legacy/panel_void_8drug/panel_oof_predictions.csv`` predates that** and has no ``fold`` column, so this script
+``outputs/archive/panel_void_8drug/panel_oof_predictions.csv`` predates that** and has no ``fold`` column, so this script
 raises on it — correctly. It becomes runnable when notebook 3 re-runs at R4 of the sweep.
 """
 
@@ -77,7 +77,7 @@ from drevalpy.models import MODEL_FACTORY
 
 #: The drug panel, rebuilt 12.08.2026 on FDA approval and published determinants
 #: (``notebooks/2_drug_selection.ipynb``). Until then this pointed at
-#: ``outputs/legacy/learnability/ctrp_drug_learnability_auc.csv``, the artifact of the discredited kill/spare
+#: ``outputs/archive/learnability/ctrp_drug_learnability_auc.csv``, the artifact of the discredited kill/spare
 #: gate -- so the default panel was one whose selection criterion had been retracted.
 DEFAULT_PANEL_CSV = Path("notebooks/outputs/panel/panel.csv")
 DEFAULT_OUT = Path("notebooks/outputs/dreval/dreval_normalized.csv")

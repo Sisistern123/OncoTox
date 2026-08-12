@@ -153,7 +153,7 @@ PANEL_OUT = ROOT / "notebooks" / "outputs" / "panel"
 # The 27.07.2026 training run's outputs, archived 12.08.2026: they were produced on the void 8-drug
 # panel and cannot be recreated by a standard run, so they moved out of outputs/panel/. Only the
 # archived figures read them, and each guards on existence first.
-LEGACY_PANEL = ROOT / "notebooks" / "outputs" / "legacy" / "panel_void_8drug"
+LEGACY_PANEL = ROOT / "notebooks" / "outputs" / "archive" / "panel_void_8drug"
 
 GREEN = "#2e7d32"; GREEN_FILL = "#c8e6c9"
 AMBER = "#b8860b"; AMBER_FILL = "#ffe9b3"
@@ -294,7 +294,7 @@ def _heat_strip(ax, xc, y0, y1, vals, cmap, w=2.4):
                  edgecolor=INK, lw=1.3, zorder=4))
 
 
-#: One real held-out cell line, scGPT, unweighted run (notebooks/outputs/legacy/panel_void_8drug/panel_oof_predictions.csv,
+#: One real held-out cell line, scGPT, unweighted run (notebooks/outputs/archive/panel_void_8drug/panel_oof_predictions.csv,
 #: fold in which SKES1_BONE was held out). Predicted vs measured AUC for the eight panel drugs. Used
 #: instead of an invented vector so the figure shows the actual output scale -- including the visible
 #: shrinkage (predictions span 0.37-0.75 against a measured 0.04-0.91).
@@ -554,7 +554,7 @@ def figure_data() -> dict:
 
 
 def panel_corr():
-    """``notebooks/outputs/legacy/panel_void_8drug/panel_per_drug_correlation.csv`` as a DataFrame."""
+    """``notebooks/outputs/archive/panel_void_8drug/panel_per_drug_correlation.csv`` as a DataFrame."""
     import pandas as pd
 
     return pd.read_csv(LEGACY_PANEL / "panel_per_drug_correlation.csv")

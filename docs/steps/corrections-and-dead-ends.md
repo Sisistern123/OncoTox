@@ -700,10 +700,10 @@ the margins shrank.
 
 | | 13.07 (5 drugs) | 14.07 (10 drugs) | source |
 |---|---|---|---|
-| K=10 out-of-fold ρ (PCA / scGPT) | 0.42 / 0.49 | **0.360 / 0.396** | `outputs/legacy/target/target_comparison.csv` |
-| K=545 ρ (PCA / scGPT) | 0.378 / 0.430 | **0.316 / 0.328** | `outputs/legacy/target/target_comparison.csv` |
-| Ridge line-level (PCA / scGPT) | 0.428 / 0.428 | **0.343 / 0.320** | `outputs/legacy/ablations/ablation_capacity.csv` |
-| MLP `(128,64)` (PCA / scGPT) | 0.428 / 0.487 | **0.356 / 0.402** | `outputs/legacy/ablations/ablation_capacity.csv` |
+| K=10 out-of-fold ρ (PCA / scGPT) | 0.42 / 0.49 | **0.360 / 0.396** | `outputs/archive/target/target_comparison.csv` |
+| K=545 ρ (PCA / scGPT) | 0.378 / 0.430 | **0.316 / 0.328** | `outputs/archive/target/target_comparison.csv` |
+| Ridge line-level (PCA / scGPT) | 0.428 / 0.428 | **0.343 / 0.320** | `outputs/archive/ablations/ablation_capacity.csv` |
+| MLP `(128,64)` (PCA / scGPT) | 0.428 / 0.487 | **0.356 / 0.402** | `outputs/archive/ablations/ablation_capacity.csv` |
 | scGPT − PCA gap | +0.075 | **+0.036 (K=10) / +0.012 (K=545)** | derived |
 
 The consequential change is the last row: **scGPT's edge over PCA shrank to roughly seed-noise size on
@@ -749,7 +749,7 @@ biased, in both arms and in the ridge control's absence — the ridge baseline h
 it alone was never selected this way, which flatters the MLP against it.
 
 **Not uniform across the arms, which is why it affects the comparison and not only the level.** Selected
-epochs in the last committed fold log (`outputs/legacy/panel_void_8drug/panel_training_folds.csv`, void 8-drug panel —
+epochs in the last committed fold log (`outputs/archive/panel_void_8drug/panel_training_folds.csv`, void 8-drug panel —
 cited for the mechanism, not as a result): PCA `[1,1,3,1,1]`, scGPT `[10,11,2,21,4]`. The PCA arm's
 scored checkpoint was chosen from among near-tied epoch-1 states on the lines it was scored against;
 scGPT's came from a real trajectory. The same fact was already on record as the cause of the PCA arm's
@@ -905,7 +905,7 @@ counts), and it is a legitimate **diagnostic device** — not a measured ranking
 ### `ml210` was rejected on coverage
 
 **Claimed** in an earlier note. **Wrong** — corrected 14.07.2026 against the committed filter output
-`notebooks/outputs/legacy/learnability/ctrp_drug_learnability_auc.csv`, where `ml210` has coverage **0.944**,
+`notebooks/outputs/archive/learnability/ctrp_drug_learnability_auc.csv`, where `ml210` has coverage **0.944**,
 clears the 0.90 gate, and is `passes_gate=True, selected=True`. It is one of the 10 selected drugs.
 
 ### The panel was chosen blind to our labels
@@ -961,7 +961,7 @@ Nothing downstream depended on the stronger claim, and the input scGPT is actual
 
 **Corrected the same day: it is a replication, not a first.** scGPT MLP over its ridge is **+0.077** on
 the 8-drug panel against **+0.082** on the 14.07 10-drug panel (0.402 vs 0.320,
-`outputs/legacy/ablations/ablation_capacity.csv`). The replication is the stronger claim of the two, since the
+`outputs/archive/ablations/ablation_capacity.csv`). The replication is the stronger claim of the two, since the
 drug identities on the later panel were named by citation rather than by our own labels — though the pool
 they were drawn from was not, which is a separate defect.
 
@@ -1137,7 +1137,7 @@ over-shrinkage (`pred_std` 0.33), not lost ranking.
 > **Scope correction (14.07.2026), and it matters.** Those four ablations ran on the **corrected**
 > (K=5) setup. They show the knobs do not *improve* the corrected model — they do **not** show the knobs
 > could not have *fixed* the K=545 collapse. Tested separately on the broken setting (K=545, raw `auc`,
-> scGPT, ρ = −0.063; `outputs/legacy/ablations/rescue_k545.csv`):
+> scGPT, ρ = −0.063; `outputs/archive/ablations/rescue_k545.csv`):
 >
 > | intervention | ρ |
 > |---|---|
