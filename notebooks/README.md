@@ -60,6 +60,7 @@ Nothing here is on the pipeline path; each answers a question about it.
 | Notebook | Question it answers |
 |---|---|
 | `verify_variants.ipynb` | QC of `hvg5000` vs `all_genes`, the PCA-vs-scGPT UMAP latent validation, and (§9) the gene-set sweep — heads-beating vs gene count under CV |
+| `hvg_sweep_build.ipynb` | Builds the `hvg1000/2000/3000` variants §9 compares, through the same `pipeline.*` steps the numbered stages use. Was `1_preprocessing` §B; moved out of the pipeline 12.08.2026 because it exists for one analysis. ⚠️ Hours and gigabytes — gated behind `RUN_HVG_SWEEP` |
 | `gene_symbol_rescue.ipynb` | How many genes scGPT discarded that are in its vocabulary under a **current** HGNC symbol — the symbol-matching defect, quantified |
 
 ### `analysis/harmonization/` — does the join hold?

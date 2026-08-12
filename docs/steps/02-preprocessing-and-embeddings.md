@@ -289,9 +289,18 @@ guard starts protecting anything. The reason is that
 eligibility is *not* stable — a line qualifies if it carries at least one CTRP label, so changing the
 drug panel or `ctrp_to_h5ad`'s filters silently moves lines between train, val and test, and runs from
 either side of the change look comparable when they are not. A line present in the data but missing from
-the frozen file raises rather than being assigned. **This will hard-fail the panel rebuild**, which is
-the intended behaviour: regenerating is a deliberate act that invalidates comparability with everything
-run before it.
+the frozen file raises rather than being assigned: regenerating is a deliberate act that invalidates
+comparability with everything run before it.
+
+> ⚠️ **Corrected 12.08.2026.** This paragraph used to end *"**This will hard-fail the panel rebuild**,
+> which is the intended behaviour"*. That is no longer true, and the reason is a decision taken the same
+> day: **the panel does not feed `ctrp_to_h5ad`**
+> ([Step 01](01-datasets-and-harmonization.md#the-panel-does-not-enter-the-target-build-decided-12082026-selin)).
+> `M_ctrp` is built over every drug clearing `--min-cell-lines`, so a panel revision does not change
+> which lines carry at least one label, does not change eligibility, and therefore cannot trip the
+> guard. The coupling this sentence described was real while the panel *could* reach the target matrix;
+> severing it is what removed the hard-fail. Changing `--min-cell-lines` or the response source still
+> moves eligibility and still trips it — those remain genuine re-freeze events.
 
 **What it invalidates.** Every `X_pca` on disk — and therefore every PCA number in these docs and in
 the report — predates this change. ⛔ Nothing is recomputed until the review is finished; see the
