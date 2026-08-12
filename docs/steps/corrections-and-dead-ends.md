@@ -8,6 +8,20 @@ abandoned, and working-method failures worth not repeating.*
 carries a one-line pointer here. So a number in Steps 01–05 is current unless a pointer says otherwise,
 and nothing in this file is a live result.
 
+> ### 📁 This file is archive, and deliberately outside the pipeline review's scope
+>
+> **Decided 13.08.2026 (Selin).** The 28.07 review swept the documentation that describes the *current*
+> pipeline. This file was **not** swept and will not be — it is 1,296 lines whose entire purpose is to
+> hold what no longer holds, so auditing it against the current pipeline would be checking a record of
+> the past against the present and finding, correctly, that it disagrees.
+>
+> **What that means for a reader.** Do not treat anything here as current, and do not treat the absence
+> of a correction marker as evidence that an entry is still accurate — entries are dated statements of
+> what was believed then. The live record is Steps 01–05 and `docs/TODO.md`.
+>
+> **What it does not mean.** Entries are still *written* when something is superseded — the file keeps
+> growing forward. What is out of scope is retrospectively re-auditing what is already in it.
+
 **Why keep any of it.** A refuted hypothesis is a result — it rules something out, and the ruling-out is
 usually what justifies the next step. A retracted claim that is quietly deleted leaves the docs looking as
 though they were always right, which makes the same error easy to repeat and the record impossible to
