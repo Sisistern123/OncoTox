@@ -41,6 +41,36 @@ Recorded here because a check is only as trustworthy as its documented ways of l
   `` `N[Pt](N)(Cl)Cl` `` is not read as a link. An ad-hoc regex written during a review *did* trip
   on it and report a false broken link — the lesson is about ad-hoc checks, not about this one.
 
+## A defect class no check here can catch
+
+Every limitation above is about a check examining the wrong thing, or too little of it. This one is
+different, and it is recorded because the reflex after reading the rest of this file is to believe
+that more checks would have caught more.
+
+**13.08.2026 — cell-level arrays passed into a line-level contract.** While fixing the head-bias
+defect in `dreval_benchmark` (audit 08's fix had reached three training paths of four), the first
+attempt passed the dataset's per-**cell** `y` and `mask` to `cv.per_drug_line_mean`, whose contract is
+per-**line**. On a fixture with three lines of true value 0.2 / 0.9 / 0.9 and cell counts
+1990 / 56 / 100:
+
+    line-level (correct)   0.667
+    cell-level (the bug)   0.251     — dominated by the one cell-rich line
+
+**No test would have failed.** Both are finite floats in the right range; both look like a plausible
+head bias; nothing raises, nothing is empty, no denominator collapses. A unit test asserting
+"returns a float per drug" passes on the wrong one. It was caught by *reading the callee's docstring
+before wiring the call* — the docstring says, in as many words, that a cell-level mean "would weigh a
+1,990-cell line 35x a 56-cell line for the same single measurement".
+
+The generalisation, such as it is: **checks catch the absent and the malformed; only reading catches
+the plausible-but-wrong.** Where a function's correctness depends on which *level* its inputs are
+aggregated at — cell versus line, fold versus pooled, drug versus panel — the contract has to be read,
+because every level produces a number of the right type and magnitude.
+
+(`check_unbound_names.py` did catch the *intermediate* state of that same edit — two names used before
+being imported — in its first hour in the repository. That is the class it exists for, and it is a
+different class from this one.)
+
 ## What they do not do
 
 They are read-only. Nothing trains, reads the `h5ad` data, or writes outside `report/` and `/tmp`.
