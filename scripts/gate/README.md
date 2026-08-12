@@ -51,6 +51,26 @@ was sent back to its author **with a question attached** — investigate this, d
 which forced a look at the artifact instead of a re-read of the sweep's own output. Had the finding
 been accepted, it would have stood. Route a finding back with a question; never with an acceptance.
 
+## `check_calls.py` — three checks for defect classes nothing here was catching (13.08.2026)
+
+Added at Gate 4 of the pipeline review. Each generalises a defect found **by hand** during it, on the
+principle that a defect found once by reading will be reintroduced unless something looks for it.
+
+| check | generalises | what it does |
+|---|---|---|
+| **signatures** | — | every call into `scripts.*` against the real signature: unexpected keywords, too many positionals, missing required arguments |
+| **preconditions** | `cv.oof_predictions`'s `counts_h5ad`, which **no caller passed**, so R4 would have died on its first arm | enumerates parameters that *have* a default but whose value makes the function `raise`. A signature check cannot see these — the call is well-formed and the failure is hours into a run |
+| **producers** | `drug_catalog` §5, which read a path §3 never wrote, so it raised on any machine | every file a notebook reads must be written by something, or be a known raw source |
+
+**The preconditions check enumerates; it does not pass or fail.** Whether a caller satisfies a
+precondition depends on the *values* it passes, which are not static. The output is a list to read.
+Treating it as a gate would be claiming an assurance it cannot give.
+
+**The producers check reports orphans rather than failing on them.** It follows string literals only,
+so a path built through a variable — `out = DIR / name` then `df.to_csv(out)` — reads as an orphan
+when it is not. It did exactly that on its first run, and the finding was verified by hand and left
+in as a reminder that the check is a prompt, not a verdict.
+
 ## Known limits
 
 Recorded here because a check is only as trustworthy as its documented ways of lying.
