@@ -313,10 +313,24 @@ Both the per-gene mean/sd and the rotation are fitted on training cells and then
 key is absent rather than falling back to the leaky matrix. The key actually read is recorded in each
 run's `run_meta.json` as `rep_key`.
 
-**Still not fixed: cross-validation.** CV folds are drawn at training time (`cv.py`, GroupKFold), so
-`resolve_rep` leaves them on the all-cells `X_pca` — five fold-specific matrices cannot be one stored
-array. HVG selection also remains an all-cells step, for both arms. So the asymmetry above is reduced,
-not eliminated, and every CV number still carries it.
+**Cross-validation — fixed in the code, not yet in the numbers.** ⚠️ *Split into two claims on
+13.08.2026 (Gate 4), because they stopped having the same truth value and a single sentence could only
+be half-corrected.* It read: *"**Still not fixed: cross-validation.** CV folds are drawn at training
+time (`cv.py`, GroupKFold), so `resolve_rep` leaves them on the all-cells `X_pca` — five fold-specific
+matrices cannot be one stored array … So the asymmetry above is reduced, not eliminated, and every CV
+number still carries it."*
+
+- ✅ **The code no longer does this (12.08.2026).** `cv.fold_pca_projections` fits one PCA per fold on
+  that fold's own fitting cells and hands the datasets a scratch key, and
+  `cv.fold_pca_projections_for` **raises** for a PCA representation given no counts file rather than
+  falling back to the stored all-cells `X_pca`. `resolve_rep` is not on the CV path at all any more.
+  Five fold-specific matrices still cannot be one stored array — which is why they are computed at
+  training time instead of stored.
+- ⛔ **Every CV number on disk still carries the leak, and will until R4.** The artifacts predate the
+  code, so this half stays true until the sweep regenerates them, and it is the half that governs
+  whether a number may be quoted.
+- ⛔ **HVG selection remains an all-cells step, for both arms**, and R4 does not change that. It is a
+  third claim that was riding inside the same sentence and is not resolved by either of the above.
 
 **"All cells" includes cells that never train (noted 10.08.2026).** `convert` runs before the CTRP
 join, so the gene selection, `sc.pp.scale`'s per-gene mean/sd and the all-cells rotation are all fitted

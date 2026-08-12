@@ -169,8 +169,8 @@
 >
 > | Where | The sentence | Why it is not editable yet |
 > |---|---|---|
-> | `docs/steps/02` §"Still not fixed: cross-validation" | *"`resolve_rep` leaves them on the all-cells `X_pca` … every CV number still carries it"* | True until training resolves the representation differently |
-> | `scripts/model/dataset.py:26` (`resolve_rep` docstring) | *"still leaky, and documented as such"* | Same, and it is the code's own description of itself |
+> | `docs/steps/02` §"Cross-validation — fixed in the code, not yet in the numbers" | the **middle bullet only**: *"every CV number on disk still carries the leak"* | ⚠️ **Rewritten 13.08.2026 (Gate 4) because it was no longer one claim.** The old sentence bundled three: the code falling back to the all-cells `X_pca` (**false since 12.08** — `fold_pca_projections_for` raises), the numbers on disk still carrying the leak (**true until R4** — this row), and HVG selection remaining an all-cells step (**true, and R4 does not change it**). Split into three bullets so each can be swept when its own trigger fires; sweeping the old sentence as a unit would have corrected one third of it |
+> | ~~`scripts/model/dataset.py:26`~~ | ~~*"still leaky, and documented as such"*~~ | ✅ **Row retired 13.08.2026 (Gate 4): already swept.** `resolve_rep`'s docstring now records that cross-validation stopped routing through it on 12.08.2026. Nothing here to sweep at R4 |
 > | `docs/steps/02`, the `X_pca` table row | *"used for: UMAPs and latent-space validation — **and every CV run**"* | ⚠️ A **table cell**, not prose: a sweep for "leaky" or "not fixed" will not find it |
 > | `report/sections/06_limitations_and_outlook.tex:81` | *"those remain on the all-cells decomposition, **and gene selection remains an all-cells step for both arms**"* | ⚠️ **Half-true at R4**, the nastiest of the four — the second clause stays true *permanently* under decision 1, while the first changes. Editing it as one unit will break the half that is right |
 > | ⭐ `report/sections/06_limitations_and_outlook.tex:73-74` | *"**The bias runs toward the control, so any scGPT advantage measured this way is conservative**"*, and the `\revision` after it, *"both asymmetries … accumulate rather than offset"* | **The one that matters most: this is the retracted lower-bound claim, in its other home.** Valid today, because its premise — the rotation estimated over every cell — is what the code does. `fitc` dissolves the premise at R4 and the conclusion with it. §Methods no longer asserts a lower bound; **this passage still does**, so the retraction stays half-propagated until R4. Now carries a dated marker naming this exact sentence as the one to revisit. ⚠️ The **second** asymmetry in it, the gene-symbol one, survives R4 untouched — no fitting set affects which genes reach the model — so this is another sentence that must not be edited as one unit |
@@ -189,52 +189,25 @@
 > and flagged instead, which is a correction plus a dated marker — the repo's own convention — not a
 > half-repair.
 >
-> ### ⛔ A second freeze class — accurate until Huber leaves the code, false immediately after
+> ### ✅ The second freeze class is discharged — retired 13.08.2026 (Gate 4)
 >
-> **Different trigger, so it is listed separately.** The four above turn false at **R4**, when the
-> representations are regenerated. These turn false at **a specific commit**: the model session is
-> removing `--loss huber`, `TrainConfig.huber_beta`, the name check and the `smooth_l1_loss` branch
-> (Selin, 12.08.2026 — Huber is dropped from the loss comparison *and* from the code). Whoever lands
-> that commit should sweep these in the same change; they are not R4's problem and will be stale for
-> however long the gap is.
+> **It fired, the sweep happened, and the block was never closed.** It covered four sentences that
+> were accurate while `--loss huber` existed and would turn false the moment it left. Huber left in
+> `f16b3ec` (merged 13.08.2026): `training_utils._make_loss_fn` accepts `{"mse", "mae"}`,
+> `train_multitask`'s CLI is `choices=("mse", "mae")`, and **all four locations it named were swept** —
+> `docs/steps/03` lines 14, 199 and 429, and `docs/project_progress.md:137`. Verified by grepping the
+> whole of `docs/` and `report/`: no occurrence of "Huber" survives outside this entry.
 >
-> **Do not pre-emptively rewrite them.** The removal is on a branch. Until it lands, every sentence below
-> is an accurate description of what the code does, and this is exactly the inversion worth naming: they
-> were left alone *because* they were accurate, and the same accuracy is what makes them false the moment
-> the option goes.
+> ⚠️ **Why it is retired rather than left standing.** Until today the block still read *"Do not
+> pre-emptively rewrite them"* and *"`main`'s code offers `{mse, huber}`"* — so every row of its table
+> misdescribed both the docs and the code, and the block instructed the reader not to touch it. That is
+> the same shape as the 🔴 head-bias box Gate 1 closed: an instruction that outlives its trigger costs
+> the same attention as a live one, and it is the *second* instance of that shape in this file.
 >
-> ⚠️ **Each of the four is wrong twice over once that branch lands, not once.** The branch **adds MAE**
-> as well as removing Huber (`291440e`, then `f16b3ec`), and **MAE is not on `main` today** — `main`'s
-> code offers `{mse, huber}`. So the fix is a *substitution*, not a deletion, and a sweep that only
-> strikes "Huber" leaves all four still wrong, now by omission. Written out so it is mechanical:
->
-> | Where | Reads today (accurate against `main`) | Becomes |
-> |---|---|---|
-> | `docs/steps/03-model-and-training-design.md:14` | optimizes a masked **MSE** or **Huber** loss | **MSE** or **MAE** |
-> | `docs/steps/03-model-and-training-design.md:199` | `sq = (pred − y)²` (MSE), or `smooth_l1_loss(beta=0.05)` for `--loss huber` | MSE, or `l1_loss` for `--loss mae` — `smooth_l1_loss` and `huber_beta` are both gone |
-> | `docs/steps/03-model-and-training-design.md:429` | the CLI flag list, `--loss {mse,huber}` | `--loss {mse,mae}` |
-> | `docs/project_progress.md:137` | *"fully supervised regression (masked **MSE/Huber**)"* | masked **MSE/MAE** — ⚠️ an index page, so it reads as current |
->
-> *(Line numbers refreshed 12.08.2026 — the CLI site moved 415 → 429 when the loss-comparison note above
-> was added to the same file. Re-grep rather than trusting them if that file moves again.)*
->
-> ✅ The *decision* half is already done: Step 03's loss-comparison grid is **MSE / MAE × α ∈ {off, 0.5,
-> 1.0}, six arms**, with the grounds recorded. Only the code descriptions are waiting.
->
-> **Why these are not corrected in advance, stated because it looks like an omission.** There is **no
-> defect on `main` today** — all four match `main`'s code exactly. Correcting them now would put the docs
-> ahead of the code in *both* directions at once: claiming MAE exists when it does not, and denying Huber
-> when it does. That is the same self-contradiction-on-merge that `06_limitations:67` was, except
-> self-inflicted. **They land in the commit that merges the R4 training branch**, which is also the only
-> moment at which the replacement column above becomes true.
->
-> ⏸️ **The mechanism is not final, and the flag holds either way.** Decision 2 — *how* the CV PCA is
-> fitted — was reopened on cost the same day it was taken: a per-fold fit at training time needs
-> `paths.raw_h5ad` (~2.15 GB), which the training path has never opened, because the targets `.X` has the
-> scGPT OOV genes dropped and would give a different gene set; and that cost compounds across R4's loss
-> grid. It may be re-taken, or become a precomputed-at-R2 change instead. **The leak closes either way**,
-> so all four sentences stop being true either way — only the date and the replacement wording move.
->
+> **What the block got right, kept because the reasoning generalises:** the fix was a *substitution*
+> rather than a deletion, because the same branch that removed Huber added MAE. A sweep that only
+> struck "Huber" would have left all four sentences wrong by omission instead of by commission. That
+> is worth remembering the next time an option is replaced rather than dropped.
 > ### Re-based onto `58fadd7`, and two of the clearings above were overtaken by it
 >
 > This audit was cut against `f6cbef4`; Selin committed **`58fadd7`** while it was running, splitting
@@ -775,6 +748,9 @@ every one of them was a step that looked settled and had never been checked.
         closer to L1 than to what the docs describe. Left at its value rather than silently rescaled,
         because `beta` is a threshold on the residual scale and choosing one is an analysis decision;
         it is derived in the loss comparison if Huber is included.
+        *(13.08.2026: `TrainConfig.huber_beta` no longer exists — `f16b3ec` removed it with the rest of
+        Huber. The paragraph is left in the present tense it was written in, as the record of a closed
+        finding; what happens **if Huber returns** is carried forward at item 9A instead.)*
   - [ ] **Left for item 11:** the four quantities the loss is *not* asked to optimize — order
         (Spearman), order at the top (NDCG@K against a random null), values (RMSE in AUC units) and
         spread (calibration slope) — get a section each in `notebooks/5_evaluation.ipynb`, which is
