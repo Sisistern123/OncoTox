@@ -20,11 +20,23 @@ def resolve_rep(
     ``X_pca_train_<split>`` for each fixed split, fitted on that split's training cells
     only. A run scored on a fixed split therefore reads the train-fitted key by default.
 
-    This applies only to PCA. ``X_scGPT`` comes from frozen pretrained weights and a
-    per-cell binning, so it is never fitted on this data and has nothing to resolve.
-    Cross-validation passes ``split_col=None`` (its folds are drawn at training time, not
-    stored), so it falls through to ``X_pca`` -- still leaky, and documented as such in
-    docs/steps/02.
+    This applies only to PCA, and the reason is narrower than "scGPT is not fitted on our
+    data" -- which is false, and was corrected by Selin on 12.08.2026. scGPT **is** fed this
+    project's CPM matrix. What it has is no step whose parameters are estimated **across
+    cells**: its weights are pretrained and frozen, and its value binning digitizes each cell
+    against that cell's own non-zero distribution (``cell_emb.py`` -> ``DataCollator(
+    do_binning=True)`` -> per-row ``binning()``). PCA needs a mean, a standard deviation and a
+    rotation estimated over a set of cells; scGPT needs none. That single asymmetry is the only
+    thing there is to resolve, and it is why the same argument decided which cells a fold's PCA
+    may see (``cv.fold_pca_projections``).
+
+    **Cross-validation no longer routes a PCA representation through here (12.08.2026).** It
+    used to: ``split_col=None`` under a ``cell_mask`` fell through to the stored all-cells
+    ``X_pca``, so a held-out line's coordinates depended on held-out lines. Decision 2 of the
+    three fits closed that -- ``cv.fold_pca_projections_for`` fits one PCA per fold and hands the
+    datasets a scratch key holding that fold's projection, and asking for ``X_pca`` under CV
+    without the counts file now raises rather than falling back. So the ``split_col=None`` branch
+    below still returns ``use_rep`` unchanged, but what it is handed is already fold-specific.
 
     ``all_cells_pca=True`` forces the stored ``X_pca``; it exists so the leaky and
     non-leaky variants can be compared deliberately, not as a convenience.
