@@ -43,17 +43,20 @@ from scipy.stats import gaussian_kde
 
 DEFAULT_ALPHA = 0.5
 DEFAULT_CAP = 3.0
-#: **Retired 11.08.2026 (Selin) — do not reintroduce without a source.** This clipped the response at
-#: 1.1 on the theory that anything above it was assay artifact, and existed so that inverse-density
-#: weighting would not hand the sparse upper tail the largest weights. It goes because: the threshold
-#: was never sourced beyond this comment; the benchmark we follow applies **no** quality filter or
-#: clipping at all, "to maintain comparability to previous studies and avoid data loss" (DrEval,
-#: Methods); the weighting it protected is itself a refuted hypothesis; and most of the old upper tail
-#: was an artifact of a defective normalisation rather than data. On the current ``auc_cc`` target only
-#: 3.65 % of measurements exceed 1.1 and p99 is 1.185. See
-#: docs/steps/01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026.
-#: If audit 09 keeps density weighting, clipping the weighting's *input* -- never the target -- may be
-#: reopened there.
+# RETIRED CONSTANT `DEFAULT_WINSOR`. Kept as the record of why it went; it documents nothing below
+# this line. Was a `#:` doc-comment until 12.08.2026, which made Sphinx attach it to WeightFn, the
+# next declaration -- a paragraph about a deleted constant appearing as that class's documentation.
+# Retired 11.08.2026 (Selin) -- do not reintroduce without a source. It clipped the response at
+# 1.1 on the theory that anything above it was assay artifact, and existed so that inverse-density
+# weighting would not hand the sparse upper tail the largest weights. It goes because: the threshold
+# was never sourced beyond this comment; the benchmark we follow applies **no** quality filter or
+# clipping at all, "to maintain comparability to previous studies and avoid data loss" (DrEval,
+# Methods); the weighting it protected is itself a refuted hypothesis; and most of the old upper tail
+# was an artifact of a defective normalisation rather than data. On the current ``auc_cc`` target only
+# 3.65 % of measurements exceed 1.1 and p99 is 1.185. See
+# docs/steps/01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026.
+# If audit 09 keeps density weighting, clipping the weighting's *input* -- never the target -- may be
+# reopened there.
 
 
 @dataclass(frozen=True)

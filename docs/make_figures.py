@@ -336,13 +336,20 @@ def figure_data() -> dict:
     import anndata as ad
     from sklearn.model_selection import GroupKFold
 
-    from scripts.layout import PipelinePaths
-    from scripts.training.density_weighting import DEFAULT_WINSOR
+    from scripts.layout import DEFAULT_CTRP_SCORE, PipelinePaths
 
-    src = ad.read_h5ad(PipelinePaths.build(None, "hvg5000", "auc").targets_h5ad, backed="r")
+    # Was PipelinePaths.build(..., "auc") with a np.clip at DEFAULT_WINSOR. Both were removed from
+    # the pipeline on 11.08.2026: CTRP_SCORES rejects "auc", so this raised ValueError, and the
+    # DEFAULT_WINSOR import above it raised ImportError before that. Neither fired in practice
+    # because figure_data.npz is committed and short-circuits this whole function -- so the
+    # breakage was invisible until the cache is deleted, which is exactly what R4 does. Fixed
+    # 12.08.2026; no winsorization now, matching the pipeline.
+    src = ad.read_h5ad(
+        PipelinePaths.build(None, "hvg5000", DEFAULT_CTRP_SCORE).targets_h5ad, backed="r"
+    )
     all_drugs = list(src.uns["ctrp_drugs"])
     kcol = [all_drugs.index(d) for d in PANEL]
-    Y = np.clip(np.asarray(src.obsm["Y_ctrp"], dtype=float), None, DEFAULT_WINSOR)
+    Y = np.asarray(src.obsm["Y_ctrp"], dtype=float)
     M = np.asarray(src.obsm["M_ctrp"], dtype=bool)
     groups = src.obs["Cell_line"].astype(str).to_numpy()
     split = src.obs["split_ctrp"].astype(str).to_numpy()

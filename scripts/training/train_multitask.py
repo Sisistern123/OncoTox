@@ -93,7 +93,8 @@ def _parse_args():
         nargs="+",
         type=int,
         default=None,
-        help="Override hidden dims (default: 64,32 for X_pca; 128,64 for X_scGPT).",
+        help="Override hidden dims (default: 128,64 for both X_pca and X_scGPT -- the trunk is "
+             "matched so that only the representation differs).",
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--tag", default=None, help="Logging tag (default: --use-rep value).")

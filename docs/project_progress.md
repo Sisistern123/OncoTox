@@ -112,10 +112,15 @@ Step 08   + clinical fine-tuning               (continuous pre-train → binary 
 - A training example = **one single cell**; input = a 512-dim scGPT embedding (`X_scGPT`) or PCA
   (`X_pca`). Cell line / cancer type / drug are **not** input features.
 - Target = a CTRPv2 response score chosen with `--score`, defined per **(cell line × drug)** and
-  broadcast to every cell of that line. **Default since 27.07.2026: raw `auc`** — the grid-normalized
-  curve-fit AUC, winsorized at 1.1, in native viability units. `auc_z` (per-drug z-scored) was the
-  default 13.07–27.07 and is [retired](./steps/corrections-and-dead-ends.md#auc_z-as-the-training-target);
-  the legacy `mean_pv` still backs Steps 04–05 and is not comparable to either.
+  broadcast to every cell of that line. **Default since 11.08.2026: `auc_cc`** — the area under
+  DrEval's CurveCurator re-fit of CTRPv2's raw dose-response data, in native viability units, with
+  **no winsorization and no quality filter**
+  ([Step 01](./steps/01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026)).
+  `ln_ic50_cc` is the alternative measure from the same fit and is not the default: it is undefined
+  for ~40 % of curves by construction. Three earlier targets are
+  [retired](./steps/corrections-and-dead-ends.md#auc_z-as-the-training-target) and none is comparable
+  to `auc_cc` — `auc` (divided by the wrong quantity), `auc_z` (per-drug z-scored `auc`), and the
+  legacy `mean_pv` that still backs Steps 04–05.
 - Training is **fully supervised regression** (masked MSE/Huber). scGPT is a **frozen** self-supervised
   feature prior; the mask handles label sparsity but does **not** make it semi-supervised.
 

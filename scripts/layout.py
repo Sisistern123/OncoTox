@@ -183,7 +183,8 @@ def add_data_args(
         default=score_default,
         help=(
             "CTRPv2 response score used as the target. Each score gets its own targets "
-            "h5ad, so auc and mean_pv runs can be compared head-to-head."
+            "h5ad, so auc_cc and ln_ic50_cc runs can be compared head-to-head without "
+            "rebuilding the shared convert/scgpt outputs."
         ),
     )
 
