@@ -298,9 +298,33 @@ def _heat_strip(ax, xc, y0, y1, vals, cmap, w=2.4):
 #: fold in which SKES1_BONE was held out). Predicted vs measured AUC for the eight panel drugs. Used
 #: instead of an invented vector so the figure shows the actual output scale -- including the visible
 #: shrinkage (predictions span 0.37-0.75 against a measured 0.04-0.91).
+#: ⚠️ These eight values describe ``EXAMPLE_DRUGS`` -- the **void 8-drug** panel -- and the drawing
+#: labels bar ``j`` with ``PANEL[j]``, the **rebuilt 11-drug** panel. The two share three compounds in
+#: a different order, so every bar carries another drug's name and four name compounds that were never
+#: in that run. Guarded by :func:`_example_matches_panel` rather than repaired: repair needs
+#: out-of-fold predictions for the rebuilt panel, which exist only after R4.
 EXAMPLE_LINE = "SKES1_BONE"
+EXAMPLE_DRUGS = ["methotrexate", "dasatinib", "paclitaxel", "vincristine",
+                 "afatinib", "topotecan", "tanespimycin", "selumetinib"]
 EXAMPLE_PRED = [0.438, 0.663, 0.384, 0.372, 0.748, 0.545, 0.666, 0.739]
 EXAMPLE_TRUE = [0.511, 0.797, 0.122, 0.036, 0.692, 0.177, 0.655, 0.908]
+
+
+def _example_matches_panel(name: str) -> bool:
+    """True (and prints why) if the architecture example vector does not describe ``PANEL``.
+
+    The bars are real out-of-fold predictions, so each one is a measurement and carries the name of
+    the drug it was measured on. When the example vector and the panel disagree, drawing them
+    together publishes each measurement under some other compound's name -- which no amount of
+    caption disclaims. Skip-with-a-reason, the same convention the data-derived figures use.
+    """
+    if EXAMPLE_DRUGS == list(PANEL):
+        return False
+    print(f"  {name}: SKIPPED — the example prediction vector is the void 8-drug panel "
+          f"({', '.join(EXAMPLE_DRUGS[:3])}…) and the current panel is {len(PANEL)} drugs "
+          f"({', '.join(PANEL[:3])}…). Drawing them together labels each measurement with "
+          f"another drug's name. Needs out-of-fold predictions for the rebuilt panel (R4).")
+    return True
 
 
 def draw_architecture(ax, *, compact: bool = False):
@@ -437,7 +461,7 @@ def draw_architecture(ax, *, compact: bool = False):
 
 
 def build_architecture():
-    if _needs_data("model_architecture.png"):
+    if _needs_data("model_architecture.png") or _example_matches_panel("model_architecture.png"):
         return
     fig, ax = plt.subplots(figsize=(17.0, 6.6))
     draw_architecture(ax)
@@ -575,7 +599,7 @@ def build_pipeline_flow():
     ``loss_01_objective.png`` with ``compact=True``, so the pipeline cannot drift away from the
     standalone figures. Everything that needs a sentence lives in the docs, not on the slide.
     """
-    if _needs_data("pipeline.png"):
+    if _needs_data("pipeline.png") or _example_matches_panel("pipeline.png"):
         return
     d = figure_data()
     corr = panel_corr()
