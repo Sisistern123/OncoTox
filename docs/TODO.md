@@ -956,13 +956,40 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 > `notebooks/archive/` stays out, by the same rule that put it there: those notebooks read targets that
 > no longer exist, so re-running them either raises or manufactures numbers on a retired scale.
 >
-> ⚠️ **The order is not yet written down, and it is not free.** A notebook must run after everything
-> whose outputs it reads, and the dependencies are not all through the pipeline artifacts — several
-> notebooks read `outputs/` files written by *other notebooks* (`5_evaluation` reads `outputs/panel/`;
-> `dreval_benchmark` reads the panel and writes `dreval/`). Two are also **blocked rather than merely
-> stale** and cannot run at all until their blocker clears (`dreval_benchmark`, `diagnostics`).
-> Enumerating every notebook with its inputs, its blocker and its position is the next thing to produce;
-> **until that exists this entry states the requirement, not the plan**, and must not be read as one.
+> **The order — the numbered chain in sequence, then everything else (Selin, 13.08.2026).** Two groups,
+> run one after the other rather than interleaved.
+>
+> **1 · The numbered chain, strictly sequential.** `1_data` → `2_drug_selection` → `3_representations`
+> → `4a_percell_training` → `5_evaluation`. `4b_mil_training` is a three-cell stub holding a
+> pre-registered success criterion; it has no code and nothing to run. **Verified 13.08.2026: no
+> numbered notebook reads any analysis notebook's output — zero, across all six.** The chain is
+> self-contained and nothing outside it can gate it.
+>
+> **2 · Every other notebook, after the chain has finished.** Each of the seven runnable ones reads a
+> pipeline artifact, so running the group *after* the whole chain satisfies every prerequisite at once
+> and removes any need to interleave:
+>
+> | notebook | what it reads | earliest the reads allow |
+> |---|---|---|
+> | `analysis/qc/hvg_sweep_build` | — it **writes** `hvg1000/2000/3000`, driving all six steps itself | after `1_data` |
+> | `analysis/qc/gene_symbol_rescue` | `SCP542_CCLE.h5ad`, the scGPT OOV tables | after `3_representations` |
+> | `analysis/qc/verify_variants` | five variants' targets, raw h5ad | after `hvg_sweep_build` |
+> | `analysis/harmonization/drug_coverage` | `hvg5000` and `all_genes` targets | after `3_representations` |
+> | `analysis/harmonization/cell_line_join_verification` | targets h5ad, DrEval CTRPv2 tables | after `3_representations` |
+> | `analysis/evaluation/diagnostics` | `outputs/panel/panel_oof_predictions.csv` | after `4a` |
+> | `analysis/evaluation/dreval_benchmark` | `outputs/panel/panel.csv`, `panel_oof_predictions.csv` | after `4a` |
+>
+> The last column is what the file reads permit, **not a schedule**. Running the whole group after the
+> chain is what makes it independent of the chain — the property that matters operationally: these
+> notebooks never gate the pipeline, never feed back into it, and need no fixed order among themselves.
+> **One exception, and it is inside the group:** `hvg_sweep_build` must precede `verify_variants`,
+> because it builds three of the five variants that notebook reads. It is a pipeline driver living in
+> `analysis/qc/`, which is why it does not look like a dependency until you read its cells.
+>
+> ⚠️ **Not in the rerun: `analysis/harmonization/drug_catalog`.** 15 absolute `/Users/` paths and 6 reads
+> of CTRPv2's retired `v20.*` tables. It is simultaneously the **only** notebook with no pipeline
+> dependency at all and the only one that cannot run on another machine. It needs the rewrite already
+> recorded above, not a position in the order.
 
 - [x] **R1 · DECIDED 12.08.2026 (Selin): re-embed `hvg5000` + `all_genes`.** Not all five, not
       `hvg5000` alone. This covers every number the report currently quotes, at the middle cost —
