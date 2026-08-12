@@ -35,6 +35,13 @@ from torch.utils.data import DataLoader
 class TrainConfig:
     # 25 is a safe cap: over 36 recorded runs the best epoch was median 6, max 11, and
     # early stopping (patience 10) has never reached 25. 50 only cost wall-clock.
+    #
+    # The default is NOT what the training notebook passes. `4_training` sets epochs=50 for both of
+    # its sections (Selin, 12.08.2026, decided when the 8-run matrix was folded in) so that one
+    # config covers both rather than 25 for one and 50 for the other. Left at 25 here deliberately:
+    # whether the default itself should move is review item 10, which owns the epoch question, and
+    # the evidence above is a fixed-split measurement that the inner-holdout change may shift --
+    # each fold now fits on ~104 lines rather than 122, so where training peaks can move.
     epochs: int = 25
     lr: float = 1e-3
     weight_decay: float = 1e-3
