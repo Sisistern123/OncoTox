@@ -37,18 +37,12 @@ Derive it — ``len(PANEL)``, a row count, a config value. ``"the 8 heads"`` was
 was found (the rebuilt panel has 11), and ``180 trainable`` becomes 181 at the sweep. A number typed
 into a string cannot be checked by anything.
 
-AUDIT AGAINST THOSE RULES — 12.08.2026; ✅ items applied 13.08.2026
--------------------------------------------------------------------
-**Applied:** every assertion (⛔), both counts that were *wrong* rather than merely hardcoded, and
-the infographic cleanup of ``draw_loss_objective``. **Not applied, and why:** the four headline
-captions quantify results and would only be rewritten after R4; the seven remaining counts are
-correct today and are not derivable from any committed artifact under the freeze; and
-``draw_architecture``'s decorative marks cannot be touched because every figure that renders it is
-skipped, so no change to it can be looked at — and this file does not commit drawings nobody has
-seen. Each is marked below.
-
+AUDIT AGAINST THOSE RULES — 12.08.2026, not yet applied
+-------------------------------------------------------
 Every title, caption, annotation and axis label in this file, judged twice: *does it assert a
-result?* and *is it a scientific caption or a headline?*
+result?* and *is it a scientific caption or a headline?* **Nothing below has been rewritten.** The
+figures are held until R4, and the ⛔ entries cannot be rewritten before then anyway — a title naming
+what the run showed has to wait for the run. A checklist, so the pass is not a rediscovery.
 
 **Keyed by function and by the opening words of the string — never by line number.** The first
 version of this audit was keyed by line, and the commit that recorded it is the commit that broke
@@ -57,45 +51,22 @@ file under active edit decay silently, and a checklist that sends the reader to 
 worse than none, because it will be trusted. ``grep -n`` on the quoted words finds each site in any
 ref.
 
-✅ **Asserted a result — neutralized 13.08.2026.** Four sites, not five: the earlier count of five
-double-counted the pair of diagonal annotations. Each now says what is plotted; what it means belongs
-in prose. Not deferred to R4, because after the run the fix would only swap one asserted result for
-another.
+⛔ **Asserts a result — rewrite from what the run shows, not before:**
   ``build_pipeline_flow``   "one seed — only scGPT clears the ridge control"
-        → "mean per-drug Spearman, MLP against ridge". A finding of the void 8-drug run used as the
-        **stage-8 label of the pipeline diagram**, where nothing about it could be falsified.
+        A finding from the void 8-drug run used as the **stage-8 label of the pipeline diagram**, so
+        the drawing of the pipeline presents an outcome as though it were one of its steps.
   ``build_loss_effect``     "The weighting fired — and the ranking did not move"
-        → "Prediction spread and per-drug Spearman, unweighted against density-weighted".
+        The 27.07 conclusion, on the figure drawn from the run that re-tests that very claim.
   ``build_loss_effect``     "above the line: the model hedges less" · "on the line: no gain, no loss"
-        → "dashed: y = x". The diagonal needs identifying, not interpreting.
 
-✅ **Asserted a swept arm as a fact — neutralized 13.08.2026.** Three sites: the audit found two and
-a third turned up in the same sweep.
+⛔ **Asserts a swept arm as a fact:**
   ``draw_architecture``     "per-cell MLP · trained with the density-weighted masked MSE"
-        → "masked mean error over observed (cell, drug) pairs". It asserted two arms of the six-arm
-        comparison as settled — that the weighting is on, and that the loss is squared.
+        States both that weighting is on and that the loss is squared error. Under item 9A ``alpha``
+        is in {0.0, 0.5, 1.0} and the loss is MSE / MAE — both are arms.
   ``build_pipeline_flow``   "unscreened pairs dropped, rare response values weighted up"
-        → "unscreened pairs dropped; per-drug sample weights". True only for ``alpha > 0``.
-  ``build_pipeline``        "masked MSE · matched (128,64) MLP"   (found 13.08, not in the audit)
-        → "masked mean error · matched (128,64) MLP".
+        Same class: true only for ``alpha > 0``.
 
-⛔ **A measurement published under another drug's name — found 13.08.2026, guarded, NOT repaired.**
-  Not a register or a count defect, and the most serious thing in this file. ``draw_architecture``
-  drew ``EXAMPLE_PRED``/``EXAMPLE_TRUE`` — eight real out-of-fold predictions from the **void 8-drug**
-  run — and labelled bar ``j`` with ``PANEL[j]``, the **rebuilt 11-drug** panel. The two panels share
-  three compounds, in a different order, so **all eight bars carried the wrong compound's name**, and
-  four labels named drugs that were never in that run. Verified against
-  ``legacy/panel_void_8drug/panel_oof_predictions.csv``: the bar labelled *paclitaxel* held
-  vincristine's value; the bar labelled *doxorubicin* held methotrexate's.
-  Repair needs out-of-fold predictions for the rebuilt panel, i.e. R4. Until then
-  :func:`_example_matches_panel` skips both consumers with a printed reason. ``EXAMPLE_DRUGS`` now
-  records which compounds the vector actually describes, which is what made the mismatch checkable
-  instead of invisible.
-
-⚠️ **Headline register — true, but the wrong form. NOT rewritten: they quantify results, so drafting
-  them now guarantees rewriting them after R4.** Two of the four were removed anyway as a side
-  effect of the infographic cleanup (``draw_loss_objective``'s title and its "per-drug scaling
-  belongs here" line); the two in ``draw_architecture`` stand.
+⚠️ **Headline register — true, but the wrong form:**
   ``draw_architecture``     "Model architecture — one cell in, one AUC per panel drug out"
         The clause after the dash is a strapline; "Model architecture" is the caption.
   ``draw_loss_objective``   "The objective — a weighted, masked mean error"     (written 12.08, mine)
@@ -105,31 +76,17 @@ a third turned up in the same sweep.
         cited. A *different passage* from the PLOTTED/CURRENT disclaimer below, in the same function
         — the two sit ten lines apart and have been confused once already.
 
-✅⚠️ **Infographic register (rule 3) — half applied.**
-  ``draw_loss_objective``   ✅ the three rounded colour-filled callout panels and the two grey
-        asides are gone, replaced by a plain symbol list under the equations. The title is
-        "Training objective"; the argument about where per-drug scaling belongs has moved out.
-  ``draw_architecture``     ⚠️ **not touched, deliberately.** Its circles, arrows and heat strips
-        are decoration by rule 3, but *every figure that renders this function is skipped* — so no
-        change to it could be rendered and looked at, and this file does not commit drawings nobody
-        has seen. It is the one item here blocked by the freeze rather than by R4's numbers.
+⚠️ **Infographic register (rule 3).** ``draw_loss_objective``'s three rounded colour-filled callout
+  boxes and grey italic asides; ``draw_architecture``'s circles, arrows and heat strips. Both mine
+  to redraw at R4.
 
-✅⚠️ **Hardcoded counts (rule 4) — the two that were wrong are fixed; seven remain and are correct.**
-  ``draw_architecture``     ✅ "the 8 heads … Linear(64 → 8)" now derives from ``len(PANEL)``.
-  ``build_pipeline_flow``   ✅ the funnel's panel tier derives from ``len(PANEL)``. It was hardcoded
-        ``8`` against a rebuilt panel of 11, and the same ``n`` sets the tier's drawn width — so the
-        funnel was the wrong shape as well as the wrong number.
-  ⚠️ **Not derivable under the freeze, and correct as they stand:** ``build_pipeline``'s "SCP542
-        53,513 cells x 22,722 g", "CTRPv2 545 drugs", "overlap 190* lines · 180 trainable",
-        "K=545 · out-of-fold over 153 lines", "out-of-fold CV over 153 lines", the "* 190 = …"
-        footnote, "173 FDA / clinical"; and ``build_pipeline_flow``'s "one cell line = 56–1,990
-        cells" and "545 drugs →". Their sources are the targets h5ad and the response table, neither
-        of which a standard run has produced on ``auc_cc``. ``53,513`` alone could be read from
-        ``notebooks/outputs/embeddings/scgpt_nonzero_per_cell.npz`` — but only by making
-        ``pipeline_overview.png``, a pure drawing, data-dependent, which would cost it the property
-        of always building. That trade is a design choice and was referred up rather than taken here.
-        ``180`` becomes 181 at the sweep; ``173 FDA / clinical`` may already be superseded by the
-        57-row ``literature_panel_candidates.csv``, which is a question about what the tier means.
+⚠️ **Hardcoded counts (rule 4).**
+  ``draw_architecture``     "the 8 heads are the 8 rows of one Linear(64 → 8)"  — **already wrong**:
+        it describes the architecture, inside the architecture diagram, and the rebuilt panel has 11.
+  ``build_pipeline``        "CTRPv2 545 drugs" · "overlap 190* lines · 180 trainable" ·
+                            "K=545 · out-of-fold over 153 lines" · "out-of-fold CV over 153 lines" ·
+                            "* 190 = name-matches …"          — ``180`` becomes 181 at the sweep.
+  ``build_pipeline_flow``   "one cell line = 56–1,990 cells" · "545 drugs  →" · "8  the panel"
 
 ✅ **Correct as written; do not sweep in:**
   ``draw_architecture``     "PLOTTED: the superseded run … CURRENT PIPELINE: auc_cc, …"
@@ -270,9 +227,7 @@ def build_pipeline():
         ["scGPT X_scGPT = 512-d", "gene-set sweep 1k-5k + all_genes",
          "X_pca = 512-d · cancer-type UMAPs"], GREEN, GREEN_FILL)
     box(ax, XS[2], ROW_A, W, H, "03 · Model & training design",
-        # "masked MSE" named the squared loss as settled; it is an arm of the six-arm comparison.
-        # Found beyond the audit's list, same class as the other two.
-        ["per-cell input -> viability", "masked mean error · matched (128,64) MLP",
+        ["per-cell input -> viability", "masked MSE · matched (128,64) MLP",
          "PCA & scGPT both 512-d"], GREEN, GREEN_FILL)
     # Results withdrawn 12.08.2026 -- the target was replaced, the panel rebuilt, and the
     # representations predate the preprocessing corrections. These boxes named specific numbers
@@ -340,40 +295,12 @@ def _heat_strip(ax, xc, y0, y1, vals, cmap, w=2.4):
 
 
 #: One real held-out cell line, scGPT, unweighted run (notebooks/outputs/legacy/panel_void_8drug/panel_oof_predictions.csv,
-#: fold in which SKES1_BONE was held out). Predicted vs measured AUC. Used instead of an invented
-#: vector so the figure shows the actual output scale -- including the visible shrinkage
-#: (predictions span 0.37-0.75 against a measured 0.04-0.91).
-#:
-#: ⛔ **These belong to the VOID 8-drug panel and must not be drawn against ``PANEL``.** In file
-#: order they are methotrexate, dasatinib, paclitaxel, vincristine, afatinib, topotecan,
-#: tanespimycin, selumetinib. The drawing labelled bar ``j`` with ``PANEL[j]``, and the rebuilt
-#: 11-drug panel shares only three compounds with the void one and in a different order -- so **all
-#: eight bars were attributed to the wrong compound**, and four of the labels name drugs that were
-#: never in the run at all. That is not a stale count; it is a measurement shown under another
-#: drug's name. Guarded by :func:`_example_matches_panel` rather than repaired here: repairing it
-#: needs out-of-fold predictions for the rebuilt panel, which exist only after R4.
+#: fold in which SKES1_BONE was held out). Predicted vs measured AUC for the eight panel drugs. Used
+#: instead of an invented vector so the figure shows the actual output scale -- including the visible
+#: shrinkage (predictions span 0.37-0.75 against a measured 0.04-0.91).
 EXAMPLE_LINE = "SKES1_BONE"
-EXAMPLE_DRUGS = ["methotrexate", "dasatinib", "paclitaxel", "vincristine",
-                 "afatinib", "topotecan", "tanespimycin", "selumetinib"]
 EXAMPLE_PRED = [0.438, 0.663, 0.384, 0.372, 0.748, 0.545, 0.666, 0.739]
 EXAMPLE_TRUE = [0.511, 0.797, 0.122, 0.036, 0.692, 0.177, 0.655, 0.908]
-
-
-def _example_matches_panel(name: str) -> bool:
-    """True (and prints why) if the architecture example vector does not describe ``PANEL``.
-
-    The bars are real out-of-fold predictions, so each one is a measurement and carries the name of
-    the drug it was measured on. When the example vector and the panel disagree, drawing them
-    together publishes each measurement under some other compound's name -- which no amount of
-    caption disclaims. Skip-with-a-reason, the same convention the data-derived figures use.
-    """
-    if EXAMPLE_DRUGS == list(PANEL):
-        return False
-    print(f"  {name}: SKIPPED — the example prediction vector is the void 8-drug panel "
-          f"({', '.join(EXAMPLE_DRUGS[:3])}…) and the current panel is {len(PANEL)} drugs "
-          f"({', '.join(PANEL[:3])}…). Drawing them together labels each measurement with "
-          f"another drug's name. Needs out-of-fold predictions for the rebuilt panel (R4).")
-    return True
 
 
 def draw_architecture(ax, *, compact: bool = False):
@@ -402,10 +329,7 @@ def draw_architecture(ax, *, compact: bool = False):
         # "8-drug" and "25 epochs" are accurate about what is PLOTTED and wrong only if read as the
         # current pipeline. Split into two lines on 12.08.2026 (Selin) so the distinction is on the
         # figure rather than only in the README caption.
-        # Was "trained with the density-weighted masked MSE", which asserted two arms of the six-arm
-        # comparison as settled: that the weighting is on, and that the loss is squared error. Names
-        # the structure that audit 09 froze instead, which is what the diagram actually shows.
-        ax.text(0, 48.0, "per-cell MLP · masked mean error over observed (cell, drug) pairs (loss_01)",
+        ax.text(0, 48.0, "per-cell MLP · trained with the density-weighted masked MSE (loss_01–03)",
                 ha="left", va="top", fontsize=8.5, color=GREY)
 
     # ---------- INPUT: one cell -> embedding vector ----------
@@ -456,10 +380,7 @@ def draw_architecture(ax, *, compact: bool = False):
         ax.text(43.2, 22.6, "hidden block  =  Linear → LayerNorm → GELU → Dropout 0.5      ·      "
                             "input dropout 0.1      ·      Adam, early stopping (patience 10)",
                 ha="center", va="top", fontsize=8.2, color=INK)
-        # Derived from PANEL, not typed. This read "the 8 heads … Linear(64 → 8)" while the rebuilt
-        # panel had 11 — a wrong statement about the architecture, inside the architecture diagram.
-        ax.text(43.2, 19.8, f"the {len(PANEL)} heads are the {len(PANEL)} rows of one "
-                            f"Linear(64 → {len(PANEL)}) over a shared trunk — "
+        ax.text(43.2, 19.8, "the 8 heads are the 8 rows of one Linear(64 → 8) over a shared trunk — "
                             "there is no per-drug sub-network",
                 ha="center", va="top", fontsize=8.2, color=GREY, style="italic")
 
@@ -516,7 +437,7 @@ def draw_architecture(ax, *, compact: bool = False):
 
 
 def build_architecture():
-    if _needs_data("model_architecture.png") or _example_matches_panel("model_architecture.png"):
+    if _needs_data("model_architecture.png"):
         return
     fig, ax = plt.subplots(figsize=(17.0, 6.6))
     draw_architecture(ax)
@@ -654,8 +575,7 @@ def build_pipeline_flow():
     ``loss_01_objective.png`` with ``compact=True``, so the pipeline cannot drift away from the
     standalone figures. Everything that needs a sentence lives in the docs, not on the slide.
     """
-    # Stage 5 embeds draw_architecture, so the same mislabelling reaches this figure.
-    if _needs_data("pipeline.png") or _example_matches_panel("pipeline.png"):
+    if _needs_data("pipeline.png"):
         return
     d = figure_data()
     corr = panel_corr()
@@ -716,11 +636,9 @@ def build_pipeline_flow():
           "only compounds with a published\nsensitivity determinant", ROW1_CAP)
     ax = fig.add_axes([0.255, 0.615, 0.125, 0.225]); ax.set_xlim(0, 10); ax.set_ylim(0, 10)
     ax.axis("off")
-    # The panel tier is derived: it was hardcoded 8 against a rebuilt panel of 11, and `n` also sets
-    # the tier's drawn width, so the funnel was the wrong shape as well as the wrong number.
     for i, (n, lab, col) in enumerate([(545, "545  CTRPv2 compounds", "#c3dcef"),
                                        (173, "173  FDA / clinical", "#6ba7d6"),
-                                       (len(PANEL), f"{len(PANEL)}  the panel", BLUE)]):
+                                       (8, "8  the panel", BLUE)]):
         half = 4.6 * (0.55 + 0.45 * (n / 545) ** 0.35)
         yb = 7.4 - i * 2.9
         ax.add_patch(mpatches.Polygon(
@@ -818,10 +736,8 @@ def build_pipeline_flow():
     draw_architecture(ax, compact=True)
 
     # ================================================== 6 · loss  (the standalone drawing)
-    # "rare response values weighted up" asserted that the weighting is on. It is an arm: alpha in
-    # {0, 0.5, 1.0}, and at alpha=0 no value is weighted up at all. Says what the stage does instead.
     stage(41.0, ROW2_TITLE, "6", "Loss",
-          "unscreened pairs dropped;\nper-drug sample weights", ROW2_CAP)
+          "unscreened pairs dropped, rare\nresponse values weighted up", ROW2_CAP)
     ax = fig.add_axes([0.405, 0.215, 0.215, 0.16])
     draw_loss_objective(ax, compact=True)
 
@@ -841,11 +757,8 @@ def build_pipeline_flow():
     ax.tick_params(labelsize=6.5)
 
     # ================================================== 8 · result
-    # "only scGPT clears the ridge control" stated a finding of the void 8-drug run as a *step of the
-    # pipeline*, where nothing could falsify it. The panel below plots four means; the caption now
-    # says that and no more.
     stage(82.0, ROW2_TITLE, "8", "Result",
-          "mean per-drug Spearman,\nMLP against ridge", ROW2_CAP)
+          "one seed — only scGPT clears\nthe ridge control", ROW2_CAP)
     ax = fig.add_axes([0.868, 0.155, 0.115, 0.255])
     ridge = pd.read_csv(LEGACY_PANEL / "panel_ridge_baseline.csv")
     bars = [
@@ -1023,10 +936,18 @@ def draw_loss_objective(ax, *, compact: bool = False):
     tex = LOSS_TEX_MACROS
 
     if not compact:
-        ax.text(1, 97, "Training objective", ha="left", va="top",
-                fontsize=13, fontweight="bold", color=INK)
+        ax.text(1, 99, "The objective — a weighted, masked mean error",
+                ha="left", va="top", fontsize=14, fontweight="bold", color=INK)
+        ax.text(1, 92, "target = auc_cc, the curve-fit AUC  ·  per-drug scaling belongs here, in the "
+                       "loss, rather than in the labels",
+                ha="left", va="top", fontsize=9, color=GREY)
+        # The three swept quantities are named as swept, so the figure cannot be read as claiming a
+        # loss the run has not chosen yet.
+        ax.text(1, 86, r"$\ell$ and $\alpha$ are what the loss comparison sweeps "
+                       "(item 9A) — the figure fixes neither",
+                ha="left", va="top", fontsize=9, color=GREY)
 
-    ax.text(50, 84 if not compact else 92, f"${tex['LossObjective']}$",
+    ax.text(50, 80 if not compact else 92, f"${tex['LossObjective']}$",
             ha="center", va="top", fontsize=20 if not compact else 15, color=INK)
     if compact:
         return
@@ -1034,24 +955,25 @@ def draw_loss_objective(ax, *, compact: bool = False):
     # The weight definition is not decoration: the objective above sums over cells (n), while the
     # density is fitted on the training fold's cell LINES (i). Dropping these two lines would leave
     # an equation equally true of the naive per-cell variant this deliberately rejects.
-    ax.text(50, 51, f"${tex['LossWeightMatrix']}$",
+    ax.text(50, 47, f"${tex['LossWeightMatrix']}$",
             ha="center", va="top", fontsize=13, color=INK)
-    ax.text(50, 43, f"${tex['LossWeightFn']}$",
-            ha="center", va="top", fontsize=13, color=INK)
-    ax.text(50, 33, f"${tex['LossArms']}$",
+    ax.text(50, 39, f"${tex['LossWeightFn']}$",
             ha="center", va="top", fontsize=13, color=INK)
 
-    # Plain definition list, replacing three rounded colour-filled callout panels. The symbols need
-    # defining; they do not need a coloured box each, and the boxes carried no information the text
-    # does not. Set as text so it reads as a legend rather than as an infographic.
-    ax.text(50, 19, "\n".join([
-        r"$M_{nj}$ = 1 if cell line was screened against drug $j$, else 0"
-        r"          $w_j$ = inverse label density, fitted on cell lines, mean 1",
-        r"$\ell$ = pointwise loss          $\alpha$ = density exponent          "
-        r"$c$ = weight cap          $\hat{p}_j$ = Gaussian KDE",
-        r"$n$ = cell          $i$ = cell line          $j$ = drug          "
-        r"$\mathcal{I}_j$ = training-fold lines observed for drug $j$",
-    ]), ha="center", va="top", fontsize=9, color=MUTED, linespacing=1.9)
+    for x, edge, fill, head, body in [
+        (1.5, GREY, GREY_FILL, r"$M_{nj}$   mask",
+         "1 if the line was screened\nagainst drug $j$, else 0"),
+        (35.0, BLUE, BLUE_FILL, r"$w_j(y_{nj})$   sample weight",
+         "inverse label density — fitted\non cell lines, mean 1"),
+        (68.5, RED, RED_FILL, r"$\ell(\hat{y}_{nj},\,y_{nj})$   error",
+         "squared or absolute\n$n$ = cell,   $i$ = cell line,   $j$ = drug"),
+    ]:
+        ax.add_patch(FancyBboxPatch((x, 1), 30, 23, boxstyle="round,pad=0.5,rounding_size=2.0",
+                     linewidth=1.8, edgecolor=edge, facecolor=fill, zorder=2))
+        ax.text(x + 15, 21.0, head, ha="center", va="top", fontsize=11.5,
+                fontweight="bold", color=edge, zorder=3)
+        ax.text(x + 15, 13.0, body, ha="center", va="top", fontsize=8.5, color=INK,
+                zorder=3, linespacing=1.5)
 
 
 def build_loss_objective():
@@ -1256,10 +1178,8 @@ def build_loss_effect():
 
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(10.5, 5.4))
     fig.subplots_adjust(top=0.82)
-    # Was "The weighting fired — and the ranking did not move": the 27.07 conclusion, on the void
-    # panel and the retired target, printed on the figure drawn from the run that re-tests it.
-    fig.suptitle("Prediction spread and per-drug Spearman, unweighted against density-weighted",
-                 x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=0.99)
+    fig.suptitle("The weighting fired — and the ranking did not move", x=0.02, ha="left",
+                 fontsize=13, fontweight="bold", color=INK, y=0.99)
     fig.text(0.02, 0.925, "one point per drug, out of fold, one seed — unweighted against "
                           "density-weighted",
              ha="left", va="top", fontsize=8.8, color=GREY)
@@ -1279,12 +1199,10 @@ def build_loss_effect():
         _tidy(ax, grid="both")
         ax.tick_params(labelsize=8)
     a1.legend(frameon=False, fontsize=8.5, loc="lower right")
-    # Were "above the line: the model hedges less" and "on the line: no gain, no loss" — both read
-    # the result off the plot for the reader. The dashed diagonal needs identifying, not explaining;
-    # what a departure from it means belongs in the prose, where it can be cited and disputed.
-    for ax in (a1, a2):
-        ax.text(0.04, 0.96, "dashed: y = x", transform=ax.transAxes,
-                ha="left", va="top", fontsize=8.5, color=MUTED)
+    a1.text(0.04, 0.96, "above the line:\nthe model hedges less", transform=a1.transAxes,
+            ha="left", va="top", fontsize=8.5, color=BLUE)
+    a2.text(0.04, 0.96, "on the line:\nno gain, no loss", transform=a2.transAxes,
+            ha="left", va="top", fontsize=8.5, color=MUTED)
 
     out = FIG / "loss_03_effect.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
