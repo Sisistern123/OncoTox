@@ -613,10 +613,18 @@ mitochondrial fraction, where restriction would leave a truncated numerator over
 most of the transcriptome. What the veto still requires, and what no null supplies, is the magnitude
 at which the confounders count as explaining the variation: with hundreds of cells in a line, a
 proportion of variance far too small to matter is nonetheless significant against a permutation null.
-That magnitude is reported rather than fixed in advance, and the proportion of variance explained is
-given both unadjusted and adjusted for the number of regressors, since cell lines here contribute
-between fifty-six and one thousand nine hundred and ninety cells and the upward bias of the
-unadjusted figure differs across exactly the axis a single threshold would be compared along.
+That magnitude is reported rather than fixed in advance.
+
+The quantity it will be read on, however, is settled: the proportion of within-line variance explained,
+\emph{adjusted} for the number of regressors. The unadjusted proportion is biased upward by the count of
+covariates, and that bias falls as the number of cells rises, while a cell line here contributes between
+fifty-six and one thousand nine hundred and ninety cells. A single threshold on the unadjusted figure
+would therefore be a different threshold for every line --- a small line clearing a bar that a large one
+fails on identical evidence --- which is precisely the axis the comparison runs along. The adjusted
+figure removes that, at the cost of being able to fall below zero when the covariates explain nothing,
+which is a correct reading rather than a defect. The difference is not cosmetic: on simulated
+predictions bearing no relationship to the covariates at all, the unadjusted proportion reads about
+nineteen per cent and the adjusted one about minus one.
 
 An earlier draft attached invented magnitudes to three of these. Each was removed by replacing the bar
 with a null or a comparison rather than by choosing a better number. The input stage now fails only on
