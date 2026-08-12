@@ -48,7 +48,13 @@ runs/
 docs/progress_report_*.md
 
 # LaTeX build artifacts. main.pdf is one of them: it was tracked until 10.08.2026 and went
-# stale whenever a .tex changed without a rebuild. Build it with `pdflatex main.tex` twice.
+# stale whenever a .tex changed without a rebuild. Build it with
+#     pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
+# Corrected 12.08.2026: this said "pdflatex main.tex twice", which is not enough. The report uses
+# plain bibtex (report/sections/07_bibliography.tex), and main.bbl is ignored below -- so in a fresh
+# clone or git worktree, pdflatex-twice emits 33 undefined citations and a bibliography-free PDF.
+# It appears to work in a tree that has been built before only because a stale main.bbl is lying
+# around. Found by building the report in a worktree and reading the log rather than the page count.
 # project_planning_v2.pdf stays tracked -- it is a source document, not a build product.
 report/main.pdf
 report/*.aux
