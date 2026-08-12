@@ -5,6 +5,17 @@
   pipeline_overview.png    status of the whole project against the plan (steps 01-08)
   loss_01_objective.png    what the objective is made of
 
+**And one artifact that is not a figure**, written to ``report/`` rather than ``docs/figures/``:
+
+  report/loss_objective.tex   the objective's equations, as LaTeX macros the report ``\\input``s
+
+It is generated from ``LOSS_TEX_MACROS`` — the same strings ``loss_01_objective.png`` renders — so
+the maths in the report and the maths in the figure have one source and cannot drift apart. Decided
+by Selin 12.08.2026 over rendering the formula into the PNG (raster, fonts would not match the
+report body, not referenceable by LaTeX) and over a PGF/vector figure (fonts match, but it puts a
+LaTeX installation in the figure build path). It is committed so a clean checkout still compiles
+the report; a regenerate-and-diff pre-merge check that fails on drift is owned by the gate session.
+
 **Derived from data — currently SKIPPED, and archived (12.08.2026):**
 
   pipeline.png             the pipeline as a picture, stage by stage
@@ -734,19 +745,26 @@ LOSS_TEX = ROOT / "report" / "loss_objective.tex"
 #: `\text{...}` is supported and is fine. Substituting either back would still compile the report and
 #: would break only the figure -- the asymmetry is the reason this warning is here rather than left
 #: to be rediscovered.
+#:
+#: For the same reason there is no `\!` after a *subscripted* symbol (`w_j\left(`, not `w_j\!\left(`).
+#: LaTeX tightens the gap; mathtext pulls the parenthesis back over the subscript, so `w_j(y)` renders
+#: as an unreadable `w/y`. `\ell\!\left(` is kept -- `\ell` carries no subscript to collide with.
 LOSS_TEX_MACROS: dict[str, str] = {
+    # The `\;` between the two sums is load-bearing for the figure, not typographic fussiness:
+    # mathtext sets both limits *below* their sigma, so without it "n \in \mathcal{N}" and "j = 1"
+    # abut and read as one nonsense subscript. In LaTeX it is an ordinary thin space.
     "LossObjective": (
         r"\mathcal{L}\;=\;"
-        r"\frac{\sum_{n \in \mathcal{N}} \sum_{j=1}^{K} W_{nj}\,"
+        r"\frac{\sum_{n \in \mathcal{N}}\;\sum_{j=1}^{K} W_{nj}\,"
         r"\ell\!\left(\hat{y}_{nj},\, y_{nj}\right)}"
-        r"{\sum_{n \in \mathcal{N}} \sum_{j=1}^{K} W_{nj}}"
+        r"{\sum_{n \in \mathcal{N}}\;\sum_{j=1}^{K} W_{nj}}"
     ),
-    "LossWeightMatrix": r"W_{nj}\;=\;M_{nj}\;w_j\!\left(y_{nj}\right)",
+    "LossWeightMatrix": r"W_{nj}\;=\;M_{nj}\;w_j\left(y_{nj}\right)",
     "LossWeightFn": (
         r"w_j(y)\;\propto\;\hat{p}_j(y)^{-\alpha},"
         r"\qquad w_j \in \left[\frac{1}{c},\, c\right],"
         r"\qquad \frac{1}{\left| \mathcal{I}_j \right|}"
-        r"\sum_{i \in \mathcal{I}_j} w_j\!\left(y_{ij}\right)\;=\;1"
+        r"\sum_{i \in \mathcal{I}_j} w_j\left(y_{ij}\right)\;=\;1"
     ),
     "LossDensity": (
         r"\hat{p}_j\;=\;\text{Gaussian KDE fitted on }"
@@ -804,43 +822,66 @@ def build_loss_formula_tex():
 
 
 def draw_loss_objective(ax, *, compact: bool = False):
-    """Draw the objective into ``ax`` — same drawing for the standalone figure and for stage 6."""
+    """Draw the objective into ``ax`` — same drawing for the standalone figure and for stage 6.
+
+    Every equation here is rendered from :data:`LOSS_TEX_MACROS`, the same strings
+    :func:`build_loss_formula_tex` writes into the report. Nothing is retyped, so the figure and
+    ``main.pdf`` cannot disagree about what is being minimised.
+
+    Until 12.08.2026 they *did* disagree, and only the figure was wrong. It hardcoded its own
+    ``(\\hat{y}-y)^2``, titled the objective "a weighted, masked mean squared error", and labelled a
+    single index as ``i = cell`` — asserting a fixed squared loss when the loss comparison
+    (``docs/TODO.md`` item 9A) sweeps MSE / MAE / Huber, and hiding the cell/cell-line split that is
+    the whole design of the weighting. It went stale silently: it reads no data, so it rendered
+    happily every run with nothing to fail.
+    """
     ax.set_xlim(0, 100); ax.set_ylim(0, 100); ax.axis("off")
+    tex = LOSS_TEX_MACROS
 
     if not compact:
-        ax.text(1, 99, "The objective — a weighted, masked mean squared error",
+        ax.text(1, 99, "The objective — a weighted, masked mean error",
                 ha="left", va="top", fontsize=14, fontweight="bold", color=INK)
-        ax.text(1, 91, "target = auc_cc, the curve-fit AUC  ·  per-drug scaling belongs here, in the "
+        ax.text(1, 92, "target = auc_cc, the curve-fit AUC  ·  per-drug scaling belongs here, in the "
                        "loss, rather than in the labels",
                 ha="left", va="top", fontsize=9, color=GREY)
+        # The three swept quantities are named as swept, so the figure cannot be read as claiming a
+        # loss the run has not chosen yet. beta is Selin's to derive (item 9C), not TrainConfig's.
+        ax.text(1, 86, r"$\ell$, $\alpha$ and $\beta$ are what the loss comparison sweeps "
+                       "(item 9A) — the figure fixes none of them",
+                ha="left", va="top", fontsize=9, color=GREY)
 
-    ax.text(50, 76 if not compact else 92, r"$\mathcal{L}\;=\;\frac{\sum_{i,k}\;"
-                    r"\mathbf{m}_{ik}\;\cdot\;\mathbf{w}_k(y_{ik})\;\cdot\;"
-                    r"(\hat{y}_{ik}-y_{ik})^2}"
-                    r"{\sum_{i,k}\;\mathbf{m}_{ik}\;\cdot\;\mathbf{w}_k(y_{ik})}$",
-            ha="center", va="top", fontsize=23 if not compact else 15, color=INK)
+    ax.text(50, 80 if not compact else 92, f"${tex['LossObjective']}$",
+            ha="center", va="top", fontsize=20 if not compact else 15, color=INK)
     if compact:
         return
 
+    # The weight definition is not decoration: the objective above sums over cells (n), while the
+    # density is fitted on the training fold's cell LINES (i). Dropping these two lines would leave
+    # an equation equally true of the naive per-cell variant this deliberately rejects.
+    ax.text(50, 47, f"${tex['LossWeightMatrix']}$",
+            ha="center", va="top", fontsize=13, color=INK)
+    ax.text(50, 39, f"${tex['LossWeightFn']}$",
+            ha="center", va="top", fontsize=13, color=INK)
+
     for x, edge, fill, head, body in [
-        (1.5, GREY, GREY_FILL, r"$m_{ik}$   mask",
-         "1 if the line was screened\nagainst drug $k$, else 0"),
-        (35.0, BLUE, BLUE_FILL, r"$w_k(y_{ik})$   sample weight",
-         "inverse label density,\nper drug, mean 1"),
-        (68.5, RED, RED_FILL, r"$(\hat{y}_{ik}-y_{ik})^2$   error",
-         "squared, in raw AUC units\n$i$ = cell,  $k$ = drug"),
+        (1.5, GREY, GREY_FILL, r"$M_{nj}$   mask",
+         "1 if the line was screened\nagainst drug $j$, else 0"),
+        (35.0, BLUE, BLUE_FILL, r"$w_j(y_{nj})$   sample weight",
+         "inverse label density — fitted\non cell lines, mean 1"),
+        (68.5, RED, RED_FILL, r"$\ell(\hat{y}_{nj},\,y_{nj})$   error",
+         "squared / absolute / Huber$_\\beta$\n$n$ = cell,   $i$ = cell line,   $j$ = drug"),
     ]:
-        ax.add_patch(FancyBboxPatch((x, 2), 30, 26, boxstyle="round,pad=0.5,rounding_size=2.0",
+        ax.add_patch(FancyBboxPatch((x, 1), 30, 23, boxstyle="round,pad=0.5,rounding_size=2.0",
                      linewidth=1.8, edgecolor=edge, facecolor=fill, zorder=2))
-        ax.text(x + 15, 24.5, head, ha="center", va="top", fontsize=11.5,
+        ax.text(x + 15, 21.0, head, ha="center", va="top", fontsize=11.5,
                 fontweight="bold", color=edge, zorder=3)
-        ax.text(x + 15, 15.0, body, ha="center", va="top", fontsize=9, color=INK,
+        ax.text(x + 15, 13.0, body, ha="center", va="top", fontsize=8.5, color=INK,
                 zorder=3, linespacing=1.5)
 
 
 def build_loss_objective():
     """What the objective is made of — the formula and the three factors, nothing else."""
-    fig, ax = plt.subplots(figsize=(12.0, 4.6))
+    fig, ax = plt.subplots(figsize=(12.0, 5.6))
     draw_loss_objective(ax)
     out = FIG / "loss_01_objective.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
@@ -1007,5 +1048,8 @@ if __name__ == "__main__":
     build_pipeline_flow()
     build_architecture()
     build_loss_objective()
+    # Written from the same macros build_loss_objective() just rendered, and immediately after it, so
+    # the report's equations and the figure's cannot be regenerated apart.
+    build_loss_formula_tex()
     build_loss_weights()
     build_loss_effect()

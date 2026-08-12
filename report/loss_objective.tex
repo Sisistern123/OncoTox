@@ -26,8 +26,8 @@
 %             with 1,990 sequenced cells bend the density and one with 56 barely register.
 %   j         drug, 1..K.        c   the weight cap (fixed; arbitrary, and documented so).
 
-\newcommand{\LossObjective}{\mathcal{L}\;=\;\frac{\sum_{n \in \mathcal{N}} \sum_{j=1}^{K} W_{nj}\,\ell\!\left(\hat{y}_{nj},\, y_{nj}\right)}{\sum_{n \in \mathcal{N}} \sum_{j=1}^{K} W_{nj}}}
-\newcommand{\LossWeightMatrix}{W_{nj}\;=\;M_{nj}\;w_j\!\left(y_{nj}\right)}
-\newcommand{\LossWeightFn}{w_j(y)\;\propto\;\hat{p}_j(y)^{-\alpha},\qquad w_j \in \left[\frac{1}{c},\, c\right],\qquad \frac{1}{\left| \mathcal{I}_j \right|}\sum_{i \in \mathcal{I}_j} w_j\!\left(y_{ij}\right)\;=\;1}
+\newcommand{\LossObjective}{\mathcal{L}\;=\;\frac{\sum_{n \in \mathcal{N}}\;\sum_{j=1}^{K} W_{nj}\,\ell\!\left(\hat{y}_{nj},\, y_{nj}\right)}{\sum_{n \in \mathcal{N}}\;\sum_{j=1}^{K} W_{nj}}}
+\newcommand{\LossWeightMatrix}{W_{nj}\;=\;M_{nj}\;w_j\left(y_{nj}\right)}
+\newcommand{\LossWeightFn}{w_j(y)\;\propto\;\hat{p}_j(y)^{-\alpha},\qquad w_j \in \left[\frac{1}{c},\, c\right],\qquad \frac{1}{\left| \mathcal{I}_j \right|}\sum_{i \in \mathcal{I}_j} w_j\left(y_{ij}\right)\;=\;1}
 \newcommand{\LossDensity}{\hat{p}_j\;=\;\text{Gaussian KDE fitted on }\left\{\, y_{ij} \;:\; i \in \mathcal{I}_j \,\right\}}
 \newcommand{\LossArms}{\ell \in \{\text{squared},\, \text{absolute},\, \text{Huber}_\beta\},\qquad \alpha \in \{\text{off},\, \frac{1}{2},\, 1\}}
