@@ -215,6 +215,14 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 
 ## Current status — plan vs. reality
 
+> ⚠️ **Every verdict in this table rests on measurements withdrawn on 12.08.2026** and is pending
+> re-measurement. The target was replaced, the drug panel rebuilt, and the representations on disk
+> predate the preprocessing corrections, so a ✅ here means *"this was the finding on the pipeline as it
+> then stood"*, not *"this currently holds"*. The report withdrew the corresponding numbers rather than
+> caveating them (`report/sections/04_results.tex`); the verdicts are kept because a scorecard that
+> silently emptied would lose the record of what was believed and why. Each is re-decided at **R6** of
+> the sweep, from the regenerated artifacts.
+
 | Plan item | Status | Where it is written up |
 |---|---|---|
 | Sub-goal 1: compound harmonization (names + BRD + DrugBank) | ✅ Done | [Step 01](./steps/01-datasets-and-harmonization.md) |
@@ -228,7 +236,7 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 | Main goal: foundation model + clinical fine-tuning | ❌ Not started (horizon) | [Step 06 · C](./steps/06-planned-work.md#c-foundation-model-and-clinical-fine-tuning) |
 | Core hypothesis: scGPT overfits less than PCA | ✅ Confirmed — **generalization only**, not accuracy | [Step 05](./steps/05-multitask-results.md) |
 | Does the model rank cell lines at all? | ✅ Yes, on drugs that carry signal | [Step 05](./steps/05-multitask-results.md); the earlier "no" is [superseded](./steps/corrections-and-dead-ends.md#neither-representation-ranks-cell-lines--the-k545-null-result) |
-| Is scGPT's lead over PCA real? | 🟡 Sign-consistent, **not a proven margin** — single seed on the current panel | [Step 05](./steps/05-multitask-results.md), [TODO](./TODO.md) (seeds are blocking) |
+| Is scGPT's lead over PCA real? | 🟡 Sign-consistent, **not a proven margin** — single seed, on the since-voided panel | [Step 05](./steps/05-multitask-results.md), [TODO](./TODO.md) (seeds are blocking) |
 | Does the deep single-cell apparatus beat ridge on line means? | 🟡 Only with scGPT (+0.077); PCA ties | [Step 03](./steps/03-model-and-training-design.md#the-baseline-that-actually-binds-ridge-on-150-line-mean-embeddings) |
 | Is the model over-regularized / too big? | ❌ No — model-side tuning is **closed** | [Step 03](./steps/03-model-and-training-design.md#these-hyperparameters-are-not-worth-tuning-ablated-13072026), [Corrections](./steps/corrections-and-dead-ends.md#the-model-is-over-regularized-or-too-small) |
 | External benchmark (DrEval LCO, normalized) | ✅ Above naive, below best-in-class | [Step 05](./steps/05-multitask-results.md); the first run's leak in [Corrections](./steps/corrections-and-dead-ends.md#the-first-dreval-benchmark--a-val-split-leak) |
@@ -237,7 +245,7 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 | Does inverse-density loss weighting help? | ❌ No — clean negative | [Corrections](./steps/corrections-and-dead-ends.md#inverse-density-loss-weighting-improves-ranking) |
 | Was `auc_z` the right target? | ❌ No — retired 27.07.2026 | [Corrections](./steps/corrections-and-dead-ends.md#auc_z-as-the-training-target) |
 | Is the drug-selection criterion sound? | ❌ No — it measured potency, not rankability | [Corrections](./steps/corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability) |
-| Drug selection | ⛔ **VOID 28.07.2026 — rebuild pending** | [Corrections](./steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it), rebuild is [TODO](./TODO.md) item 6 |
+| Drug selection | ✅ **Rebuilt 12.08.2026 — 11 drugs, FDA approval + published determinants**; nothing has been run on it yet | [Step 01](./steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026); the voided predecessor is in [Corrections](./steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it) |
 | 8-run matrix conclusions | ⚠️ Suspect — re-run required, expect them to change | [Corrections](./steps/corrections-and-dead-ends.md#the-8-run-matrix-conclusions) |
 | Can the setup test research question 2 (implicit heterogeneity)? | ❌ **Not as built** — the objective penalizes it | [Step 03](./steps/03-model-and-training-design.md), and *Where this goes next* below |
 

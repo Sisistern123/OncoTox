@@ -229,6 +229,25 @@ drug-agnostic (one split is leakage-free for all heads at once), and `split_pacl
 single-task version. This is not a detail — it is the control that exposes the PCA-vs-scGPT
 overfitting gap in [Step 04](04-single-task-results.md).
 
+### Out-of-fold predictions carry their fold (12.08.2026)
+
+The cross-validation is 5-fold `GroupKFold` over the train+val lines
+(`scripts/training/cv.py::oof_predictions`), and each cell line is held out by **exactly one** fold —
+which is what makes a fold label well defined at the line level at all.
+
+`oof_predictions` records each fold's held-out lines in its log, and `line_level_predictions(folds=...)`
+stamps a `fold` column onto every row of `outputs/panel/panel_oof_predictions.csv`. It raises if a line
+appears in two folds, or if a predicted line is claimed by none.
+
+**Why the column exists.** Any baseline fitted *after* the fact — DrEval's mean-effects predictor above
+all — has to be fitted on the folds a prediction did **not** come from. Without the fold label the only
+option is to fit it on the same out-of-fold rows it will then be subtracted from, which lets held-out
+labels define the baseline they are scored against. `scripts/evaluation/dreval_normalize.py` therefore
+requires the column and refuses to run without it.
+
+⚠️ The committed `panel_oof_predictions.csv` predates this and has no `fold` column, so that script
+correctly raises on it. It becomes runnable when `3_panel_training.ipynb` re-runs at R4 of the sweep.
+
 ---
 
 ## Model architecture & regularization (`OncoMLP.py`, 25.05.2026)

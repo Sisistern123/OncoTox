@@ -149,7 +149,8 @@ steps carry a pointer; the content lives here. Nothing in it is a live result.
 `report/` — the written version (LaTeX → `main.pdf`).
 `notebooks/` — a number means pipeline (`1_`→`2_`→`3_`); analysis sits in named directories; nothing in
 `archive/` is load-bearing. See its README.
-`scripts/` — the pipeline: `preprocessing/`, `model/`, `training/`, `evaluation/`.
+`scripts/` — the pipeline: `preprocessing/`, `model/`, `training/`, `evaluation/`; plus
+`archive/`, which holds superseded code and is never imported (see its README).
 
 **Two rules for the docs:** never state a number in two places, and every claim names the code that
 produced it — script and function, or notebook and section, plus the `outputs/` artifact it was read from.

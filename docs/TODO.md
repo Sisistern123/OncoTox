@@ -10,7 +10,14 @@
 > **Everything computed on it is therefore provisional:** the step-1 run (`3_panel_training`), the
 > distributions and weighting design (`panel_distributions`), the dispersion figures (`diagnostics` §5), the panel rows in
 > [Step 05](./steps/05-multitask-results.md), and the corresponding numbers in the report. Do not quote
-> any of them, and do not build on them, until the panel is rebuilt.
+> any of them, and do not build on them.
+>
+> ⚠️ **Release condition corrected 12.08.2026.** This used to read *"until the panel is rebuilt"*, and the
+> panel **was** rebuilt on 12.08.2026 — which by the old wording would have made these numbers quotable
+> again. It does not: they were computed on the *old* panel, so rebuilding it retires them rather than
+> restoring them. The banner lifts when a run exists on
+> [the new panel](./steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026),
+> i.e. at **R4** of the sweep.
 >
 > **Nothing new is started before the review below is done.** The 15.07 progress report was postponed
 > rather than presented on a panel we knew to be flawed; the point of that decision is lost if we patch
@@ -431,6 +438,10 @@ matters — folded into review items 10 and 12.
 > filter* — is **done as a definition** (8-drug panel, see "Next focus" below); the training run on it is
 > pending and should be paired with S1. The panel is literature-anchored but **not yet label-blind**, so
 > train-only selection remains blocking for any headline number.
+>
+> ⚠️ **Superseded 12.08.2026.** That 8-drug panel was voided three days later and replaced by the
+> [11-drug panel](./steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026),
+> which *is* label-blind — so the "not yet label-blind" caveat above is resolved, not outstanding.
 
 1. **S1 — DrEval-aligned target (the top performance lever).** Train on the double-normalized residual
    `resid[i,j] = auc[i,j] − (μ_drug[j] + μ_line[i] − μ_global)`, means computed **train-only per fold**,
@@ -510,7 +521,7 @@ resolution has again failed to justify itself"* — scored a Q2 experiment on a 
   signal does not raise line-level ρ, which is a narrower claim than the one this item used to make.
   Their values are pending: the numbers previously quoted here were measured on the
   [voided panel](./steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it),
-  so the floor is re-measured after item 6 rebuilds the panel and R4 retrains.
+  so the floor is re-measured at R4, on the panel item 6 rebuilt on 12.08.2026.
 - **⚠ Open decision — what counts as a positive Q2 result, fixed before the run.** Under the Q1 framing
   the readout was ρ against the controls; under this one it is not, and nothing has replaced it. Whatever
   is chosen needs a control that says what *no* heterogeneity signal looks like (a shuffled-cell or

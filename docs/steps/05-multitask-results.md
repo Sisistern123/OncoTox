@@ -386,8 +386,15 @@ failure there is a model result rather than a label artifact.
 > been pre-filtered on our own response values. The panel decision, why it failed, and the 32 approved or
 > clinical compounds it wrongly excluded are in
 > [Corrections](corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it). **The citations below are
-> unaffected** and are the input to the rebuild ([TODO](../TODO.md) item 6), which will re-apply the same
-> criterion to a pool built on coverage and `auc_std` only.
+> unaffected.**
+>
+> ⚠️ **The rebuild happened on 12.08.2026 and did not use the criterion this passage promised.** It said
+> the same criterion would be re-applied to "a pool built on coverage and `auc_std` only"; `auc_std` was
+> rejected, because spread is still our own label statistic and selecting on it keeps the selection
+> label-dependent. The
+> [panel](01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026)
+> is selected on FDA approval and published determinants instead, and of the eight compounds below only
+> `paclitaxel`, `dasatinib` and `afatinib` are in it.
 
 Coverage (`cov`) is the fraction of the 180 trainable lines. `kill`/`spare` counts are shown only because
 they document how the void panel was ranked — **the rebuild must not use them**
@@ -502,7 +509,16 @@ mean. Some lines are simply sensitive to everything (σ of the line effect = **0
 score a good per-drug correlation by learning *"this line is fragile"* — with zero drug-specific biology.
 DrEval's normalized metric subtracts the mean-effects predictor from **prediction and truth**, then
 correlates; what remains is **differential sensitivity only**. Mean effects are fit on **train lines
-only**, inside each fold (`notebooks/outputs/dreval/dreval_normalized.csv`):
+only**, inside each fold (`notebooks/outputs/dreval/dreval_normalized.csv`).
+
+> ⛔ **The numbers below cannot be reproduced by the current code (12.08.2026).** They came from a
+> **stricter, locally invented** variant that removed the **cell-line** effect as well, using held-out
+> labels. That has no counterpart in DrEval's paper and was deleted
+> ([why](../../scripts/archive/README.md)). `scripts/evaluation/dreval_normalize.py` still exists but
+> now applies the paper's normalization only. ⚠️ And under **leave-cell-line-out that normalization
+> removes only the drug effect**, because a held-out line's effect is unseen and therefore zero — so
+> the claim below that ~80 % of the effect survives *the cell-line effect* is exactly what the paper
+> metric does **not** test. Re-deciding this is review item 11.
 
 | | raw ρ | **normalized ρ** | naive baseline |
 |---|---|---|---|
