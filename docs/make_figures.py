@@ -989,7 +989,63 @@ def build_loss_weights():
 
 
 def build_loss_effect():
-    """What the weighting did: the spread it was designed to raise, and the ranking it did not move."""
+    """What the weighting did: the spread it was designed to raise, and the ranking it did not move.
+
+    ⚠️ **The drawing below is superseded and must not be rebuilt as it stands.** It is a paired
+    scatter — unweighted on x, density-weighted on y, one point per drug, with a diagonal — and that
+    form encodes an assumption that has stopped holding: that the comparison has exactly **two**
+    arms. From R4 the density-weighting arm is three levels, ``alpha`` in {0.0, 0.5, 1.0}, replacing
+    the boolean ``weighted``. There is no single delta to put on two axes.
+
+    **DESIGN DECIDED 12.08.2026 by the visualization agent** — figure decisions were delegated by
+    Selin on that date; she keeps the analysis decisions. Recorded here rather than in a message so
+    it cannot drift from the code it governs. *Not implemented*: the figure is skipped until R4 (its
+    input is a training output), and this project does not commit a drawing nobody has rendered and
+    looked at. Implement it when the R4 outputs exist, then render it and read it.
+
+    **Replace the paired scatter with a response curve over the sweep — put ``alpha`` on the x-axis.**
+
+      * Two panels, measuring what they measure now: spread of the predictions (``pred_std``) and
+        per-drug Spearman. That pairing *is* audit 09's finding — the weighting acts on spread, and
+        the previous null was read off rank correlation and error, both structurally blind to it.
+        Keeping both panels is what lets the re-test distinguish "no effect" from "an effect the
+        metrics cannot see".
+      * x = ``alpha`` as ordered ticks; y = the quantity.
+      * One faint line per drug across the ticks, so *within-drug* movement is visible — the
+        evaluation metric is within-drug, and a mean over drugs would hide a reversal.
+      * One bold line per representation: the median across drugs. Colour by representation
+        (scGPT / PCA), unchanged.
+
+    **Why this form and not the alternatives.**
+
+      * *0.5 and 1.0 each against 0.0*, or *best-alpha against 0.0*, keep the scatter but need a new
+        panel per pair and grow as O(N) panels — and "best-alpha" hides the axis whose legibility is
+        the entire reason the sweep exists.
+      * A curve **scales to any number of arms**: adding a level adds a tick, not a panel. The arm
+        list is explicitly provisional and expected to grow, so a design that only works for exactly
+        three points would need redoing on the next change.
+      * It **survives either resolution of the ridge question**, which is Selin's and still open. If
+        the ridge baseline is not a value of ``alpha``, it is a horizontal reference line — correct,
+        since ridge has no ``alpha``. If it becomes one, it is another tick. Neither redraws the
+        figure. (``4a`` currently writes ``{'weighted': 'ridge'}``, a string sentinel in what is
+        becoming a numeric column; that is a schema question, not a display one.)
+      * It **degenerates gracefully**: at two ticks it is a slopegraph, so this is a generalisation
+        of the current figure rather than a different figure.
+
+    What is lost, stated plainly: the diagonal, and with it the "above the line: the model hedges
+    less" annotation. Both only work for exactly two arms. The replacement reading is that a **flat**
+    line means ``alpha`` does nothing, and a **rising** line in the spread panel means the weighting
+    reduced the shrinkage it was designed to reduce.
+
+    The same decision settles ``4a``'s summary rows: one row per level (``MLP alpha=0.0`` /
+    ``0.5`` / ``1.0``) instead of ``MLP weighted`` / ``MLP unweighted``, with ridge as its own row
+    rather than a value in the column.
+
+    ⚠️ **The title is a conclusion and must be rewritten after the run, not before.** "The weighting
+    fired — and the ranking did not move" is the 27.07 result, on the void panel and the retired
+    target, and it is exactly the claim R4 re-tests. Carrying it into a figure drawn on new outputs
+    would assert the answer the run exists to find.
+    """
     corr = panel_corr()
 
     # This figure is the one thing here that cannot follow the panel. Its input is a TRAINING
