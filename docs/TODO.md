@@ -981,8 +981,12 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 > read the sequence as a proposal until Gate 4 confirms it.**
 >
 > **1 · The numbered chain, strictly sequential.** `1_data` → `2_drug_selection` → `3_representations`
-> → `4a_percell_training` → `5_evaluation`. `4b_mil_training` is a three-cell stub holding a
-> pre-registered success criterion; it has no code and nothing to run. **Verified 13.08.2026: no
+> → `4a_percell_training` → `4b_mil_training` → `5_evaluation`. `4b` **stopped being a stub on
+> 13.08.2026**: its criterion is implemented in §3 against `scripts/training/mil.py`, and it now runs
+> after `4a` rather than being outside the chain, because stage 1 reads `4a`'s within-line spread
+> table. Two of its parameters are ⬜ open (`PCA_SEED`, and the aggregation of the per-pair tests)
+> and stage 6 ⛔ cannot be evaluated at all — see the notebook's own §3.3, §3.5 and §3.8.
+> **Verified 13.08.2026: no
 > numbered notebook reads any analysis notebook's output — zero, across all six.** The chain is
 > self-contained and nothing outside it can gate it.
 >

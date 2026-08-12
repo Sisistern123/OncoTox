@@ -514,10 +514,17 @@ notebook and command line cannot diverge.
 
 ## MIL — the bag model (`4b_mil_training`, design fixed 13.08.2026)
 
-**Not yet built.** This records the architecture as decided, so it is not chosen after a run exists;
-the notebook is a stub until its criterion is filled
-([`4b_mil_training.ipynb`](../../notebooks/4b_mil_training.ipynb) §2). Everything below except bag size
-is settled.
+**Built 13.08.2026; nothing has been run.** The architecture was recorded here *before* the code
+existed, so it was not chosen after a run — and the criterion it will be judged by was fixed before
+that, in [`4b_mil_training.ipynb`](../../notebooks/4b_mil_training.ipynb) §2. The implementation is
+[`scripts/training/mil.py`](../../scripts/training/mil.py), driven by the notebook's §3.
+
+*(Was "Not yet built … the notebook is a stub until its criterion is filled" until 13.08.2026.)*
+
+**`mil.py` imports the fold partition rather than re-deriving it.** `grouped_folds` and
+`inner_holdout` come from `cv.py`, so fold *f* holds out the same cell lines in `4a` and `4b` under
+every seed. Stage 1 compares the two models' within-line spread on the same lines, drugs and folds,
+and a second fold implementation is exactly how that premise would quietly stop holding.
 
 **One bag is one cell line.** It falls out of the label rather than being chosen: CTRPv2 gives one
 number per (cell line, drug), and the heads are multi-task, so a single forward pass over a line's cells
@@ -555,7 +562,7 @@ definition and is fixed before the model exists. A variance term in the loss and
 aggregator were both considered and rejected — reasoning in `4b` §1. If the synthetic control fails, the
 aggregator is *not* swapped for one that passes: that is a forking path moved down one level.
 
-### ⬜ Open — bag size, and why it is not a batching parameter (13.08.2026)
+### Bag size is not a batching parameter — settled at full-line (Selin, 13.08.2026)
 
 For a sub-bag of `B` cells drawn from a line of `n`, the expected loss is
 
@@ -574,9 +581,17 @@ how hard the objective charges for the very quantity Q2 measures. Two things rid
   yields proportionally more bags and the depth weighting returns.
 
 Costs of full-line bags, stated: one gradient step per line, so an epoch is as many steps as there are
-lines; memory scales with the largest line; lines contribute unequally by cell count unless reweighted.
-Gradient accumulation over chunks keeps the mean exact under bounded memory, at the price of handling
-dropout consistently across chunks.
+lines — roughly 120 against `4a`'s ~330 at `batch_size=128`, at the same learning rate and epoch cap,
+because the configuration is `4a`'s and the architecture is the only thing permitted to move. Memory
+scales with the largest line (1,990 cells). Gradient accumulation over chunks keeps the mean exact
+under bounded memory, at the price of handling dropout consistently across chunks; it is not used,
+because the largest bag is 1,990 × 512 floats and fits.
+
+**One asymmetry the bagging introduces, recorded rather than fixed.** Dropout is applied per cell and
+independently, so averaging a 1,990-cell bag cancels far more of it than averaging a 56-cell one: the
+effective regularization on the bag prediction falls as bag size rises. The rates are `4a`'s and are
+deliberately not retuned — one change at a time — so this is a known property of the comparison, not a
+defect in it.
 
 **Ranking losses** (RankNet, LambdaRank) become well-posed here and nowhere earlier, because they need
 one score per ranked item and a bag supplies it. They are a **second** change and belong to a later run
