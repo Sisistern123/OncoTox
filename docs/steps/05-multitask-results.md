@@ -297,10 +297,30 @@ So coverage and spread together remove barely a fifth of the catalog — which i
 above needed a differential-response condition, and why the near-1.0 label distribution makes absolute
 MSE uninformative (see *Metrics* above).
 
-**Per-drug coverage** (`outputs/data/drug_coverage.png`, same notebook): **no drug covers all 180
-lines** — max 179, median 171 — **382 drugs clear 90 %** coverage, 80 drugs fall below 50 %, and 14 have
-std < 0.05. The ~16-line drugs (n_val 221) are the unreliable heads that dominate the
-worse-than-baseline lists. Per-drug values are in `outputs/*_drug_learnability.csv`.
+**Per-drug coverage** (`analysis/harmonization/drug_coverage.ipynb` §2–§3, printed output): **no drug
+covers all 180 lines** — max 179, median 171 — **382 drugs clear 90 %** coverage, 80 drugs fall below
+50 %, and 14 have std < 0.05.
+
+> ⚠️ **Dated marker, 13.08.2026 (Selin).** Two further claims stood in this paragraph and have been
+> removed. Recorded rather than silently dropped, because both were stated here as fact.
+>
+> *"The ~16-line drugs (`n_val` 221) are the unreliable heads that dominate the worse-than-baseline
+> lists"* — **retracted, not awaiting refresh.** Both quantities came from `drug_coverage` §4–§5, which
+> merged the newest `runs/*_all_drugs/per_drug_results.csv` **by modification time**. Of the 17 such runs,
+> 16 are on the void `auc` target and one on the retired `auc_z`, and the one that selection picked ran
+> **one epoch in four seconds** (`runs/20260713_141229_multitask_X_pca_all_drugs/run_meta.json`,
+> `05:12:29`→`05:12:33`). R4 re-runs §B of `4a_percell_training` and will produce a K=545 run on `auc_cc`,
+> but the cells that turned such a run into this claim are archived, and archived notebooks are not
+> re-run — so **no rerun regenerates it**. Restoring the claim means restoring those cells.
+>
+> *"Per-drug values are in `outputs/*_drug_learnability.csv`"* — **removed permanently.** The
+> learnability criterion is [retracted](./corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability)
+> and its tables sit in `outputs/archive/`, which is by definition what a standard run cannot recreate.
+>
+> The coverage figures above are **unaffected** — they come from §2–§3, which read no model output. They
+> move 180 → 181 lines at R5. The parenthetical formerly credited `outputs/data/drug_coverage.png` with
+> these numbers; that figure contains none of them (both its panels are model output), so the
+> attribution has been corrected to the notebook sections that print them.
 
 **The result (`learnable_subset_training`).** Both reps trained on those 5 heads (matched trunk, on the then-current `auc_z`); the honest
 metric is per-drug Spearman on **cross-validated out-of-fold predictions** — 5-fold GroupKFold over the

@@ -945,6 +945,25 @@ first and agreed before it is executed.
 cache and would not have survived the session. Nothing here may start before the review above is
 finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 
+> ### ⭐ Every unarchived notebook is re-run, in a dependency-respecting order (Selin, 13.08.2026)
+>
+> **This governs R2–R5 and takes precedence over their per-item notebook lists wherever the two
+> disagree.** The sequence was written as a set of *targeted* re-runs — R2's two preprocessing drivers,
+> R3's two refreshers, R5's named analysis notebooks — and a targeted list silently exempts every
+> notebook nobody thought to name, leaving it holding results computed before the code changed. The
+> scope is now **every notebook under `notebooks/` that is not in `notebooks/archive/`**.
+>
+> `notebooks/archive/` stays out, by the same rule that put it there: those notebooks read targets that
+> no longer exist, so re-running them either raises or manufactures numbers on a retired scale.
+>
+> ⚠️ **The order is not yet written down, and it is not free.** A notebook must run after everything
+> whose outputs it reads, and the dependencies are not all through the pipeline artifacts — several
+> notebooks read `outputs/` files written by *other notebooks* (`5_evaluation` reads `outputs/panel/`;
+> `dreval_benchmark` reads the panel and writes `dreval/`). Two are also **blocked rather than merely
+> stale** and cannot run at all until their blocker clears (`dreval_benchmark`, `diagnostics`).
+> Enumerating every notebook with its inputs, its blocker and its position is the next thing to produce;
+> **until that exists this entry states the requirement, not the plan**, and must not be read as one.
+
 - [x] **R1 · DECIDED 12.08.2026 (Selin): re-embed `hvg5000` + `all_genes`.** Not all five, not
       `hvg5000` alone. This covers every number the report currently quotes, at the middle cost —
       scGPT embedding is the expensive step, which is why the scope had to be set before R2.
