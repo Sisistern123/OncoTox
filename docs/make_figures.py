@@ -5,6 +5,81 @@
   pipeline_overview.png    status of the whole project against the plan (steps 01-08)
   loss_01_objective.png    what the objective is made of
 
+FIGURE CONVENTIONS — READ BEFORE WRITING ANY TITLE, CAPTION OR ANNOTATION
+=========================================================================
+
+Set by Selin 12.08.2026: *"stop making LLM like figures and titles. this is a scientific report."*
+Recorded here rather than in a message so it does not have to be restated to whoever comes next.
+Three rules, and every one of them was broken somewhere in this file when they were written.
+
+1. **A title names what is plotted. It never states what the result means.**
+   Not ``"The weighting fired — and the ranking did not move"``.
+   But  ``"Prediction spread and per-drug Spearman across density-weighting levels"``.
+   The test is not "is it true" — a conclusion-shaped title is the wrong register even when it is
+   correct, and a title that would still hold after the rerun is still wrong. A title that *cannot*
+   survive a rerun is worse: it is a claim in a PNG, where it cannot be qualified, cited or
+   retracted. See ``loss_01_objective.png``, which asserted a squared loss for weeks and could not
+   fail because it reads no data.
+
+2. **Annotations label; they do not interpret.**
+   ``"high AUC = resistant"`` is a legend and belongs. ``"above the line: the model hedges less"``
+   is an interpretation and does not — interpretation goes in the report text, where it can be
+   argued, sourced and disagreed with. The same applies to an argument set as a caption: if a
+   sentence would need a citation in prose, it needs one here too, and therefore belongs there.
+
+3. **Every mark earns its place.** Axes, data, and the minimum labelling needed to read them.
+   Circles, arrows, heat strips, rounded colour-filled callout boxes, italic grey asides and
+   explanatory sub-captions are infographic register, not scientific figures. If a mark's job is to
+   look explanatory rather than to carry information the reader needs, it goes.
+
+A fourth, from an unrelated defect class found the same day: **never hardcode a count in a label.**
+Derive it — ``len(PANEL)``, a row count, a config value. ``"the 8 heads"`` was already wrong when it
+was found (the rebuilt panel has 11), and ``180 trainable`` becomes 181 at the sweep. A number typed
+into a string cannot be checked by anything.
+
+AUDIT AGAINST THOSE RULES — 12.08.2026, not yet applied
+-------------------------------------------------------
+Every title, caption, annotation and axis label in this file, judged twice: *does it assert a
+result?* and *is it a scientific caption or a headline?* **Nothing below has been rewritten.** The
+figures are held until R4, and the three ⛔ entries cannot be rewritten before then anyway — a title
+naming what the run showed has to wait for the run. Listed here so the pass is a checklist rather
+than a rediscovery.
+
+⛔ **Asserts a result — must be rewritten from what the run shows, not before:**
+  671   ``"one seed — only scGPT clears the ridge control"``   a finding from the void 8-drug run,
+        used as the *stage-8 label of the pipeline diagram*, so the pipeline drawing states an
+        outcome as though it were a step.
+  1013  ``"The weighting fired — and the ranking did not move"``   the 27.07 conclusion, on the
+        figure drawn from the run that re-tests exactly that claim.
+  1034  ``"above the line: the model hedges less"``  ·  1036  ``"on the line: no gain, no loss"``
+
+⛔ **Asserts a setting that is now a swept arm, not a fact:**
+  242   ``"trained with the density-weighted masked MSE"``   states weighting is on *and* that the
+        loss is squared error. Under item 9A ``alpha`` in {0.0, 0.5, 1.0} and the loss is MSE / MAE /
+        Huber — both are arms. Same defect class as the objective figure's old title.
+  650   ``"rare response values weighted up"``   same: true only for ``alpha > 0``.
+
+⚠️ **Headline register — true, but the wrong form:**
+  236   ``"Model architecture — one cell in, one AUC per panel drug out"``   the tagline after the
+        dash is a strapline; ``"Model architecture"`` is the caption.
+  842   ``"The objective — a weighted, masked mean error"``   mine, written this morning, same shape.
+  844   ``"per-drug scaling belongs here, in the loss, rather than in the labels"``   an argument.
+  332   ``"The target is uncentred: … Any per-drug scaling belongs in the loss, not in the target."``
+        four lines of reasoning set as a figure caption. Factually accurate; belongs in Methods.
+
+⚠️ **Infographic register — rule 3.** ``loss_01_objective.png``'s three rounded colour-filled callout
+  boxes (866-879) and grey italic asides; the architecture diagram's circles, arrows and heat strips.
+  Both are mine to redraw at R4.
+
+⚠️ **Hardcoded counts — rule 4.** 123, 124, 141, 159, 186, 522, 536, 540 and 293. **293 is already
+  wrong**: "the 8 heads are the 8 rows of one Linear(64 → 8)" describes the architecture, inside the
+  architecture diagram, and the rebuilt panel has 11 drugs. 124/186's ``180 trainable`` becomes 181.
+
+✅ **Correct as written; do not sweep in:** 343-346, which deliberately contrasts what is PLOTTED
+  (the superseded run) against the CURRENT PIPELINE — that disclaimer is the reason the figure is
+  readable at all. 320/322 (``"high AUC = resistant"``) are legends, not interpretation. 127's
+  ``"Results withdrawn"`` is a plan-status key.
+
 **And one artifact that is not a figure**, written to ``report/`` rather than ``docs/figures/``:
 
   report/loss_objective.tex   the objective's equations, as LaTeX macros the report ``\\input``s
