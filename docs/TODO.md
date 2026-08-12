@@ -371,12 +371,87 @@ every one of them was a step that looked settled and had never been checked.
         cannot be read against the other. Also `_per_drug_train_mean` averages over cells, so lines
         weigh by their cell count, where `density_weighting.line_level` is per line. Routed to
         **item 11 (Evaluation)**, which owns the baselines.
-  - [ ] **Handed over from item 3 (10.08.2026): three fits, one question — what may a fit see?** All
-        three are established facts, none is decided, and they should be decided together rather than
-        separately, or they will get three inconsistent answers. All are unsupervised (no fit sees a
-        response label), which is why standard pipelines tolerate them; and all bias **toward** the PCA
-        control, since scGPT's per-cell binning draws on no other cell, so any scGPT-over-PCA margin
-        measured today is conservative. Detail:
+  - [x] **DECIDED 12.08.2026 (Selin) — what may a fit see. Handed over from item 3 (10.08.2026):
+        three fits, one question.** Decided together, as the item required, so the three answers are
+        consistent. The shared grounds: all three are **unsupervised** — no fit sees a response label.
+        ⚠️ **Retracted 12.08.2026, same day, by decision 2's own resolution.** This line first read that
+        all three fits bias *toward* the PCA control, "so any scGPT-over-PCA margin measured under them
+        is a lower bound rather than an inflated one". **That does not survive `fitc`.** The lower-bound
+        claim rested specifically on the baseline's fit being estimated over cells the model never
+        trained on — which is exactly what restricting it to `fitc` removes. Gene selection stays
+        all-cells (decision 1), but both arms receive the identical set, so it favours neither. Kept
+        here rather than deleted because it is the kind of sentence that gets quoted into an abstract,
+        and it would have been quoted on grounds this decision dissolved. **What survives is narrower
+        and on a different footing:** the embedding reads only its in-vocabulary subset of the selected
+        genes — 4,704 of 5,000 on `hvg5000` — which no fitting-set choice touches. The restriction to
+        `fitc` is therefore about **attributability**, not conservatism: it is the one knob that could
+        move a difference for a reason unrelated to the representations.
+        **1 — HVG stays all-cells.** Keeping one gene set keeps folds, arms and Step 05's gene-set sweep
+        comparable; a train-only HVG set would be fold-dependent, so "the 5,000 HVGs" would stop being a
+        single object. **2 — the cross-validated PCA is fitted per fold, at training time**, on
+        **`fitc` — the cells the model's weights are actually fitted on**, i.e. the fold's training side
+        *minus* the 15 % early-stopping slice. This is the one fit that changes, because every CV number
+        carried it and the CV numbers are the headline.
+        ⚠️ **`fitc` rather than `trc` decided 12.08.2026 (Selin), on comparability.** "That fold's
+        training lines" became ambiguous once audit 07 nested the early-stopping set: `trc` is the whole
+        training side, `fitc` is `trc` minus the stopping slice, and every other per-fold statistic —
+        `fit_weight_fns`, the head-bias init — already uses `fitc`. The deciding argument is **what the
+        two arms see**, not the leak. PCA and scGPT already receive the same cells, the same per-cell
+        CPM and log transform, and the same all-cells HVG gene set (decision 1). The *only* place they
+        differ is that **PCA needs a fit — mean, std, rotation — and scGPT needs none**: its weights are
+        pretrained elsewhere and frozen, and its value binning digitizes each cell against its own
+        distribution, so nothing is estimated across cells. Since that fit is the single asymmetry,
+        keeping it as narrow as possible is what makes a measured difference attributable to the
+        *representation* rather than to how much the control's fit was allowed to see. `fitc` also
+        removes the exception: PCA is now fitted like every other per-fold statistic.
+        **Cost, stated rather than glossed:** ~15 % fewer cells for a 512-component fit, so if scGPT
+        wins, PCA can be asked whether it was undersold. The answer is that the fit still uses ~85 % of
+        the training cells, and the alternative hands the control an advantage scGPT structurally cannot
+        receive. Rejected: `trc`, better estimated but it widens the one place the arms are not alike.
+        `X_pca` is still written and remains correct for UMAPs and
+        other descriptive use; CV stops reading it. Implementation is in the training path
+        (`model/dataset.py::resolve_rep` today falls through to `X_pca` whenever `split_col is None`),
+        with **one helper called by both `cv.oof_predictions` and `train_multitask.cv_evaluate`** — never
+        two, since the §A/§B asymmetry has already produced a real defect twice.
+        ⚠️ **Re-confirmed 12.08.2026 after the cost was corrected.** This was first recorded as needing
+        no preprocessing change, which was wrong: `4a` opens the targets h5ad *backed* and copies only
+        `obs`/`obsm`, so the CV path holds no expression matrix, and the matrix it needs is not that file
+        — `add_pca` fits on `counts_h5ad` (`paths.raw_h5ad`, **2.15 GB**), because the targets `.X` has
+        the scGPT OOV genes dropped and would give a different gene set, so per-fold fits taken from it
+        would not be comparable with the stored `X_pca`. **True cost:** the training path opens a file it
+        has never touched, carries ~1 GB alongside the embeddings, and does five 512-component fits per
+        CV run for the PCA arm — repeated across R4's grid (MSE/MAE/Huber × α ∈ {off, 0.5, 1.0}, plus
+        item 8C), which is why the fits are **cached per run, keyed by the fold assignment** (Selin,
+        12.08.2026). Folds are deterministic given the seed and the eligible line set, so the cache is
+        sound and the projections need not be stored. The cache is **in-process, not on disk under
+        `runs/`**: a cached projection outliving the code that produced it is the exact failure class
+        the 03.08 freeze exists for, `runs/` is gitignored so it would be invisible in review, and it
+        would fail by producing numbers that are plausible and wrong.
+        ⚠️ **float32 — BOTH fits, decided 12.08.2026 (Selin), and this makes decision 2 gate R2.** The
+        counts matrix is stored dense float64 (53,513 × 5,000 = 2.14 GB, the whole file), so casting on
+        load halves the per-fold cost: ~1.07 GB resident, ~0.86 GB per fold subset, peak ~2.2 GB rather
+        than ~4.4. Casting **only** the per-fold fits was rejected: `add_pca`'s descriptive all-cells fit
+        runs float64, so the two would then differ in dtype as well as in which cells they see — undoing
+        the property Selin established on 10.08.2026 when she harmonised `ddof` to 1 precisely so that
+        *which cells are seen* would be the only difference between them. So `add_pca` casts too. That
+        is a preprocessing change: it moves `X_pca` in its last digits, and **R2 must run after it**,
+        not before. The precision cost for PCA on log-CPM is nil at the precision anything quotes.
+        **Rejected: precomputing and storing five fold-keyed matrices at R2.** It would make the fold
+        PCAs inspectable artifacts, consistent with `uns["pca_fits"]` (audit 04b) — but it adds ~548 MB
+        per variant (512 comps × 53,513 cells × 5 folds), ~1.1 GB across `hvg5000` + `all_genes`, and it
+        pushes CV configuration (`n_splits`, seed, `group_col`, `eligible_splits`) into preprocessing, so
+        changing a *training* parameter would force a *preprocessing* re-run. The artifact argument is
+        also weaker here than in 04b: that stored a **fit** — loadings and variance ratios, answering
+        questions nothing else could — where this would store **projections**, recomputable from a
+        deterministic fold assignment.
+        **3 — the never-training cells stay in.** Decision 2 already removes them from the PCA the model
+        reads, because a fold's training lines are eligible (labelled) by construction; what remained was
+        only whether they should help choose the HVG set, and they should — no label exists to leak, more
+        cells estimate gene variance better, and both arms share the result so neither is advantaged.
+        ⚠️ **Consequence for the record:** the leak in `resolve_rep` is closed for CV rather than
+        documented, so Step 02's "still leaky, and documented as such" and the matching docstring stop
+        being true at R4 and must be rewritten there, not before — the code changes at R4, not now.
+        Detail on what each fit sees:
         [Step 02](./steps/02-preprocessing-and-embeddings.md#what-transform-pca-sees--corrected-05082026).
         1. **HVG selection is all-cells**, for both arms — the one fit the two representations share.
         2. **The cross-validated PCA is all-cells.** The fixed splits were fixed 05.08.2026
@@ -546,12 +621,19 @@ first and agreed before it is executed.
 cache and would not have survived the session. Nothing here may start before the review above is
 finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 
-- [ ] **R1 · Decide the re-embedding scope — which variants get regenerated.** **Selin's decision, and
-      it sizes everything below**, because scGPT embedding is the expensive step. Five variants exist on
-      disk (`hvg1000/2000/3000/5000`, `all_genes` — `layout.py:31`, `VARIANT_N_TOP_GENES`). What each
-      option implies: **all five** keeps [Step 05](./steps/05-multitask-results.md)'s gene-set sweep
-      like-for-like; **`hvg5000` + `all_genes`** covers every number the report currently quotes but
-      leaves the sweep mixing old and new embeddings; **`hvg5000` only** is cheapest and voids the sweep.
+- [x] **R1 · DECIDED 12.08.2026 (Selin): re-embed `hvg5000` + `all_genes`.** Not all five, not
+      `hvg5000` alone. This covers every number the report currently quotes, at the middle cost —
+      scGPT embedding is the expensive step, which is why the scope had to be set before R2.
+      Five variants exist on disk (`hvg1000/2000/3000/5000`, `all_genes` — `layout.py:31`,
+      `VARIANT_N_TOP_GENES`); the three that are not re-embedded keep their current artifacts.
+      ⚠️ **What this costs, recorded so it is not rediscovered:** [Step 05](./steps/05-multitask-results.md)'s
+      gene-set sweep spans `hvg1000/2000/3000/5000`, so after R2 it **mixes re-embedded `hvg5000` with
+      three variants embedded by the older code** — before the gene-symbol repair, the seeding and the
+      `ddof=1` harmonization. The sweep is therefore not like-for-like and any conclusion drawn across
+      its points needs that stated, or the three remaining variants re-embedded later as a top-up.
+      Rejected alternatives and why: **all five** keeps the sweep like-for-like but is the longest run;
+      **`hvg5000` only** is cheapest but voids the sweep entirely and leaves every `all_genes` number in
+      the report stale.
 - [ ] **R2 · Re-run preprocessing end to end.** Driver: the notebooks —
       `notebooks/1_data.ipynb` (`fetch`, `convert`) then `notebooks/3_representations.ipynb`
       (`scgpt`, `targets`, `splits`, `pca`), both calling `scripts/preprocessing/pipeline.py`. Needs
@@ -587,15 +669,25 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       refresh them; `4a_percell_training.ipynb` on the rebuilt panel; ridge / `NaiveMeanEffects` on the same
       folds; `verify_variants.ipynb` §9; and 4A below. Blockers already recorded: **≥ 3 seeds** before any
       scGPT − PCA margin is quoted, and train-only drug selection inside each fold.
-  - [ ] **The loss comparison** (item 9A, 12.08.2026): MSE / MAE / Huber × density weighting
-        `alpha` ∈ {off, 0.5, 1.0}, on the per-cell architecture only — ranking losses wait for MIL,
-        where one bag is one cell line and they are well-posed. Two conditions, both from the failure
-        of the last comparison: **the decision rule is fixed before the run**, and **≥3 seeds**, since
-        the seed band on Spearman is ±0.04 and larger than most differences seen so far. If Huber is
-        included, derive its `beta` from the residual scale rather than inheriting `TrainConfig`'s
-        0.05, which is unsourced and mis-scaled for `auc_cc` (item 9C). Scored on all four quantities
-        in `5_evaluation`, which is what lets a spread effect be seen at all — the previous null was
-        measured on Spearman and MSE, both blind to it.
+  - [ ] **The loss comparison** (item 9A, 12.08.2026): **MSE / MAE** × density weighting
+        `alpha` ∈ {off, 0.5, 1.0} — **six arms**, on the per-cell architecture only; ranking losses wait
+        for MIL, where one bag is one cell line and they are well-posed. Two conditions, both from the
+        failure of the last comparison: **the decision rule is fixed before the run**, and **≥3 seeds**,
+        since the seed band on Spearman is ±0.04 and larger than most differences seen so far. Scored on
+        all four quantities in `5_evaluation`, which is what lets a spread effect be seen at all — the
+        previous null was measured on Spearman and MSE, both blind to it.
+        ⚠️ **HUBER DROPPED 12.08.2026 (Selin); this read MSE / MAE / Huber until then, and item 9C —
+        derive Huber's `beta` from the residual scale — goes with it.** Two grounds. Huber's role in the
+        grid was to be the point *between* L2 and L1, and its position is set entirely by `beta`: at
+        `TrainConfig`'s 0.05 against ~0.163 RMSE roughly three quarters of residuals fall in the linear
+        region, so it behaves close to MAE and the grid would carry two near-duplicate columns. Fixing
+        that means choosing `beta`, and every non-arbitrary choice (e.g. the textbook 1.345·σ for 95 %
+        asymptotic efficiency) introduces a new sourced-but-imported constant into a comparison whose
+        whole purpose is to *be* the justification — the same objection that retired `DEFAULT_WINSOR`
+        and that keeps `cap=3` documented as arbitrary. **MSE and MAE already bracket the robustness
+        axis**, which is what the comparison is testing; what is given up is only the ability to say a
+        middle ground was tried. `MAE` is implemented for this (it has no parameter, which is part of
+        why it survives the same objection Huber does not).
   - [ ] **The minimal capacity re-derivation** (item 8C, 12.08.2026): trunk `(128,64)` vs a bare linear
         head (`hidden_dims=()`), both representations, against `RidgeCV` on the *same* folds via
         `cv.grouped_folds`, on the rebuilt panel. ~20 fits. It re-establishes the one claim that carries
