@@ -151,7 +151,7 @@ Results: [Step 04](./steps/04-single-task-results.md) (single-task), [Step 05](.
 > default) + a smaller `(64,32)` PCA trunk, both of which handicapped PCA. PCA now keeps **512
 > components** (`add_pca.DEFAULT_N_COMPS`, override `--pca-n-comps`) on the matched `(128,64)` trunk,
 > so PCA and scGPT share input width *and* parameter count — the last comparison confound is closed.
-> The **full 8-run matrix was re-run at 512-d** (reproducible in `notebooks/2_training.ipynb`; run
+> The **full 8-run matrix was re-run at 512-d** (reproducible in `notebooks/4_training.ipynb (§B)`; run
 > dirs `runs/20260627_1913xx_*`); the numbers above and in [Step 05](./steps/05-multitask-results.md)
 > are these 512-d results and supersede the 14.06 (~50-d) matrix.
 

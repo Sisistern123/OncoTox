@@ -38,12 +38,18 @@ something subtly wrong. `run_preprocessing.py`, the CLI that used to hold the st
 [archived](../scripts/archive/README.md) that day: the order is the numbering of these notebooks, and a
 second copy of it in a CLI was a second thing to keep in step.
 
-> ⚠️ **`2_training.ipynb` is not yet folded in.** Its conclusions are superseded — the 8-run matrix and
-> the "ρ ≈ 0, the model cannot rank cell lines" reading were produced at K=545 on the legacy `mean_pv`
-> target, whose unstandardised per-drug variance was destroying the signal
+> ⚠️ **`4_training` has two sections, and they answer different questions.** §A is the panel run. §B is
+> the PCA-vs-scGPT 8-run matrix, folded in from `2_training.ipynb` on 12.08.2026, which is retired by
+> that merge. §B's conclusions are superseded — the matrix and the "ρ ≈ 0, the model cannot rank cell
+> lines" reading were produced at K=545 on the legacy `mean_pv` target, whose unstandardised per-drug
+> variance was destroying the signal
 > ([why](../docs/steps/corrections-and-dead-ends.md#neither-representation-ranks-cell-lines--the-k545-null-result))
-> — but its harness is the only place the PCA-vs-scGPT matrix exists. It becomes `4_training` §B; until
-> that fold happens it keeps its old filename and is **not** a numbered stage.
+> — but its harness is the only place that matrix exists, so it survives the notebook that held it.
+>
+> §B keeps `cv_evaluate` rather than moving to `oof_predictions`: the two became consistent on
+> 12.08.2026 (both initialise the head bias and share `cv.grouped_folds`), and only their *return*
+> differs — §A needs predictions, §B needs per-fold metrics such as `gap`, which `oof_predictions` does
+> not return. Outputs go to `outputs/matrix/`, not §A's `outputs/panel/`.
 
 ## Analysis
 
@@ -105,10 +111,11 @@ any module is in [CLAUDE.md](../CLAUDE.md) under *Where things live*.
 | `replicate_variation.ipynb` | **Ground 2**, archived 11.08.2026. How far apart two screenings of the same (cell line, drug) fall — it existed because the pipeline *averaged* them, and it no longer does. Its measurements are kept in [Step 01](../docs/steps/01-datasets-and-harmonization.md#genuine-repeats-are-averaged-and-they-disagree-more-than-the-targets-own-spread-10082026), reframed as the evidence for the target switch |
 | `ablations_and_rescue.ipynb` | **Ground 2**, archived 11.08.2026. *Why did the 545-head model fail, and what fixes it?* — the implicit σ²-weighting of the loss, the causal rescue test, the model-knob ablations, the ridge control. The whole argument is a head-to-head between `auc` and `auc_z`, both removed, so it cannot run. Re-wiring it to `auc_cc` / `ln_ic50_cc` would not preserve the argument; it would ask a different question. ⛔ **Its ablation and ridge tables are void (12.08.2026):** its `oof()` early-stopped on the fold it scored, so the MLP rows are flattered and the ridge row is not — [Corrections](../docs/steps/corrections-and-dead-ends.md#the-evidence-that-closed-model-side-tuning). The within-notebook *rescue* ranking survives, because every arm there carries the same leak |
 
-Two things are **not** grounds for archiving. **Superseded conclusions** — `2_training`'s results are void
-but its harness is the only way to re-run the matrix, so it survives as `4_training` §B. **A discredited
-criterion** — `2_drug_selection`'s predecessors were built on one, but it is the documented record of how
-selection was done, and the rebuilt panel replaced it rather than deleting the record.
+Two things are **not** grounds for archiving. **Superseded conclusions** — the 8-run matrix's results are
+void but its harness is the only way to re-run it, so it survives as `4_training` §B rather than going
+here. **A discredited criterion** — `2_drug_selection`'s predecessors were built on one, but it is the
+documented record of how selection was done, and the rebuilt panel replaced it rather than deleting the
+record.
 
 ## Re-running
 

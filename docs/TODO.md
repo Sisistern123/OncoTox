@@ -305,7 +305,7 @@ every one of them was a step that looked settled and had never been checked.
         re-run** — trunk `(128,64)` vs a bare linear head, both representations, against `RidgeCV` on the
         same folds and the rebuilt panel; not the four-knob sweep. Scheduled at R4.
   - [ ] **Found on the way, routed elsewhere.** `--epochs` defaults to 50 in the CLI, 25 in `TrainConfig`
-        and `4_training`, and `2_training` sets 50 → **item 10**. `dreval_benchmark.ipynb` builds
+        and `4_training`, and `4_training` §B sets 50 → **item 10**. `dreval_benchmark.ipynb` builds
         `OncoMLP` by hand and so has neither mechanic from A → **item 11**, which owns that notebook.
         `ScGPTDrugDataset` has no consumers — the `train_baseline.py` / `train_scGPT.py` its docstring
         names were deleted in `090f957` — and the `norm="batch"` / `"none"` branches are never exercised
@@ -378,7 +378,7 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 - [ ] **R4 · Retrain.** The `DataLoader`s now take an explicit generator and the inputs change under R2,
       so no run under `runs/` is reproducible from current code. Requires the target (item 5) and the
       panel (item 6) settled first, and **never both in one run**. Scope: the 8-run matrix + 5-fold CV
-      (`2_training.ipynb`, `train_multitask.py`) — expected to **overturn** the Steps 04–05 numbers, not
+      (`4_training.ipynb` (§B), `train_multitask.py`) — expected to **overturn** the Steps 04–05 numbers, not
       refresh them; `4_training.ipynb` on the rebuilt panel; ridge / `NaiveMeanEffects` on the same
       folds; `verify_variants.ipynb` §9; and 4A below. Blockers already recorded: **≥ 3 seeds** before any
       scGPT − PCA margin is quoted, and train-only drug selection inside each fold.
@@ -754,7 +754,7 @@ and [Corrections](./steps/corrections-and-dead-ends.md#the-model-is-over-regular
       instrument, not a performance lever — the item lives in* Agreed plan, Step 2 *and is not scored
       on beating ridge.)* What stays open here is narrower: if line-level ρ is all that is ever
       reported, the per-cell framing needs a justification that does not depend on Q2 succeeding.
-- [ ] **Add ridge (line-level) to `2_training`'s comparison tables** so every future claim is scored against it.
+- [ ] **Add ridge (line-level) to `4_training` §B's comparison tables** so every future claim is scored against it.
 - [ ] *(Optional)* **z-score train-only.** The per-drug mean/std currently use all 180 lines, val/test
       included — mild leakage. Fixing it means computing splits before the targets step.
 - [ ] *(Stretch)* cluster cell lines by response and **stratify train/val/test** (high/med/low) for

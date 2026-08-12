@@ -588,7 +588,7 @@ dissolved — is recorded under [Process failures](#process-failures).*
 
 ### "Neither representation ranks cell lines" — the K=545 null result
 
-**Established** 27.06.2026 (`notebooks/2_training.ipynb` §3): per-drug Spearman between predicted and
+**Established** 27.06.2026 (`notebooks/4_training.ipynb` §B3): per-drug Spearman between predicted and
 true response across held-out lines, over the 461 drugs with real per-line variance, came out at
 **−0.02 (PCA) / −0.05 (scGPT)**, with only ~4 % of drugs above ρ = 0.3. Read at the time as the
 project's central finding — that at this label resolution the task is barely learnable beyond the mean,
@@ -781,7 +781,7 @@ as mechanics rather than as choices.
 
 **Overturned 12.08.2026 (review item 8) — they were only ever applied in `cv.oof_predictions`.**
 `train_multitask.cv_evaluate` and `train_multitask.train_rep`, which together produce the entire 8-run
-matrix, initialized no head bias, and `2_training.ipynb` never set `exclude_output_from_decay`, whose
+matrix, initialized no head bias, and `4_training.ipynb` (§B) never set `exclude_output_from_decay`, whose
 default was `False`. So the matrix path trained heads that start near 0 and are pulled back toward 0,
 while the panel path started them at the drug mean and never decayed them. Two arms of the same project
 under different rules, with the docs describing only one of them. `dreval_benchmark.ipynb`, which builds
@@ -946,7 +946,7 @@ they were drawn from was not, which is a separate defect.
 **Claimed** as a hunch from the earlier matrix runs — and its mirror, that HVG filtering specifically
 helps scGPT.
 
-**Not reproduced** 28.06.2026 (then `notebooks/2_training.ipynb` §4; since 03.08.2026
+**Not reproduced** 28.06.2026 (then `notebooks/4_training.ipynb` §B4; since 03.08.2026
 `notebooks/analysis/qc/verify_variants.ipynb` §9), the gene-set sweep at 1k/2k/3k/5k plus
 `all_genes` under identical 5-fold CV: both representations are **flat across the whole axis** (PCA
 ~203–216 heads beating baseline, scGPT ~184–193), val MSE constant at 0.0105–0.0107. PCA's `all_genes`

@@ -382,7 +382,7 @@ as flags (`--use-rep`, `--drugs`, `--batch-size 128`, `--epochs 50`, `--lr`, `--
 `--dropout`, `--input-dropout`, `--loss {mse,huber}`, `--hidden-dims`, `--seed`); run artifacts are
 written by `create_run_dir`/`save_run` ([Step 05](05-multitask-results.md)).
 
-Both the CLI and `notebooks/2_training.ipynb` drive one training run through the same
+Both the CLI and `notebooks/4_training.ipynb (§B)` drive one training run through the same
 `train_multitask.train_rep(...)` function (datasets → per-drug-mean baseline → `OncoMLP` → `train_model`
 → `save_run`), returning the run dir, history, and per-drug MSE arrays. The notebook is the
 **reproducible PCA-vs-scGPT comparison**: it trains both reps at the matched 512-d width and writes
