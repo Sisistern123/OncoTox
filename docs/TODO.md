@@ -658,15 +658,23 @@ every one of them was a step that looked settled and had never been checked.
         **AdamW was implemented and reverted the same day (Selin, 12.08.2026)**, because measuring
         it first showed the migration carries an uncosted parameter decision (8 epochs, real
         `OncoMLP` and grouping, synthetic data at workload scale):
-        | optimizer | `weight_decay` | weight-matrix L2 norm |
-        |---|---|---|
-        | Adam | 1e-3 | **5.597** |
-        | AdamW | 1e-3 | 8.971 |
-        | AdamW | 0 | 8.975 |
-        **AdamW at the same nominal value is indistinguishable from no weight decay** — 0.04 % from
-        the zero-decay run — where Adam at 1e-3 shrinks the weight matrices by 38 %. AdamW's step is
-        `θ -= lr·wd·θ`, a factor of `1 − 1e-6` here; Adam's L2 is amplified by `1/sqrt(v)`.
-        Reproducing Adam's shrinkage needs `wd ≈ 1.0`, three orders of magnitude up.
+        **The numbers are in `4a_percell_training`'s `RUN_WD_CHECK` cell, not here** — run it and the
+        comparison reproduces. **AdamW at the same nominal value is indistinguishable from no weight
+        decay**, where Adam at 1e-3 measurably shrinks the weight matrices. AdamW's step is
+        `θ -= lr·wd·θ`, a factor of `1 − 1e-6` at these settings; Adam's L2 enters the gradient and is
+        amplified by `1/sqrt(v)`.
+        ⛔ **Corrected 13.08.2026. Three figures stood here — 5.597 / 8.971 / 8.975, "0.04 %", "38 %"
+        and "`wd ≈ 1.0`, three orders of magnitude up" — and none of them is re-derivable.** The script
+        that produced them was never saved; what survives in scratch is a different measurement. When
+        the comparison was rebuilt as a committed cell it gave different absolute norms, because the
+        settings behind the originals are unrecoverable. **The conclusion is unchanged and slightly
+        stronger** — the two AdamW arms differ by less on the reproducible measurement than on the lost
+        one — but the numbers were the justification for a merged configuration choice, and they could
+        not be checked. They are removed rather than restated: the cell is the source, and a number
+        stated in two places is one that can drift. `wd ≈ 1.0` goes with them; nothing now supports it,
+        and it was only ever the rejected alternative.
+        *This is the failure item 12's closure predicted in its own words — a check written to confirm
+        work, passing on first run, never entering the repo, and missing when it turned out to matter.*
         **So `weight_decay = 0.0`, chosen rather than defaulted.** Carrying 1e-3 across would have
         stated a setting the optimizer ignores. The rejected alternative was `wd ≈ 1.0`, which
         reverse-engineers a value to reproduce the shrinkage of runs that are themselves void.
@@ -716,15 +724,18 @@ every one of them was a step that looked settled and had never been checked.
         grouping is unchanged and only the application moves. **R4-side; lands with the training branch,
         not before R2.**
         ⚠️ **And `weight_decay = 0.0`, written explicitly (Selin, 12.08.2026).** Not a default and not
-        an oversight: **at `1e-3` under AdamW there is effectively no weight decay at all.** Measured on
-        the real `OncoMLP` with the real grouping, synthetic data at workload scale, 8 epochs —
-        weight-matrix L2 norm **8.971** at `wd=1e-3` against **8.975** with decay switched off, a 0.04 %
-        difference, while **Adam** at the same nominal value gave **5.597**, i.e. ~38 % shrinkage.
-        Matching Adam's shrinkage under AdamW needs `wd ≈ 1.0`, three orders of magnitude up. The
-        arithmetic: AdamW's step is `θ -= lr·wd·θ`, a factor of `1 − 1e-6` per step at `lr=1e-3`, where
-        Adam's L2 enters the gradient and is amplified by `1/sqrt(v)`.
-        So the choice was between carrying a number that does nothing, reverse-engineering `wd ≈ 1.0` to
-        reproduce the shrinkage of runs that are **themselves void**, or saying plainly that this model
+        an oversight: **at `1e-3` under AdamW there is effectively no weight decay at all**, while Adam
+        at the same nominal value measurably shrinks the weight matrices. **The measurement is the
+        `RUN_WD_CHECK` cell in `4a_percell_training`** — real `OncoMLP`, real parameter grouping,
+        synthetic input, settings fixed in its docstring — and the numbers live there so they can be
+        re-run rather than believed. The arithmetic: AdamW's step is `θ -= lr·wd·θ`, a factor of
+        `1 − 1e-6` per step at `lr=1e-3`, where Adam's L2 enters the gradient and is amplified by
+        `1/sqrt(v)`.
+        ⛔ **The figures that stood here — 8.971 / 8.975 / 5.597, "0.04 %", "~38 %" — were removed
+        13.08.2026 as not re-derivable**; see the corrected block under item 10. The conclusion is
+        unchanged; the numbers had no reproducible source, and this record now points at one.
+        So the choice was between carrying a number that does nothing, reverse-engineering a decay
+        value to reproduce the shrinkage of runs that are **themselves void**, or saying plainly that this model
         trains **without weight decay** — dropout 0.5 and the input dropout as the only regularizers.
         The third was taken. **The justification is narrow and deliberately so:** no sourced value exists
         for either optimizer, dropout is already substantial, and a decay nobody can justify is worse
@@ -733,8 +744,8 @@ every one of them was a step that looked settled and had never been checked.
         [void ablation](./steps/corrections-and-dead-ends.md#the-evidence-that-closed-model-side-tuning),
         so **whether this model needs weight decay is now an open question, not a settled one.**
         ⚠️ **Consequence for R4:** its model differs from every recorded run in its regularization —
-        those had ~38 % shrinkage, R4 has none. One more reason R4 establishes a baseline rather than
-        measuring a delta.
+        those trained under `Adam` at `weight_decay=1e-3`, which measurably shrinks the weight matrices;
+        R4 has none. One more reason R4 establishes a baseline rather than measuring a delta.
         *(Item 10's optimizer finding closes here — decoupled decay is what Loshchilov & Hutter argue
         for and it is now in use. What replaces it is the open regularization question above, not
         nothing.)*
@@ -905,7 +916,7 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 > and `dreval_benchmark`'s **epoch fix**.
 >
 > ⚠️ **R4's model differs from every recorded run in its regularization.** Those runs used Adam at
-> 1e-3, which shrank the weight matrices by ~38 %; R4 has no weight decay at all. That is not a side
+> 1e-3, which measurably shrank the weight matrices; R4 has no weight decay at all. That is not a side
 > effect of the optimizer switch — it is the decision taken with it (item 10D), and it is one more
 > reason R4 is a baseline rather than a delta.
 >
