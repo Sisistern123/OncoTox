@@ -21,7 +21,10 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "/Users/selin/PycharmProjects/OncoTox").resolve()
+# Repo root from this file's own location, not a hardcoded path: scripts/gate/links.py -> parents[2].
+# The fallback was an absolute /Users/... path, so on any other machine an argument-less run would
+# have checked the wrong tree -- or, worse, a tree that happened to exist -- and reported on it.
+ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).resolve().parents[2]).resolve()
 SKIP_DIRS = {".git", ".claude", "node_modules", ".venv", ".ipynb_checkpoints"}
 
 _anchor_cache: dict[Path, set[str]] = {}

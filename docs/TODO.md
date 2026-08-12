@@ -959,10 +959,30 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
   - [ ] **The loss comparison** (item 9A, 12.08.2026): **MSE / MAE** × density weighting
         `alpha` ∈ {off, 0.5, 1.0} — **six arms**, on the per-cell architecture only; ranking losses wait
         for MIL, where one bag is one cell line and they are well-posed. Two conditions, both from the
-        failure of the last comparison: **the decision rule is fixed before the run**, and **≥3 seeds**,
-        since the seed band on Spearman is ±0.04 and larger than most differences seen so far. Scored on
-        all four quantities in `5_evaluation`, which is what lets a spread effect be seen at all — the
-        previous null was measured on Spearman and MSE, both blind to it.
+        failure of the last comparison: **the decision rule is fixed before the run**, and **≥3 seeds**.
+        Scored on all four quantities in `5_evaluation`, which is what lets a spread effect be seen at
+        all — the previous null was measured on Spearman and MSE, both blind to it.
+        ✅ **The margin is MEASURED from the run's own seeds, not inherited (Selin, 13.08.2026).**
+        `5_evaluation`'s `SEED_BAND` stays unset and §1.3 **raises** until R4 supplies it. What is
+        pre-registered is the *rule* — an arm must beat the others by more than the seed band — not the
+        number; the bar is computed from the ≥3 seeds of the run being judged, which is the same
+        construction that produced ±0.04 originally, on data that is not void.
+        ⛔ **Why ±0.04 was not simply adopted.** It is the sample **sd of the gap between two arms**,
+        from seeds 42/1/7 on the learnability-filtered subset — a **retracted** selection, on the
+        **retired `auc`** target, **before** the early-stopping leak was fixed — and it was being
+        applied as "the seed band on Spearman", which is a different quantity. Whether it was an sd, a
+        range or a half-range was never recorded either. Three defects and an undefined definition, so
+        pre-registering it would have fixed a bar that could not be justified.
+        ⚠️ **Open sub-question, and it must be settled before the rule is applied:** ±0.04 is on
+        Spearman's scale and does not transfer to the guards — values is in the target's own units and
+        the calibration slope is centred on 1.0. Either each guard gets its own measured band, or the
+        guards need separately stated bars.
+        ✅ **All six arms compete for one winner (Selin, 13.08.2026)** — not loss-fixed-sweep-alpha, and
+        not best-alpha-per-loss-then-compare. Recorded with the cost accepted rather than glossed: if
+        the winner differs from the runners-up on **both** axes, the result cannot be attributed to
+        either, which is the "one change at a time" constraint appearing inside a single comparison.
+        Selin's note: analyse the attribution in more detail after the run rather than constraining the
+        grid before it.
         ⚠️ **If Huber ever returns, `beta` returns unsourced with it.** Audit 09 left
         `TrainConfig.huber_beta = 0.05` at its value deliberately, to be derived in the comparison *if*
         Huber were included. Dropping Huber made that defect stop applying rather than fixing it — a

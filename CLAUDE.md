@@ -161,11 +161,13 @@ from external services, `annotation/` resolves identifiers, `preprocessing/` hol
 steps (`pipeline.py`), which the numbered notebooks drive, then `model/`, `training/`, `evaluation/`;
 plus `archive/`, which holds superseded code and is never imported (see its README). Reorganized
 12.08.2026 — `preprocessing/` held all fourteen.
-`check_resolved_paths.py` sits beside `layout.py` and is the exception to the rule that everything in
-`scripts/` is pipeline code: it is imported by nothing and runs as a pre-merge check, catching paths
-built from variables (`OUT / 'a' / 'b'`, `OUT.glob(…)`) that no string search can see. Added
-12.08.2026 after three such defects in a week, one of which would have silently recomputed a
-cross-validation while reporting that it had loaded committed folds.
+`check_resolved_paths.py` and `check_unbound_names.py` sit beside `layout.py`, and `scripts/gate/`
+holds `merge_gate.sh`, `verify_main.sh` and their helpers — the exception to the rule that everything
+in `scripts/` is pipeline code: imported by nothing, run around a merge. The first catches paths built
+from variables (`OUT / 'a' / 'b'`, `OUT.glob(…)`) that no string search can see; the second catches
+names used but never bound — code that parses cleanly and raises at call time. **Every check prints how
+many candidates it examined and fails when that count collapses to zero**, because "0 failed" and
+"0 examined" are otherwise indistinguishable. Known limits: `scripts/gate/README.md`.
 
 **Two rules for the docs:** never state a number in two places, and every claim names the code that
 produced it — script and function, or notebook and section, plus the `outputs/` artifact it was read from.
