@@ -169,6 +169,93 @@ pseudo-replicates. The effective sample size is therefore the number of cell lin
 \NIndep{} after the held-out splits are removed, not the \NCells{} cells. Treating cells as independent
 would understate the uncertainty by roughly the square root of the number of cells per line.
 
+\subsection{Drug panel selection}
+\label{sec:panel}
+
+The compounds a multi-task model predicts are a methodological choice, not a detail of setup, and the
+choice made here is deliberately independent of the response values the model is trained on. Two earlier
+panels in this project were selected using those values --- one by a differential-response gate requiring
+a compound both to kill and to spare a population of cell lines, the other by ranking candidates on the
+same quantity before a literature criterion was applied --- and both were discarded. The gate is
+instructive because its defect is systematic rather than incidental: requiring absolute potency excludes
+every cytostatic agent by construction, since a compound that arrests rather than kills never crosses the
+viability threshold however sensitive the line, and a large share of targeted therapy is cytostatic. More
+generally, selecting compounds on the spread of our own labels enriches for drugs that happen to separate
+our particular cell lines, which flatters every correlation subsequently measured on them, and it requires
+reading labels of cell lines that are later held out.
+
+The panel is therefore defined by three conditions, of which only the second involves our data at all.
+First, the compound must be approved by the FDA for a cancer indication, taken from the systematic
+enumeration of Sun et al.\ \cite{sun_fda}, which lists 150 drugs approved between 1949 and 2014 together
+with approval year, therapeutic class and target gene. Second, CTRPv2 must have screened it against at
+least 90\% of the cell lines in the intersection with SCP542; this threshold is where the coverage
+distribution breaks, with 44 candidates above it and the next values falling away to below 30\%. Third,
+a published claim about the compound's response determinants must exist and must be verified against the
+source, recorded per drug together with what that source actually establishes. The first two conditions
+are computed; the third is a literature judgement that cannot be, and is carried as a table whose entries
+the code requires to lie inside the set the first two produce.
+
+Applying these gives the following funnel. Of the 150 approved drugs, 120 have a small-molecule structure;
+the remaining 30 are monoclonal antibodies, enzymes, a cell therapy and a radiopharmaceutical, which
+cannot appear in a small-molecule viability screen. Of those 120, 57 were screened by CTRPv2, 44 clear the
+coverage threshold, and 11 carry a verified published claim. The panel is \code{gemcitabine},
+\code{doxorubicin}, \code{etoposide}, \code{paclitaxel} and \code{cisplatin} among cytotoxics, and
+\code{imatinib}, \code{sorafenib}, \code{dasatinib}, \code{erlotinib}, \code{crizotinib} and
+\code{afatinib} among targeted agents, with coverage between 91.2\% and 98.3\% of the available cell
+lines.
+
+Matching an external drug list to a screen is not a string operation, and treating it as one loses
+compounds systematically. Approval lists name drugs by international nonproprietary name and often in
+their salt form, whereas screens use development codes and free bases; furthermore the compound
+annotation and the response values reach this project through two different files that name the same 545
+compounds differently, so that a name-based join between them fails for 102 of the 545, of which 15 are
+single-agent approved or clinical compounds. Four keys are therefore used and the successful one is
+recorded per compound: the two name spaces, the PubChem compound identifier, and PubChem's
+parent-compound relation \cite{pubchem}, which is what connects a salt named in an approval list to the
+free base a screen dissolved. The last key alone accounts for 13 of the matches, among them imatinib and
+doxorubicin. The join between the two internal files is made on the screen's own compound identifier
+rather than on names, which matches all 545. One compound required an explicit correction: cisplatin is
+recorded under a nonstandard name and carries a structure identifier pointing to elemental platinum
+rather than to the drug, and is resolved here on the screen's own recorded structure and vendor
+catalogue entry.
+
+Platinum agents are represented once rather than three times, although cisplatin, carboplatin and
+oxaliplatin are all screened with near-identical coverage. Cisplatin and carboplatin share the
+\emph{cis}-diammine carrier ligand and form the same 1,2-intrastrand adduct; they are largely
+cross-resistant and are governed by the same repair biology, so including both would spend two positions
+in an eleven-drug panel on one resistance mechanism. Oxaliplatin's diaminocyclohexane adduct evades
+mismatch repair and is genuinely complementary, but its expression-level determinant is the least
+established of the three. Cisplatin was selected as the representative of the class.
+
+One entry is reported as contested rather than as supporting evidence, because the panel should not
+appear better grounded than it is. The standard determinant of platinum resistance is ERCC1, and the two
+directly comparable cell-line studies disagree: ERCC1 mRNA correlates with cisplatin resistance in
+cervical carcinoma lines \cite{britten_ercc1}, while no association is found across twenty lung cancer
+lines for cisplatin or carboplatin \cite{shimizu_ercc1}. Neither supersedes the other, as they differ in
+lineage and assay, and the more recent is also the less cited. The likely explanation is that ERCC1 has
+four splice isoforms of which only one performs DNA repair, and available assays cannot distinguish them
+\cite{friboulet_ercc1}. This bears directly on the present work: the features used here are gene-level
+expression, in which the functional isoform is not representable, so poor performance on cisplatin is
+anticipated by the literature rather than diagnostic of the model. Retaining the compound with its
+determinant marked contested is preferred to restricting the panel to drugs whose determinants are
+settled, which would bias the evaluation toward compounds whose answer is already known. By the same
+reasoning the evidence supporting doxorubicin and etoposide, both substrates of the ABCB1 efflux
+transporter \cite{skinner_abcb1,omori_abcb1}, is recorded with its setting, and topoisomerase expression
+is not claimed as a determinant for either, since it does not correlate with sensitivity where it has
+been measured \cite{omori_abcb1}.
+
+Finally, the availability of a fitted IC50 is deliberately excluded from the selection criteria. An IC50
+is undefined when a dose-response curve does not cross half-maximal viability, so the proportion of cell
+lines for which one exists is a measure of a compound's potency, ranging within this panel from 14 to 174
+of the available lines. Selecting on it would reintroduce the potency filter described above under the
+appearance of a data-quality rule. Where the two response measures are compared, the comparison is
+restricted at evaluation to compounds with sufficient IC50 coverage, with the per-compound counts
+reported. The selection is implemented in
+\code{notebooks/drug\_selection/literature\_panel.ipynb}, which reads only the response table and writes
+the panel with its citations to \code{notebooks/outputs/panel/panel.csv}; the compound identifier
+resolution is in \code{scripts/preprocessing/drug\_annotation.py} and
+\code{scripts/preprocessing/pubchem.py}.
+
 \subsection{Representation and model}
 
 The comparison between representations is controlled so that only the content of the embedding differs.

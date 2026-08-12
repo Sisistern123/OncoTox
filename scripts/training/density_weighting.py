@@ -18,8 +18,12 @@ between lines. And the density must be fitted on line-level values: the label is
 line, so fitting on cells would let a line with 1,990 sequenced cells bend the density toward its own
 value while a line with 56 barely registers.
 
-**Parameter values and why they are not the textbook ones** (``notebooks/13_panel_distributions.ipynb``
-records the evidence): at ``alpha=1`` (full inverse density) with a loose cap the weight curve
+**Parameter values and why they are not the textbook ones.** ⚠️ **The evidence for them is no longer
+live.** It was recorded in ``panel_distributions.ipynb``, archived 12.08.2026 with the void 8-drug panel
+it was computed on (``notebooks/archive/``); the path this docstring used to give,
+``notebooks/13_panel_distributions.ipynb``, had not existed since the notebooks were renamed. **Audit 09
+must re-derive these on the rebuilt panel or drop the weighting**, which is a
+`refuted hypothesis <../../docs/steps/corrections-and-dead-ends.md>`_ in any case. The reasoning was: at ``alpha=1`` (full inverse density) with a loose cap the weight curve
 saturates the cap across wide stretches of the response range, so the cap -- an arbitrary safety limit
 -- sets the weights rather than the density does. ``alpha=0.5`` compresses the range so the density
 still orders the samples without dictating the magnitude, and ``cap=3`` keeps a handful of extreme

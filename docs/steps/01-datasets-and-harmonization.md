@@ -92,6 +92,8 @@ here so neither is mistaken later for something the analysis depends on:
 | **GDSC2** IC50 + raw data | 26.03.2026 | Sanger Cell Model Passports — <https://cellmodelpassports.sanger.ac.uk/downloads>. Release **27 Oct 2023**: `GDSC2_fitted_dose_response_27Oct23.xlsx` ("GDSC2 IC50 Data") and `GDSC2_public_raw_data_27Oct23/` ("GDSC2 Raw Data", 2.1 GB + description PDF). |
 | **Clinical-phase annotations** | 30.03.2026 | Broad Drug Repurposing Hub — <https://repo-hub.broadinstitute.org/repurposing#download-data>. File `repo-drug-annotation-20200324.txt`, i.e. the **24.03.2020** annotation release. |
 | **DrugBank** full database (XML) | 06.03.2026 | <https://go.drugbank.com/>, academic download; account required. Licence terms above. ⚠️ The date is the file's mtime, not a recorded download — no acquisition record exists for this source, and the XML carries no version in its filename. |
+| **FDA-approved anticancer drug list** — ⭐ the criterion the [drug panel](#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026) is selected on | 11.08.2026 | Sun, J. *et al.*, *BMC Systems Biology* **11**(Suppl 5), 87 (2017), [doi:10.1186/s12918-017-0464-7](https://doi.org/10.1186/s12918-017-0464-7), **Table 1** — 150 drugs approved 1949–2014, 61 cytotoxic and 89 targeted. Retrieved as JATS XML from NCBI E-utilities (`efetch`, `db=pmc`, `PMC5629554`) by `scripts/preprocessing/fetch_sun2017_drugs.py` → `reference/sun2017_fda_anticancer_drugs.csv` (committed; CC BY 4.0). **Table 1 is the whole dataset** — the paper ships no supplementary file. ⚠️ PMC publishes no checksum for a rendered article, so the parse is verified against the counts the paper's own Results state (150 / 61 / 89) and **raises** if they do not reproduce. ⚠️ **The list stops at 2014**: nothing approved since is in it — no CDK4/6 inhibitor, no third-generation EGFR inhibitor, and no checkpoint inhibitor beyond pembrolizumab and nivolumab. Harmless against a screen run in 2012–2015, but it is not a current statement of what is approved. |
+| **PubChem** compound identifiers and parent-compound relations | 11.08.2026 | PubChem PUG-REST (<https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest>) — `compound/name/{name}/cids` and `compound/cid/{cid}/cids?cids_type=parent`, via `scripts/preprocessing/pubchem.py`. Needed because Sun names drugs by INN and salt form while CTRPv2 uses development codes and free bases, so no string rule relates them. **Cached and committed** as `reference/pubchem_parent_cids.csv` (566 CIDs), so the panel reproduces on a machine with no network and cannot drift when PubChem is re-curated. Citation: Kim, S. *et al.* PubChem 2023 update. *Nucleic Acids Research* **51**, D1373–D1380 (2023), [doi:10.1093/nar/gkac956](https://doi.org/10.1093/nar/gkac956). |
 
 ⚠️ **How GDSC2's `LN_IC50` was processed is not documented.** The Sanger documentation link
 (`depmap.sanger.ac.uk/documentation/gdsc/`) was dead, and the DepMap/GDSC team was asked directly with no
@@ -389,6 +391,17 @@ half-killing. **CTRPv2 itself publishes no IC50 at all** — its curve table car
 (50 % of the *fitted decline*, not of absolute viability), so `ln_ic50_cc` exists only in the
 reprocessing.
 
+**The sparsity is not spread evenly, and what it tracks is potency.** A curve that never crosses 50 %
+viability has no IC50 to report, so a compound's IC50 count is a proxy for how hard it kills. Across the
+181 overlapping lines the range is extreme — `crizotinib` 174 and `dasatinib` 172, against `decitabine`
+5, `temozolomide` 5, `procarbazine` 4, `thalidomide` 3, `ifosfamide` 3 and `fulvestrant` 0 — and the
+low-count compounds are cytostatic or slow-acting rather than badly measured. **This is why IC50
+coverage is not a selection criterion** (see the panel below): filtering on it would re-create the
+potency filter that voided the
+[learnability gate](corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability),
+under a name that sounds like a data-quality rule. Restricting an `auc_cc`-vs-`ln_ic50_cc` comparison to
+drugs with enough IC50s is legitimate; doing it at selection time is not.
+
 **What the target build produces.** Counts from
 `notebooks/data_and_harmonization/cell_line_join_verification.ipynb` §3, which calls the pipeline's own
 loader, de-duplication and drug filter rather than reimplementing them:
@@ -490,6 +503,159 @@ the ten roster-listed-but-unscreened lines that leaves **17 of 198** SCP542 line
 cells**, which `scripts/preprocessing/create_splits.py` excludes from every split via `has_any_label`,
 but which remain in the h5ad and therefore still enter HVG selection, scaling and the PCA fit
 ([Step 02](02-preprocessing-and-embeddings.md)).
+
+### The drug-name join, and the compounds it hid (12.08.2026)
+
+Walked as review item 6. The **cell-line** join was audited on 10.08.2026; the **drug** join never had
+been, and it is worse. Two files describe the same 545 compounds — DrEval's `CTRPv2.csv` holds the
+response values, and `data/drug/all_sources_drug_catalog.csv` (built from CTRP's own
+`v20.meta.per_compound.txt` in `notebooks/data_and_harmonization/drug_catalog.ipynb`) holds approval
+status, protein target and mechanism. Every consumer joined them **by name**.
+
+**102 of 545 do not match by name**, because DrEval renamed to preferred names, changed separators
+(`:` → `-`) and altered hyphenation. **15 of the unmatched are single-agent and FDA-approved or in
+clinical trials** — exactly what a clinically-motivated selection looks for:
+
+| CTRP name | DrEval name | | CTRP name | DrEval name |
+|---|---|---|---|---|
+| `abt-199` | Venetoclax | | `byl-719` | Alpelisib |
+| `sirolimus` | Rapamycin | | `cal-101` | Idelalisib |
+| `fluorouracil` | 5-Fluorouracil | | `gdc-0941` | Pictilisib |
+| `mitomycin` | Mitomycin-C | | `lbh-589` | Panobinostat |
+| `alvocidib` | Flavopiridol | | `nvp-bez235` | Dactolisib |
+
+(plus `ex-527`, `tg-101348`, `tipifarnib-p1`, `vx-680`, `ym-155`.) Two of them, `sirolimus` and
+`gdc-0941`, are compounds the [voided literature panel](corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it)
+had already lost once.
+
+**Fix: join on `master_cpd_id`.** CTRP's own compound identifier is present in both files — the
+catalog's `identifier`, with `source_id_type == "master_cpd_id"` — and matches **545 of 545 in both
+directions**. `scripts/preprocessing/drug_annotation.py` is now the single implementation and **raises**
+if the join is ever inexact, rather than dropping rows.
+
+Note this is the **opposite conclusion to the cell-line join**, where names resolve 180 SCP542 lines and
+Cellosaurus accessions only 172, so the accession rides along as an attribute and the name stays the key
+([above](#the-join-audit--what-was-checked-and-what-held-10082026)). Neither "always prefer the
+identifier" nor "always prefer the name" would have got both right; each join was decided on its own
+measured coverage.
+
+#### Cisplatin was invisible: a wrong structure on a nonstandard name
+
+CTRPv2 screens cisplatin under the name **`Platin`** (`master_cpd_id` 375395), and DrEval's
+`pubchem_id` for it is **23939 — elemental platinum**, the element rather than the drug. With a
+nonstandard name *and* a wrong structure, the most widely used platinum agent in oncology could not be
+found by any key an external drug list can use.
+
+The identification rests on CTRP's own compound record: SMILES `N[Pt](N)(Cl)Cl`, i.e.
+*cis*-diamminedichloroplatinum(II), and vendor entry **Selleck S1166**, which is cisplatin.
+
+**Fix:** `CTRP_PUBCHEM_OVERRIDES` in `drug_annotation.py` maps 375395 → PubChem CID **5702198**,
+explicitly and one compound at a time, with the evidence in the table — the same pattern as
+`CTRP_CELL_LINE_ALIASES`. The panel refers to the drug by the key the data uses, `platin`, so no
+downstream translation table exists to fall out of date.
+
+### The drug panel — FDA-approved compounds this screen covers (12.08.2026)
+
+**Decided 12.08.2026 (Selin), rebuilding review item 6.** Both previous panels were selected using our
+own response values and both were voided for it — the
+[learnability gate](corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability),
+which filtered on absolute potency and so discarded every cytostatic compound, and the
+[8-drug literature panel](corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it),
+whose candidate list was ranked on our AUCs before any citation was consulted. The rebuild therefore
+takes the criterion **entirely outside our labels**.
+
+Produced end to end by `notebooks/drug_selection/literature_panel.ipynb` →
+`notebooks/outputs/panel/panel.csv`. It reads no pipeline artifact, only the response CSV, so it runs
+before the sweep and does not go stale when the h5ads do.
+
+**The criterion, in three conditions.**
+
+1. **FDA-approved for a cancer indication**, from Sun, J., Wei, Q., Zhou, Y., Wang, J., Liu, Q. & Xu, H.
+   *A systematic analysis of FDA-approved anticancer drugs.* **BMC Systems Biology 11**(Suppl 5), 87
+   (2017), [doi:10.1186/s12918-017-0464-7](https://doi.org/10.1186/s12918-017-0464-7), Table 1 — 150
+   drugs approved 1949–2014 with approval year, therapeutic class, target gene and delivery type.
+   Retrieved by `scripts/preprocessing/fetch_sun2017_drugs.py`; see [provenance](#provenance--what-was-retrieved-from-where-when).
+2. **Screened by CTRPv2 against ≥ 90 % of the 181 overlapping cell lines.** The cut is where the
+   coverage distribution breaks: 44 candidates sit above it and the next values fall away to 29 %.
+3. **Carries a published claim about it**, recorded per drug with its reference and what that
+   reference actually establishes.
+
+Conditions 1 and 2 are derived in code. Condition 3 is a literature judgement and cannot be, so it is
+carried as a table inside the notebook — the pattern the voided panel's `DETERMINANTS` established — and
+the code asserts every entry lies inside the set that conditions 1 and 2 produce.
+
+**The funnel.** 150 FDA-approved drugs → **120** with a PubChem structure (30 are biologics — antibodies,
+enzymes, a cell therapy, a radiopharmaceutical — which cannot appear in a small-molecule screen) →
+**57** also screened by CTRPv2 → **44** at ≥ 90 % coverage → **11** with a verified published claim.
+
+**Matching needed four keys, and each was necessary.** Sun names drugs by INN; CTRPv2 uses development
+codes and salt forms. `drug_annotation.match_external_list` records per drug which key succeeded:
+DrEval's spelling alone finds `idelalisib`; CTRP's alone finds `fluorouracil` and `mitomycin`; the
+PubChem structure connects `Vemurafenib` to `plx-4032`; and **PubChem's parent-compound relation**,
+applied to *both* sides, connects `Imatinib mesylate` to `imatinib` and, in the other direction,
+`Cytarabine` to `cytarabine hydrochloride`. That last key alone accounts for 13 matches including
+imatinib, doxorubicin, vincristine and topotecan — dropped, without it, on a suffix.
+
+**The panel (11).**
+
+| drug | key in the data | class | evidence |
+|---|---|---|---|
+| Gemcitabine | `gemcitabine` | cytotoxic | strong |
+| Doxorubicin | `doxorubicin` | cytotoxic | medium |
+| Etoposide | `etoposide` | cytotoxic | strong |
+| Paclitaxel | `paclitaxel` | cytotoxic | medium |
+| Cisplatin | `platin` | cytotoxic | **contested** |
+| Imatinib | `imatinib` | targeted | strong |
+| Sorafenib | `sorafenib` | targeted | strong |
+| Dasatinib | `dasatinib` | targeted | medium |
+| Erlotinib | `erlotinib` | targeted | medium |
+| Crizotinib | `crizotinib` | targeted | medium |
+| Afatinib | `afatinib` | targeted | medium |
+
+Coverage runs 91.2 %–98.3 % of the 181 lines. Each drug's reference, the claim that reference makes and
+the setting it was established in are columns of `panel.csv`; they are not restated here.
+
+**Nine of the eleven are named in the four papers this project is built on** — Kinker 2020 (the
+expression atlas), Seashore-Ludlow 2015 and Rees 2016 (the CTRPv2 papers) and scDEAL 2022 (the
+single-cell response benchmark) — **verified against the PDFs, not from a name scan.** Two compounds a
+string search had flagged were dropped on inspection: doxorubicin's Kinker "mentions" are the names of
+published **senescence gene programs** ("lung cancer doxorubicin"), and carboplatin's only appearance is
+a title in scDEAL's bibliography. Doxorubicin and cisplatin were then re-admitted on **external**
+determinants, to fill the two most recognisable cytotoxic classes — anthracycline and platinum — that
+the nine lacked; the `setting` column records that they rest on outside evidence rather than on our own
+papers.
+
+**One platinum, deliberately.** CTRPv2 screens cisplatin, carboplatin and oxaliplatin, all at ~176 of
+181 lines, so coverage does not choose between them. Cisplatin and carboplatin share the *cis*-diammine
+carrier and form the same 1,2-intrastrand GpG adduct; they are largely cross-resistant and driven by the
+same repair biology, so a second one would spend a panel slot on the same resistance mechanism.
+Oxaliplatin's DACH–Pt adduct evades mismatch repair and is genuinely complementary, but its expression
+determinant is the least established of the three. The class is represented **once**, by cisplatin.
+
+**Cisplatin's determinant is contested, and this is recorded rather than smoothed over.** ERCC1 is the
+standard marker of platinum resistance, and the two directly comparable cell-line studies disagree:
+
+- Britten, R. A. *et al.* *Int J Cancer* **89**, 453–457 (2000) — ERCC1 **mRNA** correlates with
+  cisplatin resistance in cervical carcinoma lines (*p* ≤ 0.011), while ERCC1 **protein** does not.
+- Shimizu, J. *et al.* *Respirology* **13**, 510–517 (2008) — **no** correlation between ERCC1 mRNA and
+  cisplatin or carboplatin sensitivity across 20 lung cancer lines.
+
+Neither supersedes the other on the usual tie-breaks: the negative study is both the more recent (2008
+vs 2000) and the far less cited (28 vs 155 citations, Semantic Scholar, 12.08.2026), and it is a
+different lineage and assay. What explains the disagreement is Friboulet, L. *et al.*, *N Engl J Med*
+**368**, 1101–1110 (2013), on 494 patients across two phase 3 trials: **ERCC1 has four splice isoforms
+and only ERCC1-202 repairs DNA**, and available antibodies cannot distinguish them.
+
+That lands directly on this project: our features are **gene-level CPM**, so the functional isoform is
+not representable in them even in principle. If the model ranks cell lines poorly on cisplatin, this is
+the first place to look — and it was known before the run rather than after it. A panel in which every
+drug had a settled strong expression marker would be the stacked deck this rebuild exists to avoid.
+
+**What is deliberately not in the criterion.** IC50 coverage — see the
+[target section](#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026): it tracks potency, so
+selecting on it would rebuild the discredited gate. The `auc_cc`-versus-`ln_ic50_cc` comparison is
+restricted at **evaluation** instead, on whatever subset of the panel has enough IC50s, with per-drug
+counts reported alongside. Within the panel those run from cisplatin's 14 to crizotinib's 174.
 
 ### Replicate experiments were double-counted (10.08.2026)
 

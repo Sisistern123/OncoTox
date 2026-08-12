@@ -198,6 +198,21 @@ def _deduplicate_measurements(long: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def overlap_cell_lines(cell_line_obs: pd.Series, ctrp_full: pd.DataFrame) -> tuple[pd.Series, set[str]]:
+    """Normalized SCP542 line names, and the subset CTRPv2 also screened.
+
+    SCP542 labels a cell as ``<LINE>_<TISSUE>``; only the part before the first underscore is the
+    line, and it is normalized (lower-cased, hyphens removed) into the key space CTRP's own spelling
+    was mapped into by :func:`_load_drevalpy_long`.
+
+    Public because the analysis notebooks need exactly this set -- a drug's coverage is meaningless
+    against CTRPv2's full 886 lines when only the overlap can ever train -- and a second copy of the
+    rule in a notebook is how two definitions of "the overlap" start disagreeing.
+    """
+    normalized = cell_line_obs.astype(str).str.split("_").str[0].pipe(_normalize_cell_line)
+    return normalized, set(normalized.unique()) & set(ctrp_full["ccl_name_norm"])
+
+
 def _build_drug_table(
     ctrp_full: pd.DataFrame,
     overlap_cell_lines_norm: set[str],
@@ -279,14 +294,7 @@ def run(
     print(f"Loading CTRPv2 responses from {Path(response_csv).name} (score={score})...")
     ctrp_full = _deduplicate_measurements(_load_drevalpy_long(Path(response_csv), score))
 
-    cell_line_norm = (
-        adata.obs["Cell_line"]
-        .astype(str)
-        .str.split("_")
-        .str[0]
-        .pipe(_normalize_cell_line)
-    )
-    overlap_cell_lines_norm = set(cell_line_norm.unique()) & set(ctrp_full["ccl_name_norm"])
+    cell_line_norm, overlap_cell_lines_norm = overlap_cell_lines(adata.obs["Cell_line"], ctrp_full)
     print(
         f"  Overlap with SCP542: {len(overlap_cell_lines_norm)} cell lines "
         f"out of {cell_line_norm.nunique()} in AnnData."

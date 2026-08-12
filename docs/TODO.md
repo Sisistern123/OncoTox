@@ -173,11 +173,29 @@ every one of them was a step that looked settled and had never been checked.
       Related open leak: the per-drug target mean/std are computed over every cell line, val and test
       included. **If this audit changes the target, `report/sections/03_methods.tex` §Response target
       changes with it** — it was rewritten 10.08.2026 to state raw `auc`.
-- [ ] **6 · Drug selection — REBUILD, this is the main deliverable.** Pool on coverage and spread only,
-      **no kill counts at any point**, then apply the literature criterion to that pool. Decide the
-      spread threshold explicitly. Expect `nutlin-3`, `oxaliplatin`, `bortezomib` and others to re-enter.
-      Part of a drug's apparent spread is screening noise — `outputs/data/replicate_variation.csv`
-      carries the per-pair disagreement and can be reused here rather than re-derived (item 2).
+- [x] **6 · Drug selection — REBUILT 12.08.2026. The panel is 11 drugs.** Full record in
+      [Step 01](./steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026);
+      produced by `notebooks/drug_selection/literature_panel.ipynb` → `notebooks/outputs/panel/panel.csv`.
+      **The criterion changed from what this item asked for (Selin, 12.08.2026):** not "coverage and
+      spread", but **FDA approval + a verified published claim**, with coverage as the only property of
+      our own data that enters. Spread was dropped because it is still *our* label statistic, so
+      selecting on it stays label-dependent — the objection that voided both previous panels, only
+      subtler ([Corrections](./steps/corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability)).
+      The replicate-noise reuse this item suggested therefore has nothing to apply to.
+      **Found on the way, and both fixed in code:** the **drug**-name join lost 102 of 545 compounds, 15
+      of them single-agent FDA/clinical, now joined on `master_cpd_id` (545/545); and **cisplatin** was
+      invisible under CTRP's name `Platin` with DrEval's `pubchem_id` pointing at *elemental platinum*
+      ([Step 01](./steps/01-datasets-and-harmonization.md#the-drug-name-join-and-the-compounds-it-hid-12082026)).
+      Of the expected re-entries, `oxaliplatin` and `bortezomib` are candidates but not panel members,
+      and `nutlin-3` is excluded on the criterion itself — it has never been FDA-approved, which is a
+      defensible reason where the old gate's was not. **Takes effect at the sweep:** every result still
+      on record was computed on the void 8-drug panel.
+  - [ ] **Left open by this item, routed elsewhere.** The 28.07 panel-void banner lifts only once a run
+        exists on the new panel, i.e. at R4 of the sweep, not here.
+        `notebooks/result_evaluation/dreval_benchmark.ipynb` imports the now-archived
+        `dreval_normalize.py` and hardcodes the removed `'auc'` score, so it is broken twice over;
+        untouched pending **item 11 (Evaluation)**, which also decides whether the fragility diagnostic
+        returns ([why it was archived](../scripts/archive/README.md)).
 - [ ] **7 · Splits** — grouped by cell line, test held out, folds shared between model and baselines.
       Confirm nothing leaks through statistics computed outside the fold.
   - [ ] **Handed over from item 3 (10.08.2026): three fits, one question — what may a fit see?** All
@@ -268,16 +286,25 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       folds; `verify_variants.ipynb` §9; and 4A below. Blockers already recorded: **≥ 3 seeds** before any
       scGPT − PCA margin is quoted, and train-only drug selection inside each fold.
 - [ ] **R5 · Re-run the analysis notebooks that read the retrained outputs.**
-      `drug_selection/`: `learnability_filter`, `panel_distributions`, `learnable_subset_training`.
-      `result_evaluation/`: `diagnostics` (§5 dispersion), `dreval_benchmark`.
+      `result_evaluation/`: `diagnostics` (§5 dispersion), `dreval_benchmark` — the latter is
+      **broken twice over** (imports the archived `dreval_normalize`, hardcodes the removed `'auc'`)
+      and belongs to review item 11 before it can run at all.
       `data_and_harmonization/drug_coverage` — **not optional**, the line count moves 180 → 181.
-      **Three notebooks have had their stored outputs cleared** (11.08.2026), because their score
+      `drug_selection/literature_panel` does **not** need the retrained outputs — it reads only the
+      response CSV — but re-run it anyway once preprocessing has, so the panel is regenerated against
+      the same artifacts as everything else and `panel.csv` cannot silently predate them.
+      **Two notebooks still have their stored outputs cleared** (11.08.2026), because their score
       literal changed to `auc_cc` and the old results could not be refreshed under the freeze — the
-      code is correct and only the results are missing: `3_panel_training` (c1),
-      `drug_selection/panel_distributions` (c1), `data_and_harmonization/verify_variants` (c24).
-      `target_comparison`, `ablations_and_rescue` and `replicate_variation` are **archived** and do not
-      re-run — all three read targets that no longer exist
-      ([why](./steps/corrections-and-dead-ends.md#retired-code-paths)).
+      code is correct and only the results are missing: `3_panel_training` (c1) and
+      `data_and_harmonization/verify_variants` (c24).
+      **Archived and not re-run:** `target_comparison`, `ablations_and_rescue`, `replicate_variation`
+      (targets that no longer exist, [why](./steps/corrections-and-dead-ends.md#retired-code-paths)),
+      and — since 12.08.2026 — `learnability_filter`, `learnable_subset_training` and
+      `panel_distributions`, superseded by the
+      [rebuilt panel](./steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026).
+      ⚠️ `panel_distributions` also held the justification for the density-weighting parameters
+      (`alpha=0.5`, `cap=3`); **item 9 must re-derive it or drop the weighting**, since the notebook
+      that evidenced it is no longer live.
       **Render every figure and look at it before anything is reported from it.**
 - [ ] **R6 · Update the docs and the report from the refreshed artifacts.** Nothing is re-run here;
       everything is re-read from what R2–R5 produced. `report/results_numbers.tex`: `\NLines` 180 → 181,
@@ -490,24 +517,35 @@ resolution has again failed to justify itself"* — scored a Q2 experiment on a 
 task weights. Both are deferred deliberately; adaptive weights estimate *residual* variance, which mixes
 label noise with model error and risks a self-reinforcing loop, especially at 545 tasks over ~120 bags.
 
-## Target & drug-selection defects found 27.07.2026 (do these before any new headline number)
+## Target & drug-selection defects found 27.07.2026 — all three closed
+
+> ✅ **Closed 11–12.08.2026, and none was closed the way it is written below.** T3 was answered by
+> [audit 05](./steps/01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026):
+> the target moved to DrEval's CurveCurator re-fit, so the CTRP columns T3 proposed choosing between are
+> no longer what we read. T2 dissolved with `auc_z`, [retired](./steps/corrections-and-dead-ends.md#auc_z-as-the-training-target)
+> — there is no denominator left to fix, and between-drug scaling is now audit item 9's question. T1's
+> replacement criterion (`auc_std` + coverage) was itself rejected on 12.08.2026 for selecting on our own
+> labels; the panel is built on
+> [FDA approval and published determinants](./steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026)
+> instead. Kept unedited below as the diagnosis that was correct — the gate did select on potency — with
+> the prescriptions superseded.
 
 Both found by asking why `nutlin-3` was rejected by the filter. Write-ups:
 [Corrections](./steps/corrections-and-dead-ends.md#auc_z-as-the-training-target),
 [Step 05](./steps/05-multitask-results.md#the-learnability-gate-measured-the-wrong-quantity-27072026).
 
-- [ ] **T1 — Replace the kill/spare gate with `auc_std` + coverage.** The gate filters on absolute
+- [x] ~~**T1 — Replace the kill/spare gate with `auc_std` + coverage.**~~ The gate filters on absolute
       potency; `auc_z` subtracts the per-drug mean and Spearman reads only the ordering, so we selected
       on a quantity the model never sees. `nutlin-3` σ = 0.147 vs `dasatinib` σ = 0.155 — same spread,
       rejected only because it is cytostatic. **116/545** drugs have zero kills but σ ≥ 0.10 and
       coverage ≥ 90 %. Everything downstream (10-drug panel, 8-drug literature panel, all K=10 numbers)
       rests on the old gate and must be re-derived.
-- [ ] **T2 — Fix the `auc_z` denominator.** Dividing by `auc_std` forces noise-floor drugs to variance 1
+- [x] ~~**T2 — Fix the `auc_z` denominator.**~~ Dividing by `auc_std` forces noise-floor drugs to variance 1
       and hands them full weight in the shared loss — the mirror of the June σ² bug. Use
       `sqrt(auc_std² + σ_noise²)`, or weight each drug by its reliable variance fraction.
       `σ_noise` is estimable **pooled** from the 7,708 replicated (line × compound) fits (2.0 % of
       387,130) in `v20.data.curves_post_qc.txt`; per-drug is not feasible.
-- [ ] **T3 — Reconsider AUC as the target** (raised by Selin's supervisor, DrEval co-author; DrEval lists
+- [x] ~~**T3 — Reconsider AUC as the target**~~ (raised by Selin's supervisor, DrEval co-author; DrEval lists
       inconsistent viability data as an obstacle and recommends **CurveCurator**). AUC conflates potency
       with efficacy, and CTRP's own fit already separates them in the file we parse:
       `apparent_ec50_umol`, `pred_pv_high_conc` (≈ Emax), `p3_total_decline`. Top test concentration

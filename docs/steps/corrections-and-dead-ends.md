@@ -259,10 +259,17 @@ and the filter threw it out.
 literature panel drawn from a pool this gate had pre-filtered (below), and the 5-drug best-case
 diagnostic. Not the K=545 results, which apply no gate.
 
-**Replaced by** — decided, not yet re-run: spread on the raw AUC scale (`auc_std`, recoverable exactly
-via `uns["ctrp_score_scale"]`, which *is* the per-drug std) plus coverage, with **no kill counts at any
-point**. One criterion fixes two problems, since high `auc_std` is both real signal to rank and a safe
-z-score denominator. The rebuild is [TODO](../TODO.md) review item 6.
+**Replaced by** — the [literature panel of 11](01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026)
+(12.08.2026), which selects on **FDA approval and published determinants**, with no statistic of our own
+labels in the criterion at all.
+
+⚠️ **The replacement first agreed here — spread (`auc_std`) plus coverage, no kill counts — was itself
+abandoned on 12.08.2026 (Selin), and this paragraph used to state it as the plan.** Two reasons. Spread
+is still a property of *our* response values, so selecting on it keeps the selection label-dependent and
+optimistic in exactly the way the entry above objects to, only less crudely. And the second half of the
+rationale — that high `auc_std` is "a safe z-score denominator" — belonged to `auc_z`, which was
+[retired](#auc_z-as-the-training-target); `uns["ctrp_score_scale"]` no longer exists, so that sentence
+described machinery the tree does not contain.
 
 ### The 8-drug literature panel, and every number computed on it
 
@@ -301,11 +308,35 @@ corresponding numbers in `report/`. The *methodological* findings from that run 
 was a head-count effect, density weighting is a null, the ridge tie replicates — because none of them
 depends on which eight drugs were chosen. The *numbers* must be re-derived.
 
-**Replaced by** — nothing yet. Rebuild the pool on coverage and `auc_std` only, then apply the
-literature criterion to that ([TODO](../TODO.md) review item 6). A cleaner variant is to measure the
-spread requirement on **GDSC2** (`data/GDSC2_fitted_dose_response_27Oct23.xlsx`) or PRISM rather than on
-the CTRP labels we train on, which would make the panel genuinely label-blind. The 15.07 progress report
-was postponed rather than presented on this panel.
+**Replaced by** — the [literature panel of 11](01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026),
+built 12.08.2026 and label-blind by construction: FDA approval (Sun et al. 2017, Table 1) and a
+verified published claim decide membership, and the only property of our own data that enters is
+**coverage** — how many of the 181 overlapping lines were screened at all, which is a statement about
+the experiment rather than about the response.
+
+Two things this entry recommended were **not** done, and the reasons are worth keeping:
+
+- *"Rebuild the pool on coverage and `auc_std`"* — dropped, because spread is still our own label
+  statistic ([above](#the-learnability-gate-measured-potency-not-rankability)).
+- *"Measure the spread requirement on GDSC2 or PRISM instead"* — unnecessary once the criterion stopped
+  using spread at all. It would have made the selection blind to *CTRP's* labels while still selecting
+  on somebody's response values; the published-determinant criterion is blind to all of them.
+
+**Three of the eight re-enter on their own evidence** — `paclitaxel`, `dasatinib` and `afatinib`, each
+a named worked example in Seashore-Ludlow 2015. The other five fall out in three different ways, which
+is a fair test of the new criterion:
+
+- `methotrexate`, `vincristine`, `topotecan` — **candidates**, clearing FDA approval and the coverage
+  cut (0.956 / 0.989 / 0.978), and each carries a determinant in the general literature. They are not in
+  the panel because none appears in the four papers this project is built on, and only `doxorubicin` and
+  `cisplatin` were re-admitted on outside citations, to fill the anthracycline and platinum classes.
+- `tanespimycin` — **not a candidate: never FDA-approved.** Its development was discontinued. The old
+  panel carried it on an NQO1 bioactivation determinant, which is real biology and not an approval.
+- `selumetinib` — **not a candidate under this list**, approved in 2020 and therefore past Sun et al.'s
+  2014 cut-off. This one is a limitation of the source rather than a judgement on the compound, and it
+  is the concrete cost of using a list that stops at 2014.
+
+The 15.07 progress report was postponed rather than presented on this panel.
 
 **The reasoning that led here, kept so the rebuild does not repeat it.** The panel replaced the 10-drug
 filtered set for two reasons, and only the second was fully solved:

@@ -10,12 +10,12 @@ they live in `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 |---|---|---|
 | **`data/`** | `drug_coverage`, `replicate_variation` | Target distribution and per-drug coverage on the raw CTRPv2 labels, plus how far CTRPv2's repeated measurements diverge (`replicate_variation.png/.csv` — 2,637 pairs screened twice, median disagreement 0.49× the drug's spread across cell lines). |
 | **`embeddings/`** | `verify_variants`, `gene_symbol_rescue` | Latent-space validation: PCA-vs-scGPT UMAPs, gene-set variants, and what the gene set actually delivered to scGPT (`gene_symbol_rescue.csv`, below). |
-| **`learnability/`** | `learnability_filter`, `learnable_subset_training` | The drug filter (545 → 10, `learnability = min(#killed, #spared)`) and the PCA-vs-scGPT result on that subset. `pca_vs_scgpt.png` also carries the line-level ridge control. |
+| **`learnability/`** | *(archived notebooks)* | ⛔ The drug filter (545 → 10, `learnability = min(#killed, #spared)`) and the PCA-vs-scGPT result on that subset. **The criterion was [retracted](../../docs/steps/corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability)** and both producing notebooks archived 12.08.2026; nothing regenerates these. |
 | **`target/`** | `target_comparison`, `ablations_and_rescue` §2 | Which target to train on; the per-drug **loss-weighting bug**; seed stability. |
 | **`ablations/`** | `ablations_and_rescue` §3–§5 | The **causal rescue test** on the broken K=545 setting, the model-knob ablations on the corrected one, and the ridge control. |
 | **`dreval/`** | `dreval_benchmark` | External benchmark against **DrEval** (`drevalpy` 1.5.1): their LCO splits, baselines, metrics. |
 | **`diagnostics/`** | `diagnostics` | The drug-selection gate defect (`gate_per_drug.csv`, `gate_potency_vs_spread.png`), the proliferation test (`line_effect_vs_programs.csv`, `line_effect_vs_proliferation.png`), the input-scale asymmetry (`input_scale.csv`), and result dispersion (`result_dispersion.csv`). |
-| **`panel/`** | `panel_distributions`, `3_panel_training` | ⛔ **Computed on the [voided panel](../../docs/steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it)** — response distributions, the weight curves, and the panel training result. Do not quote; re-runs after the rebuild. |
+| **`panel/`** | `literature_panel`, `3_panel_training` | **`panel.csv` and `literature_panel_candidates.csv` are current** — the [rebuilt 11-drug panel](../../docs/steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026) and the 57 candidates it was drawn from, each with its reference and what that reference establishes. ⛔ **Everything else in the directory is computed on the [voided 8-drug panel](../../docs/steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it)** — the response distributions, weight curves and training result. Do not quote those; they re-run at R4. |
 
 ### The five figures that carry the current story
 
@@ -31,10 +31,19 @@ they live in `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 - `dreval/dreval_lco_results.csv` — the **real package** (`drevalpy`), their LCO splits and baselines.
   In LCO the naive predictor cannot know a held-out line's effect, so it reduces to *global mean + drug
   effect*; its normalized metric therefore removes the **drug** mean.
-- `dreval/dreval_normalized.csv` — our **own, stricter** variant, which *additionally* removes the
-  **cell-line** effect (using that line's own labels). Not what DrEval does. It answers a separate
-  question: *"how much of our signal is merely 'this line is sensitive to everything'?"* — answer: ~20%,
-  and `kx2-391` is **entirely** that.
+- `dreval/dreval_normalized.csv` — ⛔ **void, and no longer reproducible as written.** It was our
+  **own, stricter** variant, which *additionally* removed the **cell-line** effect using that line's own
+  labels — not what DrEval does — answering *"how much of our signal is merely 'this line is sensitive
+  to everything'?"* That metric was **deleted** on 12.08.2026 as a local invention, and the producing
+  script cut back to DrEval's recipe
+  ([why](../../scripts/archive/README.md)), so the current `dreval_normalize.py` writes to this path but
+  computes the **paper's** metric, not the stricter one. Whether the stricter diagnostic returns is for
+  audit 11.
+
+  ⚠️ Worth knowing before that decision: under our leave-cell-line-out splits DrEval's normalization
+  removes only the **drug** effect, because a held-out line's effect is unseen and therefore zero. A
+  synthetic predictor emitting nothing but mean + line effect + drug effect scores normalized Spearman
+  **0.98**. A high normalized score is not evidence of drug-specific signal here.
 
 ## `legacy/` — superseded, kept as the record of what was overturned
 

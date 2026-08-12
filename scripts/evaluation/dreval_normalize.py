@@ -1,67 +1,52 @@
-"""Cell-line-effect normalization of our own out-of-fold predictions (DrEval recipe, extended).
+"""DrEval's normalized evaluation of our own out-of-fold predictions — their recipe, nothing added.
 
-Reconstructs ``notebooks/outputs/dreval/dreval_normalized.csv``, whose producing code was lost
-(the committed CSV predates the val-split fix ``ee07b00`` and no notebook or script wrote it).
+**What the normalization is.** A model can score a good correlation by learning only that some drugs are
+potent and some cell lines are fragile, without predicting anything drug-specific. DrEval controls for
+that by subtracting a naive baseline — ``overall mean + cell-line effect + drug effect`` — from the truth
+*and* from the prediction, and re-scoring what is left:
 
-**What this answers, and why DrEval itself cannot.** DrEval's normalized metric subtracts the
-``NaiveMeanEffectsPredictor`` from truth *and* prediction, leaving only what a model adds beyond the
-average drug and cell-line effect. But in the LCO setting a held-out cell line was never seen, so its
-cell-line effect is 0 and the correction collapses to *removing the drug mean only*
-(``notebooks/12_dreval_benchmark.ipynb``). That is the honest choice for a prediction benchmark --
-no model can know an unseen line's effect -- but it leaves a diagnostic question open:
+    y_true_norm = y_true - y_naive        y_pred_norm = y_pred - y_naive
 
-    is our per-drug correlation genuine drug-specific biology, or just "this cell line is fragile"?
+    — DrEval, ``drevalpy/visualization/utils.py::_normalize_metrics_by_mean_effects``, applied per
+    algorithm and per CV split. Correlation metrics only; DrEval exclude MSE/RMSE/MAE from the
+    normalized set, and so does this module.
 
-Some lines are sensitive to everything (sigma of the line effect ~ 0.40 on the raw AUC scale). A model
-can score a good per-drug Spearman by learning general fragility, with zero drug-specific signal. This
-script removes the cell-line effect *as well*. It is deliberately **not** a legitimate predictor -- it
-reads held-out labels -- it is a diagnostic that asks what survives when fragility is taken away.
+**Nothing here re-implements it.** The baseline is drevalpy's own
+``MODEL_FACTORY["NaiveMeanEffectsPredictor"]`` and the metrics are ``drevalpy.evaluation.evaluate``, so
+this module is wiring: it reads our out-of-fold predictions, hands them to DrEval's code in the shape
+that code expects, and writes the result out. If DrEval change the metric, we inherit the change.
 
-Three numbers per (heads x rep x drug), Spearman over the ~150 out-of-fold cell lines:
+**Scope, deliberately.** This file was **archived on 12.08.2026 and restored paper-only** the same day
+(Selin): *"it should be as contained as the paper itself in functionality, and nothing new."* Its
+previous version additionally removed the **cell-line effect** using held-out labels — a diagnostic that
+asked how much of a per-drug correlation was mere line fragility — and scored every model against one
+common ``auc`` ranking regardless of what it trained on. Both were **local inventions with no
+counterpart in the paper**, and both were deleted rather than archived, so that a home-grown metric
+cannot be revived from inside a file named after DrEval without being re-decided
+(``scripts/archive/README.md``; recoverable at ``git show bf93084:scripts/evaluation/dreval_normalize.py``).
+Whether that question gets answered again, and how, is for **audit 11 (Evaluation)**.
 
-    rho_raw            corr(prediction, truth)
-    rho_normalized     corr(prediction - c, truth - c)    <- what the model adds beyond fragility
-    rho_naive_baseline corr(c, truth)                     <- what fragility alone explains
+**⚠️ In our split design this metric does not control for cell-line fragility, and that is not a defect
+in it.** DrEval evaluate in several test modes; ours is leave-cell-line-out, where every held-out line
+is unseen by the baseline, so ``cell_line_effects.get(cl, 0)`` returns **0** and the subtraction removes
+the *drug* effect only. Demonstrated, not assumed: a synthetic predictor emitting nothing but
+``overall mean + line effect + drug effect`` — zero drug-specific signal — scores **normalized Spearman
+0.98** here, pooled and per drug. The line effect survives in truth and prediction alike and correlates
+with itself.
 
-where ``c`` is the **fragility index**: the cell line's mean response across all 545 drugs, in per-drug
-z units. A drug with a high ``rho_naive_baseline`` and a ``rho_normalized`` near 0 had no drug-specific
-signal at all -- its apparent performance *was* the cell-line effect. That is the artifact class DrEval
-describes, measured on our own results.
+So a high normalized score is **not** evidence of drug-specific biology under leave-cell-line-out. It is
+the correct behaviour for a prediction benchmark, because no model can know an unseen line's effect —
+but the question *"is this drug-specific signal or general fragility?"* is left open by it, and reading
+this output as though it were answered is the mistake to avoid. Answering it needs held-out labels and
+is therefore a diagnostic rather than a metric, not something to fold back into this file.
+**Audit 11** decides how to answer it.
 
-**Why ``c`` is estimated from all 545 drugs and not from the evaluation panel.** Subtracting the same
-estimated quantity from truth and prediction injects that estimate's noise into *both* residuals, so a
-noisy ``c`` manufactures correlation out of nothing. Estimated from a panel of 3 drugs, a synthetic
-model that has learned *only* fragility scores rho_normalized = 0.94 instead of 0. Averaged over ~545
-drugs the estimation noise is negligible and the statistic behaves. The evaluated drug is additionally
-left out of its own ``c`` (leave-one-drug-out), so no drug contributes to the quantity it is scored
-against. Do not change this to a panel-based estimate.
-
-**Usage -- prefer the route that trains nothing.** The normalization is post-processing of
-out-of-fold predictions, and the fragility index is computed from labels, so model fitting only ever
-served to *produce* the predictions. Notebook 14 already writes them, so:
-
-    # 0 model fits: score the predictions notebook 14 produced
-    uv run scripts/evaluation/dreval_normalize.py \\
-        --oof-csv notebooks/outputs/panel/panel_oof_predictions.csv --weighted false
-
-Refitting is the fallback for a configuration no run has covered yet. It costs 5 folds per
-(heads x rep), so restrict the heads: the K=545 arm is the retired configuration and its contrast
-value is already recorded in docs/steps/05 (raw auc scores -0.069 there against +0.377 on the panel).
-
-    # 10 fits: panel heads only, both representations
-    uv run scripts/evaluation/dreval_normalize.py --heads panel --drugs methotrexate dasatinib \\
-        paclitaxel vincristine afatinib topotecan tanespimycin selumetinib
-
-The training defaults follow the current setup: **no winsorization since 11.08.2026**, output layer out of
-weight decay, head bias at the train-fold per-drug means, 25 epochs. Otherwise a refit would
-normalize a model that is no longer in use.
-
-The cross-validation itself is :func:`scripts.training.cv.oof_predictions`, the project's single
-implementation, so this script, ``notebooks/14_panel_training.ipynb`` and anything else that needs
-out-of-fold predictions cannot drift apart: 5-fold GroupKFold over the train+val cell lines (the 27
-test lines are never touched), each fold predicting only the lines it did not see, per-cell
-predictions averaged to one value per cell line. Scoring against the common curve-fit ``auc`` ranking,
-whatever score a model trained on, is this module's own addition.
+**The fold column is required, and this is not pedantry.** The naive baseline must be fitted on the
+folds a prediction did *not* come from; fitting it on the same out-of-fold rows it will be subtracted
+from would let held-out labels define the baseline they are scored against. ⚠️ The current writer,
+``notebooks/3_panel_training.ipynb``, does **not** emit a fold column
+(``drug, cell_line, y_true, y_pred, rep, weighted``), so this script cannot run on the predictions in
+the tree. That is a change owed to notebook 3 at R5 of the sweep, not something to work around here.
 """
 
 from __future__ import annotations
@@ -71,298 +56,177 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import scanpy as sc
-from scipy.stats import spearmanr
+from drevalpy.datasets.dataset import DrugResponseDataset, FeatureDataset
+from drevalpy.datasets.utils import CELL_LINE_IDENTIFIER, DRUG_IDENTIFIER
+from drevalpy.evaluation import evaluate
+from drevalpy.models import MODEL_FACTORY
 
-from scripts.preprocessing.layout import PipelinePaths, add_data_args
-from scripts.training.cv import line_level_predictions, oof_predictions
-from scripts.training.training_utils import TrainConfig
-
+#: The drug panel, rebuilt 12.08.2026 on FDA approval and published determinants
+#: (``notebooks/drug_selection/literature_panel.ipynb``). Until then this pointed at
+#: ``outputs/learnability/ctrp_drug_learnability_auc.csv``, the artifact of the discredited kill/spare
+#: gate -- so the default panel was one whose selection criterion had been retracted.
+DEFAULT_PANEL_CSV = Path("notebooks/outputs/panel/panel.csv")
 DEFAULT_OUT = Path("notebooks/outputs/dreval/dreval_normalized.csv")
-DEFAULT_PANEL_CSV = Path("notebooks/outputs/learnability/ctrp_drug_learnability_auc.csv")
-REPS = ("X_pca", "X_scGPT")
+
+#: DrEval compute the normalized metrics for correlations only, because subtracting a fitted baseline
+#: from both sides changes the scale of the residuals and makes an absolute error uninterpretable.
+NORMALIZED_METRICS = ["Pearson", "Spearman", "Kendall", "R^2"]
+RAW_METRICS = ["Pearson", "Spearman", "Kendall", "R^2", "MSE", "RMSE", "MAE"]
+
+REQUIRED_COLUMNS = ("drug", "cell_line", "fold", "y_true", "y_pred")
 
 
-def load_panel(panel_csv: Path) -> list[str]:
-    """Read the selected drug panel from a learnability CSV (the ``selected`` column)."""
-    lrn = pd.read_csv(panel_csv)
-    if "selected" not in lrn.columns:
-        raise ValueError(f"{panel_csv} has no 'selected' column -- pass --drugs explicitly.")
-    return lrn[lrn["selected"]].sort_values("learnability", ascending=False)["drug"].tolist()
+def load_panel(panel_csv: Path = DEFAULT_PANEL_CSV) -> list[str]:
+    """Read the drug panel, in the spelling the response data uses.
 
-
-def line_by_drug_truth(variant: str, data_root: Path | None) -> pd.DataFrame:
-    """(cell line x all drugs) matrix of curve-fit ``auc``, averaged over each line's cells.
-
-    Restricted to the train+val lines, i.e. the same population the out-of-fold predictions cover.
-    NaN where a (line, drug) pair was never measured.
+    ``panel.csv`` carries both ``drug`` (the FDA list's name, e.g. *Cisplatin*) and ``drug_key`` (what
+    CTRPv2 calls it, e.g. ``platin``). Predictions are keyed by the latter, so that is what is returned.
     """
-    adata = sc.read_h5ad(PipelinePaths.build(data_root, variant, "auc").targets_h5ad)
-    eligible = adata.obs["split_ctrp"].isin(["train", "val"]).to_numpy()
-    lines = adata.obs["Cell_line"].astype(str).to_numpy()
-    y = np.asarray(adata.obsm["Y_ctrp"], dtype=float)
-    m = np.asarray(adata.obsm["M_ctrp"], dtype=bool)
-    drugs = list(adata.uns["ctrp_drugs"])
-
-    uniq = np.unique(lines[eligible])
-    out = np.full((uniq.size, len(drugs)), np.nan)
-    for i, line in enumerate(uniq):
-        ci = np.flatnonzero((lines == line) & eligible)
-        obs = m[ci]
-        counts = obs.sum(axis=0)
-        sums = np.where(obs, y[ci], 0.0).sum(axis=0)
-        out[i] = np.where(counts > 0, sums / np.maximum(counts, 1), np.nan)
-    return pd.DataFrame(out, index=pd.Index(uniq, name="cell_line"), columns=drugs)
-
-
-def fragility_index(truth_all: pd.DataFrame, *, leave_out: str | None = None) -> pd.Series:
-    """Per-line mean response across all drugs, in per-drug z units ("this line is fragile").
-
-    Each drug column is standardized across cell lines first, so drugs with a wide raw AUC spread do
-    not dominate the average. Negative = sensitive to everything, positive = resistant to everything.
-
-    :param leave_out: drug to exclude, so a drug never contributes to the index it is scored against.
-    """
-    cols = [c for c in truth_all.columns if c != leave_out]
-    sub = truth_all[cols]
-    z = (sub - sub.mean(axis=0)) / sub.std(axis=0)
-    return z.mean(axis=1, skipna=True)
-
-
-def load_oof_csv(path: Path, *, rep: str, weighted: bool | None = None) -> dict[str, pd.DataFrame]:
-    """Read out-of-fold predictions produced elsewhere, in the shape the normalization wants.
-
-    **This is the preferred route — it costs no model fits.** The normalization is pure
-    post-processing of predictions, and the fragility index comes from labels alone, so refitting
-    only ever served to *produce* the predictions. ``notebooks/14_panel_training.ipynb`` already
-    writes them, keyed by cell line, to ``outputs/panel/panel_oof_predictions.csv``.
-
-    Reusing them is also the more correct option, not merely the cheaper one: a refit here would
-    normalize a model configuration that is no longer in use unless the arguments below are matched
-    to it exactly.
-
-    :param path: tidy CSV with columns rep, weighted, drug, cell_line, y_true, y_pred.
-    :param weighted: pick one weighting arm; ``None`` requires the file to hold only one.
-    """
-    df = pd.read_csv(path)
-    df = df[df["rep"] == rep]
-    if weighted is not None and "weighted" in df.columns:
-        df = df[df["weighted"].astype(bool) == weighted]
-    if "weighted" in df.columns and df["weighted"].nunique() > 1:
-        raise ValueError("CSV holds several weighting arms; pass weighted=True/False to choose one.")
-    if df.empty:
-        raise ValueError(f"no rows for rep={rep!r} in {path}")
-    return {d: g[["cell_line", "y_true", "y_pred"]].reset_index(drop=True)
-            for d, g in df.groupby("drug", sort=False)}
-
-
-def oof_line_predictions(
-    score: str,
-    drugs: list[str],
-    rep: str,
-    eval_drugs: list[str],
-    *,
-    variant: str,
-    data_root: Path | None,
-    seed: int = 42,
-    # 25, not 50: over 36 recorded runs the best epoch was median 6 / max 11 and early stopping
-    # (patience 10) has never reached 25, so the extra epochs were pure wall-clock.
-    epochs: int = 25,
-    winsor: float | None = None,
-    exclude_output_from_decay: bool = True,
-    init_head_bias: bool = True,
-) -> dict[str, pd.DataFrame]:
-    """Train K=len(drugs) heads and return out-of-fold per-cell-line predictions.
-
-    Prefer :func:`load_oof_csv` when predictions already exist — this function is the expensive path.
-
-    Defaults match the current training setup: the output layer is kept out of weight decay (its bias
-    must sit near each drug's mean, and decay pulls it to 0) and that bias is initialized to the
-    train-fold per-drug means, so the model starts at the null predictor rather than at zero.
-
-    ``winsor`` defaults to **None since 11.08.2026** (Selin): the target is used as published, with no
-    clipping and no quality filter, following DrEval's own practice. It remains a parameter so the
-    pre-11.08 protocol can be reproduced by passing ``winsor=1.1`` -- but that is a historical
-    reproduction, not a setting to adopt. See
-    ``docs/steps/01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026``.
-
-    :returns: drug -> DataFrame(cell_line, y_true, y_pred); ``y_true`` is always on the curve-fit
-        ``auc`` scale so models trained on different scores share one yardstick.
-    """
-    truth = sc.read_h5ad(PipelinePaths.build(data_root, variant, "auc").targets_h5ad, backed="r")
-    truth_y = np.asarray(truth.obsm["Y_ctrp"], dtype=float)
-    truth_drugs = list(truth.uns["ctrp_drugs"])
-
-    adata = sc.read_h5ad(PipelinePaths.build(data_root, variant, score).targets_h5ad)
-    mask = np.asarray(adata.obsm["M_ctrp"], dtype=bool)
-    if winsor is not None:
-        y = np.asarray(adata.obsm["Y_ctrp"], dtype=np.float32)
-        adata.obsm["Y_ctrp"] = np.where(mask, np.clip(y, None, winsor), 0.0).astype(np.float32)
-
-    cfg = TrainConfig(
-        epochs=epochs, seed=seed, log_every=1000,
-        exclude_output_from_decay=exclude_output_from_decay,
-    )
-    # One CV implementation for the whole project (scripts/training/cv.py): grouped folds, per-fold
-    # line-level statistics, optional density weighting, head-bias initialization.
-    pred, _ = oof_predictions(
-        adata, rep, drugs,
-        config=cfg,
-        init_head_bias=init_head_bias,
-        tag=f"norm_{score}_{rep}_K{len(drugs)}_s{seed}",
-    )
-
-    # Score every model against the common curve-fit `auc` ranking, whatever it trained on.
-    jcol = [drugs.index(d) for d in eval_drugs]
-    tcol = [truth_drugs.index(d) for d in eval_drugs]
-    tidy = line_level_predictions(
-        pred[:, jcol], adata, eval_drugs, truth=truth_y[:, tcol]
-    )
-    return {d: g[["cell_line", "y_true", "y_pred"]].reset_index(drop=True)
-            for d, g in tidy.groupby("drug", sort=False)}
-
-
-def _partial_spearman(p: np.ndarray, t: np.ndarray, c: np.ndarray) -> float:
-    """Spearman between ``p`` and ``t`` controlling for ``c``.
-
-    DrEval subtracts its naive prediction from truth and prediction with a coefficient of 1, which is
-    valid there because the naive predictor is fitted in the response's own units. The fragility index
-    is not: it lives in per-drug z units, so a unit subtraction leaves a residual proportional to
-    fragility in *both* series and the correlation survives almost intact (0.62 instead of 0 on the
-    synthetic control). Regressing ``c`` out of both rank vectors is the scale-free generalization --
-    the residuals are orthogonal to fragility by construction.
-    """
-    from scipy.stats import rankdata
-
-    pr, tr, cr = (rankdata(v).astype(float) for v in (p, t, c))
-    design = np.c_[np.ones(len(cr)), cr]
-    resid_p = pr - design @ np.linalg.lstsq(design, pr, rcond=None)[0]
-    resid_t = tr - design @ np.linalg.lstsq(design, tr, rcond=None)[0]
-    return float(spearmanr(resid_p, resid_t).statistic)
-
-
-def normalized_correlations(
-    oof: dict[str, pd.DataFrame],
-    truth_all: pd.DataFrame,
-    *,
-    heads: str,
-    rep: str,
-) -> list[dict]:
-    """Per-drug raw / normalized / naive-baseline Spearman for one (heads, rep) configuration."""
-    rows = []
-    for drug, df in oof.items():
-        c = fragility_index(truth_all, leave_out=drug)
-        d = df.set_index("cell_line").join(c.rename("c"), how="inner").dropna()
-        p, t, cc = d["y_pred"].to_numpy(), d["y_true"].to_numpy(), d["c"].to_numpy()
-        rows.append(
-            {
-                "heads": heads,
-                "rep": rep,
-                "drug": drug,
-                "n_lines": len(d),
-                "rho_raw": spearmanr(p, t).statistic,
-                "rho_normalized": _partial_spearman(p, t, cc),
-                "rho_naive_baseline": spearmanr(cc, t).statistic,
-            }
+    panel = pd.read_csv(panel_csv)
+    if "drug_key" not in panel.columns:
+        raise ValueError(
+            f"{panel_csv} has no 'drug_key' column. Expected the output of "
+            f"notebooks/drug_selection/literature_panel.ipynb -- pass --drugs explicitly instead."
         )
-    return rows
+    return panel["drug_key"].tolist()
+
+
+def load_oof(path: Path, *, rep: str, weighted: bool | None = None) -> pd.DataFrame:
+    """Read one arm of the out-of-fold predictions and check it can carry the normalization.
+
+    :param rep: representation to keep, ``X_pca`` or ``X_scGPT``.
+    :param weighted: keep only rows with this ``weighted`` flag; ``None`` keeps all.
+    :raises ValueError: if the ``fold`` column is missing, which makes the baseline unfittable without
+        leaking held-out labels into it (see the module docstring).
+    """
+    oof = pd.read_csv(path)
+    missing = [c for c in REQUIRED_COLUMNS if c not in oof.columns]
+    if missing:
+        raise ValueError(
+            f"{path} is missing {missing}. Present: {list(oof.columns)}. "
+            f"A 'fold' column is required: the naive baseline has to be fitted on the folds a "
+            f"prediction did not come from."
+        )
+    oof = oof[oof["rep"] == rep]
+    if weighted is not None:
+        oof = oof[oof["weighted"] == weighted]
+    if oof.empty:
+        raise ValueError(f"No rows in {path} for rep={rep!r}, weighted={weighted!r}.")
+    return oof.reset_index(drop=True)
+
+
+def _identity_features(ids: np.ndarray, view: str) -> FeatureDataset:
+    """A ``FeatureDataset`` mapping each identifier to itself.
+
+    ``NaiveMeanEffectsPredictor.train`` takes feature datasets but reads only the identifiers out of
+    them -- its prediction is ``mean + cell_line_effect + drug_effect`` and uses no features at all. An
+    identity view is therefore the honest way to call their code without inventing features it would
+    ignore.
+    """
+    return FeatureDataset(features={i: {view: np.array([i])} for i in np.unique(ids)})
+
+
+def naive_predictions(oof: pd.DataFrame) -> pd.Series:
+    """DrEval's ``NaiveMeanEffectsPredictor``, fitted per fold on the *other* folds.
+
+    Returns one prediction per row of ``oof``, aligned to its index. A cell line or drug unseen in the
+    training folds gets effect 0, which is drevalpy's own behaviour, not a choice made here.
+    """
+    out = pd.Series(np.nan, index=oof.index, dtype=float)
+    for fold in oof["fold"].unique():
+        held_out = oof["fold"] == fold
+        train, test = oof[~held_out], oof[held_out]
+
+        model = MODEL_FACTORY["NaiveMeanEffectsPredictor"]()
+        model.train(
+            output=DrugResponseDataset(
+                response=train["y_true"].to_numpy(),
+                cell_line_ids=train["cell_line"].to_numpy(),
+                drug_ids=train["drug"].to_numpy(),
+            ),
+            cell_line_input=_identity_features(train["cell_line"].to_numpy(), CELL_LINE_IDENTIFIER),
+            drug_input=_identity_features(train["drug"].to_numpy(), DRUG_IDENTIFIER),
+        )
+        out.loc[test.index] = model.predict(
+            cell_line_ids=test["cell_line"].to_numpy(),
+            drug_ids=test["drug"].to_numpy(),
+            cell_line_input=_identity_features(test["cell_line"].to_numpy(), CELL_LINE_IDENTIFIER),
+            drug_input=_identity_features(test["drug"].to_numpy(), DRUG_IDENTIFIER),
+        )
+    return out
+
+
+def _score(frame: pd.DataFrame, metrics: list[str], *, normalized: bool) -> dict[str, float]:
+    """Metrics for one group, through drevalpy's own :func:`evaluate`."""
+    truth, pred = frame["y_true"], frame["y_pred"]
+    if normalized:
+        truth, pred = truth - frame["y_naive"], pred - frame["y_naive"]
+    return evaluate(
+        dataset=DrugResponseDataset(
+            response=truth.to_numpy(),
+            predictions=pred.to_numpy(),
+            cell_line_ids=frame["cell_line"].to_numpy(),
+            drug_ids=frame["drug"].to_numpy(),
+        ),
+        metric=metrics,
+    )
+
+
+def normalized_evaluation(oof: pd.DataFrame) -> pd.DataFrame:
+    """Raw and normalized metrics, pooled over all pairs and per drug.
+
+    Both groupings are reported because they answer different questions and DrEval report both. Pooled,
+    the normalization removes the fact that drugs differ in potency and lines in fragility, so what is
+    left is genuine (line × drug) specificity. Per drug, the drug effect is already constant and only
+    the cell-line effect is removed, so it asks whether the ranking within a drug is more than a
+    restatement of which lines are broadly sensitive.
+    """
+    scored = oof.assign(y_naive=naive_predictions(oof))
+    rows = [{
+        "grouping": "pooled", "drug": "", "n": len(scored),
+        **{f"{k}": v for k, v in _score(scored, RAW_METRICS, normalized=False).items()},
+        **{f"{k}: normalized": v
+           for k, v in _score(scored, NORMALIZED_METRICS, normalized=True).items()},
+    }]
+    for drug, group in scored.groupby("drug", sort=False):
+        rows.append({
+            "grouping": "per_drug", "drug": drug, "n": len(group),
+            **{f"{k}": v for k, v in _score(group, RAW_METRICS, normalized=False).items()},
+            **{f"{k}: normalized": v
+               for k, v in _score(group, NORMALIZED_METRICS, normalized=True).items()},
+        })
+    return pd.DataFrame(rows)
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    add_data_args(parser)
-    parser.add_argument(
-        "--drugs",
-        nargs="+",
-        default=None,
-        help="Evaluation panel; default: the `selected` drugs in --panel-csv.",
-    )
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--oof-csv", type=Path, required=True,
+                        help="Out-of-fold predictions; needs drug, cell_line, fold, y_true, y_pred.")
+    parser.add_argument("--rep", default="X_scGPT", choices=["X_pca", "X_scGPT"])
+    parser.add_argument("--weighted", type=lambda s: s.lower() == "true", default=None,
+                        help="Keep only rows with this weighted flag; omit to keep all.")
     parser.add_argument("--panel-csv", type=Path, default=DEFAULT_PANEL_CSV)
-    parser.add_argument(
-        "--heads",
-        choices=["panel", "all", "both"],
-        default="both",
-        help="Train K=len(panel) heads, K=545, or both (default).",
-    )
-    parser.add_argument("--reps", nargs="+", default=list(REPS), choices=list(REPS))
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--epochs", type=int, default=25,
-                        help="Best epoch is median 6 over 36 recorded runs; 25 is never reached.")
-    parser.add_argument(
-        "--oof-csv",
-        type=Path,
-        default=None,
-        help="Score existing out-of-fold predictions instead of refitting (no model fits at all). "
-             "Expects rep, drug, cell_line, y_true, y_pred -- e.g. "
-             "notebooks/outputs/panel/panel_oof_predictions.csv from notebook 14.",
-    )
-    parser.add_argument("--weighted", choices=["true", "false"], default=None,
-                        help="With --oof-csv: pick one weighting arm if the file holds both.")
+    parser.add_argument("--drugs", nargs="+", default=None,
+                        help=f"Drugs to score; default: the panel in --panel-csv.")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
-    panel = args.drugs or load_panel(args.panel_csv)
-    score = args.score  # from add_data_args; the training target
+    drugs = args.drugs or load_panel(args.panel_csv)
+    oof = load_oof(args.oof_csv, rep=args.rep, weighted=args.weighted)
 
-    truth_all = line_by_drug_truth(args.variant, args.data_root)
-    all_drugs = list(truth_all.columns)
-    missing = [d for d in panel if d not in all_drugs]
-    if missing:
-        raise ValueError(f"panel drugs not in the targets file: {missing}")
+    absent = sorted(set(drugs) - set(oof["drug"]))
+    if absent:
+        raise ValueError(f"{len(absent)} panel drugs have no predictions in {args.oof_csv}: {absent}")
+    oof = oof[oof["drug"].isin(drugs)]
 
-    print(f"fragility index over {len(all_drugs)} drugs, {len(truth_all)} lines")
-    if args.oof_csv is None:
-        print(f"panel ({len(panel)}): {panel}")
-
-    if args.oof_csv is not None:
-        # No training: the normalization is post-processing of predictions, and the fragility
-        # index comes from labels alone.
-        weighted = None if args.weighted is None else args.weighted == "true"
-        configs = [(None, f"oof:{args.oof_csv.name}")]
-        print(f"scoring existing predictions from {args.oof_csv} (0 model fits)\n")
-    else:
-        configs = []
-        if args.heads in ("panel", "both"):
-            configs.append((panel, f"K={len(panel)}"))
-        if args.heads in ("all", "both"):
-            configs.append((all_drugs, f"K={len(all_drugs)}"))
-        print(f"score={score} variant={args.variant} seed={args.seed}")
-        print(f"{len(configs) * len(args.reps)} runs x 5 folds "
-              f"-- consider --oof-csv instead, which needs none\n")
-
-    rows = []
-    for drugs, heads in configs:
-        for rep in args.reps:
-            if args.oof_csv is not None:
-                oof = load_oof_csv(args.oof_csv, rep=rep, weighted=weighted)
-            else:
-                oof = oof_line_predictions(
-                    score,
-                    drugs,
-                    rep,
-                    panel,
-                    variant=args.variant,
-                    data_root=args.data_root,
-                    seed=args.seed,
-                    epochs=args.epochs,
-                )
-            res = normalized_correlations(oof, truth_all, heads=heads, rep=rep)
-            rows.extend(res)
-            print(
-                f'{heads:8s} {rep:8s} raw={np.mean([r["rho_raw"] for r in res]):+.3f}  '
-                f'normalized={np.mean([r["rho_normalized"] for r in res]):+.3f}  '
-                f'naive={np.mean([r["rho_naive_baseline"] for r in res]):+.3f}',
-                flush=True,
-            )
-
-    df = pd.DataFrame(rows)
+    results = normalized_evaluation(oof)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(args.out, index=False)
-    print(f"\nwrote {args.out}")
-    print(df.round(3).to_string(index=False))
+    results.to_csv(args.out, index=False)
+    print(f"{len(drugs)} drugs | {oof.fold.nunique()} folds | rep={args.rep} -> {args.out}")
+    print(results.set_index(["grouping", "drug"])[["Spearman", "Spearman: normalized"]].round(3))
 
 
 if __name__ == "__main__":

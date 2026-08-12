@@ -1,0 +1,25 @@
+{
+  "citation": "Sun J, Wei Q, Zhou Y, Wang J, Liu Q, Xu H. A systematic analysis of FDA-approved anticancer drugs. BMC Systems Biology 11(Suppl 5), 87 (2017).",
+  "doi": "10.1186/s12918-017-0464-7",
+  "pmc_id": "PMC5629554",
+  "licence": "CC BY 4.0",
+  "source": "Table 1, 'Summary of FDA-approved anticancer drugs from 1949 to 2014'",
+  "retrieved_from": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=5629554&rettype=xml",
+  "retrieved": "2026-08-11",
+  "pubchem_cids": {
+    "note": "The pubchem_cids column is NOT from the paper. Sun et al. list names only; CIDs were resolved separately so the list can be matched to CTRPv2, which screened many of these compounds under development codes.",
+    "source": "PubChem PUG-REST, /compound/name/{name}/cids/JSON",
+    "resolved": "2026-08-11",
+    "n_resolved": 120,
+    "unresolved_are": "biologics (antibodies, enzymes, cell therapy, radiopharmaceutical)"
+  },
+  "verified_against": {
+    "total": 150,
+    "by_class": {
+      "Cytotoxic": 61,
+      "Targeted": 89
+    }
+  },
+  "coverage_cutoff": "1949-2014; nothing approved after 2014 is listed",
+  "fetched_by": "scripts/preprocessing/fetch_sun2017_drugs.py"
+}

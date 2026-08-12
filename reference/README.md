@@ -54,3 +54,63 @@ two genes onto one name), `status`, `ensembl_gene_id`.
 
 **Citation.** Seal, R. L. *et al.* Genenames.org: the HGNC resources in 2023. *Nucleic Acids Research*
 **51**, D1003–D1009 (2023). doi:10.1093/nar/gkac888
+
+## `sun2017_fda_anticancer_drugs.csv`
+
+The FDA-approved anticancer drug list the [drug panel](../docs/steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026)
+is selected on. Retrieved and parsed by `scripts/preprocessing/fetch_sun2017_drugs.py`; used in
+`notebooks/drug_selection/literature_panel.ipynb` §1.
+
+### Exact source
+
+| | |
+|---|---|
+| Publication | Sun, J., Wei, Q., Zhou, Y., Wang, J., Liu, Q. & Xu, H. A systematic analysis of FDA-approved anticancer drugs. *BMC Systems Biology* **11**(Suppl 5), 87 (2017) |
+| DOI | `10.1186/s12918-017-0464-7` — PMC5629554 |
+| Licence | **CC BY 4.0**, which is why the parsed table may be committed here |
+| What was taken | **Table 1**, *"Summary of FDA-approved anticancer drugs from 1949 to 2014"* |
+| Retrieved | **11.08.2026**, NCBI E-utilities `efetch.fcgi?db=pmc&id=5629554&rettype=xml` |
+| Rows | 150 drugs — 61 cytotoxic, 89 targeted |
+
+**Table 1 is the entire dataset.** The paper ships no supplementary file: *"All data generated or
+analysed during this study are included in this published article."* It is fetched as JATS XML rather
+than scraped from the article HTML, because the XML marks table structure explicitly.
+
+**How the version is pinned.** PMC publishes no checksum for a rendered article, so there is nothing to
+verify bytes against. Instead the parse must reproduce the three counts the paper states in its own
+Results — 150 drugs, 61 cytotoxic, 89 targeted — and **raises** otherwise. If NCBI changes its markup or
+the article record is revised, that fails loudly rather than handing a different table to the panel.
+
+**Columns.** `drug`, `approval_year`, `therapeutic_class`, `target_gene`, `delivery_type`, `drug_class`
+(cytotoxic or targeted — carried in the source as two section rows interleaved with the data, and the
+only machine-readable place that distinction exists), and `pubchem_cids`.
+
+⚠️ **`pubchem_cids` is not from the paper.** Sun et al. give names only; the CIDs were resolved
+separately so the list can be matched to a screen that uses development codes. The provenance file
+records that separately from the article.
+
+⚠️ **The list stops at 2014.** Nothing approved since is in it. The concrete cost, recorded so it is not
+rediscovered: `selumetinib` (approved 2020) cannot be a panel candidate under this criterion.
+
+## `pubchem_parent_cids.csv`
+
+PubChem compound identifiers mapped to their **parent** compound — the neutral form carrying the active
+moiety — for every CID either the drug list or CTRPv2 uses. 566 rows, written by
+`scripts/preprocessing/pubchem.py::parent_cids`.
+
+**Why it exists.** An approval list names `Imatinib mesylate` because that is what the FDA approved; a
+screen names `imatinib` because that is what it dissolved. These are different molecules with different
+PubChem records, so neither the name nor the compound identifier relates them — only the parent relation
+does. Applied to **both** sides it recovered 13 panel candidates that name and structure matching
+missed, including imatinib, doxorubicin, vincristine and topotecan.
+
+| | |
+|---|---|
+| Source | PubChem PUG-REST, `compound/cid/{cid}/cids/JSON?cids_type=parent` |
+| Retrieved | **11.08.2026** |
+| Citation | Kim, S. *et al.* PubChem 2023 update. *Nucleic Acids Research* **51**, D1373–D1380 (2023). doi:10.1093/nar/gkac956 |
+
+**Committed rather than fetched on demand**, for the same reason as the HGNC file above: PubChem is
+curated continuously, so a panel that depends on a live lookup is not reproducible. `parent_cids` fetches
+only CIDs the cache does not already hold, so re-running costs nothing and a machine with no network
+reproduces the same 11 drugs.

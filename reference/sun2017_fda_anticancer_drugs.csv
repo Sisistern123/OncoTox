@@ -1,0 +1,151 @@
+drug,approval_year,therapeutic_class,target_gene,delivery_type,drug_class,pubchem_cids
+Mechlorethamine,1949,Lung cancer; Leukemia; Lymphoma,DNA synthesis,Single,Cytotoxic,4033
+Leucovorin,1952,Colorectal cancer; Bone cancer,TYMS,Both,Cytotoxic,135403648
+Methotrexate,1953,Leukemia; Breast cancer; Head and neck cancer; Lung cancer; Lymphoma; Bone cancer; Gestational trophoblastic disease,DHFR,Both,Cytotoxic,126941
+Mercaptopurine,1953,Leukemia,HPRT1,Combination,Cytotoxic,667490
+Busulfan,1954,Leukemia,DNA synthesis,Combination,Cytotoxic,2478
+Chlorambucil,1957,Leukemia; Lymphoma,DNA synthesis,Single,Cytotoxic,2708
+Cyclophosphamide,1959,Lymphoma; Multiple myeloma; Leukemia; Brain cancer; Ovarian cancer; Retinoblastoma; Breast cancer,DNA synthesis,Both,Cytotoxic,2907
+Vincristine sulfate,1963,Leukemia,TUBA4A; TUBB,Single,Cytotoxic,249332
+Dactinomycin,1964,Sarcoma; Gestational trophoblastic disease; Testicular cancer; Kidney cancer,RNA synthesis,Both,Cytotoxic,457193
+Vinblastine sulfate,1965,Lymphoma; Testicular cancer; Choriocarcinoma; Breast cancer,TUBA1A; TUBB; TUBD1; TUBE1; TUBG1,Combination,Cytotoxic,5388983
+Thioguanine,1966,Leukemia,DNA synthesis,Combination,Cytotoxic,2723601
+Procarbazine hydrochloride,1969,Lymphoma,DNA synthesis,Combination,Cytotoxic,9703
+Floxuridine,1970,Stomach cancer,DNA synthesis,Single,Cytotoxic,5790
+Fluorouracil,1970,Breast cancer; Colorectal cancer; Stomach cancer; Pancreatic cancer,DNA synthesis,Single,Cytotoxic,3385
+Mitotane,1970,Adrenal cortical carcinoma,Unknown,Single,Cytotoxic,4211
+Bleomycin,1973,Head and neck cancer; Lymphoma; Penile cancer; Cervical cancer; Vulvar cancer; Testicular cancer,DNA synthesis,Both,Cytotoxic,5360373
+Doxorubicin hydrochloride,1974,Leukemia; Breast cancer; Stomach cancer; Lymphoma; Ovarian cancer; Lung cancer; Sarcoma; Thyroid cancer; Bladder cancer; Kidney cancer; Brain cancer,TOP2A; DNA synthesis,Single,Cytotoxic,443939
+Dacarbazine,1975,Melanoma; Lymphoma,DNA synthesis,Both,Cytotoxic,135398738
+Lomustine,1976,Brain cancer; Lymphoma,DNA synthesis,Both,Cytotoxic,3950
+Carmustine,1977,Brain cancer; Lymphoma; Multiple myeloma,DNA synthesis,Both,Cytotoxic,2578
+Cisplatin,1978,Testicular cancer; Ovarian cancer; Bladder cancer,DNA synthesis,Both,Cytotoxic,5702198
+Asparaginase,1978,Leukemia,Unknown,Combination,Cytotoxic,
+Streptozocin,1982,Pancreatic cancer,DNA synthesis; SLC2A2,Single,Cytotoxic,29327
+Etoposide,1983,Testicular cancer; Lung cancer,TOP2A; TOP2B,Combination,Cytotoxic,36462
+Ifosfamide,1988,Testicular cancer,DNA synthesis,Combination,Cytotoxic,3690
+Carboplatin,1989,Ovarian cancer,DNA synthesis,Both,Cytotoxic,426756
+Altretamine,1990,Ovarian cancer,DNA synthesis,Single,Cytotoxic,2123
+Fludarabine,1991,Leukemia,DNA synthesis,Single,Cytotoxic,657237
+Pentostatin,1991,Leukemia,ADA,Single,Cytotoxic,439693
+Paclitaxel,1992,Breast cancer; Lung cancer; Pancreatic cancer; Ovarian cancer; Sarcoma,TUBA4A; TUBB1,Both,Cytotoxic,36314
+Melphalan,1992,Multiple myeloma; Ovarian cancer,DNA synthesis,Combination,Cytotoxic,460612
+Teniposide,1992,Leukemia,TOP2A,Combination,Cytotoxic,452548
+Cladribine,1993,Leukemia,DNA synthesis,Single,Cytotoxic,20279
+Vinorelbine tartrate,1994,Lung cancer,TUBB,Both,Cytotoxic,11607738
+Pegaspargase,1994,Leukemia,Biological,Combination,Cytotoxic,
+Thiotepa,1994,Breast cancer; Ovarian cancer; Bladder cancer,DNA synthesis,Single,Cytotoxic,5453
+Docetaxel,1996,Prostate cancer; Breast cancer; Head and neck cancer; Stomach cancer; Lung cancer; Brain cancer,TUBA4A; TUBB1,Both,Cytotoxic,148124
+Gemcitabine,1996,Ovarian cancer; Pancreatic cancer; Lung cancer; Breast cancer,DNA synthesis; RRM1; TYMS,Both,Cytotoxic,60750
+Irinotecan,1996,Colorectal cancer,TOP1; TOP1MT,Both,Cytotoxic,60838
+Topotecan hydrochloride,1996,Ovarian cancer; Lung cancer; Cervical cancer,TOP1; TOP1MT,Both,Cytotoxic,60699
+Idarubicin,1997,Leukemia,DNA synthesis; TOP2A,Combination,Cytotoxic,42890
+Capecitabine,1998,Colorectal cancer; Breast cancer,DNA synthesis; RNA synthesis; Protein synthesis; TYMS,Both,Cytotoxic,60953
+Daunorubicin hydrochloride,1998,Leukemia,DNA synthesis; TOP2A; TOP2B,Combination,Cytotoxic,62770
+Valrubicin,1998,Bladder cancer,DNA synthesis; TOP2A,Single,Cytotoxic,454216
+Temozolomide,1999,Brain cancer,DNA synthesis,Both,Cytotoxic,5394
+Cytarabine,1999,Leukemia,DNA synthesis,Single,Cytotoxic,6253
+Epirubicin,1999,Breast cancer,CHD1; DNA synthesis; TOP2A,Single,Cytotoxic,41867
+Arsenic trioxide,2000,Leukemia,Unknown,Single,Cytotoxic,14888
+Mitomycin,2002,Stomach cancer; Pancreatic cancer,DNA synthesis,Both,Cytotoxic,5746
+Oxaliplatin,2002,Colorectal cancer,DNA synthesis,Combination,Cytotoxic,9887053
+Pemetrexed disodium,2004,Lung cancer; Mesothelioma,DHFR; GART; TYMS,Both,Cytotoxic,135413520
+Clofarabine,2004,Leukemia,DNA synthesis,Single,Cytotoxic,119182
+Nelarabine,2005,Leukemia; Lymphoma,DNA synthesis,Single,Cytotoxic,3011155
+Ixabepilone,2007,Breast cancer,TUBB3,Both,Cytotoxic,6445540
+Bendamustine hydrochloride,2008,Leukemia; Lymphoma,DNA synthesis,Single,Cytotoxic,77082
+Pralatrexate,2009,Lymphoma,DHFR; TYMS,Single,Cytotoxic,148121
+Cabazitaxel,2010,Prostate cancer,TUBA4A; TUBB1,Combination,Cytotoxic,9854073
+Eribulin mesylate,2010,Breast cancer,TUBA4A; TUBB1,Single,Cytotoxic,17755248
+Asparaginase erwinia chrysanthemi,2011,Leukemia,Biological,Combination,Cytotoxic,
+Omacetaxine mepesuccinate,2012,Leukemia,RPL3,Single,Cytotoxic,285033
+Radium 223 dichloride,2013,Prostate cancer,Unknown,Single,Cytotoxic,
+Fluoxymesterone,1956,Breast cancer,AR; ESR1; NR3C1; PRLR,Single,Targeted,6446
+Methyltestosterone,1973,Breast cancer,AR,Single,Targeted,6010
+Tamoxifen citrate,1977,Breast cancer,ESR1; ESR2,Single,Targeted,2733525
+Estramustine,1981,Prostate cancer,ESR1; ESR2; MAP1A; MAP2,Single,Targeted,259331
+"Interferon Alfa-2b, recombinant",1986,Sarcoma; Leukemia; Melanoma; Lymphoma,IFNAR1; IFNAR2,Single,Targeted,71306834
+Goserelin,1989,Prostate cancer; Breast cancer,GNRHR; LHCGR,Both,Targeted,5311128
+Flutamide,1989,Prostate cancer,AR,Combination,Targeted,3397
+Aldesleukin,1992,Melanoma; Kidney cancer,IL2RA; IL2RB; IL2RG,Single,Targeted,
+Bicalutamide,1995,Prostate cancer,AR,Combination,Targeted,2375
+Anastrozole,1995,Breast cancer,CYP19A1,Single,Targeted,2187
+Porfimer,1995,Esophageal cancer; Lung cancer,FCGR1A; LDLR,Single,Targeted,
+Nilutamide,1996,Prostate cancer,AR,Combination,Targeted,4493
+Imiquimod,1997,Basal cell carcinoma,TLR7; TLR8,Single,Targeted,57469
+Letrozole,1997,Breast cancer,CYP19A1,Single,Targeted,3902
+Rituximab,1997,Lymphoma; Leukemia,MS4A1,Single,Targeted,
+Toremifene,1997,Breast cancer,ESR1,Single,Targeted,3005573
+Thalidomide,1998,Multiple myeloma,CRBN,Combination,Targeted,5426
+Trastuzumab,1998,Breast cancer; Stomach cancer,ERBB2,Single,Targeted,
+Alitretinoin,1999,Kaposi’s sarcoma,RARA; RARB; RARG; RXRA; RXRB; RXRG,Single,Targeted,449171
+Bexarotene,1999,Lymphoma,RXRA; RXRB; RXRG,Single,Targeted,82146
+Denileukin diftitox,1999,Lymphoma,IL2RA; IL2RB; IL2RG; protein synthesis,Single,Targeted,
+Exemestane,1999,Breast cancer,CYP19A1,Single,Targeted,60198
+Gemtuzumab ozogamicin,2000,Leukemia,CD33; DNA synthesis,Single,Targeted,
+Triptorelin,2000,Prostate cancer,GNRH1,Single,Targeted,25074470
+Alemtuzumab,2001,Leukemia,CD52,Single,Targeted,
+Imatinib mesylate,2001,Leukemia; Stomach cancer,BCR-ABL,Single,Targeted,123596
+Peginterferon Alfa-2b,2001,Melanoma,IFNAR1; IFNAR2,Single,Targeted,
+Fulvestrant,2002,Breast cancer,ESR1,Single,Targeted,104741
+Ibritumomab tiuxetan,2002,Lymphoma,MS4A1,Single,Targeted,
+Leuprolide acetate,2002,Prostate cancer,GNRHR,Single,Targeted,657180
+Abarelix,2003,Prostate cancer,GNRHR,Single,Targeted,16131215
+Bortezomib,2003,Multiple myeloma; Lymphoma,PSMB1; PSMB2; PSMB5; PSMD1; PSMD2,Single,Targeted,387447
+Gefitinib,2003,Lung cancer,EGFR,Single,Targeted,123631
+Tositumomab and Iodine I 131 Tositumomab,2003,Lymphoma,MS4A1,Single,Targeted,
+Bevacizumab,2004,Colorectal cancer; Lung cancer; Brain cancer; Kidney cancer,VEGFA,Both,Targeted,
+Cetuximab,2004,Head and neck cancer; Colorectal cancer,EGFR,Both,Targeted,
+Erlotinib hydrochloride,2004,Pancreatic cancer; Lung cancer,EGFR,Both,Targeted,176871
+Azacitidine,2004,Leukemia,DNMT1,Single,Targeted,9444
+Lenalidomide,2005,Multiple myeloma; Lymphoma,CRBN,Both,Targeted,216326
+Sorafenib tosylate,2005,Liver cancer; Kidney cancer; Thyroid cancer,BRAF; FGFR1; FLT1; FLT3; FLT4; KDR; KIT; PDGFRB; RAF1; RET,Single,Targeted,406563
+Dasatinib,2006,Leukemia,BCR-ABL,Single,Targeted,3062316
+Decitabine,2006,Leukemia,DNMT1,Single,Targeted,451668
+Panitumumab,2006,Colorectal cancer,EGFR,Single,Targeted,
+Sunitinib malate,2006,Stomach cancer; Kidney cancer; Pancreatic cancer,CSF1R; FLT1; FLT3; FLT4; KDR; KIT; PDGFRA; PDGFRB,Single,Targeted,6456015
+Vorinostat,2006,Lymphoma,HDAC1; HDAC2; HDAC3; HDAC6,Single,Targeted,5311
+Lapatinib ditosylate,2007,Breast cancer,EGFR; ERBB2,Combination,Targeted,11557040
+Nilotinib,2007,Leukemia,BCR-ABL,Single,Targeted,644241
+Temsirolimus,2007,Kidney cancer,MTOR,Single,Targeted,6918289
+Degarelix,2008,Prostate cancer,GNRHR,Single,Targeted,16136245
+Everolimus,2009,Breast cancer; Brain cancer; Kidney cancer; Pancreatic cancer,MTOR,Both,Targeted,6442177
+Ofatumumab,2009,Leukemia,MS4A1,Single,Targeted,
+Pazopanib hydrochloride,2009,Kidney cancer; Sarcoma,FGF1; FGFR3; FLT1; FLT4; ITK; KDR; KIT; PDGFRA; PDGFRB; SH2B3,Single,Targeted,11525740
+Romidepsin,2009,Lymphoma,HDAC1; HDAC2; HDAC3; HDAC6,Single,Targeted,5352062
+Denosumab,2010,Bone cancer,TNFSF11,Single,Targeted,
+Hydroxyurea,2010,Melanoma; Leukemia; Ovarian cancer; Head and neck cancer,RRM1,Single,Targeted,3657
+Sipuleucel-T,2010,Prostate cancer,ACPP,Single,Targeted,
+Abiraterone acetate,2011,Prostate cancer,CYP17A1,Single,Targeted,9821849
+Brentuximab vedotin,2011,Lymphoma,TNFRSF8,Single,Targeted,
+Crizotinib,2011,Lung cancer,ALK; MET,Single,Targeted,11626560
+Ipilimumab,2011,Melanoma,CTLA4,Single,Targeted,
+Ruxolitinib phosphate,2011,Myelofibrosis,JAK1; JAK2,Single,Targeted,25127112
+Vandetanib,2011,Thyroid cancer,EGFR; PTK6; TEK; VEGFA,Single,Targeted,3081361
+Vemurafenib,2011,Melanoma,BRAF,Single,Targeted,42611257
+Pertuzumab,2012,Breast cancer,ERBB2,Both,Targeted,
+Axitinib,2012,Kidney cancer,FLT1; FLT4; KDR,Single,Targeted,6450551
+Bosutinib,2012,Leukemia,BCR-ABL,Single,Targeted,5328940
+Cabozantinib,2012,Thyroid cancer,KDR; MET; RET,Single,Targeted,25102847
+Carfilzomib,2012,Multiple myeloma,PSMB1; PSMB10; PSMB2; PSMB5; PSMB8; PSMB9,Single,Targeted,11556711
+Enzalutamide,2012,Prostate cancer,AR,Single,Targeted,15951529
+Ponatinib hydrochloride,2012,Leukemia,BCR-ABL,Single,Targeted,46908927
+Regorafenib,2012,Colorectal cancer; Stomach cancer,RET; FLT1; KDR; FLT4; KIT; PDGFRA; PDGFRB; FGFR1; FGFR2; TEK; DDR2; NTRK1; EPHA2; RAF1; BRAF; MAPK11; FRK; ABL1,Single,Targeted,11167602
+Vismodegib,2012,Basal cell carcinoma,SMO,Single,Targeted,24776445
+Ziv-aflibercept,2012,Colorectal cancer,PGF; VEGFA; VEGFB,Single,Targeted,
+Dabrafenib,2013,Melanoma,BRAF; LIMK1; NEK11; RAF1; SIK1,Both,Targeted,44462760
+Trametinib,2013,Melanoma,MAP2K1; MAP2K2,Both,Targeted,11707110
+Obinutuzumab,2013,Leukemia,MS4A1,Combination,Targeted,
+Ado-trastuzumab emtansine,2013,Breast cancer,ERBB2,Single,Targeted,
+Afatinib,2013,Lung cancer,EGFR; ERBB2; ERBB4,Single,Targeted,10184653
+Ibrutinib,2013,Lymphoma,BTK,Single,Targeted,24821094
+Pomalidomide,2013,Multiple myeloma,CRBN,Single,Targeted,134780
+Idelalisib,2014,Leukemia; Lymphoma,PIK3CD,Both,Targeted,11625818
+Belinostat,2014,Lymphoma,HDAC1; HDAC2; HDAC3; HDAC6,Single,Targeted,6918638
+Ceritinib,2014,Lung cancer,ALK,Single,Targeted,57379345
+Pembrolizumab,2014,Melanoma,PDCD1,Single,Targeted,
+Ramucirumab,2014,Stomach cancer,KDR,Single,Targeted,
+Lanreotide,2014,Gastroenteropancreatic neuroendocrine tumor,SSTR2; SSTR5,Single,Targeted,6918011
+Blinatumomab,2014,Leukemia,CD19; CD3D,Single,Targeted,
+Nivolumab,2014,Melanoma,PDCD1,Single,Targeted,
+Olaparib,2014,Ovarian cancer,PARP1; PARP2; PARP3,Single,Targeted,23725625

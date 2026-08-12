@@ -15,7 +15,7 @@ indexed by `runs/runs_index.csv`.
 |---|---|---|---|
 | **1** | `1_preprocessing.ipynb` | Builds the trainable data: recomputes the 512-d PCA baseline for both variants (§A) and builds the HVG-sweep variants including the scGPT re-embed (§B) | `scripts/preprocessing/run_preprocessing.py` |
 | **2** | `2_training.ipynb` | The PCA-vs-scGPT harness: 8-run matrix (load-or-train), 5-fold GroupKFold CV with test held out, per-drug correlation | `train_multitask.train_rep`, `cv_evaluate` |
-| **3** | `3_panel_training.ipynb` | The current training run: raw `auc`, per-fold density weighting, out-of-fold scoring against the ridge control | `scripts/training/cv.py`, `density_weighting.py` |
+| **3** | `3_panel_training.ipynb` | The current training run: `auc_cc`, per-fold density weighting, out-of-fold scoring against the ridge control. ⚠️ Its stored outputs are cleared and its panel is the void 8-drug one; it re-runs on `outputs/panel/panel.csv` at R4 of the sweep | `scripts/training/cv.py`, `density_weighting.py` |
 
 `1_` and `2_` call the **same entry points the CLI uses**, so the notebooks and the command line cannot
 drift — they are documentation *and* a re-run, not a fork.
@@ -47,15 +47,14 @@ drift — they are documentation *and* a re-run, not a fork.
 
 ### `drug_selection/` — which compounds enter the model
 
-The project's main open deliverable. All three currently rest on a criterion that
-[measured the wrong quantity](../docs/steps/corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability),
-and all three get re-run after the rebuild.
-
-| Notebook | What it was |
+| Notebook | Question it answers |
 |---|---|
-| `learnability_filter.ipynb` | The kill/spare gate that took 545 drugs to 10 — **discredited criterion** |
-| `learnable_subset_training.ipynb` | PCA vs scGPT on that subset — a best-case diagnostic, never a generalization number |
-| `panel_distributions.ipynb` | Response distributions and the weighting design on the 8-drug panel — **void panel** |
+| `literature_panel.ipynb` | **Which drugs does the model predict, and on whose authority?** Builds the panel end to end: the FDA-approved list → the compounds CTRPv2 screened → coverage over our 181 cell lines → the 11 with a verified published claim. Writes `outputs/panel/panel.csv` |
+
+Rebuilt 12.08.2026 ([Step 01](../docs/steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026)).
+The three notebooks that used to live here selected on **our own response values** and are archived;
+the criterion is now external to our labels entirely. The notebook reads no pipeline artifact — only
+the response CSV — so it runs under the freeze and its output does not go stale when the h5ads do.
 
 ### `archive/` — nothing here is load-bearing
 
@@ -72,6 +71,9 @@ and all three get re-run after the rebuild.
 | Notebook | Why it is here |
 |---|---|
 | `scdrugatlas_exploration.ipynb` | Explores **scDrugAtlas**, a data source that was evaluated and [rejected](../docs/steps/corrections-and-dead-ends.md#scdrugatlas-and-clintox-as-data-sources). Kept as the record of that decision. *(Long mislabelled in the docs as SCP542 exploration — "scDA" is scDrugAtlas.)* |
+| `learnability_filter.ipynb` | The kill/spare gate that took 545 drugs to 10. Archived 12.08.2026: the criterion [measured potency, not rankability](../docs/steps/corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability), and the [rebuilt panel](../docs/steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026) uses no statistic of our labels at all |
+| `learnable_subset_training.ipynb` | PCA vs scGPT on that subset — a best-case diagnostic, never a generalization number. Archived 12.08.2026 with the gate that produced the subset |
+| `panel_distributions.ipynb` | Response distributions and the density-weighting design on the [void 8-drug panel](../docs/steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it). Archived 12.08.2026. ⚠️ It also held the only justification for `alpha=0.5` and `cap=3` in `scripts/training/density_weighting.py`, so **audit 09 must re-derive those or drop the weighting** |
 | `ctrp_prism_repurposing.ipynb` | CTRP→PRISM repurposing and clinical-phase mapping. Read-only, writes no artifact, and no step depends on it. Worth knowing it exists: it is the only notebook that loads `GDSC2_fitted_dose_response_27Oct23.xlsx`, which the "externalize the spread requirement" task will need |
 | `target_comparison.ipynb` | **Ground 2**, archived 11.08.2026. `mean_pv` vs `auc` vs `auc_z` at K=10 and K=545. All three targets were removed that day, so `layout.CTRP_SCORES` rejects every one it asks for and it cannot run. Its conclusion — retire `auc_z` — is in [Corrections](../docs/steps/corrections-and-dead-ends.md#auc_z-as-the-training-target) |
 | `replicate_variation.ipynb` | **Ground 2**, archived 11.08.2026. How far apart two screenings of the same (cell line, drug) fall — it existed because the pipeline *averaged* them, and it no longer does. Its measurements are kept in [Step 01](../docs/steps/01-datasets-and-harmonization.md#genuine-repeats-are-averaged-and-they-disagree-more-than-the-targets-own-spread-10082026), reframed as the evidence for the target switch |
