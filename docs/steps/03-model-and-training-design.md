@@ -109,6 +109,39 @@ It is also what makes **research question 2 structurally unanswerable under this
 objective penalises exactly the within-line variation Q2 asks about. MIL is the instrument for that
 question, not a capacity lever — see [TODO](../TODO.md).
 
+### The penalty on within-line variation is exact, not figurative (13.08.2026)
+
+"The objective penalises the within-line variation" is not a manner of speaking. For one drug and one
+cell line with per-cell predictions `p_c` and the line's single label `y`, split the per-cell squared
+error around that line's own mean prediction `p̄`:
+
+```
+(1/n) Σ_c (p_c − y)²   =   (p̄ − y)²   +   Var_c(p)
+  the per-cell loss        the bag loss    the term MIL deletes
+```
+
+The cross-term vanishes because `Σ_c (p_c − p̄) = 0`, so this is an **identity, not an approximation**.
+The left side is what `4a_percell_training` optimizes, regrouped by line; the first term on the right is
+what `4b_mil_training` optimizes under mean pooling. The two objectives differ by exactly the
+within-line variance of the predictions, at full weight, in every batch.
+
+**The regrouping is analysis, not something the code does.** `4a` has no bags and never groups by line
+— its batches are 128 cells drawn across lines and its loss is entry-pooled over (cell, drug) entries.
+The regrouping is nonetheless valid, because that loss is a sum over cells and cells partition into
+lines. Density weighting does not break it: the weight is a function of the label
+(`scripts/training/density_weighting.py`), the label is constant within a line, so the weight factors
+out of each line's sum and reweights **lines**, not cells within a line. The same holds for the cap.
+
+Two consequences, both load-bearing elsewhere in this file:
+
+- **Q2 is unanswerable under `4a` as a matter of arithmetic**, not of insufficient capacity or
+  under-training. No hyperparameter reaches this term; only removing it does.
+- **It is what makes `4a` the right null for `4b`'s spread test.** `4a`'s within-line spread is spread
+  that survived an explicit, full-weight penalty; `4b`'s is spread with that penalty removed. Comparing
+  the two tests precisely the deleted term — which is why that stage needs no threshold chosen by
+  judgement, unlike every other number in `4b`'s criterion
+  ([`4b_mil_training.ipynb`](../../notebooks/4b_mil_training.ipynb) §2, stage 1).
+
 ### The uncentred target is handled the same way in every training path
 
 Two mechanics follow from a target sitting near 0.9 rather than 0. Both are silent if missed — nothing
@@ -438,6 +471,78 @@ Both the CLI and `notebooks/4a_percell_training.ipynb (§B)` drive one training 
 **reproducible PCA-vs-scGPT comparison**: it trains both reps at the matched 512-d width and writes
 the comparison figures/tables to `notebooks/outputs/`. Because both paths call `train_rep`, the
 notebook and command line cannot diverge.
+
+---
+
+## MIL — the bag model (`4b_mil_training`, design fixed 13.08.2026)
+
+**Not yet built.** This records the architecture as decided, so it is not chosen after a run exists;
+the notebook is a stub until its criterion is filled
+([`4b_mil_training.ipynb`](../../notebooks/4b_mil_training.ipynb) §2). Everything below except bag size
+is settled.
+
+**One bag is one cell line.** It falls out of the label rather than being chosen: CTRPv2 gives one
+number per (cell line, drug), and the heads are multi-task, so a single forward pass over a line's cells
+yields every drug at once and the bag prediction is a vector matched to the line's label vector and its
+mask. This is the same statement already relied on twice above — in the
+[depth-weighting defect](#-open-defect--the-loss-weights-cell-lines-by-how-deeply-they-were-sequenced)
+and in the [ranking-loss deferral](#the-loss-is-plain-masked-mse-and-stays-that-way-until-mil-audit-09-12082026).
+
+```
+bag = cell line i
+  cells            (n_i, D)          embeddings — X_pca or X_scGPT, identical to 4a
+    ↓ shared trunk                   identical to 4a: OncoMLP, hidden_dims (128,64), LayerNorm,
+    ↓ Linear(→ K)                    dropout 0.5, input_dropout 0.1, K panel heads
+  per-cell preds   (n_i, K)          the native output — persisted; what Q2 is asked of
+    ↓ mean over the bag's cells      THE ONLY CHANGE vs 4a
+  bag pred         (K,)
+    ↓ masked MSE against the line's label vector (K,) and its mask (K,)
+```
+
+**The encoder is untouched.** Trunk, width, normalization, dropout, target and loss family are 4a's,
+unchanged, so the aggregation is the only thing that moves and a difference between the two is
+attributable to it — the [governing rule](../TODO.md). The mask is per (line, drug) and therefore
+constant across a bag's cells; density weighting is a function of the label and is likewise constant
+within a bag, so it weights **bags**. Folds are unchanged: a bag is one line and a line belongs to
+exactly one fold, so no bag spans a split.
+
+**Instance-level, not attention pooling (Selin, 12.08.2026).** Every cell gets its own predicted
+response and the bag prediction aggregates them, rather than every cell getting an attention weight over
+a pooled embedding (Ilse, Tomczak & Welling, *Attention-based Deep Multiple Instance Learning*, ICML
+2018). Embedding-level usually predicts better; instance-level is readable per instance, which is what
+Q2 requires, so the cost in predictive performance is accepted.
+
+**Mean pooling, and the aggregator is never revisited (Selin, 13.08.2026).** It matches the label's own
+definition and is fixed before the model exists. A variance term in the loss and a max/top-quantile
+aggregator were both considered and rejected — reasoning in `4b` §1. If the synthetic control fails, the
+aggregator is *not* swapped for one that passes: that is a forking path moved down one level.
+
+### ⬜ Open — bag size, and why it is not a batching parameter (13.08.2026)
+
+For a sub-bag of `B` cells drawn from a line of `n`, the expected loss is
+
+```
+E[(p̄_B − y)²]  =  (p̄_n − y)²  +  (σ²/B)·(1 − (B−1)/(n−1))
+```
+
+At `B = 1` the correction is 1 and this is **exactly 4a's loss**; at `B = n` it is 0 and the variance
+term vanishes. Bag size therefore interpolates continuously between the per-cell model and MIL, and sets
+how hard the objective charges for the very quantity Q2 measures. Two things ride on it:
+
+- **Full-line bags** delete the term outright, so the `4a`-vs-`4b` spread comparison tests the whole of
+  it. Fixed-size sub-bags leave it present at `σ²/B`, making `4b` only a partial deletion.
+- **The depth-weighting defect** recorded above is resolved "structurally, one bag is one line is one
+  example". That holds for full-line bags only — under fixed-size sub-bags a deeply sequenced line
+  yields proportionally more bags and the depth weighting returns.
+
+Costs of full-line bags, stated: one gradient step per line, so an epoch is as many steps as there are
+lines; memory scales with the largest line; lines contribute unequally by cell count unless reweighted.
+Gradient accumulation over chunks keeps the mean exact under bounded memory, at the price of handling
+dropout consistently across chunks.
+
+**Ranking losses** (RankNet, LambdaRank) become well-posed here and nowhere earlier, because they need
+one score per ranked item and a bag supplies it. They are a **second** change and belong to a later run
+([above](#the-loss-is-plain-masked-mse-and-stays-that-way-until-mil-audit-09-12082026)).
 
 ---
 
