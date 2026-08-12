@@ -523,3 +523,104 @@ cell line receives effect zero, which is \code{drevalpy}'s behaviour and not a c
 subtraction removes the drug effect alone. Quantifying the consequence needs a synthetic-predictor check
 that is written down and run.}
 \end{revisionblock}
+
+\subsection{Multiple-instance learning and the heterogeneity criterion}
+
+Nothing in this subsection has been run. It records an architecture and a decision rule fixed on
+13.08.2026, before the corresponding model existed, and it appears in Methods rather than in Results for
+exactly that reason: a criterion chosen after the numbers are visible is not a criterion. The
+implementation is \code{notebooks/4b\_mil\_training.ipynb}, whose section 2 is the authoritative
+statement of what follows.
+
+\textbf{Why the per-cell model cannot answer the heterogeneity question.} Every cell of a line carries
+that line's bulk label, so the per-cell objective asks each of a line's cells for the same number. This
+is not merely unhelpful for a question about within-line variation; it penalizes it, and the penalty is
+exact. For one drug and one line with per-cell predictions $p_c$, mean prediction $\bar{p}$ and the
+line's single label $y$,
+\begin{equation}
+  \frac{1}{n}\sum_{c=1}^{n}\left(p_c - y\right)^2
+  \;=\; \underbrace{\left(\bar{p} - y\right)^2}_{\text{bag loss}}
+  \;+\; \underbrace{\mathrm{Var}_c(p)}_{\text{penalty on within-line spread}},
+  \label{eq:mil-decomposition}
+\end{equation}
+an identity rather than an approximation, since $\sum_c (p_c - \bar{p}) = 0$ removes the cross term. The
+left-hand side is what the per-cell model minimizes, regrouped by line; the first term on the right is
+what a mean-pooled multiple-instance model minimizes. The two objectives differ by precisely the
+within-line variance of the predictions, at full weight, in every batch. The regrouping is an analysis
+and not something the code performs --- batches are cells drawn across lines --- but it is valid because
+the loss is a sum over cells and cells partition into lines, and the density weighting does not disturb
+it, being a function of the label and therefore constant within a line. It follows that the heterogeneity
+question is unanswerable under the per-cell architecture as a matter of arithmetic, not of insufficient
+capacity: no hyperparameter reaches this term, and only removing it does.
+
+\textbf{Instance-level rather than attention pooling.} Of the two standard formulations
+\cite{ilse2018}, the embedding-level variant pools a bag's instances and predicts once, while the
+instance-level variant gives every instance its own prediction and aggregates those. Embedding-level
+generally predicts better. It is nonetheless rejected here, because the question asked is whether
+\emph{individual cells} receive different predicted responses, and only the instance-level formulation
+produces a quantity at that resolution. The expected cost in predictive performance is accepted
+deliberately.
+
+\textbf{One bag is one cell line, and bags are complete.} The bag follows from the label rather than
+being chosen: the response is measured once per (cell line, drug), so a line's cells are the natural bag
+and the multi-head output makes one forward pass yield every drug at once. Bags are \emph{complete} ---
+every sequenced cell of the line, not a fixed-size sample. This too is forced rather than convenient. For
+a sub-bag of $B$ cells drawn from a line of $n$, the expected loss is
+$(\bar{p}_n - y)^2 + (\sigma^2/B)\,(1 - (B-1)/(n-1))$, which at $B = 1$ is exactly the per-cell loss and
+at $B = n$ contains no variance term at all. Bag size therefore interpolates continuously between the two
+architectures and sets how strongly the objective charges for the very quantity under study; it is not a
+batching parameter. Complete bags also preserve the property that one line contributes one training
+example, which is what removes the per-cell objective's implicit weighting of lines by sequencing depth.
+The costs are one gradient step per line and memory scaling with the largest line.
+
+\textbf{Mean pooling, fixed in advance and not revisited.} The bag prediction is the mean of its cells'
+predictions, matching the definition of the label it is compared against. Two alternatives were
+considered and rejected before any run: adding a variance term to the loss, which would make the
+spread criterion below pass by construction and would change the objective at the same time as the
+architecture; and a maximum or upper-quantile aggregator, which does not force variation either --- the
+maximum of equal values is that value --- and mismatches an averaged label. Mean pooling carries a
+shrinkage incentive, in that collapsing a bag's cells onto their mean is a minimizer whenever the model
+cannot do better, and that incentive is why the criterion below leads with a positive control. If the
+control fails, the aggregator is \emph{not} exchanged for one that passes: adjusting the instrument until
+it certifies itself is a forking path moved down one level, and it would leave any subsequent positive
+result unattributable.
+
+\textbf{The criterion, and why it contains no chosen thresholds.} Five stages are fixed in advance. An
+\emph{input ceiling} measures the within-line share of total variance in each representation before any
+training, since no model can separate cells that the representation places at one point. A
+\emph{positive control} builds bags by mixing two cell lines of known, deliberately similar response and
+asks whether the model ranks the two source populations apart \emph{within} a single bag. A \emph{spread}
+stage requires the within-line standard deviation of per-cell predictions to exceed that of the per-cell
+model. A \emph{reproducibility} stage asks whether independent seeds assign high and low predictions to
+the same cells. A \emph{confound} stage regresses the predictions on total counts, genes detected,
+mitochondrial fraction and cell-cycle score, and can veto a pass that the preceding stages granted.
+
+An earlier draft attached invented magnitudes to three of these. Each was removed by replacing the bar
+with a null or a comparison rather than by choosing a better number. The input stage now fails only on
+collapse and otherwise reports its ratio, collapse being the precondition it actually stands for. The
+control's separation is measured as an area under the receiver-operating characteristic --- nothing is
+classified; this is the Mann--Whitney rank statistic divided by $n_A n_B$ \cite{mannwhitney1947} --- and
+it passes by beating the null obtained from permuting the source labels within the bag, which is that
+statistic's own null. The area itself is reported as the instrument's measured sensitivity, and any
+negative result downstream is stated with it attached. The spread stage compares against the per-cell
+model with no margin, because equation~(\ref{eq:mil-decomposition}) shows the comparison to be a test of
+precisely the deleted term. The reproducibility stage passes by beating a null in which cell identities
+are permuted within each line. What remains chosen rather than derived is the definition of a
+``similar'' line pair for the control, taken as the lowest quartile of a drug's pairwise response
+differences.
+
+The control is scored inside the bag rather than on it, and the distinction is load-bearing. Because the
+bag prediction is a mean, a model that assigns every cell in a bag the same value can reproduce the bag
+label exactly while doing none of what the remaining stages measure. A bag-level control would therefore
+certify a collapsed instrument. Bag-level recovery is still computed across mixture weights and reported,
+but it cannot pass the stage.
+
+\textbf{What the criterion can and cannot establish.} Three questions have to be kept apart. Whether
+per-cell predictions vary within a line, reproducibly and not as a sequencing artifact, is what the five
+stages address. Whether that variation reflects real cellular heterogeneity of drug response, and whether
+it identifies the cells that survive treatment, are not addressed and cannot be, because no per-cell
+response was ever measured: every label in these data is one number per cell line and drug, and none of
+the primary sources carries post-treatment single-cell profiles. This is a limitation of the available
+measurements rather than of the design, and no threshold or architecture closes it. The first question is
+nonetheless a necessary condition for the second, so a model that fails it has definitively not learned
+heterogeneity, and a model that passes has earned a hypothesis rather than a finding.
