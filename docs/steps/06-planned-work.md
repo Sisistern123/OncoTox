@@ -61,8 +61,11 @@ source. It validates the masked-loss machinery on intra-CTRPv2 sparsity and noth
 - How to weight databases and metrics given very different coverage (CTRPv2 21 % vs PRISM 29 % vs GDSC
   3 % non-null). Ties into the open per-head / uncertainty weighting question.
 - Harmonize metrics onto a common response scale, or keep them as separate heads?
-- Use **180** cell lines (those with measurements), not 190 (roster name-matches), before unioning
-  sources — see [Step 01](01-datasets-and-harmonization.md).
+- Use the cell lines with actual measurements, not the 190 roster name-matches, before unioning
+  sources — see [Step 01](01-datasets-and-harmonization.md). **That count is 181**, not the 180 this
+  line carried until 13.08.2026: `ctrp_to_h5ad` applies a sourced `h292 → ncih292` alias
+  (Cellosaurus `CVCL_0455`, audit 02) which recovers one screened line. Confirmed by running the
+  `targets` step — 198 lines in the atlas, 181 with CTRPv2 labels, 17 without.
 
 **Definition of done.** A single model with masked heads spanning ≥ 2 databases trains leakage-free;
 per-database / per-metric "heads beating baseline" reported on the same honest metric as
