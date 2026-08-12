@@ -62,7 +62,7 @@ ref.
 ⛔ **Asserts a swept arm as a fact:**
   ``draw_architecture``     "per-cell MLP · trained with the density-weighted masked MSE"
         States both that weighting is on and that the loss is squared error. Under item 9A ``alpha``
-        is in {0.0, 0.5, 1.0} and the loss is MSE / MAE / Huber — both are arms.
+        is in {0.0, 0.5, 1.0} and the loss is MSE / MAE — both are arms.
   ``build_pipeline_flow``   "unscreened pairs dropped, rare response values weighted up"
         Same class: true only for ``alpha > 0``.
 
@@ -818,8 +818,15 @@ LOSS_TEX = ROOT / "report" / "loss_objective.tex"
 #:   j        -- drug, 1..K.  c -- the weight cap (held fixed, documented as arbitrary).
 #:
 #: Everything the loss comparison (item 9A) varies is left SYMBOLIC: the pointwise loss `l`, the
-#: density exponent `alpha`, Huber's `beta`. Rendering a concrete value here would pre-empt a
-#: decision that is Selin's and that the R4 run exists to make.
+#: density exponent `alpha`. Rendering a concrete value here would pre-empt a decision that is
+#: Selin's and that the R4 run exists to make.
+#:
+#: **Huber was dropped from the comparison on 12.08.2026** (`8bda87a`): at `beta=0.05` it sits close
+#: to MAE, so the grid would carry two near-duplicate columns, and a principled `beta` would import a
+#: new unsourced constant into the very comparison meant to supply the justification. MSE and MAE
+#: bracket the axis. `beta` is therefore gone from these macros -- it parameterised only Huber -- and
+#: item 9C's `huber_beta` question is retired with it. The code still exposes `--loss huber`; whether
+#: the option leaves the code is the model session's call, not this file's.
 #:
 #: The normalizer is stated as a CONSTRAINT rather than as a constant. `Z_j` is the solution of a
 #: fixed point (`fit_weight_fn`, max_iter=50, tol=1e-9) because the clip and the mean-1 condition
@@ -861,7 +868,7 @@ LOSS_TEX_MACROS: dict[str, str] = {
         r"\left\{\, y_{ij} \;:\; i \in \mathcal{I}_j \,\right\}"
     ),
     "LossArms": (
-        r"\ell \in \{\text{squared},\, \text{absolute},\, \text{Huber}_\beta\},"
+        r"\ell \in \{\text{squared},\, \text{absolute}\},"
         r"\qquad \alpha \in \{\text{off},\, \frac{1}{2},\, 1\}"
     ),
 }
@@ -891,10 +898,10 @@ def build_loss_formula_tex():
         "%   Definitions only -- the section chooses the environment.",
         "%",
         "% WHAT IS DELIBERATELY SYMBOLIC",
-        "%   \\ell, \\alpha and \\beta are left as symbols: the loss comparison (docs/TODO.md item",
-        "%   9A) sweeps MSE / MAE / Huber against alpha in {off, 0.5, 1.0}, and Huber's beta must",
-        "%   be derived from the residual scale (item 9C) rather than inherited. A concrete value",
-        "%   here would pre-empt a decision the R4 run exists to make.",
+        "%   \\ell and \\alpha are left as symbols: the loss comparison (docs/TODO.md item 9A)",
+        "%   sweeps MSE / MAE against alpha in {off, 0.5, 1.0} -- six arms. A concrete value here",
+        "%   would pre-empt a decision the R4 run exists to make. Huber was dropped from the",
+        "%   comparison on 12.08.2026, and \\beta went with it: it parameterised only Huber.",
         "%",
         "% NOTATION",
         "%   n in N    cells -- the loss is summed over cells, training being per cell.",
@@ -921,7 +928,7 @@ def draw_loss_objective(ax, *, compact: bool = False):
     Until 12.08.2026 they *did* disagree, and only the figure was wrong. It hardcoded its own
     ``(\\hat{y}-y)^2``, titled the objective "a weighted, masked mean squared error", and labelled a
     single index as ``i = cell`` — asserting a fixed squared loss when the loss comparison
-    (``docs/TODO.md`` item 9A) sweeps MSE / MAE / Huber, and hiding the cell/cell-line split that is
+    (``docs/TODO.md`` item 9A) sweeps MSE / MAE, and hiding the cell/cell-line split that is
     the whole design of the weighting. It went stale silently: it reads no data, so it rendered
     happily every run with nothing to fail.
     """
@@ -935,9 +942,9 @@ def draw_loss_objective(ax, *, compact: bool = False):
                        "loss, rather than in the labels",
                 ha="left", va="top", fontsize=9, color=GREY)
         # The three swept quantities are named as swept, so the figure cannot be read as claiming a
-        # loss the run has not chosen yet. beta is Selin's to derive (item 9C), not TrainConfig's.
-        ax.text(1, 86, r"$\ell$, $\alpha$ and $\beta$ are what the loss comparison sweeps "
-                       "(item 9A) — the figure fixes none of them",
+        # loss the run has not chosen yet.
+        ax.text(1, 86, r"$\ell$ and $\alpha$ are what the loss comparison sweeps "
+                       "(item 9A) — the figure fixes neither",
                 ha="left", va="top", fontsize=9, color=GREY)
 
     ax.text(50, 80 if not compact else 92, f"${tex['LossObjective']}$",
@@ -959,7 +966,7 @@ def draw_loss_objective(ax, *, compact: bool = False):
         (35.0, BLUE, BLUE_FILL, r"$w_j(y_{nj})$   sample weight",
          "inverse label density — fitted\non cell lines, mean 1"),
         (68.5, RED, RED_FILL, r"$\ell(\hat{y}_{nj},\,y_{nj})$   error",
-         "squared / absolute / Huber$_\\beta$\n$n$ = cell,   $i$ = cell line,   $j$ = drug"),
+         "squared or absolute\n$n$ = cell,   $i$ = cell line,   $j$ = drug"),
     ]:
         ax.add_patch(FancyBboxPatch((x, 1), 30, 23, boxstyle="round,pad=0.5,rounding_size=2.0",
                      linewidth=1.8, edgecolor=edge, facecolor=fill, zorder=2))
