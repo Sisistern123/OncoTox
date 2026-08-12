@@ -282,10 +282,24 @@ What replaces them is **measurement**: order, order-at-the-top, values and sprea
 *look at*, computed in `notebooks/5_evaluation.ipynb`, not four terms to optimize
 ([Step 05](05-multitask-results.md)).
 
-**Which losses get compared, and when.** MSE / MAE / Huber, each with the density weighting off or on,
-on the per-cell architecture; ranking losses only under MIL. Two conditions carry over from the last
-comparison, which failed because it lacked them: the decision rule is fixed *before* the run, and
-≥3 seeds are needed for any difference to be readable against the ±0.04 seed band.
+**Which losses get compared, and when.** **MSE / MAE**, each with the density weighting at
+`alpha ∈ {off, 0.5, 1.0}` — **six arms** — on the per-cell architecture; ranking losses only under MIL.
+Two conditions carry over from the last comparison, which failed because it lacked them: the decision
+rule is fixed *before* the run, and ≥3 seeds are needed for any difference to be readable against the
+±0.04 seed band.
+
+> ⚠️ **Huber was dropped from this grid (Selin, 12.08.2026).** It used to be the third loss here. Its
+> position on the robustness axis is set entirely by `beta`: at the current `huber_beta = 0.05` it is
+> linear above a residual far below the typical one, so it behaves close to MAE and the grid would carry
+> **two near-duplicate columns**. Choosing a principled `beta` instead is worse, not better — it imports
+> a new unsourced constant into a comparison whose entire purpose is to *be* the justification for the
+> loss. **MSE and MAE already bracket the axis** (pure quadratic against pure absolute), so Huber adds
+> cost without adding a corner. This retires review item 9C's `huber_beta` question with it.
+>
+> ⚠️ **The code still exposes `--loss huber`**, so the mechanics described elsewhere on this page —
+> `smooth_l1_loss(beta=0.05)`, the `{mse,huber}` flag — remain accurate descriptions of what the code
+> does and are deliberately not rewritten here. Only the *comparison* dropped it. Whether the option is
+> removed from the code is the model session's call, not this page's.
 
 **Beating that baseline, not the raw MSE, is the honest metric**, and on `auc_cc` the raw number is
 actively misleading: the labels cluster near 0.9 with a small spread, so an absolute MSE around 0.01
