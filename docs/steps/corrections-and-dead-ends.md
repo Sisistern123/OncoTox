@@ -328,8 +328,8 @@ is a fair test of the new criterion:
 
 - `methotrexate`, `vincristine`, `topotecan` — **candidates**, clearing FDA approval and the coverage
   cut (0.956 / 0.989 / 0.978), and each carries a determinant in the general literature. They are not in
-  the panel because none appears in the four papers this project is built on, and only `doxorubicin` and
-  `cisplatin` were re-admitted on outside citations, to fill the anthracycline and platinum classes.
+  the panel because none appears in the four papers this project is built on, and `doxorubicin` is the
+  only compound admitted on an outside citation alone, to represent the anthracycline class.
 - `tanespimycin` — **not a candidate: never FDA-approved.** Its development was discontinued. The old
   panel carried it on an NQO1 bioactivation determinant, which is real biology and not an approval.
 - `selumetinib` — **not a candidate under this list**, approved in 2020 and therefore past Sun et al.'s

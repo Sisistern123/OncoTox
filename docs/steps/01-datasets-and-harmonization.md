@@ -617,15 +617,20 @@ imatinib, doxorubicin, vincristine and topotecan — dropped, without it, on a s
 Coverage runs 91.2 %–98.3 % of the 181 lines. Each drug's reference, the claim that reference makes and
 the setting it was established in are columns of `panel.csv`; they are not restated here.
 
-**Nine of the eleven are named in the four papers this project is built on** — Kinker 2020 (the
+**Ten of the eleven are named in the four papers this project is built on** — Kinker 2020 (the
 expression atlas), Seashore-Ludlow 2015 and Rees 2016 (the CTRPv2 papers) and scDEAL 2022 (the
-single-cell response benchmark) — **verified against the PDFs, not from a name scan.** Two compounds a
-string search had flagged were dropped on inspection: doxorubicin's Kinker "mentions" are the names of
-published **senescence gene programs** ("lung cancer doxorubicin"), and carboplatin's only appearance is
-a title in scDEAL's bibliography. Doxorubicin and cisplatin were then re-admitted on **external**
-determinants, to fill the two most recognisable cytotoxic classes — anthracycline and platinum — that
-the nine lacked; the `setting` column records that they rest on outside evidence rather than on our own
-papers.
+single-cell response benchmark). Every mention was **read in the PDF**, not counted by a string search,
+and two compounds a search had flagged were dropped on inspection: doxorubicin's Kinker "mentions" are
+the names of published **senescence gene programs** ("lung cancer doxorubicin (n = 414)"), signatures
+borrowed from other studies rather than a compound Kinker screened, and carboplatin's only appearance is
+a title in scDEAL's bibliography.
+
+**Only `doxorubicin` rests on outside evidence alone**, admitted to represent the anthracycline class,
+which the others lack; the `setting` column in `panel.csv` records that. Cisplatin does **not** belong in
+that category, though an earlier version of this page said so: it is one of the five drugs the scDEAL
+benchmark is built on, and a perturbation in Kinker Fig. 6 tested for association with expression
+heterogeneity alongside etoposide. What is contested for cisplatin is its *determinant*, not its
+presence in the literature this project builds on.
 
 **One platinum, deliberately.** CTRPv2 screens cisplatin, carboplatin and oxaliplatin, all at ~176 of
 181 lines, so coverage does not choose between them. Cisplatin and carboplatin share the *cis*-diammine
