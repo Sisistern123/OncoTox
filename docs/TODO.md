@@ -296,8 +296,8 @@ every one of them was a step that looked settled and had never been checked.
 > instance of the same shape in two days: `notebooks/README.md` row 5 sent readers to repair a
 > notebook that already worked. **The failure mode is a list that is only ever appended to.**
 >
-> **What the sweep leaves genuinely open before the rerun is small:** `TrainConfig.epochs = 25`
-> against every caller passing 50, `dreval` cell 8's missing `DataLoader` generator (benign, fragile),
+> **What the sweep leaves genuinely open before the rerun is small:** `dreval` cell 8's missing
+> `DataLoader` generator (benign, fragile),
 > `NaiveMeanEffects` as the default baseline, and two decisions that are Selin's — where the ridge
 > baseline lives, and whether this model needs weight decay at all.
 >
@@ -698,11 +698,14 @@ every one of them was a step that looked settled and had never been checked.
         *"`--epochs` defaults to 50 in the CLI, 25 in `TrainConfig` **and `4a_percell_training`**, and
         `4a_percell_training` §B sets 50"*. The notebook half is no longer true: `4a` sets
         `TrainConfig(epochs=50, seed=SEED)` once, for **both** sections. ⚠️ **What remains is
-        sharper than the original, not softer:** `TrainConfig.epochs` is still **25** and **every
-        caller in the project now passes 50** — the CLI default, `4a` §A and §B, `dreval_benchmark`
+        sharper than the original, not softer:** `TrainConfig.epochs` was still **25** while **every
+        caller in the project passed 50** — the CLI default, `4a` §A and §B, `dreval_benchmark`
         cell 8, and `4b_mil_training`. A default that no caller uses is not a default, it is a trap
-        for the next one written, and `scripts/training/mil.py` inherits it the moment `4b` stops
-        passing `epochs` explicitly. → **item 10**. `dreval_benchmark.ipynb` builds
+        for the next one written. ✅ **CLOSED 13.08.2026 (Selin): the default is now 50**, which
+        also settles item 10's epoch question. The 36-run evidence behind 25 is kept in the field's
+        own comment — it argued that 25 was *enough*, never that 50 was wrong, and it predates
+        `cv.inner_holdout`, so it no longer describes where training peaks. Early stopping
+        (`patience=10`) is what ends training in every recorded run. `dreval_benchmark.ipynb` builds
         `OncoMLP` by hand and so has neither mechanic from A → **item 11**, which owns that notebook.
         `ScGPTDrugDataset` has no consumers — the `train_baseline.py` / `train_scGPT.py` its docstring
         names were deleted in `090f957` — and the `norm="batch"` / `"none"` branches are never exercised

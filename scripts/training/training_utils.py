@@ -33,17 +33,22 @@ from torch.utils.data import DataLoader
 
 @dataclass
 class TrainConfig:
-    # 25 is a safe cap: over 36 recorded runs the best epoch was median 6, max 11, and
-    # early stopping (patience 10) has never reached 25. 50 only cost wall-clock.
+    # 50 (Selin, 13.08.2026, Gate 1). **Was 25 until then, and no caller used it.** The CLI defaults
+    # to 50, `4a_percell_training` passes 50 for both of its sections, `dreval_benchmark` cell 8
+    # passes 50, and `4b_mil_training` passes 50 -- so 25 was a value that only ever applied to a
+    # caller nobody had written yet. That is not a default, it is a trap: the next training path
+    # added would have run half the epochs of every existing one and nothing would have said so.
+    # It had already happened once -- `dreval_benchmark` was the only caller passing no `epochs`,
+    # and it silently benchmarked a model trained for half as long as the pipeline's (review
+    # item 10, fixed 12.08.2026).
     #
-    # The default is NOT what the training notebook passes. `4a_percell_training` sets
-    # epochs=50 for both of its sections (Selin, 12.08.2026, decided when the 8-run matrix
-    # was folded in) so that one
-    # config covers both rather than 25 for one and 50 for the other. Left at 25 here deliberately:
-    # whether the default itself should move is review item 10, which owns the epoch question, and
-    # the evidence above is a fixed-split measurement that the inner-holdout change may shift --
-    # each fold now fits on ~104 lines rather than 122, so where training peaks can move.
-    epochs: int = 25
+    # What 25 rested on, kept because it is still the only measurement of where training peaks:
+    # over 36 recorded runs the best epoch was median 6, max 11, and early stopping (patience 10)
+    # never reached 25, so 50 cost only wall-clock. That evidence does not survive unchanged --
+    # it is a fixed-split measurement taken before `cv.inner_holdout`, and each fold now fits on
+    # ~104 lines rather than 122, so where training peaks can move. It argued that 25 was *enough*,
+    # never that 50 was wrong; early stopping is what actually ends training in every recorded run.
+    epochs: int = 50
     lr: float = 1e-3
     # 0.0, and this is a decision rather than a default (Selin, 12.08.2026). **The model trains
     # without weight decay**, with dropout 0.5 and input dropout 0.1 as the only regularizers.
