@@ -311,6 +311,14 @@ corresponding numbers in `report/`. The *methodological* findings from that run 
 was a head-count effect, density weighting is a null, the ridge tie replicates — because none of them
 depends on which eight drugs were chosen. The *numbers* must be re-derived.
 
+> ⚠️ **Panel-independence is not enough for the density-weighting null (added 12.08.2026).** That one is
+> listed above as surviving because it does not depend on which eight drugs were chosen, which is true
+> and beside the point: it is voided on **two other grounds** — it is a CV metric carrying the
+> early-stopping leak, and it was measured on the retired `auc` target. It is **unsupported pending
+> re-test**, not a surviving finding
+> ([full marker](#inverse-density-loss-weighting-improves-ranking)). The other two items in that
+> sentence are unaffected by this note.
+
 **Replaced by** — the [literature panel of 11](01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026),
 built 12.08.2026 and label-blind by construction: FDA approval (Sun et al. 2017, Table 1) and a
 verified published claim decide membership, and the only property of our own data that enters is
@@ -435,7 +443,9 @@ useful statement of how much of the raw ranking is line-level rather than drug-l
 
 **What the run settled, and does not depend on which eight drugs:** the June collapse was a head-count
 effect ([above](#auc_z-as-the-training-target)); inverse-density weighting is a clean null
-([below](#inverse-density-loss-weighting-improves-ranking)); the PCA ridge tie and the scGPT margin over
+([below](#inverse-density-loss-weighting-improves-ranking) — ⚠️ **that one no longer holds: it is
+unsupported pending re-test on two grounds unrelated to the panel**, the early-stopping leak and the
+retired `auc` target); the PCA ridge tie and the scGPT margin over
 ridge both replicate ([retraction](#scgpt-clears-the-ridge-control-was-a-first)); and most of the signal
 is drug-specific rather than cell-line fragility. **What it did not touch:** research question 2, which
 remains structurally untestable under a constant-within-line label.
@@ -1009,7 +1019,34 @@ for more cell lines, and against further objective engineering.
 
 **Decision: do not carry the weighting into Step 2.**
 
-> ⚠️ **Reopened, not overturned — audit 09, 12.08.2026.** The *result* above stands as a measurement.
+> ⛔ **Not withdrawn, but unsupported pending re-test — 12.08.2026 (Selin).** The entry stays where it is,
+> because this project corrects the record rather than overwriting it. What has changed is that **all
+> three of its inputs have since been voided**, so nothing in it can currently be quoted:
+>
+> 1. **The verdict is a CV mean-Spearman number**, and that is precisely the class the early-stopping
+>    leak invalidated — every out-of-fold prediction and CV metric on record was a minimum over epochs on
+>    its own scored data ([the same val-split leak](#the-same-val-split-leak-in-the-code-that-produced-everything-else),
+>    12.08.2026). ⚠️ **This supersedes the sentence below that said the result stands as a measurement.**
+>    That was written before the leak was found; the *measurement* is affected, not only the explanation.
+>    The bias is not uniform across the arms either, so it does not cancel in a difference.
+> 2. **It was measured on `auc`, and every `auc` number is void**
+>    ([the divisor defect](#the-auc-target-was-divided-by-the-wrong-quantity), 11.08.2026) — on the
+>    [void 8-drug panel](#the-8-drug-literature-panel-and-every-number-computed-on-it) besides. The
+>    re-test is on `auc_cc` and the rebuilt 11-drug panel.
+> 3. **The "why it was a null" argument is sourced to an archived notebook.**
+>    `panel_distributions.ipynb` was archived 12.08.2026 with the void panel, and its skew claim is both
+>    target- and panel-specific, so whether it holds on `auc_cc` and eleven drugs is simply unknown.
+>
+> **What survives all three, and is the reason to keep the entry:** the mechanism *did* fire — predicted
+> spread rose 0.062 → 0.082 — so ***did not work*** and ***was broken*** remain different claims, and only
+> the first was ever supported. A re-test starts from a method known to reach the loss.
+>
+> This is why `alpha` is an **arm** of audit 09's loss comparison rather than a setting carried forward
+> or dropped: the question is reopened, not re-answered.
+
+> ⚠️ **Reopened, not overturned — audit 09, 12.08.2026.** ~~The *result* above stands as a
+> measurement.~~ *(Struck 12.08.2026 — see the block above: the result is a CV metric and carries the
+> early-stopping leak.)*
 > The *explanation* offered for it does not describe the current pipeline: it turns on winsorizing at
 > `auc` 1.1, which was [retired 11.08.2026](#the-auc-target-was-divided-by-the-wrong-quantity), and on
 > the `auc` target, since replaced by `auc_cc` — whose upper tail is smaller anyway, because much of the

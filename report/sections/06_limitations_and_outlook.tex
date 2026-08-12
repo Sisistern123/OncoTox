@@ -64,16 +64,32 @@ before any difference is called interpretable or uninterpretable against it.}
 
 A second asymmetry concerns how each representation is built, and it bears on the comparison itself. The
 principal components were fitted on the full expression matrix: gene selection, per-gene standardization
-and the rotation all used every cell, held-out lines included. The scGPT embedding is not fitted on this
-data at all --- the weights are pretrained and frozen, and the binning that precedes them uses only the
-cell being embedded --- so the two arms were not on equal terms. None of these fits sees a response
+and the rotation all used every cell, held-out lines included. The scGPT embedding has no step of that
+kind: it receives the same expression matrix, but its weights are pretrained and frozen, and the binning
+that precedes them uses only the cell being embedded, so nothing about it is \emph{estimated across
+cells}. Section~\ref{sec:data} sets out operation by operation what the two arms share and where the
+single difference lies. So the two arms were not on equal terms. None of these fits sees a response
 label, which is why standard pipelines accept them, but the PCA baseline was tuned to the cells it was
 evaluated on and the scGPT representation was not. The bias runs toward the control, so any scGPT
 advantage measured this way is conservative on that account.
+\revision{\emph{Corrected 12.08.2026.} This paragraph said the scGPT embedding was ``not fitted on this
+data at all''. That overstates it: the embedding \emph{is} fed the same counts-per-million matrix as the
+baseline, and it shares the gene set besides. What it lacks is narrower and is the whole of the
+difference --- a step whose parameters are estimated across cells.}
 \revision{A second effect runs the same way: the gene-symbol defect described in the methods withheld
 from scGPT a substantial share of each cell's expression that the principal components received in
 full. Both asymmetries handicap the same arm, so the two accumulate rather than offset, and no
 reported margin in favour of scGPT can be explained by either.}
+\revision{\emph{The conclusion above is left standing, with a date on it (12.08.2026).} ``The bias runs
+toward the control, so any scGPT advantage is conservative'' is valid exactly as written, because its
+premise --- that the rotation is estimated over every cell --- is what the pipeline does today. That
+premise is due to change: the decision recorded in Section~\ref{sec:data} fits the rotation used by the
+cross-validated results on each fold's own fitting cells, at which point the baseline is no longer
+estimated over cells the model never trained on and this conclusion no longer follows. It is not
+rewritten in advance, because it describes the pipeline that produced what is on record. \textbf{The
+sentence to revisit is the one immediately above, when the representations are regenerated} --- and the
+second asymmetry, the gene-symbol one, survives that change untouched, since no choice of fitting set
+affects which genes reach the model.}
 
 For the fixed train/validation/test split this is now corrected: standardization and rotation are fitted
 on the training lines alone and applied to the held-out ones, as described in the Methods. It is

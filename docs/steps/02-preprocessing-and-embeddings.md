@@ -256,6 +256,47 @@ all-cells fits that scGPT structurally cannot have, and the bias runs toward the
 scGPT-over-PCA margin measured this way is conservative. This qualifies every PCA-vs-scGPT number in
 the project and belongs next to review item 4's input-scale asymmetry in `docs/TODO.md`.
 
+> ⏳ **Valid as written, and its premise changes at R4 (dated 12.08.2026).** The conservatism above rests
+> on `X_pca` being fitted over **every** cell, which is what the pipeline does today — so the paragraph
+> describes the runs on record and is deliberately not rewritten in advance. The decision below fits the
+> cross-validated rotation on each fold's own fitting cells, at which point the baseline is no longer
+> estimated over cells the model never trained on, and **this conclusion stops following**. The sentence
+> to revisit is *"the bias runs toward the control … is conservative"*, not the paragraph around it.
+> ⚠️ Do not sweep the **gene-symbol** conservatism into the same edit — that one survives untouched, as
+> no choice of fitting set changes which genes reach the model
+> ([Corrections](corrections-and-dead-ends.md#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols)).
+
+#### What may a fit see — decided 12.08.2026 (Selin)
+
+The three fits above were established facts and open questions until now, and review item 7 required them
+to be **decided together**, or they would get three inconsistent answers. Two of the three are settled
+below, and both keep an all-cells fit. **What that buys is comparability, not conservatism** — a
+distinction worth making precisely, because the fit-generosity argument above does not survive decision 2
+and must not be borrowed to justify these two. Neither of them favours the control: the gene set is
+**shared**, so both arms receive the identical result, and the one fit that did favour the control — the
+rotation — is the one being restricted.
+
+**1 — HVG selection stays all-cells, for both arms.** It is the one fit the two representations share.
+The alternative, selecting genes on each fold's training lines, makes the gene set **fold-dependent**: at
+five folds there would be five gene sets, so *"the 5,000 HVGs"* would stop naming a single object.
+Everything that compares across folds, across the two arms, or across
+[Step 05's gene-set sweep](05-multitask-results.md#gene-set-sweep--heads-beating-vs-gene-count-incl-all_genes-28062026)
+would then be comparing representations built on different genes as well as different cells, and the
+sweep in particular is *defined* by holding the gene count fixed and varying nothing else. Comparability
+is worth more here than removing an unsupervised fit that sees no label.
+
+**2 — how the cross-validated PCA is fitted.** ⏸️ **Decided, then reopened on cost the same day; not
+recorded here until it is settled.** What is not in question is that the leak closes — only the mechanism
+is. Until then the paragraphs below describe the pipeline as it stands, and
+[TODO](../TODO.md) item 7 carries the live status.
+
+**3 — the cells that never train stay in.** They are in no split and carry no label, so there is nothing
+for them to leak; the question was only whether the representation should be *shaped* by data the model
+never sees. It should, for the HVG set: more cells estimate a gene's variance across cells better, which
+is the quantity the dispersion criterion ranks on, and both arms receive the identical gene set, so
+neither is advantaged by their inclusion. Note the scope this leaves — it is a decision about **gene
+selection**, since which cells enter the PCA the model reads is the subject of decision 2.
+
 **What was done about it (05.08.2026).** For the **fixed splits** the leak is removed. `add_pca.py`
 writes, alongside the all-cells `X_pca`, one train-fitted key per fixed-split column:
 
@@ -285,7 +326,10 @@ all and are dropped from every split by `create_splits.py::has_any_label`. That 
 ([Step 01](01-datasets-and-harmonization.md#the-join-dropped-a-screened-cell-line-h292-10082026)) —
 11.4 % of the atlas. It is not a test leak: those cells appear in no split, so no held-out label is
 touched. But the representation is partly shaped by data the model never sees, which is a separate
-question from the leak above and is decided with it under review item 7.
+question from the leak above. **Decided 12.08.2026 (Selin): they stay in** — see
+[What may a fit see](#what-may-a-fit-see--decided-12082026-selin), decision 3, for the grounds.
+*(This sentence previously ended "and is decided with it under review item 7", which was true while that
+item was open and became a pointer to nothing when it closed.)*
 
 **Splits are frozen to a file (05.08.2026) — but the file does not exist yet (found 12.08.2026).**
 `create_splits.py::frozen_split` reads `splits/split_ctrp.csv` (repo-versioned by design, not under the

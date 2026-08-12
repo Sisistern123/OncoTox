@@ -154,6 +154,87 @@
 >   moves 180 → 181 and every split size with it, and that **`add_pca.TRAIN_SPLIT_COLS` no longer writes
 >   `X_pca_train_paclitaxel`** (verified: `TRAIN_SPLIT_COLS = ("split_ctrp",)`).
 >
+> ### ⛔ Frozen until R4 — four sentences that are TRUE TODAY and become false when the code changes
+>
+> **Filed here rather than in R4 deliberately** (agreed 12.08.2026): R4 is plan-of-record and read-only,
+> and a list that needs permission to be written is a list that gets lost. This is the **audit-11 class**
+> — code changed, docs did not — which cost us two stale claims within a day of it happening.
+>
+> **The rule these come from, worth stating once:** a sentence is safe to edit when a decision is taken
+> if it describes **a decision**; it is frozen until the code changes if it describes **what the code
+> does**. Item 7's decision on the three fits closes the cross-validation leak, but it closes it *at R4*,
+> when training changes — so every sentence below is **accurate right now** and rewriting it early would
+> describe code that does not exist. **Do not sweep these when the decision lands. Sweep them when R4
+> runs.**
+>
+> | Where | The sentence | Why it is not editable yet |
+> |---|---|---|
+> | `docs/steps/02` §"Still not fixed: cross-validation" | *"`resolve_rep` leaves them on the all-cells `X_pca` … every CV number still carries it"* | True until training resolves the representation differently |
+> | `scripts/model/dataset.py:26` (`resolve_rep` docstring) | *"still leaky, and documented as such"* | Same, and it is the code's own description of itself |
+> | `docs/steps/02`, the `X_pca` table row | *"used for: UMAPs and latent-space validation — **and every CV run**"* | ⚠️ A **table cell**, not prose: a sweep for "leaky" or "not fixed" will not find it |
+> | `report/sections/06_limitations_and_outlook.tex:81` | *"those remain on the all-cells decomposition, **and gene selection remains an all-cells step for both arms**"* | ⚠️ **Half-true at R4**, the nastiest of the four — the second clause stays true *permanently* under decision 1, while the first changes. Editing it as one unit will break the half that is right |
+> | ⭐ `report/sections/06_limitations_and_outlook.tex:73-74` | *"**The bias runs toward the control, so any scGPT advantage measured this way is conservative**"*, and the `\revision` after it, *"both asymmetries … accumulate rather than offset"* | **The one that matters most: this is the retracted lower-bound claim, in its other home.** Valid today, because its premise — the rotation estimated over every cell — is what the code does. `fitc` dissolves the premise at R4 and the conclusion with it. §Methods no longer asserts a lower bound; **this passage still does**, so the retraction stays half-propagated until R4. Now carries a dated marker naming this exact sentence as the one to revisit. ⚠️ The **second** asymmetry in it, the gene-symbol one, survives R4 untouched — no fitting set affects which genes reach the model — so this is another sentence that must not be edited as one unit |
+>
+> ✅ **One defect in that passage was wrong *today* rather than at R4, and was corrected before merge
+> (12.08.2026).** Line 67 read *"The scGPT embedding is **not fitted on this data at all**"*. It is:
+> scGPT is fed our CPM matrix, and shares the gene set besides. Selin corrected that phrasing herself.
+>
+> **Why it was fixed here rather than deferred**, since the first instinct was to leave it: the freeze
+> rule protects sentences that *accurately describe current code* and would become wrong at R4. **A
+> sentence that is false today is not frozen, it is just false** — the rule was never meant to shelter
+> it. And the timing settles what looked like a judgement call: **on main there is no contradiction**,
+> because §Methods does not yet carry the corrected account. This branch *creates* the contradiction by
+> introducing the accurate version alongside the false one, so repairing it is part of landing the
+> change rather than cleanup taken on the way past. The conclusion two sentences later was left standing
+> and flagged instead, which is a correction plus a dated marker — the repo's own convention — not a
+> half-repair.
+>
+> ### ⛔ A second freeze class — accurate until Huber leaves the code, false immediately after
+>
+> **Different trigger, so it is listed separately.** The four above turn false at **R4**, when the
+> representations are regenerated. These turn false at **a specific commit**: the model session is
+> removing `--loss huber`, `TrainConfig.huber_beta`, the name check and the `smooth_l1_loss` branch
+> (Selin, 12.08.2026 — Huber is dropped from the loss comparison *and* from the code). Whoever lands
+> that commit should sweep these in the same change; they are not R4's problem and will be stale for
+> however long the gap is.
+>
+> **Do not pre-emptively rewrite them.** The removal is on a branch. Until it lands, every sentence below
+> is an accurate description of what the code does, and this is exactly the inversion worth naming: they
+> were left alone *because* they were accurate, and the same accuracy is what makes them false the moment
+> the option goes.
+>
+> ⚠️ **Each of the four is wrong twice over once that branch lands, not once.** The branch **adds MAE**
+> as well as removing Huber (`291440e`, then `f16b3ec`), and **MAE is not on `main` today** — `main`'s
+> code offers `{mse, huber}`. So the fix is a *substitution*, not a deletion, and a sweep that only
+> strikes "Huber" leaves all four still wrong, now by omission. Written out so it is mechanical:
+>
+> | Where | Reads today (accurate against `main`) | Becomes |
+> |---|---|---|
+> | `docs/steps/03-model-and-training-design.md:14` | optimizes a masked **MSE** or **Huber** loss | **MSE** or **MAE** |
+> | `docs/steps/03-model-and-training-design.md:199` | `sq = (pred − y)²` (MSE), or `smooth_l1_loss(beta=0.05)` for `--loss huber` | MSE, or `l1_loss` for `--loss mae` — `smooth_l1_loss` and `huber_beta` are both gone |
+> | `docs/steps/03-model-and-training-design.md:429` | the CLI flag list, `--loss {mse,huber}` | `--loss {mse,mae}` |
+> | `docs/project_progress.md:137` | *"fully supervised regression (masked **MSE/Huber**)"* | masked **MSE/MAE** — ⚠️ an index page, so it reads as current |
+>
+> *(Line numbers refreshed 12.08.2026 — the CLI site moved 415 → 429 when the loss-comparison note above
+> was added to the same file. Re-grep rather than trusting them if that file moves again.)*
+>
+> ✅ The *decision* half is already done: Step 03's loss-comparison grid is **MSE / MAE × α ∈ {off, 0.5,
+> 1.0}, six arms**, with the grounds recorded. Only the code descriptions are waiting.
+>
+> **Why these are not corrected in advance, stated because it looks like an omission.** There is **no
+> defect on `main` today** — all four match `main`'s code exactly. Correcting them now would put the docs
+> ahead of the code in *both* directions at once: claiming MAE exists when it does not, and denying Huber
+> when it does. That is the same self-contradiction-on-merge that `06_limitations:67` was, except
+> self-inflicted. **They land in the commit that merges the R4 training branch**, which is also the only
+> moment at which the replacement column above becomes true.
+>
+> ⏸️ **The mechanism is not final, and the flag holds either way.** Decision 2 — *how* the CV PCA is
+> fitted — was reopened on cost the same day it was taken: a per-fold fit at training time needs
+> `paths.raw_h5ad` (~2.15 GB), which the training path has never opened, because the targets `.X` has the
+> scGPT OOV genes dropped and would give a different gene set; and that cost compounds across R4's loss
+> grid. It may be re-taken, or become a precomputed-at-R2 change instead. **The leak closes either way**,
+> so all four sentences stop being true either way — only the date and the replacement wording move.
+>
 > ### Re-based onto `58fadd7`, and two of the clearings above were overtaken by it
 >
 > This audit was cut against `f6cbef4`; Selin committed **`58fadd7`** while it was running, splitting

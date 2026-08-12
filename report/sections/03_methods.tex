@@ -301,6 +301,83 @@ being embedded, so nothing about it is fitted on this data.
 \end{revisionblock}
 
 \begin{revisionblock}
+\textbf{What a fit is allowed to see --- decided 12.08.2026.} Three quantities in the pipeline are
+estimated from data before any model is trained: the selection of variable genes, the per-gene
+standardization, and the principal component rotation. None of them sees a response label, which is why
+conventional pipelines accept them without comment, and it is also why they were settled together rather
+than one at a time: they are the same question asked three times, and separate answers would have been
+inconsistent. \textbf{This paragraph records the decisions, not the state of the code}: one of the three
+changes what the pipeline does and takes effect when the representations are regenerated, so the
+description immediately above --- in which the cross-validated results use the all-cells decomposition
+--- remains accurate until then, and is deliberately left standing rather than rewritten in advance.
+
+\textbf{Gene selection continues to use every cell.} The alternative --- choosing variable genes within
+each fold's training lines --- makes the gene set fold-dependent, so that at five folds there would be
+five gene sets and the phrase ``the five thousand most variable genes'' would no longer name a single
+object. Comparisons across folds, between the two representations, and across the gene-set sweep would
+then differ in which genes they contain as well as in which cells, and the sweep in particular is defined
+by holding the gene count fixed. Comparability is judged worth more than removing an unsupervised fit.
+The cells belonging to lines that carry no response measurement, about a ninth of the atlas, are retained
+in that selection for the same reason: they cannot leak a label they do not have, more cells estimate a
+gene's variance across cells more precisely, and both representations receive the identical set, so
+neither is advantaged.
+
+\textbf{The rotation used by the cross-validated results will be fitted per fold} --- the one decision of
+the three that changes the pipeline, and the one that matters most, because every cross-validated figure
+carried the all-cells rotation and the cross-validated figures are the headline. \textbf{Its fitting set
+is the cells the model's own weights are fitted on}: the fold's training side \emph{less} the fifteen per
+cent of lines withheld for early stopping, rather than the whole training side. The stricter choice is
+deliberate and is argued below. Storing five fold-specific matrices was considered and rejected: it would
+cost roughly a gigabyte across the two gene-set variants and, more importantly, would push the
+cross-validation's configuration into the preprocessing stage, so that changing how folds are drawn would
+require rebuilding the stored representations. The fits are instead cached per run and keyed by the fold
+assignment, which is reproducible from the seed and the eligible lines. The all-cells decomposition is
+still written and remains correct for descriptive use such as the latent-space figures; both it and the
+per-fold fits are computed in single precision, so that the only thing distinguishing them is which cells
+they see.
+
+\textbf{What each representation actually receives, since the difference is narrower than it is usually
+stated.} It is tempting to say the embedding is not fitted on this data at all, and that is wrong: it is
+fed the same counts-per-million matrix as the baseline. Setting the two side by side, the operations
+before the model are these. Library-size normalization divides each cell by its own total, and the
+logarithm is elementwise, so neither is estimated across cells and both arms receive them identically.
+Gene selection \emph{is} estimated across cells, and both arms receive its result --- one shared gene set.
+The embedding then bins each cell's values against quantiles of that same cell's non-zero entries, which
+involves no other cell, and passes them through weights pretrained elsewhere and frozen here. The
+baseline instead estimates a per-gene mean and standard deviation and a rotation, and those require a
+fitting set.
+
+That last row is the \emph{only} asymmetry. Same cells, same normalization, same transform, same genes
+--- and one fit that the baseline needs and the embedding does not.
+
+\textbf{Which is precisely the argument for the stricter fitting set.} Because that fit is the single
+place the two arms differ, how much it is allowed to see is not a detail of setup: it is the one knob
+that could move a measured difference for a reason having nothing to do with the representations. Fitting
+on the whole training side would hand the baseline roughly eighteen per cent more cells than the model
+that consumes it was trained on, and those are cells the embedding structurally cannot benefit from.
+Restricting the fit to the model's own fitting cells costs about fifteen per cent of the cells available
+to a 512-component decomposition, which is a real cost and is accepted for what it buys: a difference
+between the arms that is attributable to the representation rather than to the generosity of the
+control's fit.
+
+\textbf{What remains, stated carefully, because the restriction changes the argument rather than merely
+strengthening it.} Before this decision the baseline's fit was estimated over every cell, including
+held-out ones, and that was the ground on which any advantage measured for the embedding was called
+conservative. Restricting the fit to the model's own fitting cells largely removes that ground: the
+baseline is no longer seeing more than the model that consumes it. Gene selection is still estimated
+over all cells, but both arms receive the identical set from it, so it does not favour either. The
+conservatism claim therefore does not carry over unchanged, and is not restated here on the old
+reasoning.
+
+What does survive is a different asymmetry, described earlier in this section and not repeated here: the
+baseline decomposes every selected gene, while the embedding reads only those genes present in its
+vocabulary. That one is unaffected by which cells a fit sees, and it handicaps the same arm. The
+restriction's purpose is narrower than conservatism and is worth stating as what it is --- with the fit
+no longer the place the arms differ in how much they see, a measured difference becomes attributable to
+the representations themselves, which is the only thing this comparison was ever able to claim.
+\end{revisionblock}
+
+\begin{revisionblock}
 \textbf{Early stopping is nested inside the training lines (added 12.08.2026).} Training runs for a
 fixed maximum number of epochs and the checkpoint with the lowest validation error is restored, so the
 stopping epoch is a quantity chosen from data. Until 12.08.2026 the cross-validation harness measured

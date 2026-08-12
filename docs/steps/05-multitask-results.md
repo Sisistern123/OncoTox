@@ -576,6 +576,23 @@ correction to an earlier claim that credited the curve fit rather than the stand
 
 ### Gene-set sweep — heads-beating vs gene count (incl. all_genes, 28.06.2026)
 
+> ⚠️ **12.08.2026 — after the sweep this comparison stops being like-for-like, and that is a third and
+> separate problem from the two banners below.** Those say the numbers are superseded and that the
+> `all_genes` point is mislabelled for scGPT. This one is about the *re-run*: **R1 re-embeds `hvg5000`
+> and `all_genes` only** (decided 12.08.2026, Selin — the middle option, covering every number the
+> report quotes; scGPT embedding is the expensive step, which is why the scope had to be fixed before
+> R2). This table spans `hvg1000/2000/3000/5000`, so once R2 lands it will **mix one re-embedded variant
+> with three embedded by the older code** — before the gene-symbol repair (4,576 → 4,704 in-vocab genes
+> at `hvg5000`), before `gen_embeds.py` was seeded, and before the `ddof=1` harmonization. The gene-set
+> axis would then vary the embedding code alongside the gene count, which is precisely the confound the
+> sweep exists to exclude.
+>
+> **So any conclusion drawn across these points needs this stated, or the three remaining variants
+> re-embedded as a top-up first.** Rejected alternatives, recorded so the cost is not rediscovered:
+> re-embedding **all five** keeps the sweep like-for-like but is the longest run; **`hvg5000` alone** is
+> cheapest but voids the sweep entirely *and* leaves every `all_genes` number in the report stale. Full
+> decision: [TODO](../TODO.md), R1.
+
 > ⛔ **03.08.2026 — the numbers in this table are superseded.** They were produced on the retired
 > **`mean_pv`** target and cached at `outputs/legacy/training_545_mean_pv/hvg_sweep.csv`. The sweep
 > moved to `notebooks/analysis/qc/verify_variants.ipynb` §9 and was re-targeted to **`auc`**,
