@@ -11,11 +11,18 @@ A standalone LaTeX write-up of the current state lives in [`../report/`](../repo
 
 > ## ⛔ 28.07.2026 — no number on this page is currently quotable
 >
-> **The drug panel is void and a full pipeline review is in progress.** The panel's candidate list was
-> ranked on our own response values before the literature criterion was applied, so everything computed on
-> it is provisional
+> **The drug panel was rebuilt on 12.08.2026, and every number computed on the old one is still void.**
+> The previous panel's candidate list had been ranked on our own response values before the literature
+> criterion was applied
 > ([Corrections](./steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it)).
-> The review that must finish first is the [TODO](./TODO.md) checklist.
+> The replacement is 11 drugs selected on FDA approval and verified published determinants
+> ([Step 01](./steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026)),
+> but **nothing has been re-run on it**, so no figure on this page is quotable until the sweep produces
+> one. The review that must finish first is the [TODO](./TODO.md) checklist.
+>
+> **The report's numbers were withdrawn rather than caveated (12.08.2026).** `04_results.tex` is now a
+> withdrawal note and `results_numbers.tex` defines data only; the values live in
+> [Corrections](./steps/corrections-and-dead-ends.md).
 >
 > **Two earlier "current numbers" banners lived here and have been removed**, because both were built on
 > since-retired foundations: the 13.07 box on `auc_z`
@@ -176,7 +183,8 @@ Artifacts that current claims rest on, with the step that owns each number:
 | `dreval/dreval_lco*.{png,csv}`, `dreval/dreval_normalized*.csv` | [Step 05](./steps/05-multitask-results.md) |
 | `learnability/*` | [Step 05](./steps/05-multitask-results.md) |
 | `diagnostics/*` | [Step 05](./steps/05-multitask-results.md), [Corrections](./steps/corrections-and-dead-ends.md) |
-| `panel/*` | ⛔ computed on the [voided panel](./steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it) |
+| `panel/panel.csv`, `panel/literature_panel_candidates.csv` | **current** — the [rebuilt 11-drug panel](./steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026) and its 57 candidates |
+| `panel/*` (everything else) | ⛔ computed on the [voided panel](./steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it) |
 | `legacy/training_545_mean_pv/*` | superseded — the `mean_pv` 8-run matrix, CV, per-drug ρ and gene-set sweep; numbers in [Step 05](./steps/05-multitask-results.md), status in [Corrections](./steps/corrections-and-dead-ends.md#the-8-run-matrix-conclusions) |
 
 ---

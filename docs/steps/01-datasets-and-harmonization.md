@@ -576,7 +576,9 @@ before the sweep and does not go stale when the h5ads do.
    drugs approved 1949–2014 with approval year, therapeutic class, target gene and delivery type.
    Retrieved by `scripts/preprocessing/fetch_sun2017_drugs.py`; see [provenance](#provenance--what-was-retrieved-from-where-when).
 2. **Screened by CTRPv2 against ≥ 90 % of the 181 overlapping cell lines.** The cut is where the
-   coverage distribution breaks: 44 candidates sit above it and the next values fall away to 29 %.
+   coverage distribution breaks, and the break is sharp: 45 candidates sit at or above it, the lowest
+   being `afatinib` at 91.2 %, and the next compound down is `omacetaxine mepesuccinate` at 69.1 % — a
+   22-point gap — with the tail reaching `fulvestrant` at 28.7 %.
 3. **Carries a published claim about it**, recorded per drug with its reference and what that
    reference actually establishes.
 
@@ -586,7 +588,7 @@ the code asserts every entry lies inside the set that conditions 1 and 2 produce
 
 **The funnel.** 150 FDA-approved drugs → **120** with a PubChem structure (30 are biologics — antibodies,
 enzymes, a cell therapy, a radiopharmaceutical — which cannot appear in a small-molecule screen) →
-**57** also screened by CTRPv2 → **44** at ≥ 90 % coverage → **11** with a verified published claim.
+**57** also screened by CTRPv2 → **45** at ≥ 90 % coverage → **11** with a verified published claim.
 
 **Matching needed four keys, and each was necessary.** Sun names drugs by INN; CTRPv2 uses development
 codes and salt forms. `drug_annotation.match_external_list` records per drug which key succeeded:

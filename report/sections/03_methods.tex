@@ -190,7 +190,8 @@ First, the compound must be approved by the FDA for a cancer indication, taken f
 enumeration of Sun et al.\ \cite{sun_fda}, which lists 150 drugs approved between 1949 and 2014 together
 with approval year, therapeutic class and target gene. Second, CTRPv2 must have screened it against at
 least 90\% of the cell lines in the intersection with SCP542; this threshold is where the coverage
-distribution breaks, with 44 candidates above it and the next values falling away to below 30\%. Third,
+distribution breaks, and the break is sharp: 45 candidates lie at or above it, the lowest at 91.2\%,
+while the next compound down reaches only 69.1\% and the tail falls to 28.7\%. Third,
 a published claim about the compound's response determinants must exist and must be verified against the
 source, recorded per drug together with what that source actually establishes. The first two conditions
 are computed; the third is a literature judgement that cannot be, and is carried as a table whose entries
@@ -198,7 +199,7 @@ the code requires to lie inside the set the first two produce.
 
 Applying these gives the following funnel. Of the 150 approved drugs, 120 have a small-molecule structure;
 the remaining 30 are monoclonal antibodies, enzymes, a cell therapy and a radiopharmaceutical, which
-cannot appear in a small-molecule viability screen. Of those 120, 57 were screened by CTRPv2, 44 clear the
+cannot appear in a small-molecule viability screen. Of those 120, 57 were screened by CTRPv2, 45 clear the
 coverage threshold, and 11 carry a verified published claim. The panel is \code{gemcitabine},
 \code{doxorubicin}, \code{etoposide}, \code{paclitaxel} and \code{cisplatin} among cytotoxics, and
 \code{imatinib}, \code{sorafenib}, \code{dasatinib}, \code{erlotinib}, \code{crizotinib} and

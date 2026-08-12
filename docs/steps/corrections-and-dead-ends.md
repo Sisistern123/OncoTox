@@ -228,7 +228,7 @@ in the docs and the report, still carries the defect in full. The repair takes e
 
 ### The learnability gate measured potency, not rankability
 
-**Established** 13.07.2026 (`notebooks/drug_selection/learnability_filter.ipynb`) — a drug was kept only if it both
+**Established** 13.07.2026 (`notebooks/archive/learnability_filter.ipynb`) — a drug was kept only if it both
 **killed** a real population of lines (raw `auc ≤ 0.5`) and **spared** one (`auc ≥ 0.8`), on top of
 coverage ≥ 90 %. The differential-response condition was the part the loose `drug_coverage` gates lacked, and it
 was what took 545 drugs down to 10.
@@ -302,7 +302,7 @@ were drawn from**. The honest description of the panel as executed: literature-a
 spread-verified, and **drawn from a kill-filtered pool**.
 
 **What it affected.** The Step 1 training run (`notebooks/3_panel_training.ipynb`), the distribution
-and weighting design (`notebooks/drug_selection/panel_distributions.ipynb`), the dispersion figures
+and weighting design (`notebooks/archive/panel_distributions.ipynb`), the dispersion figures
 (`notebooks/result_evaluation/diagnostics.ipynb` §5), the panel rows in [Step 05](05-multitask-results.md), and the
 corresponding numbers in `report/`. The *methodological* findings from that run survive — the collapse
 was a head-count effect, density weighting is a null, the ridge tie replicates — because none of them
@@ -404,8 +404,16 @@ those drugs were selected using all 180 lines including val/test, and these were
 our labels at all. Lower and more defensible was the deliberate trade.
 
 **Most of the signal survived removing the cell-line effect.** Computed with **zero model fits** from the
-stored out-of-fold predictions — `scripts/evaluation/dreval_normalize.py --oof-csv` →
-`outputs/dreval/dreval_normalized_panel.csv`:
+stored out-of-fold predictions → `outputs/dreval/dreval_normalized_panel.csv`.
+
+> ⛔ **The code that produced this table no longer exists (12.08.2026).** It was
+> `scripts/evaluation/dreval_normalize.py`, whose cell-line-effect removal was a **local invention with
+> no counterpart in DrEval's paper** and was deleted rather than archived, on the grounds that a
+> home-grown metric inside a file named after DrEval gets read as DrEval's
+> ([why](../../scripts/archive/README.md)). A script of that name is still live but computes the
+> paper's normalization only, so **it will not reproduce the `normalized ρ` or `fragility alone`
+> columns below**. Recoverable at `git show bf93084:scripts/evaluation/dreval_normalize.py`; whether
+> the diagnostic returns is review item 11.
 
 | | raw ρ | normalized ρ | fragility alone |
 |---|---|---|---|
@@ -585,7 +593,7 @@ for either representation.
 **Overturned** 13.07.2026, for two independent reasons:
 
 1. **It is an average over 545 drugs, and the average destroys it.** On the drugs that carry real
-   signal the same architecture reaches ρ ≈ 0.43–0.49 (`notebooks/drug_selection/learnable_subset_training.ipynb`).
+   signal the same architecture reaches ρ ≈ 0.43–0.49 (`notebooks/archive/learnable_subset_training.ipynb`).
 2. **The multi-task loss was unstandardized.** These runs used `mean_pv`, whose per-drug variance is
    wildly heterogeneous (spreads span 9×, ~80× in squared error), so a minority of wide-spread heads
    monopolized the shared trunk's gradient **by unit size, not by learnability**.
@@ -895,7 +903,7 @@ slip) would leave predictions numerically identical. They are not: the model dem
 *Did not work* and *was broken* are different claims, and only the first is supported.
 
 **Why it was a null is also understood.** Coherent with
-`notebooks/drug_selection/panel_distributions.ipynb`: once the artifacts above `auc` 1.1 are winsorized away, every
+`notebooks/archive/panel_distributions.ipynb`: once the artifacts above `auc` 1.1 are winsorized away, every
 drug has |skew| ≤ 0.47 (`topotecan` +2.42 → +0.18), so there was almost no imbalance left for an
 imbalance correction to act on.
 

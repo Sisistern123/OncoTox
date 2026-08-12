@@ -247,7 +247,7 @@ Pearson), restricted to the 461 drugs with real per-line variance (std ≥ 0.05,
 
 ### Learnability-filtered subset — the signal was there all along (13.07.2026)
 
-`notebooks/drug_selection/learnability_filter.ipynb` → `notebooks/drug_selection/learnable_subset_training.ipynb`. The §3 null result
+`notebooks/archive/learnability_filter.ipynb` → `notebooks/archive/learnable_subset_training.ipynb`. The §3 null result
 above pooled a few learnable heads with hundreds of flat, inert ones. **Filter first, then ask.**
 
 **The filter (`learnability_filter`).** The learnability score of [`drug_coverage`](../../notebooks/data_and_harmonization/drug_coverage.ipynb)
