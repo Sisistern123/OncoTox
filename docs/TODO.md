@@ -395,7 +395,19 @@ every one of them was a step that looked settled and had never been checked.
         CV run for the PCA arm — repeated across R4's grid (MSE/MAE/Huber × α ∈ {off, 0.5, 1.0}, plus
         item 8C), which is why the fits are **cached per run, keyed by the fold assignment** (Selin,
         12.08.2026). Folds are deterministic given the seed and the eligible line set, so the cache is
-        sound and the projections need not be stored.
+        sound and the projections need not be stored. The cache is **in-process, not on disk under
+        `runs/`**: a cached projection outliving the code that produced it is the exact failure class
+        the 03.08 freeze exists for, `runs/` is gitignored so it would be invisible in review, and it
+        would fail by producing numbers that are plausible and wrong.
+        ⚠️ **float32 — BOTH fits, decided 12.08.2026 (Selin), and this makes decision 2 gate R2.** The
+        counts matrix is stored dense float64 (53,513 × 5,000 = 2.14 GB, the whole file), so casting on
+        load halves the per-fold cost: ~1.07 GB resident, ~0.86 GB per fold subset, peak ~2.2 GB rather
+        than ~4.4. Casting **only** the per-fold fits was rejected: `add_pca`'s descriptive all-cells fit
+        runs float64, so the two would then differ in dtype as well as in which cells they see — undoing
+        the property Selin established on 10.08.2026 when she harmonised `ddof` to 1 precisely so that
+        *which cells are seen* would be the only difference between them. So `add_pca` casts too. That
+        is a preprocessing change: it moves `X_pca` in its last digits, and **R2 must run after it**,
+        not before. The precision cost for PCA on log-CPM is nil at the precision anything quotes.
         **Rejected: precomputing and storing five fold-keyed matrices at R2.** It would make the fold
         PCAs inspectable artifacts, consistent with `uns["pca_fits"]` (audit 04b) — but it adds ~548 MB
         per variant (512 comps × 53,513 cells × 5 folds), ~1.1 GB across `hvg5000` + `all_genes`, and it
@@ -629,15 +641,25 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       refresh them; `4a_percell_training.ipynb` on the rebuilt panel; ridge / `NaiveMeanEffects` on the same
       folds; `verify_variants.ipynb` §9; and 4A below. Blockers already recorded: **≥ 3 seeds** before any
       scGPT − PCA margin is quoted, and train-only drug selection inside each fold.
-  - [ ] **The loss comparison** (item 9A, 12.08.2026): MSE / MAE / Huber × density weighting
-        `alpha` ∈ {off, 0.5, 1.0}, on the per-cell architecture only — ranking losses wait for MIL,
-        where one bag is one cell line and they are well-posed. Two conditions, both from the failure
-        of the last comparison: **the decision rule is fixed before the run**, and **≥3 seeds**, since
-        the seed band on Spearman is ±0.04 and larger than most differences seen so far. If Huber is
-        included, derive its `beta` from the residual scale rather than inheriting `TrainConfig`'s
-        0.05, which is unsourced and mis-scaled for `auc_cc` (item 9C). Scored on all four quantities
-        in `5_evaluation`, which is what lets a spread effect be seen at all — the previous null was
-        measured on Spearman and MSE, both blind to it.
+  - [ ] **The loss comparison** (item 9A, 12.08.2026): **MSE / MAE** × density weighting
+        `alpha` ∈ {off, 0.5, 1.0} — **six arms**, on the per-cell architecture only; ranking losses wait
+        for MIL, where one bag is one cell line and they are well-posed. Two conditions, both from the
+        failure of the last comparison: **the decision rule is fixed before the run**, and **≥3 seeds**,
+        since the seed band on Spearman is ±0.04 and larger than most differences seen so far. Scored on
+        all four quantities in `5_evaluation`, which is what lets a spread effect be seen at all — the
+        previous null was measured on Spearman and MSE, both blind to it.
+        ⚠️ **HUBER DROPPED 12.08.2026 (Selin); this read MSE / MAE / Huber until then, and item 9C —
+        derive Huber's `beta` from the residual scale — goes with it.** Two grounds. Huber's role in the
+        grid was to be the point *between* L2 and L1, and its position is set entirely by `beta`: at
+        `TrainConfig`'s 0.05 against ~0.163 RMSE roughly three quarters of residuals fall in the linear
+        region, so it behaves close to MAE and the grid would carry two near-duplicate columns. Fixing
+        that means choosing `beta`, and every non-arbitrary choice (e.g. the textbook 1.345·σ for 95 %
+        asymptotic efficiency) introduces a new sourced-but-imported constant into a comparison whose
+        whole purpose is to *be* the justification — the same objection that retired `DEFAULT_WINSOR`
+        and that keeps `cap=3` documented as arbitrary. **MSE and MAE already bracket the robustness
+        axis**, which is what the comparison is testing; what is given up is only the ability to say a
+        middle ground was tried. `MAE` is implemented for this (it has no parameter, which is part of
+        why it survives the same objection Huber does not).
   - [ ] **The minimal capacity re-derivation** (item 8C, 12.08.2026): trunk `(128,64)` vs a bare linear
         head (`hidden_dims=()`), both representations, against `RidgeCV` on the *same* folds via
         `cv.grouped_folds`, on the rebuilt panel. ~20 fits. It re-establishes the one claim that carries
