@@ -87,8 +87,13 @@ They move up when they run.
 
 | Notebook | Question it answers |
 |---|---|
-| `dreval_benchmark.ipynb` | **How strong is this by the field's standard?** Our data and model through the real **DrEval** package (`drevalpy` 1.5.1): their LCO splits, their baselines, their metrics. ⛔ Broken twice over — see `5_evaluation` |
-| `diagnostics.ipynb` | The drug-selection gate defect, the proliferation test, and result dispersion across folds *and* drugs. ⛔ Hardcodes the removed `'auc'` |
+| `dreval_benchmark.ipynb` | **How strong is this by the field's standard?** Our data and model through the real **DrEval** package (`drevalpy` 1.5.1): their LCO splits, their baselines, their metrics. ⏳ Waits for R4 — reads `outputs/panel/panel_oof_predictions.csv` |
+| `diagnostics.ipynb` | The drug-selection gate defect, the proliferation test, and result dispersion across folds *and* drugs. ⏳ Waits for R4 — same file. Its §5 dispersion figures were computed on the void panel |
+
+> *Both rows corrected 13.08.2026. They read ⛔ "Broken twice over" and ⛔ "Hardcodes the removed
+> `'auc'`". Neither notebook has a code blocker: `dreval_benchmark`'s three imports all resolve in the
+> live `scripts/evaluation/dreval_normalize.py`, and `diagnostics` uses `DEFAULT_CTRP_SCORE` throughout.
+> What holds them is R4's output. Full account in [`outputs/README.md`](outputs/README.md).*
 
 ### `archive/` — nothing here is load-bearing
 

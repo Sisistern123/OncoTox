@@ -32,8 +32,24 @@ name deliberately, because they record what the code and the decisions said at t
 > The cost of the decision, stated: until R5 this is a directory whose live and stale files are
 > distinguished only by this note.
 | **`panel/`** | `2_drug_selection` | **yes** | `panel.csv` and `literature_panel_candidates.csv` — the [rebuilt 11-drug panel](../../docs/steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026) and the 57 candidates it was drawn from, each with its reference and what that reference establishes. The stage reads only the response CSV, so it runs under the freeze. |
-| **`dreval/`** | `analysis/evaluation/dreval_benchmark` | ⛔ **blocked** | External benchmark against **DrEval** (`drevalpy` 1.5.1): their LCO splits, baselines, metrics. The notebook imports a module deleted on 12.08.2026 and hardcodes the removed `'auc'`, so it raises on its first cell. Review item 11. |
-| **`diagnostics/`** | `analysis/evaluation/diagnostics` | ⛔ **blocked** | The drug-selection gate defect (`gate_per_drug.csv`, `gate_potency_vs_spread.png`), the proliferation test (`line_effect_vs_programs.csv`, `line_effect_vs_proliferation.png`), the input-scale asymmetry (`input_scale.csv`), and result dispersion (`result_dispersion.csv`). Hardcodes the removed `'auc'` and raises. Its §5 dispersion figures were computed on the void panel. |
+| **`dreval/`** | `analysis/evaluation/dreval_benchmark` | ⏳ **waits for R4** | External benchmark against **DrEval** (`drevalpy` 1.5.1): their LCO splits, baselines, metrics. |
+| **`diagnostics/`** | `analysis/evaluation/diagnostics` | ⏳ **waits for R4** | The drug-selection gate defect (`gate_per_drug.csv`, `gate_potency_vs_spread.png`), the proliferation test (`line_effect_vs_programs.csv`, `line_effect_vs_proliferation.png`), the input-scale asymmetry (`input_scale.csv`), and result dispersion (`result_dispersion.csv`). Its §5 dispersion figures were computed on the void panel. |
+
+> **⛔ → ⏳ Corrected 13.08.2026.** Both rows read **blocked**, and named *code* defects: `dreval_benchmark`
+> *"imports a module deleted on 12.08.2026 and hardcodes the removed `'auc'`, so it raises on its first
+> cell"*, `diagnostics` *"hardcodes the removed `'auc'` and raises"*. **Neither is true any more.**
+> `dreval_benchmark` imports `load_panel`, `load_oof` and `normalized_evaluation`, and all three are
+> present in the live `scripts/evaluation/dreval_normalize.py`; `diagnostics` uses `DEFAULT_CTRP_SCORE`
+> throughout and its one remaining `'auc'` sits **inside a comment** explaining that replacement.
+>
+> What actually holds both is **data, not code**: each reads `outputs/panel/panel_oof_predictions.csv`,
+> and `outputs/panel/` currently holds only `panel.csv` and `literature_panel_candidates.csv`. That file
+> is R4's output.
+>
+> The direction of the error is the reason this is corrected rather than left: "blocked, raises on its
+> first cell" sends the next reader to repair code that is already correct, and a repair to working code
+> is not a no-op. Established by reading the cells and the module's exports — **neither notebook has been
+> executed**, and neither can be until R2 writes the `auc_cc` targets file.
 
 ### The figures that carry the argument
 

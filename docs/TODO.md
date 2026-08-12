@@ -1107,15 +1107,21 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
         stays true until a run exists on `outputs/panel/panel.csv`. Lifting it when the panel changed
         would have declared the numbers current a run too early.
 - [ ] **R5 · Re-run the analysis notebooks that read the retrained outputs.**
-      `analysis/evaluation/`: `diagnostics` (§5 dispersion), `dreval_benchmark` — the latter **raises on
-      its import cell**, because three of the functions it takes from
-      `scripts/evaluation/dreval_normalize.py` were deleted on 12.08.2026 with the cell-line-effect
-      diagnostic; it belongs to review item 11 before it can run at all.
-      *(Corrected 12.08.2026, with the R5 hold lifted for exactly this by Selin. This read "broken twice
-      over (imports the archived `dreval_normalize`, hardcodes the removed `'auc'`)". Neither is true:
-      the module is **live** at `scripts/evaluation/dreval_normalize.py` — archived and restored
-      paper-only on the same day — and `e804f07` fixed the `'auc'` literal. One blocker, not two. No
-      other part of R5 was touched.)*
+      `analysis/evaluation/`: `diagnostics` (§5 dispersion) and `dreval_benchmark`. Both are held by
+      **data, not code** — each reads `outputs/panel/panel_oof_predictions.csv`, which R4 writes and
+      which does not exist (`outputs/panel/` holds `panel.csv` and `literature_panel_candidates.csv`
+      and nothing else). Neither has a code blocker left.
+      *(Corrected twice, both times downward. 12.08.2026, R5 hold lifted for exactly this by Selin: this
+      read "broken twice over (imports the archived `dreval_normalize`, hardcodes the removed `'auc'`)",
+      and neither was true — the module is **live**, archived and restored paper-only the same day, and
+      `e804f07` fixed the `'auc'` literal. **13.08.2026:** the one remaining blocker — "raises on its
+      import cell, because three of the functions it takes from `dreval_normalize.py` were deleted with
+      the cell-line-effect diagnostic" — is **also gone**. It imports `load_panel`, `load_oof` and
+      `normalized_evaluation`; all three are present, at lines 93, 108 and 190. `diagnostics` likewise
+      uses `DEFAULT_CTRP_SCORE` throughout, its one `'auc'` sitting inside a comment about that
+      replacement. **A stale "raises" is the costly direction of wrong** — it sends the next reader to
+      repair working code. Established by reading the cells and the module's exports; neither notebook
+      has been **executed**, and neither can be until R2 writes the `auc_cc` targets file.)*
       `analysis/harmonization/drug_coverage` — **not optional**, the line count moves 180 → 181.
       `2_drug_selection` does **not** need the retrained outputs — it reads only the
       response CSV — but re-run it anyway once preprocessing has, so the panel is regenerated against
