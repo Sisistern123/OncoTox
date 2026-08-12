@@ -49,14 +49,14 @@ docs/                    # TODO.md, project_progress.md (index) + steps/ (01-06,
 
 ```bash
 # Preprocess (HVG-5000 variant, all CTRPv2 drugs; skips the external scGPT step if embeddings exist).
-# --score picks the CTRPv2 response target: auc (default, raw curve-fit AUC), auc_z (retired), or the
-# legacy mean_pv (dose-averaged viability). Each score writes its own targets h5ad.
-uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --score auc_z \
+# --score picks the CTRPv2 response target: auc_cc (default, DrEval's CurveCurator AUC) or ln_ic50_cc.
+# Each score writes its own targets h5ad.
+uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 \
     --start-at targets --skip-scgpt --all-drugs
 
-# Train multi-task (all 545 CTRPv2 drugs). MSE ≈ 1.0 on auc_z = no better than the drug's mean.
-uv run scripts/training/train_multitask.py --use-rep X_scGPT --score auc_z   # scGPT embeddings
-uv run scripts/training/train_multitask.py --use-rep X_pca   --score auc_z   # PCA baseline
+# Train multi-task (all 545 CTRPv2 drugs).
+uv run scripts/training/train_multitask.py --use-rep X_scGPT   # scGPT embeddings
+uv run scripts/training/train_multitask.py --use-rep X_pca     # PCA baseline
 ```
 
 See [docs/project_progress.md](docs/project_progress.md) for full commands, data layout, and results.

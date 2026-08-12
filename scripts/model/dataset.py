@@ -41,42 +41,11 @@ def resolve_rep(
     return key
 
 
-class ScGPTDrugDataset(Dataset):
-    """Single-drug dataset (used by ``train_baseline.py`` / ``train_scGPT.py``)."""
-
-    def __init__(self, h5ad_path, target_drug="paclitaxel", use_rep="X_scGPT", split="train"):
-        """
-        split: Should be 'train', 'val', or 'test'
-        """
-        self.split = split
-        print(f"Loading {split} split from {h5ad_path}...")
-        adata = sc.read_h5ad(h5ad_path)
-
-        split_col = f'split_{target_drug}'
-        if split_col not in adata.obs.columns:
-            raise ValueError(f"Split column '{split_col}' not found! Run the split generation script first.")
-
-        split_indices = adata.obs[adata.obs[split_col] == split].index
-
-        if len(split_indices) == 0:
-            raise ValueError(f"No cells found for split '{split}' in {h5ad_path}")
-
-        valid_adata = adata[split_indices].copy()
-        print(f"Loaded {valid_adata.n_obs} cells for the '{split}' set.")
-
-        if use_rep in valid_adata.obsm.keys():
-            self.X = torch.tensor(valid_adata.obsm[use_rep], dtype=torch.float32)
-        else:
-            raise ValueError(f"Representation '{use_rep}' not found in adata.obsm! Please verify your embeddings.")
-
-        target_col = f'viability_{target_drug}'
-        self.y = torch.tensor(valid_adata.obs[target_col].values, dtype=torch.float32).unsqueeze(1)
-
-    def __len__(self):
-        return len(self.y)
-
-    def __getitem__(self, idx):
-        return self.X[idx], self.y[idx]
+# ``ScGPTDrugDataset`` lived here until 12.08.2026 and is now in
+# ``scripts/archive/single_drug_dataset.py``. Nothing called it: the two scripts its docstring
+# named were deleted on 26.05.2026, and the per-drug columns it read are no longer written. For a
+# single drug, use ``MultiDrugDataset(..., drugs=["<one>"])`` -- it reads Y_ctrp/M_ctrp and needs
+# no per-drug column at all.
 
 
 class MultiDrugDataset(Dataset):

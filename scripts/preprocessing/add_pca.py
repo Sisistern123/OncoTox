@@ -22,7 +22,11 @@ SCALE_MAX_VALUE = 10.0
 # Fixed-split columns (written by create_splits.py) that get their own train-fitted PCA.
 # The 5-fold CV is deliberately not covered: its folds are drawn at training time, so a
 # train-only fit there cannot be a single stored matrix. See docs/steps/02.
-TRAIN_SPLIT_COLS = ("split_ctrp", "split_paclitaxel")
+# `split_paclitaxel` was removed on 12.08.2026 with the rest of the single-drug chain: it cost a
+# second 512-component train-only fit on every run, for a column whose only reader
+# (`ScGPTDrugDataset`) had no caller. h5ads written before that date still carry
+# `X_pca_train_paclitaxel`; nothing reads it.
+TRAIN_SPLIT_COLS = ("split_ctrp",)
 
 
 def train_pca_key(split_col: str) -> str:

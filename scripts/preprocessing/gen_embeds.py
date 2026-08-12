@@ -1,8 +1,8 @@
-"""Generate scGPT cell embeddings for SCP542 (step 2 of ``run_preprocessing.py``).
+"""Generate scGPT cell embeddings for SCP542 (the ``scgpt`` step, run by ``3_representations``).
 
 **This script does not run under the OncoTox environment.** It imports ``scgpt``, which
-lives in a separate checkout and virtualenv, so ``run_preprocessing.py`` invokes it as a
-subprocess via ``--scgpt-python /path/to/scgpt-venv/bin/python``. It is vendored here
+lives in a separate checkout and virtualenv, so ``pipeline.scgpt`` invokes it as a
+subprocess, passing that interpreter as ``scgpt_python``. It is vendored here
 anyway so the embedding step -- the one part of the pipeline that was previously an
 untracked file outside the repository -- is versioned with the results it produces.
 

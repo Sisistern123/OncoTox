@@ -9,6 +9,52 @@ nothing.
 Assume every file here is **broken**: the target moved to `auc_cc` on 11.08.2026 and the artifacts these
 scripts read were never regenerated. Do not run them; read them.
 
+⚠️ **One exception, so the blanket claim above is not read as covering it.** `run_preprocessing.py` was
+archived on 12.08.2026 because it was **superseded, not because it broke** — it ran correctly on the day
+it was moved. The distinction matters: a broken file is evidence of what went wrong, whereas this one is
+a design that was replaced, and reading it as defective would misattribute the reason.
+
+## `run_preprocessing.py` — the CLI orchestrator
+
+**Archived 12.08.2026 (Selin). Replaced by [`scripts/preprocessing/pipeline.py`](../preprocessing/pipeline.py).**
+
+**What it was.** A single `argparse` entry point that ran the six preprocessing steps in order —
+`fetch → convert → scgpt → targets → splits → pca` — from a `STEP_ORDER` list, with `--start-at` to
+resume partway and per-step guards against clobbering expensive artifacts.
+
+**Why it went.** The notebooks were renumbered into five end-to-end stages on 12.08.2026, which split
+preprocessing across two of them: `1_data` runs `fetch` and `convert`, `3_representations` runs the
+remaining four. The step *order* therefore became the notebooks' property, and a second copy of it inside
+a CLI is a second thing that has to be kept in step with them — the failure this repository has already
+had with paths and targets. What was not plumbing was kept: every guard, every between-step precondition
+and the scGPT subprocess bridge are now functions in `pipeline.py`, one per step, each owning its own
+checks so a step cannot run out of order regardless of who calls it.
+
+**What changed in the move, rather than being transcribed:**
+
+- `guard_output` now raises `FileExistsError` instead of `SystemExit`, and its message names
+  `overwrite=True` rather than the `--overwrite` flag that no longer exists (`scripts/layout.py`).
+  `resolve_data_root` likewise raises `NotADirectoryError`.
+- The response-table check moved from the `targets` step into `fetch`, because the two are no longer
+  consecutive lines in one script but a whole stage apart.
+- `scgpt()` has **no interactive fallback**. The original blocked on `input()` when given no
+  interpreter; run headless via `jupyter nbconvert --execute` that hangs the kernel on an invisible
+  prompt instead of failing.
+- The single-drug steps are gone — see below.
+
+**There is deliberately no CLI replacement.** The notebooks are the entry point; to run without a
+browser, execute them with `jupyter nbconvert --execute`.
+
+## `single_drug_dataset.py` — `ScGPTDrugDataset`
+
+**Archived 12.08.2026 (Selin), with the whole chain that fed it.** Nothing called it. The two scripts its
+docstring named as callers were deleted on 26.05.2026. `ctrp_to_h5ad` no longer writes
+`viability_<drug>` / `train_mask_<drug>`, `create_splits.run_multi` is the only split writer, and
+`add_pca.TRAIN_SPLIT_COLS` is down to `("split_ctrp",)` — which had been costing a second 512-component
+train-only decomposition on every pipeline run for a column no code read. Full reasoning in the file's
+own docstring. For a single drug, `MultiDrugDataset(..., drugs=["<one>"])` covers it and needs no
+per-drug column at all.
+
 ## Removed rather than archived — `dreval_normalize.py`'s cell-line-effect diagnostic
 
 **Deleted 12.08.2026 (Selin), not archived** — the one exception to the rule above, and deliberately so.
