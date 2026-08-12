@@ -21,6 +21,36 @@ has found in its own tooling — five instances, including one inside `check_unb
 reported `checked 0 file(s) / no unbound names` and exited 0 when run from outside the repository.
 `0 problems` and `0 examined` print identically unless the denominator is on screen.
 
+**But the denominator is only half of it, and the sixth instance is what shows why (13.08.2026).** An
+ad-hoc sweep for hardcoded absolute paths annotated each candidate with
+`os.path.exists(path.rstrip('/*'))`, intending "strip a trailing glob before testing". `rstrip` takes
+a *character set*, not a suffix, and strips only from the end — so a path ending in `.csv` lost
+nothing, the `*` stayed mid-string where `os.path.exists` has no glob semantics, and **every**
+glob-containing path was reported dead. It named `drug_coverage` c13's `runs/*_all_drugs/` glob as
+matching nothing. It matches 17 files.
+
+Its denominator was correct and on screen throughout: 24 examined, 23 resolved, one dead. The first
+five instances were silent zeros in the **denominator**; this one is a silent false **positive in a
+single row**, which no floor can see. Three things kept it alive, and they generalise better than the
+mechanism does: it was a **minority verdict** (a check that fails everything gets debugged; one that
+fails a single thing gets believed), it was **corroborated by a true fact** (`runs/` really is
+gitignored and untracked, so the wrong conclusion had real evidence beside it), and it **agreed with
+what the sweep was looking for**, so it drew less scrutiny than a surprising answer would have. The
+class does not come from checks that are wrong everywhere; it comes from checks that are wrong only
+where nobody looks, and it survives because the false verdict is the one you were expecting.
+
+So the mitigation is a **pair**, not one habit: *report the denominator, and keep a case the check
+must pass.* A check needs an input it is required to accept, not only inputs it is required to
+reject — the fault-injected floors below have both, and the two that are not fault-injected have
+neither. Second: use the matching operation rather than a proxy (a path containing `*` is a glob;
+`glob.glob` answers the question, `os.path.exists` answers a different one), and print the operation,
+not the verdict — had the output shown the literal string tested, the `*` would have been visible.
+
+*How it was found is a rule about routing, not about authors.* It surfaced only because the finding
+was sent back to its author **with a question attached** — investigate this, do not repoint it —
+which forced a look at the artifact instead of a re-read of the sweep's own output. Had the finding
+been accepted, it would have stood. Route a finding back with a question; never with an acceptance.
+
 ## Known limits
 
 Recorded here because a check is only as trustworthy as its documented ways of lying.
