@@ -36,6 +36,10 @@ TWO BLIND SPOTS. Read them before treating a clean run as proof.
      clone. Widening the root table without widening that skip list will produce noise, and a noisy
      checker trains people to skim its output, which is worse than not having one.
 
+  3. ``#`` comments are stripped before parsing, so a comment quoting a path expression is not
+     read as live code. Without this the checker fires on its own explanatory comments and on every
+     correction anyone documents -- penalising the habit of recording what changed.
+
 WHY IT PRINTS ITS DENOMINATOR. Each check reports how many candidates it examined, not only how
 many failed, because "0 failed" and "0 examined" are otherwise indistinguishable -- and a checker
 that silently parses nothing reports a clean pass. That is the same silent-success failure this
@@ -84,6 +88,30 @@ def _skip(path: str) -> bool:
     return head in SKIP_PREFIXES
 
 
+def _strip_comments(text: str) -> str:
+    """Remove ``#`` comments so prose *describing* a path is not read as one.
+
+    Necessary rather than cosmetic: comments in this repository routinely quote the path expression
+    they are explaining ("was OUT_MATRIX / 'legacy' / ...", "fixed in ..."), and a checker that
+    reads those as live code reports a defect for every correction anyone documents -- punishing
+    exactly the habit the project wants. Quote-aware, so a ``#`` inside a string literal survives.
+    """
+    out = []
+    for line in text.splitlines():
+        quote = None
+        for i, ch in enumerate(line):
+            if quote:
+                if ch == quote:
+                    quote = None
+            elif ch in "'\"":
+                quote = ch
+            elif ch == "#":
+                line = line[:i]
+                break
+        out.append(line)
+    return "\n".join(out)
+
+
 def _sources() -> dict[str, str]:
     """Every live source file, as text. Archived trees are records, not live code."""
     out: dict[str, str] = {}
@@ -93,13 +121,20 @@ def _sources() -> dict[str, str]:
     for f in paths:
         if "/archive/" in f or ".ipynb_checkpoints" in f:
             continue
+        # This file quotes broken path expressions in its own docstring, as the worked example that
+        # explains why both checks are needed. Analysing itself would report those as defects --
+        # documentation read as code. Excluded by name rather than by stripping docstrings, because
+        # docstring-stripping is reliable for .py and not for notebook cells, and a rule that works
+        # in one place and not the other is worse than an explicit exception.
+        if os.path.basename(f) == os.path.basename(__file__):
+            continue
         if f.endswith(".ipynb"):
             nb = json.load(open(f))
-            out[f] = "\n".join(
+            out[f] = _strip_comments("\n".join(
                 c["source"] if isinstance(c["source"], str) else "".join(c["source"])
-                for c in nb["cells"] if c["cell_type"] == "code")
+                for c in nb["cells"] if c["cell_type"] == "code"))
         else:
-            out[f] = open(f, errors="ignore").read()
+            out[f] = _strip_comments(open(f, errors="ignore").read())
     return out
 
 
