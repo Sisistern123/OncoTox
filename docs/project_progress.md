@@ -331,10 +331,13 @@ drives the response. It needs no new data.
 > `Q2_CONTROL_THRESHOLD` — and it is the single blank keeping 4b a stub.
 
 **2. scDEAL-style bulk pretraining + more cell lines — after MIL.** The remaining levers are argued to
-be label-side. ⛔ **The three measurements behind that argument are void (12.08.2026)** — that model
-tuning is closed, that ridge ties the MLP, and that the density weighting was a null; all three come
-from runs whose checkpoint was chosen on the fold it was scored on, on a retired target and a voided
-panel, and the weighting deltas additionally fell inside the MPS run-to-run band. What survives is the
+be label-side. ⛔ **The three measurements behind that argument are void (12.08.2026), for two different
+reasons.** *Model tuning is closed* and *ridge ties the MLP* come from runs whose checkpoint was chosen
+on the fold it was scored on, on a retired target and a voided panel — re-derived minimally at R4
+([TODO](./TODO.md) item 8C). *The density weighting was a null* is **not** one of those runs and fails
+differently: audit 09 found the metrics it was judged on could not have seen the effect it was used to
+rule out, so it is **re-tested rather than retired**, with `alpha` swept over {off, 0.5, 1.0} as an arm
+of the loss comparison ([TODO](./TODO.md) item 9A). What survives is the
 structural argument, which needs no run: the label is per cell line, so the independent sample size is
 the line count and not the cell count. The screens themselves are much larger —
 CTRPv2 ~1,100 lines, GDSC ~970, PRISM ~900 — so the labels exist and single-cell expression is what is

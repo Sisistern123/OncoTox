@@ -189,18 +189,22 @@ that still promised attention maps would describe a model this project has decid
 
 \textbf{Bulk pretraining in the manner of scDEAL} follows. The remaining levers are argued to be on the
 label side.
-\revision{\emph{The three measurements that argument rested on are withdrawn (12.08.2026):} that
-model-side tuning is exhausted, that a ridge regression on cell-line means matches the deep model, and
-that the density weighting was a null. All three come from an ablation study whose evidence no longer
-holds: it selected each model's checkpoint on the very fold it then scored, on a target and a compound
-set both since withdrawn, and the notebook can no longer be executed because those target files were
-deleted. The bias is one-sided --- the ridge control has no early stopping and was never flattered, while
-the neural arms were --- so the reported tie between them is an upper bound on the network's side, and
-the ordering may in fact favour the ridge. The claim that model-side tuning is exhausted survives here
-only as an argument from the label resolution, namely that of order one hundred and fifty independent
-measurements cannot support a search over architectures, and not as a measured result. A minimal
-re-derivation --- the trunk against a bare linear head, for both representations, scored against the
-ridge control on identical folds --- is scheduled with the regeneration of the pipeline.} What binds is
+\revision{\emph{The three measurements that argument rested on are withdrawn (12.08.2026), for two
+different reasons.} That model-side tuning is exhausted and that a ridge regression on cell-line means
+matches the deep model both come from an ablation study whose evidence no longer holds: it selected each
+model's checkpoint on the very fold it then scored, on a target and a compound set both since withdrawn,
+and the notebook can no longer be executed because those target files were deleted. The bias is
+one-sided --- the ridge control has no early stopping and was never flattered, while the neural arms
+were --- so the reported tie between them is an upper bound on the network's side, and the ordering may
+in fact favour the ridge. The claim that model-side tuning is exhausted survives here only as an argument
+from the label resolution, namely that of order one hundred and fifty independent measurements cannot
+support a search over architectures, and not as a measured result. A minimal re-derivation --- the trunk
+against a bare linear head, for both representations, scored against the ridge control on identical
+folds --- is scheduled with the regeneration of the pipeline. That the density weighting was a null is a
+separate matter and does not come from that study: it was measured on the withdrawn compound panel, and
+as the correction earlier in this section sets out, the metrics it was judged on could not have seen the
+effect it was used to rule out. It is therefore not retired but \emph{re-tested}, with the weighting
+exponent swept as an arm of the loss comparison rather than argued for in advance.} What binds is
 the small number of independent cell lines,
 each carrying a single broadcast value. The screens themselves are far larger --- CTRPv2 covers roughly
 1{,}100 lines against the \NLines{} in the present intersection --- so the labels exist and it is the
