@@ -90,6 +90,18 @@ implemented and tested, and it does not help; the result is reported above. The 
 not an artifact of how the objective weights the response range, which leaves the small number of
 independent cell lines as the remaining explanation and makes the case for acting on the label side
 rather than on the loss.}
+\revision{\emph{Correction, 12.08.2026.} Two things in the passage above do not stand. The predicted
+and true spreads quoted were measured on a per-drug standardised target that has since been retired,
+which is why the true spread reads as exactly one; they should have been removed when the other
+quantitative claims were, and are withdrawn here. More seriously, the inference does not follow from
+the evidence. Whether the weighting helped was judged on rank correlation and on mean squared error,
+and both are structurally insensitive to precisely what the weighting alters: a change that widens the
+predictions without reordering them leaves rank correlation untouched, and squared error is minimised
+by the shrunken predictor in the first place. The project's own records show the mechanism did operate,
+the predicted spread widening under weighting while the ordering stayed put. So the correct statement
+is that the intervention did not improve the quantities that were measured, not that shrinkage is
+independent of how the objective weights the response range. That question is reopened, and is
+answered only once a calibration measure sits alongside the rank and error metrics.}
 
 The clearest opportunities for improvement follow from the diagnosis that the task is label-limited. First,
 the training target can be aligned with the evaluation by regressing on the doubly normalized residual, in

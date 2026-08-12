@@ -1120,6 +1120,12 @@ The underlying imbalance is nonetheless real and is documented as a live defect 
 refuted is that *reweighting the existing per-cell objective* fixes it. MIL removes it structurally,
 because one bag is one line is one example.
 
+⚠️ **Read as narrowly as it was measured (noted 12.08.2026, audit 09).** Like the density weighting
+above, this was judged on Spearman alone. A reweighting that changes *calibration* rather than *order*
+would score flat here whatever it did — so what is refuted is "it does not change the ranking", not
+"it changes nothing". The imbalance is a cell-count artifact and dissolves under MIL either way, so
+this is not re-tested; it is recorded so the entry is not read as broader than its evidence.
+
 ---
 
 ## Dead ends

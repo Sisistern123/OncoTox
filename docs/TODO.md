@@ -346,6 +346,25 @@ every one of them was a step that looked settled and had never been checked.
       nondeterminism that moves the PCA arm across identical runs.
 - [ ] **11 · Evaluation** — metric, cell→line aggregation, baselines (ridge, `NaiveMeanEffects`),
       dispersion across folds *and* drugs, raw vs normalized.
+  - [ ] **⚠️ A blind spot in the metric set, not in any one result (found 12.08.2026, audit 09).**
+        Every intervention this project has judged was judged on **rank correlation and MSE**. Neither
+        can see a change in *calibration*: widening the predictions without reordering them leaves
+        Spearman identical, and MSE is minimised by the shrunken predictor to begin with. So for any
+        intervention whose effect is on spread rather than order, "flat on both" never distinguished
+        *no effect* from *an effect the metrics cannot see*. This is a property of the instrument, and
+        it silently qualifies a class of conclusions rather than one of them:
+        [inverse-density weighting](./steps/corrections-and-dead-ends.md#inverse-density-loss-weighting-improves-ranking)
+        (re-tested at R4, since the mechanism demonstrably fired — predicted spread moved and the
+        ranking did not), [line-balanced reweighting](./steps/corrections-and-dead-ends.md#line-balanced-reweighting-will-help)
+        (not re-tested — MIL dissolves it either way), and the regularization axis of the
+        [void ablation table](./steps/corrections-and-dead-ends.md#the-evidence-that-closed-model-side-tuning),
+        whose own text attributes the harm of heavy regularization to *over-shrinkage* — an effect its
+        metrics could not have measured. The claim that survives untouched is that shrinkage is
+        MSE-optimal at low ρ, because that is an argument rather than a measurement.
+        **Fix: the calibration slope has to exist before any of these is re-read**, which makes
+        building `5_evaluation` a prerequisite for R4's loss comparison rather than a follow-up to it.
+        The report passage that drew the strongest version of this inference is corrected in
+        `report/sections/06_limitations_and_outlook.tex`.
 - [ ] **12 · Reproducibility** — seeds, determinism, what is derived in code versus typed by hand.
       Anything that exists only as a shell command is not a result. *Seeds are now fixed
       (`gen_embeds.py`, `add_pca.py`, the training `DataLoader`s) and determinism was decided
@@ -470,6 +489,12 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       not an edit: `04_results.tex` was emptied to a withdrawal note, and `01_abstract.tex`,
       `05_discussion.tex` and `06_limitations_and_outlook.tex` had every quantitative claim removed.
       They are written once, from the regenerated artifacts.
+      **The loss and the metric set both need writing (added 12.08.2026, audits 08–09).** The report
+      says only that training uses "a masked mean-squared-error loss"; it does not say that the density
+      weighting is swept as an arm rather than fixed, nor that four quantities are reported — order,
+      order at the top, values, spread — where earlier versions reported rank correlation and error
+      alone. The correction already in `06_limitations_and_outlook.tex` explains why that mattered;
+      the methods section has to state the replacement.
       **`03_methods.tex` §Representation and model describes the architecture but not the training
       configuration** — no optimizer, learning rate, weight-decay grouping, early stopping or head-bias
       initialization appears anywhere in the report, so a reader cannot reconstruct the run. Write it
@@ -671,11 +696,21 @@ resolution has again failed to justify itself"* — scored a Q2 experiment on a 
   Their values are pending: the numbers previously quoted here were measured on the
   [voided panel](./steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it),
   so the floor is re-measured at R4, on the panel item 6 rebuilt on 12.08.2026.
-- **⚠ Open decision — what counts as a positive Q2 result, fixed before the run.** Under the Q1 framing
-  the readout was ρ against the controls; under this one it is not, and nothing has replaced it. Whatever
-  is chosen needs a control that says what *no* heterogeneity signal looks like (a shuffled-cell or
-  uniform-attention null), or a structured-looking attention map will be read as a positive result by
-  default. **Selin's call, and it has to be made before the run rather than after seeing one.**
+- **✅ What counts as a positive Q2 result — decided 12.08.2026 (Selin), and written down before any
+  model exists.** It lives in `notebooks/4b_mil_training.ipynb` §2, next to the code it will judge,
+  rather than here. Four stages with distinct roles: a **synthetic positive control** as precondition
+  (bags mixed from two lines of known response — without it a negative cannot be told apart from "the
+  method cannot detect heterogeneity"), **within-line spread** as necessary condition, **cross-seed
+  reproducibility** as the test, and **confound regression** as a veto, since predictions that replicate
+  *and* are explained by library size are a sequencing artifact. Kinker program alignment is
+  characterisation and gates nothing.
+  **Two consequences of the architecture choice** (instance-level, not attention pooling — every cell
+  gets a predicted response rather than a weight): the subpopulation-predictivity test is *not* usable,
+  because selecting cells by their predicted value and scoring that against the line's truth is biased
+  by construction; and the biology readout needs no top-k, since both sides are continuous and can
+  simply be correlated. **One blank remains**, and it is the only number needing judgement: the
+  threshold at which the synthetic control counts as recovered. Stages 1 and 2 are then expressed as
+  fractions of what it achieves, rather than invented in advance.
 - MIL makes the per-line weighting problem disappear structurally (one bag = one example), so the
   82× cells×labels imbalance needs no separate fix under it.
 - Open design decisions, to settle before building: fixed bag size with per-epoch subsampling (acts as
