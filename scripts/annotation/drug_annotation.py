@@ -3,7 +3,7 @@
 The response values come from DrEval's reprocessed ``CTRPv2.csv``; the annotation a drug panel is
 selected with -- approval status, protein target, mechanism -- comes from
 ``data/drug/all_sources_drug_catalog.csv``, built from CTRP's own ``v20.meta.per_compound.txt``
-(``notebooks/data_and_harmonization/drug_catalog.ipynb``). The two name the same 545 compounds
+(``notebooks/analysis/harmonization/drug_catalog.ipynb``). The two name the same 545 compounds
 differently, so anything that joins them by name loses compounds silently.
 
 **How badly.** 102 of 545 do not match on lower-cased names, because DrEval renamed to preferred

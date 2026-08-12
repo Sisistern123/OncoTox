@@ -117,7 +117,7 @@ checked directly:
 Also `PTRF`→`CAVIN1`, `CYR61`→`CCN1`, `LINC00152`→`CYTOR`, `H2AFJ`→`H2AJ`, `C6orf48`→`SNHG32`. Every
 old symbol absent from the vocabulary, every current one present.
 
-**Scale**, counted 05.08.2026 in `notebooks/data_and_harmonization/gene_symbol_rescue.ipynb` against
+**Scale**, counted 05.08.2026 in `notebooks/analysis/qc/gene_symbol_rescue.ipynb` against
 `reference/hgnc_complete_set.txt` (HGNC approved set, published 04.08.2026, pinned by SHA-256 because
 HGNC overwrites its download URL in place and publishes no dated archive —
 [provenance](../../reference/README.md)). Percentages are of the **whole transcriptome**: the source
@@ -236,7 +236,7 @@ in the docs and the report, still carries the defect in full. The repair takes e
 coverage ≥ 90 %. The differential-response condition was the part the loose `drug_coverage` gates lacked, and it
 was what took 545 drugs down to 10.
 
-**Overturned** 27.07.2026 (`notebooks/result_evaluation/diagnostics.ipynb`; the question that surfaced it was why
+**Overturned** 27.07.2026 (`notebooks/analysis/evaluation/diagnostics.ipynb`; the question that surfaced it was why
 `nutlin-3` was not in the panel). `auc ≤ 0.5` asks *does the line die* — absolute potency, which is
 essentially the per-drug mean. But the target subtracts that mean and the metric is Spearman, which
 reads only the ordering of lines. **The gate selected on the one quantity the model is neither given
@@ -304,9 +304,9 @@ The eight compounds remain defensible *as compounds*; what was silently pre-filt
 were drawn from**. The honest description of the panel as executed: literature-anchored,
 spread-verified, and **drawn from a kill-filtered pool**.
 
-**What it affected.** The Step 1 training run (`notebooks/3_panel_training.ipynb`), the distribution
+**What it affected.** The Step 1 training run (`notebooks/4_training.ipynb`), the distribution
 and weighting design (`notebooks/archive/panel_distributions.ipynb`), the dispersion figures
-(`notebooks/result_evaluation/diagnostics.ipynb` §5), the panel rows in [Step 05](05-multitask-results.md), and the
+(`notebooks/analysis/evaluation/diagnostics.ipynb` §5), the panel rows in [Step 05](05-multitask-results.md), and the
 corresponding numbers in `report/`. The *methodological* findings from that run survive — the collapse
 was a head-count effect, density weighting is a null, the ridge tie replicates — because none of them
 depends on which eight drugs were chosen. The *numbers* must be re-derived.
@@ -362,7 +362,7 @@ gate defect propagated into it. And only `dasatinib` and `methotrexate` overlapp
 the eight were compounds the previous filter never named.
 
 The selection also **promoted `data/drug/all_sources_drug_catalog.csv` from "exploratory, consumed by no
-model" to a selection input.** The catalog is built in `notebooks/data_and_harmonization/drug_catalog.ipynb` from CTRP's
+model" to a selection input.** The catalog is built in `notebooks/analysis/harmonization/drug_catalog.ipynb` from CTRP's
 official `v20.meta.per_compound.txt`, mapping `gene_symbol_of_protein_target` → `target`,
 `target_or_activity_of_compound` → `moa_or_pathway`, `cpd_status` → `compound_status`
 ([Step 01](01-datasets-and-harmonization.md)). The rebuild will use it the same way, so that promotion
@@ -370,7 +370,7 @@ stands even though the panel does not.
 
 ### The Step 1 training run on the voided panel
 
-**Run** 27.07.2026, `notebooks/3_panel_training.ipynb`. The first execution of the retired-`auc_z`
+**Run** 27.07.2026, `notebooks/4_training.ipynb`. The first execution of the retired-`auc_z`
 setup: target raw `auc` winsorized at 1.1, the 8-drug literature panel, per-sample inverse-density
 weights fitted per fold on training lines only, output layer excluded from weight decay, head biases
 initialized to the train-fold per-drug means. Architecture, splits, optimizer and batching unchanged, so
@@ -390,7 +390,7 @@ Null (per-drug mean) MSE is 0.030, so these read directly: the scGPT model expla
 **in AUC units**, RMSE ≈ 0.16 viability.
 
 **Dispersion**, computed from the stored out-of-fold predictions without retraining
-(`notebooks/result_evaluation/diagnostics.ipynb` §5, `outputs/diagnostics/result_dispersion.csv`):
+(`notebooks/analysis/evaluation/diagnostics.ipynb` §5, `outputs/diagnostics/result_dispersion.csv`):
 
 | | pooled ρ | sd across the 5 folds | sd across the 8 drugs | per-drug range |
 |---|---|---|---|---|
@@ -514,7 +514,7 @@ at the time the single largest improvement the project had made.
 Both are within-drug monotone transforms, so neither was ever visible to the metric — **`auc_z` was a
 loss-weighting scheme in disguise**. And the collapse it was introduced to fix turned out to be a
 **head-count** effect rather than a target property: the same raw `auc` scores −0.069 at K=545 and
-**+0.377** at K=8 (`notebooks/3_panel_training.ipynb`). Removing the cause works at least as well as
+**+0.377** at K=8 (`notebooks/4_training.ipynb`). Removing the cause works at least as well as
 compensating for it, without amplifying noise-dominated drugs.
 
 It also carried a standing leak: `center` and `scale` were computed once over all 180 overlapping lines,
@@ -588,7 +588,7 @@ dissolved — is recorded under [Process failures](#process-failures).*
 
 ### "Neither representation ranks cell lines" — the K=545 null result
 
-**Established** 27.06.2026 (`notebooks/2_training.ipynb` §3): per-drug Spearman between predicted and
+**Established** 27.06.2026 (`notebooks/4_training.ipynb` §B3): per-drug Spearman between predicted and
 true response across held-out lines, over the 461 drugs with real per-line variance, came out at
 **−0.02 (PCA) / −0.05 (scGPT)**, with only ~4 % of drugs above ρ = 0.3. Read at the time as the
 project's central finding — that at this label resolution the task is barely learnable beyond the mean,
@@ -676,10 +676,10 @@ the margins shrank.
 
 | | 13.07 (5 drugs) | 14.07 (10 drugs) | source |
 |---|---|---|---|
-| K=10 out-of-fold ρ (PCA / scGPT) | 0.42 / 0.49 | **0.360 / 0.396** | `outputs/target/target_comparison.csv` |
-| K=545 ρ (PCA / scGPT) | 0.378 / 0.430 | **0.316 / 0.328** | `outputs/target/target_comparison.csv` |
-| Ridge line-level (PCA / scGPT) | 0.428 / 0.428 | **0.343 / 0.320** | `outputs/ablations/ablation_capacity.csv` |
-| MLP `(128,64)` (PCA / scGPT) | 0.428 / 0.487 | **0.356 / 0.402** | `outputs/ablations/ablation_capacity.csv` |
+| K=10 out-of-fold ρ (PCA / scGPT) | 0.42 / 0.49 | **0.360 / 0.396** | `outputs/legacy/target/target_comparison.csv` |
+| K=545 ρ (PCA / scGPT) | 0.378 / 0.430 | **0.316 / 0.328** | `outputs/legacy/target/target_comparison.csv` |
+| Ridge line-level (PCA / scGPT) | 0.428 / 0.428 | **0.343 / 0.320** | `outputs/legacy/ablations/ablation_capacity.csv` |
+| MLP `(128,64)` (PCA / scGPT) | 0.428 / 0.487 | **0.356 / 0.402** | `outputs/legacy/ablations/ablation_capacity.csv` |
 | scGPT − PCA gap | +0.075 | **+0.036 (K=10) / +0.012 (K=545)** | derived |
 
 The consequential change is the last row: **scGPT's edge over PCA shrank to roughly seed-noise size on
@@ -697,7 +697,7 @@ number ([TODO](../TODO.md)).
 
 ### The first DrEval benchmark — a val-split leak
 
-**Established** 14.07.2026 (`notebooks/result_evaluation/dreval_benchmark.ipynb`) with `drevalpy` 1.5.1 under their LCO
+**Established** 14.07.2026 (`notebooks/analysis/evaluation/dreval_benchmark.ipynb`) with `drevalpy` 1.5.1 under their LCO
 protocol, on the 5-drug best-case subset.
 
 **Overturned** the same day: `run_oncomlp` was passing the **test fold** as the validation loader, so
@@ -725,7 +725,7 @@ biased, in both arms and in the ridge control's absence — the ridge baseline h
 it alone was never selected this way, which flatters the MLP against it.
 
 **Not uniform across the arms, which is why it affects the comparison and not only the level.** Selected
-epochs in the last committed fold log (`outputs/panel/panel_training_folds.csv`, void 8-drug panel —
+epochs in the last committed fold log (`outputs/legacy/panel_void_8drug/panel_training_folds.csv`, void 8-drug panel —
 cited for the mechanism, not as a result): PCA `[1,1,3,1,1]`, scGPT `[10,11,2,21,4]`. The PCA arm's
 scored checkpoint was chosen from among near-tied epoch-1 states on the lines it was scored against;
 scGPT's came from a real trajectory. The same fact was already on record as the cause of the PCA arm's
@@ -781,7 +781,7 @@ as mechanics rather than as choices.
 
 **Overturned 12.08.2026 (review item 8) — they were only ever applied in `cv.oof_predictions`.**
 `train_multitask.cv_evaluate` and `train_multitask.train_rep`, which together produce the entire 8-run
-matrix, initialized no head bias, and `2_training.ipynb` never set `exclude_output_from_decay`, whose
+matrix, initialized no head bias, and `4_training.ipynb` (§B) never set `exclude_output_from_decay`, whose
 default was `False`. So the matrix path trained heads that start near 0 and are pulled back toward 0,
 while the panel path started them at the drug mean and never decayed them. Two arms of the same project
 under different rules, with the docs describing only one of them. `dreval_benchmark.ipynb`, which builds
@@ -881,7 +881,7 @@ counts), and it is a legitimate **diagnostic device** — not a measured ranking
 ### `ml210` was rejected on coverage
 
 **Claimed** in an earlier note. **Wrong** — corrected 14.07.2026 against the committed filter output
-`notebooks/outputs/learnability/ctrp_drug_learnability_auc.csv`, where `ml210` has coverage **0.944**,
+`notebooks/outputs/legacy/learnability/ctrp_drug_learnability_auc.csv`, where `ml210` has coverage **0.944**,
 clears the 0.90 gate, and is `passes_gate=True, selected=True`. It is one of the 10 selected drugs.
 
 ### The panel was chosen blind to our labels
@@ -937,7 +937,7 @@ Nothing downstream depended on the stronger claim, and the input scGPT is actual
 
 **Corrected the same day: it is a replication, not a first.** scGPT MLP over its ridge is **+0.077** on
 the 8-drug panel against **+0.082** on the 14.07 10-drug panel (0.402 vs 0.320,
-`outputs/ablations/ablation_capacity.csv`). The replication is the stronger claim of the two, since the
+`outputs/legacy/ablations/ablation_capacity.csv`). The replication is the stronger claim of the two, since the
 drug identities on the later panel were named by citation rather than by our own labels — though the pool
 they were drawn from was not, which is a separate defect.
 
@@ -946,8 +946,8 @@ they were drawn from was not, which is a separate defect.
 **Claimed** as a hunch from the earlier matrix runs — and its mirror, that HVG filtering specifically
 helps scGPT.
 
-**Not reproduced** 28.06.2026 (then `notebooks/2_training.ipynb` §4; since 03.08.2026
-`notebooks/data_and_harmonization/verify_variants.ipynb` §9), the gene-set sweep at 1k/2k/3k/5k plus
+**Not reproduced** 28.06.2026 (then `notebooks/4_training.ipynb` §B4; since 03.08.2026
+`notebooks/analysis/qc/verify_variants.ipynb` §9), the gene-set sweep at 1k/2k/3k/5k plus
 `all_genes` under identical 5-fold CV: both representations are **flat across the whole axis** (PCA
 ~203–216 heads beating baseline, scGPT ~184–193), val MSE constant at 0.0105–0.0107. PCA's `all_genes`
 value of 204 sits mid-band, *below* `hvg3000`'s 216. There is no sweet spot and no all-genes advantage
@@ -984,7 +984,7 @@ the regression analogue of class weighting — should reduce the shrinkage and i
 in `scripts/training/density_weighting.py`, fitted per fold on training lines only via
 `scripts/training/cv.py`.
 
-**Refuted** 27.07.2026 (`notebooks/3_panel_training.ipynb`): **−0.006 (PCA) / −0.008 (scGPT)** mean
+**Refuted** 27.07.2026 (`notebooks/4_training.ipynb`): **−0.006 (PCA) / −0.008 (scGPT)** mean
 Spearman. Per drug a wash — `selumetinib` +0.09 / +0.06, `tanespimycin` −0.06 / −0.06. The
 pre-registered expectation ("MSE worse, Spearman better") also failed; both stayed flat, which is what a
 null intervention looks like.
@@ -1022,7 +1022,7 @@ the most visible axis in scRNA-seq, and cell cycle is the top recurrent program 
 *this* dataset. If the cell-line effect were largely proliferation, it would explain both why
 ridge-on-line-means ties the MLP and why removing the cell-line effect costs ~20 % of the signal.
 
-**Test** (`notebooks/result_evaluation/diagnostics.ipynb`). The dataset ships the authors' own published per-cell scores
+**Test** (`notebooks/analysis/evaluation/diagnostics.ipynb`). The dataset ships the authors' own published per-cell scores
 (`G1/S_score`, `G2/M_score`, plus all 12 heterogeneity programs), so no scoring choice of ours entered.
 Averaged per line and correlated against the cell-line effect — the mean over drugs of the per-drug
 z-scored AUC, which is DrEval's definition. Outputs:
@@ -1067,7 +1067,7 @@ over-shrinkage (`pred_std` 0.33), not lost ranking.
 > **Scope correction (14.07.2026), and it matters.** Those four ablations ran on the **corrected**
 > (K=5) setup. They show the knobs do not *improve* the corrected model — they do **not** show the knobs
 > could not have *fixed* the K=545 collapse. Tested separately on the broken setting (K=545, raw `auc`,
-> scGPT, ρ = −0.063; `outputs/ablations/rescue_k545.csv`):
+> scGPT, ρ = −0.063; `outputs/legacy/ablations/rescue_k545.csv`):
 >
 > | intervention | ρ |
 > |---|---|
@@ -1121,7 +1121,7 @@ to expose invisible join errors.
   ccl_availability, ccle_primary_site, ccle_primary_hist, ccle_hist_subtype_1` — no `ACH-`, no
   `CVCL_`. SCP542's `Metadata.txt` carries none either. The only `ACH-` strings in the repository are
   PRISM's own row labels (`ACH-000361::P108::PR500A::REP1M`) appearing as transient cell output in
-  `notebooks/data_and_harmonization/drug_catalog.ipynb`; nothing is written to a catalog file. So the
+  `notebooks/analysis/harmonization/drug_catalog.ipynb`; nothing is written to a catalog file. So the
   migration was never a refactor — it required adopting an external resource (DepMap `sample_info.csv`
   or a Cellosaurus release) as a new dataset, with its own version, provenance and licence.
 - **The invisible join errors were found without it.** The audit checked the join directly and it
@@ -1216,7 +1216,7 @@ no longer exist at those paths.
 | Retired | When | Superseded by |
 |---|---|---|
 | `train_baseline.py`, `train_scGPT.py` | 26.05.2026 | `train_multitask.py --drugs paclitaxel --use-rep X_pca\|X_scGPT` — K=1 reduces exactly to plain MSE |
-| `notebooks/hvg_vs_all_genes_umap.ipynb`, `notebooks/scgpt_umap.ipynb` | 27.06.2026 | consolidated into `notebooks/data_and_harmonization/verify_variants.ipynb` |
+| `notebooks/hvg_vs_all_genes_umap.ipynb`, `notebooks/scgpt_umap.ipynb` | 27.06.2026 | consolidated into `notebooks/analysis/qc/verify_variants.ipynb` |
 | `notebooks/10_ablations.ipynb` | — | consolidated into `notebooks/archive/ablations_and_rescue.ipynb` |
 | `notebooks/01_scDAExploration.ipynb` | 30.07.2026 | renamed to `notebooks/archive/scdrugatlas_exploration.ipynb`. It explores **scDrugAtlas**, not SCP542 — the index's notebook table mislabelled it for months. Archived because the data source itself was [rejected](#scdrugatlas-and-clintox-as-data-sources), not because the notebook is wrong |
 | `notebooks/03_analysis.ipynb` | 30.07.2026 | **un-archived** and renamed to `notebooks/archive/ctrp_prism_repurposing.ipynb`. Read-only CTRP→PRISM and clinical-phase mapping; writes nothing, but it is the only notebook that loads `GDSC2_fitted_dose_response_27Oct23.xlsx`, which the "externalize the spread requirement" item needs |

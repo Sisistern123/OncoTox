@@ -66,7 +66,7 @@ CTRPv2 (180 = lines with actual post-QC measurements; the audit's 190 counts ros
 - 70/15/15 is the design target at the **cell-line** level (`create_splits._split_cell_lines`); the
   **cell** percentages differ slightly because lines carry different cell counts.
 - `unassigned` = **18 lines / 6,286 cells** (SCP542 lines with no CTRP measurement; 198 → 180 measured).
-- **Cross-validation** (`notebooks/2_training.ipynb` §2) **holds `test` out** and resamples only the
+- **Cross-validation** (`notebooks/4_training.ipynb` §B2) **holds `test` out** and resamples only the
   153 train+val lines via 5-fold GroupKFold, so test is never seen in CV.
 
 **Model & training:** a single `OncoMLP` with `output_dim = K`, fed by `MultiDrugDataset`
@@ -137,7 +137,7 @@ of 1.0.
 
 **The 8-run matrix (512-d, 27.06.2026; all share `split_ctrp`, n_train 34,126 / n_val 7,121).**
 Per-drug-mean baseline: **~0.043** (K=1 paclitaxel, data-derived, rep-independent), **0.0097** (K=545).
-Reproducible in `notebooks/2_training.ipynb`; run dirs `runs/20260627_1913xx_*` (see
+Reproducible in `notebooks/4_training.ipynb (§B)`; run dirs `runs/20260627_1913xx_*` (see
 `runs/runs_index.csv`).
 
 **Single-task (K=1 paclitaxel) — the overfitting story** (gap = val − train, at the best epoch):
@@ -188,7 +188,7 @@ Reproducible in `notebooks/2_training.ipynb`; run dirs `runs/20260627_1913xx_*` 
 - **Net:** scGPT's robust, reproducible win is **lower overfitting**, not higher accuracy — and this
   now holds with input dimensionality matched, so it can no longer be dismissed as a capacity artifact.
 - **Which heads are even learnable** is driven by coverage + response variance — see
-  `notebooks/data_and_harmonization/drug_coverage.ipynb`: the ≈16-line drugs (n_val 221) are the unreliable/hardest heads,
+  `notebooks/analysis/harmonization/drug_coverage.ipynb`: the ≈16-line drugs (n_val 221) are the unreliable/hardest heads,
   while high-coverage high-variance drugs (docetaxel, gemcitabine, oligomycin a) are the easiest.
 
 > ⚠️ **Gap-metric caveat.** Train MSE is logged with dropout (0.5) + input-dropout (0.1) **active**, so
@@ -200,7 +200,7 @@ Reproducible in `notebooks/2_training.ipynb`; run dirs `runs/20260627_1913xx_*` 
 ### Is the difference real? — 5-fold cross-validation (27.06.2026)
 
 The single-split numbers above rest on **27 val lines**, so they are point estimates. To test
-robustness, `cv_evaluate` (`notebooks/2_training.ipynb` §2) runs **5-fold GroupKFold over `Cell_line`,
+robustness, `cv_evaluate` (`notebooks/4_training.ipynb` §B2) runs **5-fold GroupKFold over `Cell_line`,
 holding the fixed `test` set out** and resampling only the 153 train+val lines (~122 train / ~31 val
 per fold). On `hvg5000`:
 
@@ -250,7 +250,7 @@ Pearson), restricted to the 461 drugs with real per-line variance (std ≥ 0.05,
 `notebooks/archive/learnability_filter.ipynb` → `notebooks/archive/learnable_subset_training.ipynb`. The §3 null result
 above pooled a few learnable heads with hundreds of flat, inert ones. **Filter first, then ask.**
 
-**The filter (`learnability_filter`).** The learnability score of [`drug_coverage`](../../notebooks/data_and_harmonization/drug_coverage.ipynb)
+**The filter (`learnability_filter`).** The learnability score of [`drug_coverage`](../../notebooks/analysis/harmonization/drug_coverage.ipynb)
 (`resp_std × cov_frac`) is **degenerate on `auc_z`** — the target is z-scored per drug, so every drug
 has std exactly 1.0 and all 545 tie. Spread is therefore measured on the **raw `auc` scale**, recovered
 exactly via `uns["ctrp_score_scale"]`/`["ctrp_score_center"]` (and that `scale` vector *is* the per-drug
@@ -261,7 +261,7 @@ toxic drug has no cross-line ranking to learn, however well covered it is. **6 /
 learnability are trained.**
 
 **What the raw label distribution looks like, and why a spread filter alone cannot bite.**
-`notebooks/data_and_harmonization/drug_coverage.ipynb` → `outputs/data/target_distribution.png`, four panels: (A) the
+`notebooks/analysis/harmonization/drug_coverage.ipynb` → `outputs/data/target_distribution.png`, four panels: (A) the
 viability histogram, (B) the per-drug response-std histogram, (C) the coverage-vs-std filter scatter,
 (D) per-drug response bands.
 
@@ -304,7 +304,7 @@ readable directly.) Per drug: `ml162` 0.59/**0.65**, `1s,3r-rsl-3` 0.58/**0.59**
   whose variance has a transcriptional cause, not merely high-variance drugs.
 - **First non-tie between the reps — and it survives a seed check (13.07.2026).** scGPT leads on every
   aggregate and on 4/5 drugs, most clearly where PCA collapses (`kx2-391`, 0.28 vs 0.11). Repeating the
-  **K=545 `auc_z`** configuration over **3 seeds** (`target_comparison`, `outputs/target/seed_stability.csv`):
+  **K=545 `auc_z`** configuration over **3 seeds** (`target_comparison`, `outputs/legacy/target/seed_stability.csv`):
 
   | seed | PCA | scGPT | gap |
   |---|---|---|---|
@@ -416,11 +416,19 @@ on the literature**, and which the rebuild should reconsider: `sirolimus`, `nera
 `cytarabine hydrochloride`, `gdc-0941`.
 
 **Considered and set aside on coverage**, recorded so they are not re-proposed without checking it first:
-`trametinib` and `at13387` (coverage only **0.46** of the 180 trainable lines), and `gemcitabine`
-(coverage **0.86**) — mechanistically apt via `RRM1`/`TYMS`, and worth revisiting if the coverage
-threshold is set below 0.9. `kx2-391` was also excluded, for a different and stronger reason: its signal
-was entirely the cell-line effect
+`trametinib` and `at13387` (coverage only **0.46** of the 180 trainable lines). `kx2-391` was also
+excluded, for a different and stronger reason: its signal was entirely the cell-line effect
 ([Corrections](corrections-and-dead-ends.md#kx2-391-carries-drug-specific-signal)).
+
+> ⚠️ **`gemcitabine` was listed here and is not set aside — corrected 12.08.2026.** This passage
+> recorded it at coverage **0.86**, below the 0.9 threshold, and told the rebuild to revisit it only if
+> the threshold moved. On the current response source its coverage is **0.983**, the joint highest in
+> the panel, and it is *in* the rebuilt panel
+> ([Step 01](01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026),
+> `outputs/panel/panel.csv`). The 0.86 was measured on CTRPv2's own 2015 distribution, which stopped
+> being the target source on 11.08.2026; the threshold never moved. Left visible rather than deleted
+> because this paragraph is written as instructions to the rebuild, and a reader following it would
+> otherwise exclude a compound the rebuild had already selected.
 
 **The determinants split by data modality, which makes any panel drawn from them a hypothesis test.**
 Our input is expression only:
@@ -455,7 +463,7 @@ compounds.
 The Step-1 run itself, with its numbers and dispersion, is in
 [Corrections](corrections-and-dead-ends.md#the-step-1-training-run-on-the-voided-panel) — it was computed on the voided panel.
 
-### Benchmarked with the real DrEval package (`notebooks/result_evaluation/dreval_benchmark.ipynb`, 14.07.2026)
+### Benchmarked with the real DrEval package (`notebooks/analysis/evaluation/dreval_benchmark.ipynb`, 14.07.2026)
 
 Not a re-implementation: `pip install drevalpy` (v1.5.1, <https://github.com/daisybio/drevalpy>), and our
 data/model run through **their** `DrugResponseDataset`, **their** `split_dataset(mode="LCO")`, **their**
@@ -570,7 +578,7 @@ correction to an earlier claim that credited the curve fit rather than the stand
 
 > ⛔ **03.08.2026 — the numbers in this table are superseded.** They were produced on the retired
 > **`mean_pv`** target and cached at `outputs/legacy/training_545_mean_pv/hvg_sweep.csv`. The sweep
-> moved to `notebooks/data_and_harmonization/verify_variants.ipynb` §9 and was re-targeted to **`auc`**,
+> moved to `notebooks/analysis/qc/verify_variants.ipynb` §9 and was re-targeted to **`auc`**,
 > which no longer reads that cache — so the sweep currently has **no live numbers**. The table is kept
 > as the record of what was believed on 28.06.2026; do not quote it as current. Two further caveats
 > on it are in [Step 02](02-preprocessing-and-embeddings.md#decision--one-seeded-draw-at-1200-all_genes-is-a-sanity-check-03082026):
@@ -593,13 +601,14 @@ correction to an earlier claim that credited the curve fit rather than the stand
 > ⚠️ `hvg1000`–`hvg3000` have no measured expressed-gene counts, but they cannot reach the cap. The HVG
 > sets are **strictly nested** — `hvg1000 ⊂ hvg2000 ⊂ hvg3000 ⊂ hvg5000 ⊂ all_genes`, zero genes outside
 > the larger set at every step, verified 05.08.2026 in
-> `notebooks/data_and_harmonization/verify_variants.ipynb` §10a — so their per-cell counts are bounded by
+> `notebooks/analysis/qc/verify_variants.ipynb` §10a — so their per-cell counts are bounded by
 > `hvg5000`'s, whose own maximum sits below the cap. `hvg1000` is settled independently and needs no
 > check: 939 in-vocab genes cannot fill a 1,200-token sequence.
 
 Does either rep have a preferred gene-set size?
-`notebooks/data_and_harmonization/verify_variants.ipynb` §9 builds each variant
-(1k/2k/3k/5k **plus `all_genes`**, full pipeline incl. scGPT re-embed; `1_preprocessing` §B) and runs the same
+`notebooks/analysis/qc/verify_variants.ipynb` §9 builds each variant
+(1k/2k/3k/5k **plus `all_genes`**, full pipeline incl. scGPT re-embed; built by `1_preprocessing` §B until
+12.08.2026, when the sweep build moved out of the numbered pipeline to `analysis/qc/`) and runs the same
 **5-fold GroupKFold, test held out, all 545 drugs** — so the HVG-vs-all-genes comparison is
 apples-to-apples under identical CV:
 

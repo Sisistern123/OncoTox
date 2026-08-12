@@ -1,24 +1,35 @@
-"""Generate the OncoTox slide/doc graphics into ``docs/figures/``:
+"""Generate the OncoTox slide/doc graphics into ``docs/figures/``.
+
+**Pure drawings — always reproducible, always built:**
 
   pipeline_overview.png    status of the whole project against the plan (steps 01-08)
-  pipeline.png             the pipeline as a picture: data -> drug panel -> split ->
-                           representation -> model -> loss -> evaluation -> result
-  model_architecture.png   one cell in, one AUC per panel drug out
   loss_01_objective.png    what the objective is made of
-  loss_02_weights.png      where the weights come from — one drug's label density and weight curve
+
+**Derived from data — currently SKIPPED, and archived (12.08.2026):**
+
+  pipeline.png             the pipeline as a picture, stage by stage
+  model_architecture.png   one cell in, one AUC per panel drug out
+  loss_02_weights.png      one drug's label density and the weight curve fitted to it
   loss_03_effect.png       what the weighting did, per drug: spread up, ranking flat
+
+The four read either ``figure_data.npz`` -- rebuilt from the ``auc_cc`` targets h5ad -- or a
+training output under ``notebooks/outputs/panel/``. Neither exists on the current target:
+preprocessing has not re-run under the freeze, and the last training run was on the void 8-drug
+panel. **They are not built from the retired ``auc`` h5ad that is still on disk**, because a figure
+that can only be produced from a target the pipeline no longer writes is not reproducible by a
+standard run -- and one that renders anyway is worse than one that is absent, since nothing on its
+face says which target it came from. Each is skipped with a printed reason; the superseded PNGs are
+in ``docs/figures/archive/`` with a README. Every skip clears by itself at R4.
+
+The drug panel is read from ``notebooks/outputs/panel/panel.csv`` rather than duplicated here. It
+was a hardcoded 8-compound list until 12.08.2026, which is how it went stale when the panel was
+rebuilt -- the two share only three compounds.
 
 The figures carry a caption at most; the argument behind them lives in the prose. Note that
 ``docs/progress_report_*.md`` is **untracked by design**, so a fresh clone will not have it --
 the tracked source for every claim is ``docs/steps/`` (§4 the weighting, §9 the Step-1 result
 correspond to Step 03 and Step 05) and
 ``docs/steps/03-model-and-training-design.md`` (architecture, loss, target).
-
-Setup as of 27.07.2026: target = raw AUC winsorized at 1.1, no per-drug z-score; the per-drug
-scaling moved out of the target and into the loss as an inverse-label-density sample weight.
-
-Panels drawn from real data read ``docs/figures/figure_data.npz`` (rebuilt from the targets h5ad
-on first run) and the CSVs in ``notebooks/outputs/panel/``.
 
 Run:  uv run docs/make_figures.py
 """
@@ -38,6 +49,10 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 FIG = HERE / "figures"
 PANEL_OUT = ROOT / "notebooks" / "outputs" / "panel"
+# The 27.07.2026 training run's outputs, archived 12.08.2026: they were produced on the void 8-drug
+# panel and cannot be recreated by a standard run, so they moved out of outputs/panel/. Only the
+# archived figures read them, and each guards on existence first.
+LEGACY_PANEL = ROOT / "notebooks" / "outputs" / "legacy" / "panel_void_8drug"
 
 GREEN = "#2e7d32"; GREEN_FILL = "#c8e6c9"
 AMBER = "#b8860b"; AMBER_FILL = "#ffe9b3"
@@ -47,9 +62,22 @@ GREY = "#777777"; GREY_FILL = "#e8e8e8"
 INK = "#1a1a1a"
 MUTED = "#52514e"
 
-#: The literature panel (docs/steps/01, progress report §2) — the order every figure uses.
-PANEL = ["methotrexate", "dasatinib", "paclitaxel", "vincristine",
-         "afatinib", "topotecan", "tanespimycin", "selumetinib"]
+def _panel() -> list[str]:
+    """The drug panel, read from ``outputs/panel/panel.csv`` — the file that defines it.
+
+    Hardcoded as eight compounds until 12.08.2026, which is how it went stale: the panel was
+    rebuilt on FDA approval and published determinants and this copy was not. The rebuilt panel
+    shares only ``paclitaxel``, ``dasatinib`` and ``afatinib`` with the old one, so it was never an
+    extension of it. ``drug_key`` is the spelling the response data uses (*Cisplatin* is
+    ``platin``), which is what the h5ad is indexed by.
+    """
+    import pandas as pd
+
+    return pd.read_csv(PANEL_OUT / "panel.csv")["drug_key"].tolist()
+
+
+#: The drug panel — the order every figure uses. Read from panel.csv, not maintained here.
+PANEL = _panel()
 
 
 def box(ax, x, y, w, h, title, lines, edge, fill, title_color=None, dashed=False,
@@ -80,18 +108,19 @@ def build_pipeline():
 
     ax.text(50, 98, "OncoTox Pipeline — Status Overview", ha="center", va="top",
             fontsize=17, fontweight="bold", color=INK)
-    ax.text(50, 93.5, "as of 2026-07-14   ·   reference: project_planning_v2.pdf   ·   steps: docs/steps/",
+    ax.text(50, 93.5, "as of 2026-08-12   ·   reference: project_planning_v2.pdf   ·   steps: docs/steps/",
             ha="center", va="top", fontsize=9.5, color=GREY)
     handles = [
         mpatches.Patch(facecolor=GREEN_FILL, edgecolor=GREEN, label="Done / on-plan"),
         mpatches.Patch(facecolor=AMBER_FILL, edgecolor=AMBER, label="Addition beyond plan"),
+        mpatches.Patch(facecolor=GREY_FILL, edgecolor=GREY, label="Results withdrawn"),
         mpatches.Patch(facecolor=RED_FILL, edgecolor=RED, label="Not started (planned)"),
     ]
     ax.legend(handles=handles, loc="center", bbox_to_anchor=(0.5, 0.885),
-              ncol=3, fontsize=9.5, frameon=True, framealpha=0.9)
+              ncol=4, fontsize=9.5, frameon=True, framealpha=0.9)
 
     box(ax, XS[0], ROW_A, W, H, "01 · Datasets & harmonization",
-        ["SCP542 53,513 cells x 22,722 g", "CTRPv2 545 drugs · target: auc_z",
+        ["SCP542 53,513 cells x 22,722 g", "CTRPv2 545 drugs · target: auc_cc",
          "overlap 190* lines · 180 trainable"], GREEN, GREEN_FILL)
     box(ax, XS[1], ROW_A, W, H, "02 · Preprocessing & embeddings",
         ["scGPT X_scGPT = 512-d", "gene-set sweep 1k-5k + all_genes",
@@ -99,13 +128,18 @@ def build_pipeline():
     box(ax, XS[2], ROW_A, W, H, "03 · Model & training design",
         ["per-cell input -> viability", "masked MSE · matched (128,64) MLP",
          "PCA & scGPT both 512-d"], GREEN, GREEN_FILL)
+    # Results withdrawn 12.08.2026 -- the target was replaced, the panel rebuilt, and the
+    # representations predate the preprocessing corrections. These boxes named specific numbers
+    # ("best scGPT val MSE 0.0336"; "target fix (auc_z): rho ~0 -> ~0.4") until then. They say so
+    # rather than quietly dropping them: a status figure with the number silently removed reads as
+    # a stage that was never measured, which is not what happened.
     box(ax, XS[3], ROW_A, W, H, "04 · Single-task baseline",
-        ["paclitaxel, leak-free split", "best scGPT val MSE 0.0336",
-         "1 DB · 1 score · 1 drug"], GREEN, GREEN_FILL)
+        ["paclitaxel, leak-free split", "results WITHDRAWN 12.08.2026",
+         "1 DB · 1 score · 1 drug"], GREY, GREY_FILL, title_color=GREY)
 
     box(ax, XS[0], ROW_B, W, H, "05 · Multi-task + fair eval",
-        ["K=545 · out-of-fold over 153 lines", "target fix (auc_z): rho ~0 -> ~0.4",
-         "scGPT >= PCA · benchmarked (DrEval)"], GREEN, GREEN_FILL)
+        ["K=545 · out-of-fold over 153 lines", "results WITHDRAWN 12.08.2026",
+         "re-measured at R4 of the sweep"], GREY, GREY_FILL, title_color=GREY)
     box(ax, XS[1], ROW_B, W, H, "06 · Cross-database  (MISSING)",
         ["CTRPv2 + PRISM + GDSC", "efficacy + toxicity heads",
          "the 'combine all' goal"], RED, RED_FILL, title_color=RED, dashed=True)
@@ -116,12 +150,16 @@ def build_pipeline():
         ["reusable pan-cancer FM", "fine-tune on clinical (binary)",
          "overarching main goal"], RED, RED_FILL, title_color=RED, dashed=True)
 
+    # The band listed the retired auc_z target and the retracted learnability filter among the
+    # additions. Both were removed on 12.08.2026 (Selin) rather than relabelled: this figure states
+    # what the project has, and a retired target is not an addition it still carries. The record of
+    # both is in docs/steps/corrections-and-dead-ends.md.
     BAND_Y, BAND_H = 5, 13
     box(ax, XS[0], BAND_Y, 94, BAND_H, "Additions beyond the written plan",
         ["512-d PCA (matched to scGPT)  ·  out-of-fold CV over 153 lines  ·  per-drug correlation metric  ·  "
          "gene-set sweep  ·  cancer-type UMAPs  ·  cell-line-grouped split (leak fix)  ·  run versioning\n"
-         "per-drug z-scored target (auc_z = 1/sigma^2 head weighting)  ·  learnability filter  ·  "
-         "ridge line-level control  ·  external benchmark against DrEval (drevalpy)"],
+         "ridge line-level control  ·  external benchmark against DrEval (drevalpy)  ·  "
+         "nested early-stopping split"],
         AMBER, AMBER_FILL, title_color=AMBER)
 
     for i in range(3):
@@ -155,7 +193,7 @@ def _heat_strip(ax, xc, y0, y1, vals, cmap, w=2.4):
                  edgecolor=INK, lw=1.3, zorder=4))
 
 
-#: One real held-out cell line, scGPT, unweighted run (notebooks/outputs/panel/panel_oof_predictions.csv,
+#: One real held-out cell line, scGPT, unweighted run (notebooks/outputs/legacy/panel_void_8drug/panel_oof_predictions.csv,
 #: fold in which SKES1_BONE was held out). Predicted vs measured AUC for the eight panel drugs. Used
 #: instead of an invented vector so the figure shows the actual output scale -- including the visible
 #: shrinkage (predictions span 0.37-0.75 against a measured 0.04-0.91).
@@ -177,14 +215,20 @@ def draw_architecture(ax, *, compact: bool = False):
     fs = 0.70 if compact else 1.0
     xc, xe, lx, x0, span = ((4.5, 9.5, [16, 23, 29, 35], 49.0, 10.5) if compact else
                             (6.0, 14.0, [26, 39, 51, 62], 76.0, 17.0))
-    ax.set_xlim(0, 62 if compact else 100); ax.set_ylim(23 if compact else 14, 47 if compact else 52)
+    # Non-compact lower bound dropped 14 -> 11 on 12.08.2026 to make room for the "plotted" note
+    # below the uncentred-target paragraph. Compact is untouched: it is embedded in pipeline.png,
+    # which has its own layout, and it draws neither of those notes.
+    ax.set_xlim(0, 62 if compact else 100); ax.set_ylim(23 if compact else 11, 47 if compact else 52)
     ax.set_aspect("equal"); ax.axis("off")
 
     if not compact:
         ax.text(0, 51, "Model architecture — one cell in, one AUC per panel drug out",
                 ha="left", va="top", fontsize=13, fontweight="bold", color=INK)
-        ax.text(0, 48.0, "per-cell MLP · target = raw AUC (winsorized at 1.1) · 8-drug literature "
-                         "panel · trained with the density-weighted masked MSE (loss_01–03)",
+        # The bars come from figure_data.npz, built on the superseded run, so "winsorized at 1.1",
+        # "8-drug" and "25 epochs" are accurate about what is PLOTTED and wrong only if read as the
+        # current pipeline. Split into two lines on 12.08.2026 (Selin) so the distinction is on the
+        # figure rather than only in the README caption.
+        ax.text(0, 48.0, "per-cell MLP · trained with the density-weighted masked MSE (loss_01–03)",
                 ha="left", va="top", fontsize=8.5, color=GREY)
 
     # ---------- INPUT: one cell -> embedding vector ----------
@@ -228,8 +272,12 @@ def draw_architecture(ax, *, compact: bool = False):
                  boxstyle="round,pad=0.3,rounding_size=1.2",
                  fill=False, edgecolor=BLUE, lw=1.2, linestyle="--", zorder=0))
     if not compact:
+        # Epoch count moved to the "plotted" line above: it is a property of the run shown, not of
+        # the architecture, and the cap is itself under review (item 10 owns whether TrainConfig's
+        # default of 25 moves to the 50 that 4_training passes). Naming it here made the
+        # architecture caption go stale every time the cap moved.
         ax.text(43.2, 22.6, "hidden block  =  Linear → LayerNorm → GELU → Dropout 0.5      ·      "
-                            "input dropout 0.1      ·      Adam, 25 epochs, early stopping",
+                            "input dropout 0.1      ·      Adam, early stopping (patience 10)",
                 ha="center", va="top", fontsize=8.2, color=INK)
         ax.text(43.2, 19.8, "the 8 heads are the 8 rows of one Linear(64 → 8) over a shared trunk — "
                             "there is no per-drug sub-network",
@@ -265,15 +313,31 @@ def draw_architecture(ax, *, compact: bool = False):
                             "◆ = the measured CTRPv2 value (never seen in training)",
             ha="left", va="top", fontsize=7.6, color=GREY)
 
+    # Two corrections, 12.08.2026. The retired auc_z target is no longer named -- the point stands
+    # on its own, and Methods no longer describes that target at all. And "the output layer is
+    # excluded from weight decay" described exclude_output_from_decay, which exempted the whole
+    # output Linear including its weight matrix while still decaying LayerNorm; it was replaced by
+    # no_decay_bias_and_norm the same day.
     ax.text(0, 16.0,
-            "Raw AUC, not the old per-drug z-score:  the head bias is initialized to the fold's per-drug "
-            "mean AUC and the output layer is excluded from weight decay,\nbecause on an uncentred target "
-            "the bias must sit near 0.7 and decay would pull it to 0.  The per-drug scaling that auc_z "
-            "used to apply now lives in the loss.",
+            "The target is uncentred:  the head bias is initialized to the fold's per-drug mean AUC, "
+            "and biases and LayerNorm are excluded from weight decay,\nbecause the bias must sit near "
+            "the drug's mean (~0.7) and decay would pull it to 0.  Any per-drug scaling belongs in the "
+            "loss, not in the target.",
             ha="left", va="top", fontsize=8.2, color=INK)
+
+    # The bars come from figure_data.npz, built on the superseded run, so "winsorized at 1.1",
+    # "8-drug" and "25 epochs" are accurate about what is PLOTTED and wrong only if read as the
+    # current pipeline. Stated on the figure rather than only in the README caption. Plain ASCII:
+    # matplotlib's default font has no glyph for the warning emoji and renders it as a tofu box.
+    ax.text(0, 12.6,
+            "PLOTTED: the superseded run — auc winsorized at 1.1, the void 8-drug panel, 25 epochs."
+            "    CURRENT PIPELINE: auc_cc, no winsorization, the rebuilt 11-drug panel, 50 epochs.",
+            ha="left", va="top", fontsize=8.0, color=RED)
 
 
 def build_architecture():
+    if _needs_data("model_architecture.png"):
+        return
     fig, ax = plt.subplots(figsize=(17.0, 6.6))
     draw_architecture(ax)
     out = FIG / "model_architecture.png"
@@ -302,13 +366,29 @@ def figure_data() -> dict:
     import anndata as ad
     from sklearn.model_selection import GroupKFold
 
-    from scripts.layout import PipelinePaths
-    from scripts.training.density_weighting import DEFAULT_WINSOR
+    from scripts.layout import DEFAULT_CTRP_SCORE, PipelinePaths
 
-    src = ad.read_h5ad(PipelinePaths.build(None, "hvg5000", "auc").targets_h5ad, backed="r")
+    # auc_cc ONLY, and deliberately no fallback (Selin, 12.08.2026). Until 11.08.2026 this read the
+    # retired `auc` target and clipped at DEFAULT_WINSOR; both were removed from the pipeline, so
+    # the call raised ValueError and the import above it ImportError. Neither ever fired, because
+    # the committed cache short-circuits this function -- the breakage was invisible.
+    #
+    # The retired `auc` h5ad is still on disk and these figures COULD be built from it. They are
+    # not: a figure that can only be produced from a target the pipeline no longer writes is not
+    # reproducible by a standard run, and one that renders anyway is worse than one that is absent,
+    # because nothing on it says which target it came from. If the auc_cc h5ad is missing, this
+    # raises and the figures that need it are skipped by their callers.
+    target_h5ad = PipelinePaths.build(None, "hvg5000", DEFAULT_CTRP_SCORE).targets_h5ad
+    if not target_h5ad.exists():
+        raise FileNotFoundError(
+            f"{target_h5ad.name} does not exist, so the figure cache cannot be built.\n"
+            f"  Run stages 1 and 3 (1_data, 3_representations) first.\n"
+            f"  The retired `auc` h5ad is NOT used as a substitute -- see the comment above."
+        )
+    src = ad.read_h5ad(target_h5ad, backed="r")
     all_drugs = list(src.uns["ctrp_drugs"])
     kcol = [all_drugs.index(d) for d in PANEL]
-    Y = np.clip(np.asarray(src.obsm["Y_ctrp"], dtype=float), None, DEFAULT_WINSOR)
+    Y = np.asarray(src.obsm["Y_ctrp"], dtype=float)
     M = np.asarray(src.obsm["M_ctrp"], dtype=bool)
     groups = src.obs["Cell_line"].astype(str).to_numpy()
     split = src.obs["split_ctrp"].astype(str).to_numpy()
@@ -349,10 +429,27 @@ def figure_data() -> dict:
 
 
 def panel_corr():
-    """``notebooks/outputs/panel/panel_per_drug_correlation.csv`` as a DataFrame."""
+    """``notebooks/outputs/legacy/panel_void_8drug/panel_per_drug_correlation.csv`` as a DataFrame."""
     import pandas as pd
 
-    return pd.read_csv(PANEL_OUT / "panel_per_drug_correlation.csv")
+    return pd.read_csv(LEGACY_PANEL / "panel_per_drug_correlation.csv")
+
+
+def _needs_data(name: str) -> bool:
+    """True if ``name`` cannot be built right now; prints why.
+
+    Added 12.08.2026. The figures split cleanly in two: some are pure drawings and always build,
+    the rest are derived from the targets h5ad or from a training output. The derived ones are only
+    reproducible by a standard pipeline run on ``auc_cc``, and that has not happened -- so rather
+    than render them from whatever happens to be on disk, they are skipped and their superseded
+    PNGs are archived under ``docs/figures/archive/``.
+    """
+    try:
+        figure_data()
+    except FileNotFoundError as exc:
+        print(f"  {name}: SKIPPED — {str(exc).splitlines()[0]}")
+        return True
+    return False
 
 
 def _tidy(ax, *, grid="", ticks=True):
@@ -377,6 +474,8 @@ def build_pipeline_flow():
     ``loss_01_objective.png`` with ``compact=True``, so the pipeline cannot drift away from the
     standalone figures. Everything that needs a sentence lives in the docs, not on the slide.
     """
+    if _needs_data("pipeline.png"):
+        return
     d = figure_data()
     corr = panel_corr()
     import pandas as pd
@@ -545,7 +644,7 @@ def build_pipeline_flow():
     stage(64.5, ROW2_TITLE, "7", "Evaluation",
           "cells → one value per line,\nSpearman within each drug", ROW2_CAP)
     ax = fig.add_axes([0.655, 0.155, 0.125, 0.255])
-    oof = pd.read_csv(PANEL_OUT / "panel_oof_predictions.csv")
+    oof = pd.read_csv(LEGACY_PANEL / "panel_oof_predictions.csv")
     g8 = oof[(oof.rep == "X_scGPT") & (~oof.weighted) & (oof.drug == "dasatinib")]
     ax.scatter(g8.y_true, g8.y_pred, s=11, color=BLUE, alpha=0.55, edgecolor="white", lw=0.35)
     rho = corr[(corr.rep == "X_scGPT") & (~corr.weighted) & (corr.drug == "dasatinib")].spearman.iloc[0]
@@ -560,7 +659,7 @@ def build_pipeline_flow():
     stage(82.0, ROW2_TITLE, "8", "Result",
           "one seed — only scGPT clears\nthe ridge control", ROW2_CAP)
     ax = fig.add_axes([0.868, 0.155, 0.115, 0.255])
-    ridge = pd.read_csv(PANEL_OUT / "panel_ridge_baseline.csv")
+    ridge = pd.read_csv(LEGACY_PANEL / "panel_ridge_baseline.csv")
     bars = [
         ("scGPT MLP", corr[(corr.rep == "X_scGPT") & (~corr.weighted)].spearman.mean(), AMBER),
         ("PCA MLP", corr[(corr.rep == "X_pca") & (~corr.weighted)].spearman.mean(), GREY),
@@ -603,8 +702,8 @@ def draw_loss_objective(ax, *, compact: bool = False):
     if not compact:
         ax.text(1, 99, "The objective — a weighted, masked mean squared error",
                 ha="left", va="top", fontsize=14, fontweight="bold", color=INK)
-        ax.text(1, 91, "target = raw AUC  ·  the per-drug scaling the retired auc_z applied to the "
-                       "labels now sits here instead",
+        ax.text(1, 91, "target = auc_cc, the curve-fit AUC  ·  per-drug scaling belongs here, in the "
+                       "loss, rather than in the labels",
                 ha="left", va="top", fontsize=9, color=GREY)
 
     ax.text(50, 76 if not compact else 92, r"$\mathcal{L}\;=\;\frac{\sum_{i,k}\;"
@@ -676,6 +775,8 @@ def draw_weight_curve(ax, *, drug: str = "dasatinib", compact: bool = False):
 
 def build_loss_weights():
     """Where the weights come from: one drug's label density, and the curve it produces."""
+    if _needs_data("loss_02_weights.png"):
+        return
     import sys
 
     sys.path.insert(0, str(ROOT))
@@ -741,6 +842,21 @@ def build_loss_weights():
 def build_loss_effect():
     """What the weighting did: the spread it was designed to raise, and the ranking it did not move."""
     corr = panel_corr()
+
+    # This figure is the one thing here that cannot follow the panel. Its input is a TRAINING
+    # output -- per-drug correlations from the 27.07 run on the void 8-drug panel -- so unlike the
+    # label-derived panels it cannot be rebuilt by re-reading the h5ad; it needs a re-run, which the
+    # freeze holds until R4. With the rebuilt panel only 3 of 11 drugs have a row, so it would
+    # quietly plot three points and read as a complete comparison. Skipped instead, leaving the
+    # committed PNG (captioned as void) in place.
+    have = set(corr["drug"])
+    missing = [d for d in PANEL if d not in have]
+    if missing:
+        print(f"  loss_03_effect.png: SKIPPED -- panel_per_drug_correlation.csv has no rows for "
+              f"{len(missing)} of {len(PANEL)} panel drugs ({', '.join(missing[:4])}"
+              f"{'...' if len(missing) > 4 else ''}). It is a training output; re-runs at R4.")
+        return
+
     reps = [("X_scGPT", AMBER, "scGPT"), ("X_pca", GREY, "PCA")]
 
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(10.5, 5.4))

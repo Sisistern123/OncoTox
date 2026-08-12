@@ -8,7 +8,7 @@ data root because a mapping that cannot be reproduced makes every number derived
 The HGNC approved-symbol set, used to test whether genes that `gen_embeds.py` discarded as
 out-of-vocabulary are in fact present in scGPT's vocabulary under a **current** symbol. See
 [the write-up](../docs/steps/corrections-and-dead-ends.md#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols)
-and `notebooks/data_and_harmonization/gene_symbol_rescue.ipynb`.
+and `notebooks/analysis/qc/gene_symbol_rescue.ipynb`.
 
 ### Exact source
 
@@ -59,7 +59,7 @@ two genes onto one name), `status`, `ensembl_gene_id`.
 
 The FDA-approved anticancer drug list the [drug panel](../docs/steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026)
 is selected on. Retrieved and parsed by `scripts/sources/fetch_sun2017_drugs.py`; used in
-`notebooks/drug_selection/literature_panel.ipynb` §1.
+`notebooks/2_drug_selection.ipynb` §1.
 
 ### Exact source
 

@@ -141,7 +141,7 @@ log-concentration scale instead of clustering near 0.9. That has to be checked b
 trained, not assumed.
 
 **Until 12.08.2026 only one of the three training paths did either of these** — `cv.oof_predictions`,
-which `3_panel_training` drives. `train_multitask.cv_evaluate` (the CV behind the 8-run matrix) and
+which `4_training` drives. `train_multitask.cv_evaluate` (the CV behind the 8-run matrix) and
 `train_multitask.train_rep` (the fixed-split path) initialized no head bias and ran with
 `exclude_output_from_decay` at its `False` default, so on an uncentred target the matrix trained against
 an offset the panel run did not, and the two were never the same experiment. Both now take
@@ -281,7 +281,7 @@ The cross-validation is 5-fold `GroupKFold` over the train+val lines
 which is what makes a fold label well defined at the line level at all.
 
 `oof_predictions` records each fold's held-out lines in its log, and `line_level_predictions(folds=...)`
-stamps a `fold` column onto every row of `outputs/panel/panel_oof_predictions.csv`. It raises if a line
+stamps a `fold` column onto every row of `outputs/legacy/panel_void_8drug/panel_oof_predictions.csv`. It raises if a line
 appears in two folds, or if a predicted line is claimed by none.
 
 ### The early-stopping set is nested inside the training lines (12.08.2026)
@@ -332,7 +332,7 @@ stated here so no reader has to infer them:
    (`eligible_splits=("train","val")`), and the 18 lines with no CTRPv2 label are outside everything.
 2. **The folds are unshuffled and unseeded.** `GroupKFold` assigns whole lines greedily to balance
    *cell* counts, so the folds hold out 29/31/31/31/31 lines rather than equal numbers
-   (`outputs/panel/panel_training_folds.csv`). Deterministic, but not the shuffled `KFold` the phrase
+   (`outputs/legacy/panel_void_8drug/panel_training_folds.csv`). Deterministic, but not the shuffled `KFold` the phrase
    usually implies.
 3. **It is one partition, not repeated CV.** The fold-to-fold spread quoted in `diagnostics.ipynb`
    comes from a single draw.
@@ -351,7 +351,7 @@ labels define the baseline they are scored against. `scripts/evaluation/dreval_n
 requires the column and refuses to run without it.
 
 ⚠️ The committed `panel_oof_predictions.csv` predates this and has no `fold` column, so that script
-correctly raises on it. It becomes runnable when `3_panel_training.ipynb` re-runs at R4 of the sweep.
+correctly raises on it. It becomes runnable when `4_training.ipynb` re-runs at R4 of the sweep.
 
 ---
 
@@ -382,7 +382,7 @@ as flags (`--use-rep`, `--drugs`, `--batch-size 128`, `--epochs 50`, `--lr`, `--
 `--dropout`, `--input-dropout`, `--loss {mse,huber}`, `--hidden-dims`, `--seed`); run artifacts are
 written by `create_run_dir`/`save_run` ([Step 05](05-multitask-results.md)).
 
-Both the CLI and `notebooks/2_training.ipynb` drive one training run through the same
+Both the CLI and `notebooks/4_training.ipynb (§B)` drive one training run through the same
 `train_multitask.train_rep(...)` function (datasets → per-drug-mean baseline → `OncoMLP` → `train_model`
 → `save_run`), returning the run dir, history, and per-drug MSE arrays. The notebook is the
 **reproducible PCA-vs-scGPT comparison**: it trains both reps at the matched 512-d width and writes

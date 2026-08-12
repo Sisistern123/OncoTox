@@ -19,16 +19,20 @@ All project documentation lives in [`docs/`](docs/):
   superseded, retracted or abandoned — nothing in it is a live result.
 - **[docs/TODO.md](docs/TODO.md)** — what is next and what blocks it. Read its banner first.
 
-### The pipeline
-
-![OncoTox pipeline](docs/figures/pipeline.png)
-
 ### Status against the plan
 
 ![OncoTox pipeline status overview](docs/figures/pipeline_overview.png)
 
-All figures live in [docs/figures/](docs/figures/) and are regenerated together with
-`uv run docs/make_figures.py`.
+All figures live in [docs/figures/](docs/figures/) and are built with `uv run docs/make_figures.py`.
+
+⛔ **The pipeline diagram is archived, not shown.** It, along with `model_architecture.png`,
+`loss_02_weights.png` and `loss_03_effect.png`, is derived from the targets h5ad or from a training
+run — and neither exists on the current target, since preprocessing has not re-run under the
+[freeze](docs/TODO.md) and the last training run used the void 8-drug panel. They are **not** built
+from the retired `auc` h5ad still on disk: a figure that can only be produced from a target the
+pipeline no longer writes is not reproducible by a standard run. `make_figures.py` skips each with a
+reason and they return by themselves at R4 — see
+[`docs/figures/archive/`](docs/figures/archive/).
 
 ## Layout
 
@@ -47,16 +51,23 @@ docs/                    # TODO.md, project_progress.md (index) + steps/ (01-06,
 
 ## Quickstart
 
-```bash
-# Preprocess (HVG-5000 variant, all CTRPv2 drugs; skips the external scGPT step if embeddings exist).
-# --score picks the CTRPv2 response target: auc (default, raw curve-fit AUC), auc_z (retired), or the
-# legacy mean_pv (dose-averaged viability). Each score writes its own targets h5ad.
-uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --score auc_z \
-    --start-at targets --skip-scgpt --all-drugs
+**The notebooks are the pipeline.** Stages 1–5 under [`notebooks/`](notebooks/README.md) run it end to
+end; each drives `scripts/preprocessing/pipeline.py`, one function per step. There is no CLI
+orchestrator — `run_preprocessing.py` was [archived](scripts/archive/README.md) on 12.08.2026, because
+the step order is the notebook numbering and a second copy of it in a CLI is a second thing to keep in
+step. To run headless:
 
-# Train multi-task (all 545 CTRPv2 drugs). MSE ≈ 1.0 on auc_z = no better than the drug's mean.
-uv run scripts/training/train_multitask.py --use-rep X_scGPT --score auc_z   # scGPT embeddings
-uv run scripts/training/train_multitask.py --use-rep X_pca   --score auc_z   # PCA baseline
+```bash
+# Preprocessing: stage 1 fetches the pinned CTRPv2 response table and converts SCP542;
+# stage 3 runs the scGPT embedding, targets, splits and PCA. Set SCGPT_PYTHON in stage 3's
+# bootstrap cell first — the scGPT step needs its own virtualenv and raises without it.
+# The target is auc_cc by default; ln_ic50_cc writes its own targets h5ad.
+uv run jupyter nbconvert --execute --inplace notebooks/1_data.ipynb
+uv run jupyter nbconvert --execute --inplace notebooks/3_representations.ipynb
+
+# Training still has a CLI (all 545 CTRPv2 drugs; the panel is applied as a column selection).
+uv run scripts/training/train_multitask.py --use-rep X_scGPT   # scGPT embeddings
+uv run scripts/training/train_multitask.py --use-rep X_pca     # PCA baseline
 ```
 
 See [docs/project_progress.md](docs/project_progress.md) for full commands, data layout, and results.

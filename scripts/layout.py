@@ -9,7 +9,7 @@ from pathlib import Path
 # Default locations for this machine (override with --data-root / CLI flags if needed).
 DEFAULT_DATA_ROOT = Path("/Users/selin/Desktop/OncoTox/data")
 # Vendored next to this file (03.08.2026); it still needs the separate scGPT venv, which
-# run_preprocessing.py reaches via --scgpt-python.
+# pipeline.scgpt reaches via its scgpt_python argument.
 # layout.py sits at scripts/ (it is the path contract for training and evaluation too, not only for
 # preprocessing), so the embedding script is one directory down rather than a sibling. Moved
 # 12.08.2026; `with_name` here silently pointed at a non-existent scripts/gen_embeds.py.
@@ -76,7 +76,7 @@ def resolve_data_root(explicit: Path | str | None = None) -> Path:
     """
     root = Path(explicit).expanduser().resolve() if explicit is not None else DEFAULT_DATA_ROOT
     if not root.is_dir():
-        raise SystemExit(f"Data root does not exist or is not a directory: {root}")
+        raise NotADirectoryError(f"Data root does not exist or is not a directory: {root}")
     return root
 
 
@@ -183,15 +183,23 @@ def add_data_args(
         default=score_default,
         help=(
             "CTRPv2 response score used as the target. Each score gets its own targets "
-            "h5ad, so auc and mean_pv runs can be compared head-to-head."
+            "h5ad, so auc_cc and ln_ic50_cc runs can be compared head-to-head without "
+            "rebuilding the shared convert/scgpt outputs."
         ),
     )
 
 
 def guard_output(path: Path, *, overwrite: bool, step: str) -> None:
-    """Refuse to clobber an existing artifact unless ``--overwrite`` is set."""
+    """Refuse to clobber an existing artifact unless ``overwrite`` is set.
+
+    Raises ``FileExistsError`` rather than ``SystemExit``: until 12.08.2026 the only caller was
+    ``run_preprocessing.py``, a CLI for which exiting was the right response. The callers are now
+    the numbered notebooks (via :mod:`scripts.preprocessing.pipeline`), where ``SystemExit`` is
+    both uncatchable by ``except Exception`` and rendered as the program exiting rather than as
+    one step declining to overwrite.
+    """
     if path.exists() and not overwrite:
-        raise SystemExit(
+        raise FileExistsError(
             f"[{step}] Output already exists (refusing to overwrite):\n  {path}\n"
-            f"Use --overwrite to replace it, or pick another --variant."
+            f"Pass overwrite=True to replace it, or build PipelinePaths with a different variant."
         )

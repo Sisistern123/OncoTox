@@ -42,34 +42,55 @@ A standalone LaTeX write-up of the current state lives in [`../report/`](../repo
 
 ## Pipeline overview (at a glance)
 
-![OncoTox pipeline](./figures/pipeline.png)
+> ⛔ **The pipeline diagram is [archived](./figures/archive/), not shown here (12.08.2026).** It is
+> derived from the targets h5ad and from a training run, and neither exists on the current target:
+> preprocessing has not re-run under the [freeze](TODO.md), and the last training run used the void
+> 8-drug panel. It is deliberately **not** rebuilt from the retired `auc` h5ad still on disk — a
+> figure reproducible only from a target the pipeline no longer writes is not reproducible by a
+> standard run. The same applies to `model_architecture.png`, `loss_02_weights.png` and
+> `loss_03_effect.png`. All four return at R4; `make_figures.py` skips each with a printed reason
+> until then.
 
-What actually runs, stage by stage: the sparse (cell line × drug) response matrix, the drug panel
+What the pipeline does, stage by stage — the sparse (cell line × drug) response matrix, the drug panel
 funnel, the cell-line-grouped folds, the two representations that are compared, the per-cell MLP,
-the weighted loss, and the out-of-fold scoring. Details in
-[Step 03](steps/03-model-and-training-design.md); the current numbers in the working report.
+the weighted loss, and the out-of-fold scoring — is in
+[Step 03](steps/03-model-and-training-design.md), and the notebooks that run it are
+[`notebooks/`](../notebooks/README.md) stages 1–5.
 
 ![OncoTox pipeline status overview](./figures/pipeline_overview.png)
 
-Green = done / on-plan · amber = addition or partial · red (dashed) = still missing.
-Stages 1–6 are complete; the red boxes (cross-database PRISM/GDSC heads and the XAI stretch goal)
-are the remaining work.
+Green = done / on-plan · amber = addition beyond plan · grey = results withdrawn · red (dashed) = still
+missing. Stages 1–3 are complete; **stages 4 and 5 have had every model result withdrawn** (12.08.2026 —
+the target was replaced, the panel rebuilt, and the representations predate the preprocessing
+corrections), and they are re-measured at R4. The red boxes — cross-database PRISM/GDSC heads and the
+XAI stretch goal — are the unstarted work. This figure is a pure drawing and carries no data, so it was
+corrected and re-rendered on 12.08.2026 without touching a frozen artifact.
 
 ### The figure set
 
+**Current — pure drawings, always reproducible:**
+
 | figure | shows | argument lives in |
 |---|---|---|
-| `figures/pipeline.png` | the pipeline, stage by stage | [Step 03](steps/03-model-and-training-design.md) |
 | `figures/pipeline_overview.png` | status against the written plan | this file |
-| `figures/model_architecture.png` | one cell in, one AUC per panel drug out | [Step 03](steps/03-model-and-training-design.md) |
 | `figures/loss_01_objective.png` | what the objective is made of | working report §4 |
-| `figures/loss_02_weights.png` | one drug's label density and the weight curve it produces | working report §4 |
-| `figures/loss_03_effect.png` | what the weighting did: spread up, ranking flat | working report §9 |
 
-All six are regenerated together with `uv run docs/make_figures.py` (source:
-`docs/make_figures.py`). Panels drawn from data read `docs/figures/figure_data.npz` — a small cache
-of line-level labels, fold ids and the observation mask, rebuilt from the targets h5ad when absent —
-and the CSVs in `notebooks/outputs/panel/`, so no figure can drift from the numbers.
+**[Archived](./figures/archive/) 12.08.2026 — derived from data, and not reproducible today:**
+
+| figure | shows | why it is archived |
+|---|---|---|
+| `figures/archive/pipeline.png` | the pipeline, stage by stage | needs the targets cache *and* the panel CSVs |
+| `figures/archive/model_architecture.png` | one cell in, one AUC per panel drug out | needs the targets cache |
+| `figures/archive/loss_02_weights.png` | one drug's label density and the weight curve it produces | needs the targets cache |
+| `figures/archive/loss_03_effect.png` | what the weighting did: spread up, ranking flat | needs a **training output**, so no h5ad can rebuild it |
+
+The first three read `figure_data.npz`, rebuilt from the **`auc_cc`** targets h5ad — which has never
+been written, because preprocessing has not re-run under the [freeze](TODO.md). They are deliberately
+**not** built from the retired `auc` h5ad still on disk: a figure reproducible only from a target the
+pipeline no longer writes is not reproducible by a standard run. `uv run docs/make_figures.py` builds
+the two current figures and skips these four with a printed reason; every skip clears by itself at R4.
+The drug panel is read from `notebooks/outputs/panel/panel.csv` rather than duplicated in
+`make_figures.py`, which is how the old 8-drug copy went stale.
 
 ---
 
@@ -104,10 +125,15 @@ Step 08   + clinical fine-tuning               (continuous pre-train → binary 
 - A training example = **one single cell**; input = a 512-dim scGPT embedding (`X_scGPT`) or PCA
   (`X_pca`). Cell line / cancer type / drug are **not** input features.
 - Target = a CTRPv2 response score chosen with `--score`, defined per **(cell line × drug)** and
-  broadcast to every cell of that line. **Default since 27.07.2026: raw `auc`** — the grid-normalized
-  curve-fit AUC, winsorized at 1.1, in native viability units. `auc_z` (per-drug z-scored) was the
-  default 13.07–27.07 and is [retired](./steps/corrections-and-dead-ends.md#auc_z-as-the-training-target);
-  the legacy `mean_pv` still backs Steps 04–05 and is not comparable to either.
+  broadcast to every cell of that line. **Default since 11.08.2026: `auc_cc`** — the area under
+  DrEval's CurveCurator re-fit of CTRPv2's raw dose-response data, in native viability units, with
+  **no winsorization and no quality filter**
+  ([Step 01](./steps/01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026)).
+  `ln_ic50_cc` is the alternative measure from the same fit and is not the default: it is undefined
+  for ~40 % of curves by construction. Three earlier targets are
+  [retired](./steps/corrections-and-dead-ends.md#auc_z-as-the-training-target) and none is comparable
+  to `auc_cc` — `auc` (divided by the wrong quantity), `auc_z` (per-drug z-scored `auc`), and the
+  legacy `mean_pv` that still backs Steps 04–05.
 - Training is **fully supervised regression** (masked MSE/Huber). scGPT is a **frozen** self-supervised
   feature prior; the mask handles label sparsity but does **not** make it semi-supervised.
 
@@ -144,14 +170,14 @@ per variant: [Step 02](./steps/02-preprocessing-and-embeddings.md#hvg-5000-pipel
 > PCA-vs-scGPT result from this page** — it is an index and holds none of its own.
 
 Results: [Step 04](./steps/04-single-task-results.md) (single-task), [Step 05](./steps/05-multitask-results.md)
-(multi-task); per-drug coverage & learnability in `notebooks/data_and_harmonization/drug_coverage.ipynb`. Action list:
+(multi-task); per-drug coverage & learnability in `notebooks/analysis/harmonization/drug_coverage.ipynb`. Action list:
 [TODO.md](./TODO.md).
 
 > **PCA width matched to scGPT (27.06.2026).** The original matrix used a **~50-d** PCA (scanpy
 > default) + a smaller `(64,32)` PCA trunk, both of which handicapped PCA. PCA now keeps **512
 > components** (`add_pca.DEFAULT_N_COMPS`, override `--pca-n-comps`) on the matched `(128,64)` trunk,
 > so PCA and scGPT share input width *and* parameter count — the last comparison confound is closed.
-> The **full 8-run matrix was re-run at 512-d** (reproducible in `notebooks/2_training.ipynb`; run
+> The **full 8-run matrix was re-run at 512-d** (reproducible in `notebooks/4_training.ipynb (§B)`; run
 > dirs `runs/20260627_1913xx_*`); the numbers above and in [Step 05](./steps/05-multitask-results.md)
 > are these 512-d results and supersede the 14.06 (~50-d) matrix.
 
@@ -173,16 +199,20 @@ Run artifacts and the ledger: [Step 05](./steps/05-multitask-results.md#run-vers
 
 Artifacts that current claims rest on, with the step that owns each number:
 
+Paths updated 12.08.2026: everything a standard pipeline run cannot recreate moved under
+`legacy/`, and the rows below follow it. A `legacy/` prefix means the producing notebook is archived
+or its criterion was retracted — nothing regenerates those.
+
 | Path (under `notebooks/outputs/`) | Owns the discussion |
 |---|---|
-| `data/target_distribution.png`, `data/drug_coverage.png`, `data/ctrp_drug_learnability.csv` | [Step 05](./steps/05-multitask-results.md) |
-| `data/gdsc_drug_learnability.csv` | [Step 01](./steps/01-datasets-and-harmonization.md) — not part of the modelling work |
+| `data/target_distribution.png`, `data/drug_coverage.png` | [Step 05](./steps/05-multitask-results.md) — re-run at R5, the line count moves 180 → 181 |
 | `embeddings/umap_cancertype_pca_vs_scgpt.png`, `umap_sweep_cancertype.png`, `variants.png` | [Step 02](./steps/02-preprocessing-and-embeddings.md#latent-space-validation-umap-fig-3--fig-4) |
-| `target/target_comparison.*`, `target/loss_weighting_bug.png`, `target/seed_stability.csv` | [Step 03](./steps/03-model-and-training-design.md), [Corrections](./steps/corrections-and-dead-ends.md) |
-| `ablations/rescue_k545.*`, `ablations/ablation_*` | [Step 03](./steps/03-model-and-training-design.md#these-hyperparameters-are-not-worth-tuning-ablated-13072026) |
-| `dreval/dreval_lco*.{png,csv}`, `dreval/dreval_normalized*.csv` | [Step 05](./steps/05-multitask-results.md) |
-| `learnability/*` | [Step 05](./steps/05-multitask-results.md) |
-| `diagnostics/*` | [Step 05](./steps/05-multitask-results.md), [Corrections](./steps/corrections-and-dead-ends.md) |
+| `dreval/dreval_lco*.{png,csv}`, `dreval/dreval_normalized*.csv` | [Step 05](./steps/05-multitask-results.md) — `dreval_benchmark` is blocked on review item 11, then R5 |
+| `diagnostics/*` | [Step 05](./steps/05-multitask-results.md), [Corrections](./steps/corrections-and-dead-ends.md) — re-runs at R5 |
+| `legacy/target/target_comparison.*`, `legacy/target/loss_weighting_bug.png`, `legacy/target/seed_stability.csv` | [Step 03](./steps/03-model-and-training-design.md), [Corrections](./steps/corrections-and-dead-ends.md) |
+| `legacy/ablations/rescue_k545.*`, `legacy/ablations/ablation_*` | [Step 03](./steps/03-model-and-training-design.md#these-hyperparameters-are-not-worth-tuning-ablated-13072026) |
+| `legacy/learnability/*` | [Step 05](./steps/05-multitask-results.md) — criterion retracted |
+| `legacy/ctrp_drug_learnability_mean_pv.csv`, `legacy/gdsc_drug_learnability.csv` | [Step 01](./steps/01-datasets-and-harmonization.md) — the GDSC list was never part of the modelling work |
 | `panel/panel.csv`, `panel/literature_panel_candidates.csv` | **current** — the [rebuilt 11-drug panel](./steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026) and its 57 candidates |
 | `panel/*` (everything else) | ⛔ computed on the [voided panel](./steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it) |
 | `legacy/training_545_mean_pv/*` | superseded — the `mean_pv` 8-run matrix, CV, per-drug ρ and gene-set sweep; numbers in [Step 05](./steps/05-multitask-results.md), status in [Corrections](./steps/corrections-and-dead-ends.md#the-8-run-matrix-conclusions) |

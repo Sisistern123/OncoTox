@@ -41,7 +41,7 @@ The gene-set size is not critical: an earlier sweep from
 (\code{notebooks/07}), so the \NHvg-gene selection is used throughout.
 \revision{\emph{Correction, 05.08.2026.} That sweep was computed on the legacy \code{mean\_pv} response
 score rather than the \code{auc} target used throughout this report, so its numbers are superseded; it
-now lives in \code{notebooks/data\_and\_harmonization/verify\_variants.ipynb}, \S9, and the reference to
+now lives in \code{notebooks/analysis/qc/verify\_variants.ipynb}, \S9, and the reference to
 \code{notebooks/07} above is stale. Its \emph{all-genes} arm is also not the full transcriptome as far as
 scGPT is concerned: the model reads at most 1{,}200 genes per cell, drawn at random from that cell's
 non-zero genes, and in the all-genes variant every cell exceeds that cap. What the sweep compared for
@@ -257,9 +257,9 @@ of the available lines. Selecting on it would reintroduce the potency filter des
 appearance of a data-quality rule. Where the two response measures are compared, the comparison is
 restricted at evaluation to compounds with sufficient IC50 coverage, with the per-compound counts
 reported. The selection is implemented in
-\code{notebooks/drug\_selection/literature\_panel.ipynb}, which reads only the response table and writes
+\code{notebooks/2\_drug\_selection.ipynb}, which reads only the response table and writes
 the panel with its citations to \code{notebooks/outputs/panel/panel.csv}; the compound identifier
-resolution is in \code{scripts/preprocessing/drug\_annotation.py} and
+resolution is in \code{scripts/annotation/drug\_annotation.py} and
 \code{scripts/sources/pubchem.py}.
 
 \subsection{Representation and model}
@@ -310,59 +310,62 @@ splits are three-way. The fifteen per cent is arbitrary --- it was preferred to 
 neighbouring fold, which would have cost twenty per cent of the training lines.
 \end{revisionblock}
 
-\subsection{Response target and per-drug standardization}
+\subsection{Response target}
 \label{sec:target}
 
-The choice of training target requires care. CTRPv2 provides a dose-averaged percent-viability score,
-denoted \code{mean\_pv}, and an integrated area under the fitted dose-response curve, \code{auc}. The
-initial experiments used \code{mean\_pv}; from 13.07.2026 the target was the curve-fit AUC standardized
-per drug across cell lines, \code{auc\_z}, defined for cell line $i$ and drug $j$ as
-$\mathrm{auc\_z}_{ij} = (\mathrm{auc}_{ij} - \mu_j)/\sigma_j$, where $\mu_j$ and $\sigma_j$ are the mean and
-standard deviation of that drug's AUC over the cell lines.
+The target is \code{auc\_cc}, the area under the fitted dose-response curve as re-fitted by DrEval
+\cite{dreval} from CTRPv2's raw measurements. Their reprocessing normalizes each replicate against its
+own no-drug control and fits one curve with CurveCurator, folding replicate disagreement into the fit
+rather than averaging replicates before fitting --- which their Methods argue is the practice that
+avoids misleading response measures where replicates diverge sharply. A \emph{higher} value means a
+\emph{less} sensitive cell line, and 1.0 is the no-effect level, because the fit pins the
+low-concentration asymptote to the vehicle control \cite{ctrpv2}.
 
-Two considerations motivate the standardization. First, the per-drug response variance is highly
-heterogeneous across the \NDrugs{} compounds, with the per-drug standard deviation ranging from 0.034 to
-0.302, a factor of roughly 80 in squared error. In a shared multi-task objective with one masked
-squared-error term per drug, the contribution of a drug scales with its variance, so a small number of
-high-variance compounds dominate the shared representation irrespective of whether that variance carries
-any learnable signal; the three drugs with the largest spread (\code{ifosfamide}, \code{fqi-2} and
-\code{bafilomycin a1}) in fact fail to separate the cell lines at all. Standardizing each drug to unit
-variance is algebraically equivalent to weighting each head by $1/\sigma_j^2$, which removes this
-imbalance and is the regression analogue of loss reweighting under class imbalance \cite{kendall}. Second,
-per-drug standardization changes the question from absolute potency, which is a property of the drug, to
-the relative sensitivity of a cell line for a given drug, which is the quantity of interest for
-personalized prediction. Because the Spearman correlation within a drug is invariant to an affine per-drug
-transform, the standardization does not alter any single-drug evaluation metric; its only effect is on the
-multi-task coupling. The target is implemented in \code{scripts/preprocessing/ctrp\_to\_h5ad.py}.
+The same fit yields a second measure, \code{ln\_ic50\_cc}, the natural log of the IC50. It is not the
+default and is used only where the two are compared, because it is undefined for roughly 40\% of curves
+by construction: an IC50 falling well outside the measured dose range is discarded, which is the case
+for most compounds that arrest rather than kill. Selecting on its availability would therefore be
+selecting on potency. Each measure is written to its own targets file, so the two can be compared
+without either overwriting the other. Implemented in
+\code{scripts/preprocessing/ctrp\_to\_h5ad.py}; the source is pinned to one Zenodo record by
+\code{scripts/layout.py}.
 
-\begin{revisionblock}
-\textbf{\code{auc\_z} was retired on 27.07.2026; the target is now the raw curve-fit AUC, winsorized at
-1.1 (added 10.08.2026).} Every result reported here was produced on \code{auc\_z} and is unaffected by
-the change --- but the pipeline default is now \code{auc}, and the reasoning above no longer describes
-what it does. Decomposing \code{auc\_z} into its two operations shows that neither was ever visible to
-the evaluation. The centering is inert: the per-drug head bias absorbs the drug mean, and a per-drug
-Spearman correlation is invariant to a shift. The scaling is not a property of the target at all but a
-loss-weighting scheme in disguise, since dividing drug $j$ by $\sigma_j$ is exactly weighting its
-squared-error term by $1/\sigma_j^2$. Both are within-drug monotone transforms, so for a fixed model
-the raw AUC with per-drug loss weights and \code{auc\_z} score identically --- which is how the change
-was validated, by requiring it to reproduce the earlier numbers before anything new was measured.
+No winsorization and no quality filter are applied. The response is used as the source publishes it:
+the benchmark this work follows applies no clipping either, in order to stay comparable with earlier
+studies and to avoid discarding data.
 
-Two things motivated moving that weighting out of the target and into the loss. It can then be
-estimated per fold on training lines only, which closed a leak: $\mu_j$ and $\sigma_j$ had been
-computed once over all \NLines{} cell lines, validation and test included, and baked into the stored
-target matrix. And weighting by $1/\sigma_j^2$ turns out to be the wrong prior on a small panel, where
-it amplifies precisely the drugs whose spread is noise rather than signal; the variance imbalance that
-motivated it is a $K=\NDrugs{}$ problem, and on a literature-selected panel the ratio of per-drug
-standard deviations is a factor of about 2.5 rather than 80. The per-drug weight is therefore
-\emph{off} by default. Full decomposition and the superseded numbers:
-\code{docs/steps/03-model-and-training-design.md} and
-\code{docs/steps/corrections-and-dead-ends.md}.
-\end{revisionblock}
+\revision{\emph{Two earlier targets are not described here, deliberately (12.08.2026).} This subsection
+previously defined \code{auc\_z}, a per-drug standardized target used from 13.07.2026 to 27.07.2026,
+and argued for it at length. Both it and the \code{auc} measure it standardized have been removed from
+the pipeline, and describing a retired target in Methods invites it to be read as part of the current
+one. What survived the retirement is not a target at all but a finding about the objective --- that a
+shared multi-task loss can be dominated by a few high-variance compounds --- and that is stated in
+Section~\ref{sec:discussion}, where it belongs. The full decomposition, the leak it closed, and the
+superseded numbers are in \code{docs/steps/03-model-and-training-design.md} and
+\code{docs/steps/corrections-and-dead-ends.md}.}
 
 A minority of cell-line--drug combinations were screened by CTRPv2 in two separate experiments. Their
 two measurements are averaged into the single value used as the target, without weighting by replicate
 count and without excluding pairs whose measurements disagree; where a combination was screened once,
-that measurement is used as is. The disagreement between repeated measurements is nonetheless
+that measurement is used as is.
+\begin{revisionblock}
+\textbf{The pipeline no longer averages anything, and has not since 11.08.2026.} The sentence above
+describes the previous target build and is retained only because the measurement that follows it was
+made against that build. Under the current source, replicate disagreement is handled inside the curve
+fit rather than after it: DrEval fit one curve across a compound's replicates, so a repeated
+measurement arrives already reconciled. What reaches the pipeline is one fitted value repeated once
+per source experiment, and \code{ctrp\_to\_h5ad.\_deduplicate\_measurements} drops those exact
+duplicates and \emph{raises} on any pair that is not identical, rather than reconciling it. The
+averaging rule this paragraph states could therefore not run today; a disagreeing pair is an error
+someone has to decide about, which is what makes the decision revisitable.
+
+The numbers below are unaffected as measurements but are stale as description. They were computed on
+CTRPv2's own 2015 distribution, which stopped being the target source on the same date, so they
+quantify the problem that motivated the switch rather than a property of the target now in use. They
+are due for re-derivation on the current source, and the notebook that produced them is archived
+because it reads tables the pipeline no longer touches.
+\end{revisionblock}
+The disagreement between repeated measurements is nonetheless
 substantial and is reported here rather than left implicit, because it sets the scale against which any
 correlation in Section~\ref{sec:results} should be read. Of the cell-line--drug pairs inside the
 SCP542 intersection, \NRepPairs{} were screened twice, never more. Expressed relative to the spread of
@@ -376,8 +379,8 @@ far this generalizes: the repeats come from only \NRepLines{} cell lines, each r
 almost the whole compound set, and CTRPv2 did not select those lines at random. The figure therefore
 indicates that a material share of the target is screening noise, but it does not establish a numeric
 ceiling on the achievable correlation. Quantified in
-\code{notebooks/data\_and\_harmonization/replicate\_variation.ipynb}, with the underlying pairs in
-\code{notebooks/outputs/data/replicate\_variation.csv}.
+\code{notebooks/archive/replicate\_variation.ipynb}, with the underlying pairs in
+\code{notebooks/outputs/legacy/replicate\_variation.csv}.
 
 \subsection{Evaluation}
 
@@ -395,3 +398,21 @@ reimplementation. As recommended by the framework, metrics are reported after th
 effects have been removed from both the true and predicted responses, and they are pooled over all
 cell-line-drug pairs rather than averaged per drug, so they are not directly comparable to the per-drug
 correlations above.
+\begin{revisionblock}
+\textbf{Under this split design the cell-line effect is not in fact removed (added 12.08.2026).} The
+sentence above describes the normalization as the framework defines it, and the implementation is
+theirs unmodified --- but stating it that way overclaims what the metric controls for here, and
+Section~\ref{sec:discussion} already says so. The baseline subtracted is
+\code{overall mean + cell-line effect + drug effect}, fitted on the training folds. Under
+leave-cell-line-out every scored line is by construction absent from those folds, so its effect
+resolves to zero and the subtraction removes the \emph{drug} effect alone.
+
+This is correct behaviour for a prediction benchmark --- no model can know an unseen line's effect ---
+but it means a high normalized score is not evidence that a model has learned anything
+drug-specific. Demonstrated rather than argued: a synthetic predictor emitting nothing but
+\code{mean + line effect + drug effect}, with no drug-specific signal whatsoever, scores a normalized
+Spearman correlation of \textbf{0.98} under this protocol, pooled and per drug alike. The question of
+how much of a per-drug correlation is drug-specific biology rather than general cell-line fragility is
+therefore left open by this metric, and answering it requires a diagnostic that reads held-out labels
+--- which is not a metric and is deferred rather than folded into the benchmark.
+\end{revisionblock}

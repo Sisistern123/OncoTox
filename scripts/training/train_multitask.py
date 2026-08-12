@@ -40,6 +40,7 @@ from sklearn.model_selection import GroupKFold
 from scripts.model.OncoMLP import DEFAULT_HIDDEN_DIMS as OncoMLP_DEFAULT_HIDDEN_DIMS
 from scripts.model.OncoMLP import OncoMLP, init_head_bias_
 from scripts.model.dataset import MultiDrugDataset
+from scripts.training.cv import grouped_folds, inner_holdout, per_drug_line_mean
 from scripts.training.density_weighting import line_level
 from scripts.training.training_utils import (
     TrainConfig,
@@ -92,7 +93,8 @@ def _parse_args():
         nargs="+",
         type=int,
         default=None,
-        help="Override hidden dims (default: 64,32 for X_pca; 128,64 for X_scGPT).",
+        help="Override hidden dims (default: 128,64 for both X_pca and X_scGPT -- the trunk is "
+             "matched so that only the representation differs).",
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--tag", default=None, help="Logging tag (default: --use-rep value).")
@@ -228,7 +230,7 @@ def train_rep(
     """Train one multi-task OncoMLP for ``use_rep`` and persist a run dir.
 
     This is the single source of truth for a training run; both the CLI
-    (``main``) and ``notebooks/07_training.ipynb`` call it so they cannot drift.
+    (``main``) and ``notebooks/4_training.ipynb`` call it so they cannot drift.
 
     ``init_head_bias`` starts each head at that drug's mean over the **train split's cell
     lines** (``OncoMLP.init_head_bias_``). Added 12.08.2026: this path had never done it, so on a
@@ -293,8 +295,6 @@ def train_rep(
     )
     if init_head_bias:
         # Train split only. Per line, not per cell -- see cv.per_drug_line_mean.
-        from scripts.training.cv import per_drug_line_mean
-
         if train_dataset.groups is None:
             raise ValueError(
                 "train_dataset has no cell-line labels, so the per-drug means cannot be taken per "
@@ -454,10 +454,7 @@ def cv_evaluate(
     device = pick_device()
 
     # Same partition helper as scripts.training.cv.oof_predictions, so metrics computed here and
-    # predictions produced there refer to identical folds. Imported inside the function because cv
-    # imports this module for nothing else -- see DEFAULT_HIDDEN_DIMS above.
-    from scripts.training.cv import grouped_folds, inner_holdout, per_drug_line_mean
-
+    # predictions produced there refer to identical folds.
     idx, fold_split = grouped_folds(
         adata, n_splits=n_splits, group_col=group_col, eligible_splits=eligible_splits
     )

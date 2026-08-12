@@ -226,7 +226,7 @@ on:
 > PRISM's coverage of failed drugs was attractive.
 
 > **One GDSC-derived artifact exists and is not part of the modelling work.** An initial
-> informative-drug list was produced from `notebooks/data_and_harmonization/drug_coverage.ipynb` and shared
+> informative-drug list was produced from `notebooks/analysis/harmonization/drug_coverage.ipynb` and shared
 > on request outside this project — a CTRPv2 version and a GDSC version
 > (`notebooks/outputs/legacy/gdsc_drug_learnability.csv`, alongside
 > `ctrp_drug_learnability_mean_pv.csv`; both moved to `legacy/` when the outputs were reorganized). Both
@@ -275,7 +275,7 @@ The portal ToS stands as the operative term, and the FAIRER **F** item is closed
 
 ## Overlap & coverage audit (03.04.2026)
 
-The audit lives in the standalone notebook `notebooks/data_and_harmonization/drug_catalog.ipynb` — a one-off
+The audit lives in the standalone notebook `notebooks/analysis/harmonization/drug_catalog.ipynb` — a one-off
 exploratory analysis (not part of the training pipeline) that produces the plan's **Fig. 1 / Fig. 2**
 and writes the drug-catalog CSVs. Its purpose is to pick the **highest-confidence intersection** to
 start from before any modeling (plan sub-goal 3).
@@ -403,7 +403,7 @@ under a name that sounds like a data-quality rule. Restricting an `auc_cc`-vs-`l
 drugs with enough IC50s is legitimate; doing it at selection time is not.
 
 **What the target build produces.** Counts from
-`notebooks/data_and_harmonization/cell_line_join_verification.ipynb` §3, which calls the pipeline's own
+`notebooks/analysis/harmonization/cell_line_join_verification.ipynb` §3, which calls the pipeline's own
 loader, de-duplication and drug filter rather than reimplementing them:
 
 | measure | lines | drugs | observed | density | min | median | max |
@@ -509,7 +509,7 @@ but which remain in the h5ad and therefore still enter HVG selection, scaling an
 Walked as review item 6. The **cell-line** join was audited on 10.08.2026; the **drug** join never had
 been, and it is worse. Two files describe the same 545 compounds — DrEval's `CTRPv2.csv` holds the
 response values, and `data/drug/all_sources_drug_catalog.csv` (built from CTRP's own
-`v20.meta.per_compound.txt` in `notebooks/data_and_harmonization/drug_catalog.ipynb`) holds approval
+`v20.meta.per_compound.txt` in `notebooks/analysis/harmonization/drug_catalog.ipynb`) holds approval
 status, protein target and mechanism. Every consumer joined them **by name**.
 
 **102 of 545 do not match by name**, because DrEval renamed to preferred names, changed separators
@@ -564,7 +564,7 @@ which filtered on absolute potency and so discarded every cytostatic compound, a
 whose candidate list was ranked on our AUCs before any citation was consulted. The rebuild therefore
 takes the criterion **entirely outside our labels**.
 
-Produced end to end by `notebooks/drug_selection/literature_panel.ipynb` →
+Produced end to end by `notebooks/2_drug_selection.ipynb` →
 `notebooks/outputs/panel/panel.csv`. It reads no pipeline artifact, only the response CSV, so it runs
 before the sweep and does not go stale when the h5ads do.
 
@@ -669,6 +669,13 @@ selecting on it would rebuild the discredited gate. The `auc_cc`-versus-`ln_ic50
 restricted at **evaluation** instead, on whatever subset of the panel has enough IC50s, with per-drug
 counts reported alongside. Within the panel those run from cisplatin's 14 to crizotinib's 174.
 
+*(A second write-up of the panel/target-build decision stood here from 12.08.2026 until the same day.
+It gave split eligibility as the deciding reason, which is not the ruling: the panel stays out of the
+target build because it determines how many heads the model has. Removed rather than corrected in
+place, because the decision is already recorded once, in
+[Step 03](03-model-and-training-design.md#the-drug-panel-is-a-training-time-choice-not-a-property-of-the-target-file-12082026),
+and this file points at it above.)*
+
 ### Replicate experiments were double-counted (10.08.2026)
 
 > ⛔ **Moot since 11.08.2026. The code this describes no longer exists.** `_load_ctrp_long` and the `v20.*` readers were removed
@@ -719,7 +726,7 @@ Separate from the double-counting above: some (cell line, drug) combinations rea
 **twice**, in two different experiments. `ctrp_to_h5ad.py::_build_drug_table` averages them into the
 single value that becomes the target. How far apart those two measurements are was never examined
 until now — quantified in `notebooks/archive/replicate_variation.ipynb`, artifacts
-`notebooks/outputs/data/replicate_variation.{png,csv}`. **That notebook was archived on 11.08.2026**:
+`notebooks/outputs/legacy/replicate_variation.{png,csv}`. **That notebook was archived on 11.08.2026**:
 it reads CTRPv2's own `v20.*` tables, which are no longer the target source, so it can no longer be
 re-run against what the pipeline uses. The numbers below are its output and stand as measured.
 

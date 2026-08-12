@@ -9,24 +9,39 @@ Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition**.
 
 ---
 
-## The orchestrator runs everything (`run_preprocessing.py`)
+## The steps, and who runs them (`pipeline.py`)
 
-One entry point builds a complete, trainable h5ad from raw files:
-`scripts/preprocessing/run_preprocessing.py`. It derives all paths once from
-`(--data-root, --variant, --score)` via `layout.py`, then runs **five steps in a fixed order** —
-`STEP_ORDER = [fetch → convert → scgpt → targets → splits → pca]` — writing only under
+**Six steps in a fixed order** — `fetch → convert → scgpt → targets → splits → pca` — building a
+complete, trainable h5ad from raw files. Everything is written under
 `processed/scRNAseq_SCP542/<variant>/`, except `fetch`, which caches third-party data under
-`metadata/`. You normally never call the individual scripts by hand:
-the gene-set variant is chosen with `--variant {hvg5000,all_genes}`, the **response measure** with
-`--score {auc_cc,ln_ic50_cc}` ([Step 03](03-model-and-training-design.md)), the drug scope with
-`--all-drugs` / `--min-cell-lines`, `--start-at <step>` resumes mid-pipeline, `--skip-scgpt` reuses
-existing embeddings, and `--overwrite` is required to replace the guarded `convert`/`scgpt` outputs
-(everything is seeded via `--seed`, default 42).
+`metadata/`. All paths derive once from `(data_root, variant, score)` via `layout.py`, and everything
+is seeded at 42.
 
-`--variant` and `--score` are the **two axes of the output layout**: the variant picks the folder,
-the score picks the targets filename. Every script that touches a targets file takes both flags
-(`layout.add_data_args`), so an `auc_cc` run and an `ln_ic50_cc` run can coexist and be compared
-without rebuilding the expensive `convert`/`scgpt` outputs, which they **share**.
+Each step is one function in `scripts/preprocessing/pipeline.py`, and each owns the guard and the
+preconditions belonging to it — `convert` and `scgpt` refuse to overwrite their outputs without
+`overwrite=True`, `targets` refuses to run without the embedding and the response table, `pca`
+refuses without `split_ctrp`. So a step cannot run out of order regardless of who calls it.
+
+**The order itself is not in the code.** It is the numbering of the notebooks:
+[`1_data`](../../notebooks/1_data.ipynb) runs `fetch` and `convert`;
+[`3_representations`](../../notebooks/3_representations.ipynb) runs the other four, with
+[`2_drug_selection`](../../notebooks/2_drug_selection.ipynb) between them because it needs the roster
+and the response table and nothing else.
+
+> ⚠️ **Rewritten 12.08.2026.** This section previously described `scripts/preprocessing/run_preprocessing.py`,
+> a CLI holding the same six steps behind `STEP_ORDER` and `--start-at`, and said *"you normally never
+> call the individual scripts by hand"*. That script was
+> [archived](../../scripts/archive/README.md) when the notebooks were renumbered into five end-to-end
+> stages: the ordering half became theirs, and a second copy of the order in a CLI is a second thing to
+> keep in step with them. **There is no CLI replacement**, and the flags this section used to document
+> — `--start-at`, `--skip-scgpt`, `--all-drugs`, `--overwrite` — no longer exist. Anything selective is
+> now a direct call to the step you want, which is what one-function-per-step buys; see
+> [Reproduce](#reproduce). *(It also said "five steps" while listing six.)*
+
+`variant` and `score` are the **two axes of the output layout**: the variant picks the folder, the
+score picks the targets filename. Both are carried on `PipelinePaths`, and the scripts that still have
+CLIs take them as flags (`layout.add_data_args`), so an `auc_cc` run and an `ln_ic50_cc` run coexist
+and can be compared without rebuilding the expensive `convert` / `scgpt` outputs, which they **share**.
 
 Since 11.08.2026 the measure names carry a `_cc` suffix, for CurveCurator. That is deliberate rather
 than cosmetic: the previous `auc` was a *different quantity* computed from CTRP's own distribution and
@@ -141,7 +156,7 @@ the genes it can embed.
 
 Changing the gene set means re-running `convert`, which forces a re-embed and a re-PCA; that is why
 `hvg5000` and `all_genes` live in **separate folders that never share files** (`guard_output`
-enforces it). `notebooks/data_and_harmonization/verify_variants.ipynb` checks these gene counts and the `X_pca` source at
+enforces it). `notebooks/analysis/qc/verify_variants.ipynb` checks these gene counts and the `X_pca` source at
 any time.
 
 ### The expression transform is the dataset's own (05.08.2026)
@@ -281,7 +296,7 @@ previously stated the file was versioned in the repo, which was untrue when writ
 
 The consequence is bounded and was accepted rather than patched (Selin, 12.08.2026): the assignment on
 disk is reproducible from the targets h5ad at seed 42, and it is in any case recoverable from a
-committed artifact — `outputs/panel/panel_oof_predictions.csv` names all **153** train+val lines, so the
+committed artifact — `outputs/legacy/panel_void_8drug/panel_oof_predictions.csv` names all **153** train+val lines, so the
 test set is the labelled lines it omits. Nothing is lost by letting the sweep redraw, and every number
 scored on the current split is void on target and panel grounds anyway. **`frozen_split` writes the file
 itself when it is missing, so R2 creates it; it is committed then**, which is the point at which the
@@ -289,9 +304,18 @@ guard starts protecting anything. The reason is that
 eligibility is *not* stable — a line qualifies if it carries at least one CTRP label, so changing the
 drug panel or `ctrp_to_h5ad`'s filters silently moves lines between train, val and test, and runs from
 either side of the change look comparable when they are not. A line present in the data but missing from
-the frozen file raises rather than being assigned. **This will hard-fail the panel rebuild**, which is
-the intended behaviour: regenerating is a deliberate act that invalidates comparability with everything
-run before it.
+the frozen file raises rather than being assigned: regenerating is a deliberate act that invalidates
+comparability with everything run before it.
+
+> ⚠️ **Corrected 12.08.2026.** This paragraph used to end *"**This will hard-fail the panel rebuild**,
+> which is the intended behaviour"*. That is no longer true, and the reason is a decision taken the same
+> day: **the panel does not feed `ctrp_to_h5ad`**
+> ([Step 03](03-model-and-training-design.md#the-drug-panel-is-a-training-time-choice-not-a-property-of-the-target-file-12082026)).
+> `M_ctrp` is built over every drug clearing `--min-cell-lines`, so a panel revision does not change
+> which lines carry at least one label, does not change eligibility, and therefore cannot trip the
+> guard. The coupling this sentence described was real while the panel *could* reach the target matrix;
+> severing it is what removed the hard-fail. Changing `--min-cell-lines` or the response source still
+> moves eligibility and still trips it — those remain genuine re-freeze events.
 
 **What it invalidates.** Every `X_pca` on disk — and therefore every PCA number in these docs and in
 the report — predates this change. ⛔ Nothing is recomputed until the review is finished; see the
@@ -421,7 +445,7 @@ Three reasons, in descending order of weight.
 
 **1 — More genes buy nothing measurable.** The gene-set sweep
 ([Step 05](05-multitask-results.md#gene-set-sweep--heads-beating-vs-gene-count-incl-all_genes-28062026),
-`notebooks/data_and_harmonization/verify_variants.ipynb` §9, 28.06.2026) puts 1k/2k/3k/5k **and**
+`notebooks/analysis/qc/verify_variants.ipynb` §9, 28.06.2026) puts 1k/2k/3k/5k **and**
 `all_genes` through the same
 5-fold GroupKFold over all 545 drugs. Heads-beating-baseline is **flat across the whole axis** for both
 representations, and `all_genes` (PCA 204 ± 86, scGPT 184 ± 90) is no better than `hvg5000`
@@ -434,7 +458,7 @@ checkpoint's own pretraining configuration — `"max_seq_len": 1200`, `"trunc_by
 (`scGPT_human/args.json`). When a cell carries more expressed genes than the cap, the data collator draws
 a **random** subset rather than truncating (`scgpt/data_collator.py:143-169`). Measured over all 53,513
 cells of every variant's embeddings `.X` (post-OOV, i.e. the matrix actually tokenized) in
-`notebooks/data_and_harmonization/verify_variants.ipynb` §10b–§10c, 05.08.2026; per-cell counts cached
+`notebooks/analysis/qc/verify_variants.ipynb` §10b–§10c, 05.08.2026; per-cell counts cached
 to `outputs/embeddings/scgpt_nonzero_per_cell.npz`:
 
 | Variant | in scGPT vocab | expressed genes / cell (median · mean · max) | cells at or above the cap | **genes scGPT actually saw** (mean) |
@@ -634,7 +658,7 @@ gene set under `processed/scRNAseq_SCP542/all_genes/`. `convert` keeps all 22,72
 OOV-drop then leaves **20,570** in `.X` (what scGPT embeds), while **`X_pca` is computed on the full
 22,722 convert counts** — a genuine full-transcriptome PCA. So the trainable file is **53,513 ×
 20,570** in `.X`, carrying `X_scGPT` (from the 20,570 in-vocab genes) and `X_pca` (from all 22,722).
-`notebooks/data_and_harmonization/verify_variants.ipynb` checks the gene counts directly and plots the two variants'
+`notebooks/analysis/qc/verify_variants.ipynb` checks the gene counts directly and plots the two variants'
 UMAPs side by side. Evaluation of the all-genes side is still pending.
 
 ✅ On-plan / closes part of the HVG deviation by enabling the full-transcriptome comparison.
@@ -643,13 +667,13 @@ UMAPs side by side. Evaluation of the all-genes side is still pending.
 
 ## Latent-space validation (UMAP, Fig. 3 / Fig. 4)
 
-`notebooks/data_and_harmonization/verify_variants.ipynb` (§7) is the **standalone validation** (not part of the
+`notebooks/analysis/qc/verify_variants.ipynb` (§7) is the **standalone validation** (not part of the
 orchestrator): it builds PCA-vs-scGPT UMAPs for **both** variants via `sc.pp.neighbors` + UMAP,
 colored by `Cancer_type` (**Fig. 3**) and `viability_paclitaxel` (**Fig. 4**). It visually confirmed
 the hypothesis: PCA = discrete tissue "islands", scGPT = continuous shared manifold; paclitaxel
 sensitivity mixed across the scGPT manifold.
 
-**Outputs** (all under `notebooks/outputs/embeddings/`, written by `data_and_harmonization/verify_variants.ipynb` §8):
+**Outputs** (all under `notebooks/outputs/embeddings/`, written by `analysis/qc/verify_variants.ipynb` §8):
 
 | File | What it shows |
 |---|---|
@@ -726,27 +750,45 @@ are the reason the new measures carry the `_cc` suffix instead of reusing `auc`.
 
 ### Reproduce
 
-A documented, runnable walk-through of these commands lives in `notebooks/1_preprocessing.ipynb`, which
-drives the same `run_preprocessing.py` entry points the CLI uses, so the notebook and the command line
-cannot drift. `--score` defaults to `auc_cc`; passing it explicitly is what makes a comparison run
-unambiguous:
+The runnable walk-through is the numbered notebooks themselves: `notebooks/1_data.ipynb` (`fetch` →
+`convert`) and `notebooks/3_representations.ipynb` (`scgpt` → `targets` → `splits` → `pca`). Both drive
+`scripts/preprocessing/pipeline.py`, one function per step, each owning its own guard and preconditions.
+
+⚠️ **`run_preprocessing.py` was archived on 12.08.2026** and there is no CLI replacement — the step order
+is the notebook numbering, and a second copy of it in a CLI was a second thing to keep in step
+([`scripts/archive/README.md`](../../scripts/archive/README.md)). The commands this section used to give
+therefore no longer run. To rebuild without a browser:
+
 ```bash
-# From scratch (runs convert+HVG → embeddings → targets → splits → pca).
-# The scgpt step needs the separate scGPT env, hence --scgpt-python.
-# PCA width defaults to 512 (--pca-n-comps) to match the scGPT embedding.
-uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \
-    --score auc_cc --scgpt-python /path/to/scgpt-venv/bin/python
+# From scratch. Set SCGPT_PYTHON in the stage-3 bootstrap cell first: the scgpt
+# step needs the separate scGPT venv and raises without it (no interactive fallback).
+uv run jupyter nbconvert --execute --inplace notebooks/1_data.ipynb
+uv run jupyter nbconvert --execute --inplace notebooks/3_representations.ipynb
+```
 
-# Add the second measure on top of existing convert+embeddings (this is the
-# measure-comparison build; convert/scgpt are untouched and reused).
-uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \
-    --score ln_ic50_cc --start-at targets --skip-scgpt
+Anything more selective is a direct call, which is what one-function-per-step buys — there is no
+`--start-at` to reconstruct:
 
-# Recompute only the 512-d PCA baseline in-place (what the 512-d switch needed).
-uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 \
-    --start-at pca --skip-scgpt --force-pca --pca-n-comps 512
+```python
+from scripts.layout import PipelinePaths
+from scripts.preprocessing import pipeline
 
-# training (--score selects which targets file to train on)
+# Add the second measure on top of the existing convert + embeddings. The embedding
+# is score-independent, so scgpt is simply not called; nothing is skipped or reused
+# by flag, it is just not invoked.
+paths = PipelinePaths.build(None, "hvg5000", "ln_ic50_cc")
+pipeline.targets(paths)
+pipeline.splits(paths)
+pipeline.pca(paths)
+
+# Recompute only the 512-d PCA baseline in place (what the 512-d switch needed).
+pipeline.pca(PipelinePaths.build(None, "hvg5000", "auc_cc"), n_comps=512, force=True)
+```
+
+`--score` defaults to `auc_cc`; each measure writes its own targets h5ad, so the two never overwrite
+each other. Training still has a CLI:
+
+```bash
 uv run scripts/training/train_multitask.py --use-rep X_scGPT --score auc_cc   # every kept drug
 uv run scripts/training/train_multitask.py --use-rep X_pca --score ln_ic50_cc --drugs paclitaxel
 ```

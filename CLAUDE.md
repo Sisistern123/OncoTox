@@ -60,7 +60,7 @@ source is recorded **in the same place**, not in a chat message that disappears:
 **If there is no source, say that.** An arbitrary threshold documented as arbitrary is honest; the same
 threshold stated without comment reads as principled, and that is the more damaging of the two.
 
-The pattern to copy: the `PANEL_EVIDENCE` table in `notebooks/drug_selection/literature_panel.ipynb` §5
+The pattern to copy: the `PANEL_EVIDENCE` table in `notebooks/2_drug_selection.ipynb` §5
 maps each compound to its reference, *what that reference actually claims*, the setting the claim was made
 in, and how strong it is — one structure, next to the data, so the evidence cannot drift from the thing it
 justifies. The notebook then asserts that every entry lies inside the candidate set built in §3, and that
@@ -154,12 +154,13 @@ deadline she never stated.
 steps carry a pointer; the content lives here. Nothing in it is a live result.
 `docs/progress_report_*.md` — working record and slide text; **untracked by design**.
 `report/` — the written version (LaTeX → `main.pdf`).
-`notebooks/` — a number means pipeline (`1_`→`2_`→`3_`); analysis sits in named directories; nothing in
+`notebooks/` — a number means pipeline (`1_`→`5_`); analysis sits under `analysis/`; nothing in
 `archive/` is load-bearing. See its README.
 `scripts/` — `layout.py` is the path contract and is imported by every stage; `sources/` retrieves
-from external services, `annotation/` resolves identifiers, `preprocessing/` is the h5ad pipeline and
-its driver, then `model/`, `training/`, `evaluation/`; plus `archive/`, which holds superseded code and
-is never imported (see its README). Reorganized 12.08.2026 — `preprocessing/` held all fourteen.
+from external services, `annotation/` resolves identifiers, `preprocessing/` holds the h5ad pipeline
+steps (`pipeline.py`), which the numbered notebooks drive, then `model/`, `training/`, `evaluation/`;
+plus `archive/`, which holds superseded code and is never imported (see its README). Reorganized
+12.08.2026 — `preprocessing/` held all fourteen.
 
 **Two rules for the docs:** never state a number in two places, and every claim names the code that
 produced it — script and function, or notebook and section, plus the `outputs/` artifact it was read from.
