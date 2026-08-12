@@ -1059,13 +1059,45 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 > **The order — the numbered chain in sequence, then everything else (Selin, 13.08.2026).** Two groups,
 > run one after the other rather than interleaved.
 >
-> ⚠️ **PROVISIONAL — this was produced out of sequence and is not yet the plan of record.** It was
-> written while Gate 1 ("close everything still open or wrong") was still open, and Gate 4 exists
-> precisely to *re-decide the order* once Gates 1–3 have reported. That dependency is not theoretical:
-> on the day this was written, a Gate 1 finding moved `diagnostics` and `dreval_benchmark` from "blocked,
-> cannot run at all" to "waits for R4" (`35fe0bc`), which changed where both sit. Any further Gate 1
-> finding can move it again. **Read the structure and the verified dependency counts as established;
-> read the sequence as a proposal until Gate 4 confirms it.**
+> ### ✅ Order confirmed by Gate 4 (13.08.2026) — one notebook moved
+>
+> *(This block was stamped PROVISIONAL until Gate 4 reported. It was: a Gate 1 finding had already
+> moved `diagnostics` and `dreval_benchmark` once, and Gate 4 exists to re-decide the order once
+> Gates 1–3 have run. It has now done so.)*
+>
+> **`analysis/harmonization/drug_catalog` moves out of the trailing group and into the chain, between
+> `1_data` and `2_drug_selection`.** It is the only change, and it follows from the corrected
+> dependency above: `2_drug_selection` reads its catalog for the approval status, target and
+> mechanism the panel is selected with. Its own inputs are raw — CTRP `v20.meta.*`, PRISM, DrugBank,
+> SCP542's `Metadata.txt` — except §6, which needs DrEval's response table and therefore `1_data`'s
+> fetch. That places it after `1_data` and before `2_drug_selection`, with no freedom in either
+> direction.
+>
+> **Everything else stays where it was.** Gate 2 checked every position against the notebooks and
+> none of the rest moved; the four entries whose *inputs* were understated all read artifacts that
+> already exist at their stated point.
+>
+> **The execution order, then — pipeline first, sequentially:**
+>
+> `1_data` → **`drug_catalog`** → `2_drug_selection` → `3_representations` → `4a_percell_training`
+> → `4b_mil_training` → `5_evaluation` §1
+>
+> **then the rest, in any order except one constraint:**
+>
+> `hvg_sweep_build` → `verify_variants` (it builds three of the five variants that notebook reads);
+> `gene_symbol_rescue`, `drug_coverage`, `cell_line_join_verification`, `diagnostics`,
+> `dreval_benchmark` — then `5_evaluation` §2/§3, which absorbs the last two and therefore cannot
+> precede them.
+>
+> **Two decision points, at notebook boundaries rather than between phase labels:**
+>
+> - **after `3_representations`, before `4a`** — it writes `uns["pca_fits"]["variance_ratio"]`, and
+>   three open questions resolve from it (PCA's 512 components, the `input_dropout` asymmetry between
+>   arms, item 4A's input-scale measurement). All three shape `4a`. Read it there, or `4a` trains
+>   through them and they get answered against artifacts they should have set.
+> - **before `4b`** — fix what a positive and a negative Q2 write-up say, while the numbers do not yet
+>   exist. The criterion was fixed before the model on purpose; its write-up has not had the same
+>   treatment, and deciding it after the numbers land is the failure the criterion exists to prevent.
 >
 > **1 · The numbered chain, strictly sequential.** `1_data` → `2_drug_selection` → `3_representations`
 > → `4a_percell_training` → `4b_mil_training` → `5_evaluation`. `4b` **stopped being a stub on
@@ -1077,9 +1109,26 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 > **Neither gates the rerun** — both are computed from
 > the saved per-cell prediction arrays and can be settled afterwards without retraining. See the
 > notebook's own §3.3, §3.5 and §3.8.
-> **Verified 13.08.2026: no
-> numbered notebook reads any analysis notebook's output — zero, across all six.** The chain is
-> self-contained and nothing outside it can gate it.
+> ⛔ **CORRECTED 13.08.2026 — the "zero" was wrong, and it is one of six.** This read: *"Verified
+> 13.08.2026: no numbered notebook reads any analysis notebook's output — zero, across all six. The
+> chain is self-contained and nothing outside it can gate it."*
+>
+> **`2_drug_selection` reads `data/drug/all_sources_drug_catalog.csv`, which
+> `analysis/harmonization/drug_catalog.ipynb` writes.** It is the notebook's source of approval
+> status, protein target and mechanism — the annotation the panel is *selected with*. So the chain is
+> **not** self-contained, and something outside it does gate it.
+>
+> **Both the original claim and its first correction were produced by pattern-matching**; this one was
+> not. Every file-touching expression in all six numbered notebooks was enumerated and its producer
+> named by hand. The dependency was missed twice because it reaches `annotate_compounds(...)` as a
+> **path argument**, so it appears in no `read_csv` call and matches no output-name search. Checking
+> for known outputs can only find what the checker thought to list, which is why it had to be done the
+> other way round: enumerate what is read, then trace each backwards.
+>
+> The other five are clean, and that is now a checked statement rather than an assumed one: `1_data`
+> reads raw sources and its own fetch; `3_representations` reads only pipeline artifacts; `4a` and
+> `4b` read the panel, the targets and each other; `5_evaluation` reads `4a`'s out-of-fold table.
+> `reference/` is script-managed (`fetch_sun2017_drugs` writes it), not an analysis output.
 >
 > **2 · Every other notebook, after the chain has finished.** Each of the seven runnable ones reads a
 > pipeline artifact, so running the group *after* the whole chain satisfies every prerequisite at once
