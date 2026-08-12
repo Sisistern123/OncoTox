@@ -285,6 +285,10 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       refresh them; `3_panel_training.ipynb` on the rebuilt panel; ridge / `NaiveMeanEffects` on the same
       folds; `verify_variants.ipynb` §9; and 4A below. Blockers already recorded: **≥ 3 seeds** before any
       scGPT − PCA margin is quoted, and train-only drug selection inside each fold.
+  - [ ] **Lift the 28.07 panel-void banner here** (decided 12.08.2026, Selin). Item 6 rebuilt the panel,
+        but the banner's live consequence is that *numbers* computed on the old one are void, and that
+        stays true until a run exists on `outputs/panel/panel.csv`. Lifting it when the panel changed
+        would have declared the numbers current a run too early.
 - [ ] **R5 · Re-run the analysis notebooks that read the retrained outputs.**
       `result_evaluation/`: `diagnostics` (§5 dispersion), `dreval_benchmark` — the latter is
       **broken twice over** (imports the archived `dreval_normalize`, hardcodes the removed `'auc'`)
@@ -311,6 +315,14 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       `\NVocab` 4,576 → measured (`\NVocabRepaired` then goes), every ρ / gap / DrEval macro — ideally
       via the extraction script from item 12 rather than by hand. `report/sections/03_methods.tex`: the
       revision block still says "no representation has been regenerated", false once R2 lands.
+      **The report's numbers were stripped, not bannered (12.08.2026, Selin)**, so R6 is a rewrite and
+      not an edit: `04_results.tex` was emptied to a withdrawal note, and `01_abstract.tex`,
+      `05_discussion.tex` and `06_limitations_and_outlook.tex` had every quantitative claim removed.
+      They are written once, from the regenerated artifacts.
+      **Define the drug-panel counts as macros** rather than the inline digits currently in
+      `03_methods.tex` §Drug panel selection (150 / 120 / 57 / 44 / 11, the 90 % cut, 91.2–98.3 %
+      coverage, 102 and 15 unmatched compounds, 13 parent-CID matches) — via item 12's extraction
+      script, since adding them by hand is the defect that item exists to remove.
       [Step 01](./steps/01-datasets-and-harmonization.md) the ⚠️ 181 marker;
       [Step 02](./steps/02-preprocessing-and-embeddings.md) the ⛔/⚠️ blocks on truncated, unseeded,
       symbol-limited embeddings; [Step 05](./steps/05-multitask-results.md) the ⚠️ 181 marker and every

@@ -2,23 +2,29 @@
 \noindent
 This report investigates whether single-cell RNA-seq, combined with foundation-model embeddings, can
 predict pharmacological response, as a first step toward a reusable pan-cancer single-cell foundation
-model. On
-the highest-confidence intersection of the SCP542 single-cell atlas and the CTRPv2 drug-response database
-(\NLines{} cell lines, \NDrugs{} compounds), we train a shared-trunk multi-task regressor on individual
-cells and evaluate it under a leave-cell-line-out protocol, comparing scGPT embeddings against a matched
-principal component analysis (PCA) baseline. The guiding hypothesis is that the foundation model provides a
-denoised, tissue-agnostic representation of cellular state. With a per-drug-standardized
-area-under-the-curve target, which is required for the \NDrugs-head objective to be learnable, the model
-ranks unseen cell lines at a Spearman correlation of \rhoFullScgpt{} across all drugs and up to
-\rhoTenScgpt{} on a learnable subset, and it exceeds the field-standard NaiveMeanEffects baseline under the
-DrEval benchmark (normalized Spearman \drScgptSp{} for scGPT). Model capacity is not the limiting factor: a
-ridge regression on cell-line mean embeddings ($\rho=\ridgePca$) matches the deep model, which indicates
-that the ceiling is the small number of independent cell lines and the noise of the broadcast bulk labels
-rather than the representation or the architecture. The scGPT embeddings provide a small advantage over
-PCA that largely fades under DrEval's normalized metric. We conclude that the approach is viable but
-currently label-limited, and we outline label- and data-side directions for the next phase.
-\suggestion{Accordingly, the contribution of this report is not a verdict on whether scGPT outperforms
-PCA: the available data cannot settle that question, and the margin it does support is small. The
-contribution is an account of the conditions a study must satisfy before a representation comparison is
-meaningful at all, and a demonstration that the conventional setup does not satisfy them.}
+model. On the highest-confidence intersection of the SCP542 single-cell atlas and the CTRPv2
+drug-response database (\NLines{} cell lines, \NDrugs{} compounds), we train a shared-trunk multi-task
+regressor on individual cells and evaluate it under a leave-cell-line-out protocol, comparing scGPT
+embeddings against a matched principal component analysis (PCA) baseline. The guiding hypothesis is that
+the foundation model provides a denoised, tissue-agnostic representation of cellular state.
+
+\revision{\textbf{Quantitative results are withheld in this version.} The response target, the compound
+panel and the preprocessing of both representations were each revised after the previous results were
+produced, and no measurement has yet been repeated on the corrected pipeline; every number is therefore
+withdrawn rather than restated with a caveat (Section~\ref{sec:results}). What the report contains at
+this stage is the design and its justification: the provenance and harmonization of the two data sources,
+the derivation of the response target, the construction of the compound panel from external evidence, and
+the evaluation protocol.}
+
+The methodological argument does not depend on the withdrawn measurements and is the contribution this
+version claims. A representation comparison of this kind is only informative once three conditions hold,
+and none held at the outset of this work: the training objective must not let a minority of compounds
+with large response variance dominate a shared multi-task loss; the evaluation must be scored against a
+control that already absorbs the cell-line effect, since a per-drug-mean null is too weak a bar to
+separate a representation from an average; and the compounds must be selected without reference to the
+response values the model is trained on, or the panel is enriched for exactly the drugs that flatter it.
+Each is a route by which a conventional setup reports a representation advantage that is not one --- the
+mechanism the DrEval study \cite{dreval} identifies across the published literature. Establishing those
+conditions, rather than the comparison they are prerequisites for, is what this stage of the work
+delivers.
 \end{abstract}

@@ -1,4 +1,5 @@
 \section{Limitations and Future Work}
+\label{sec:limitations}
 + add outlook
 + multi input (GDSC, PRISM REPURPOSED)
 + MIL/Attention Pooling
@@ -8,20 +9,23 @@
 
 Several limitations bound the strength of the present claims, and each points to a concrete next step.
 
-The most serious is that the learnable-drug subset was selected using all \NLines{} cell lines, including
-the validation and test lines, so any number reported on that subset is a best-case diagnostic rather than
-a generalization estimate; the selection should instead be performed inside each cross-validation fold,
-using only the training lines. The subset is moreover chosen from label statistics alone and was not
-validated in this report against the per-drug performance the model actually achieves, so it should be
-read as a diagnostic device rather than a claim that only ten drugs are learnable.
+The most serious is that no result currently stands. The target, the compound panel and the preprocessing
+of both representations were each revised after the previous measurements were produced, so those
+measurements were withdrawn rather than updated (Section~\ref{sec:results}). Regenerating them is a
+single ordered pass over the whole pipeline --- re-embedding, preprocessing, the committed read-only
+artifacts, retraining, the analysis notebooks, and finally this document --- deliberately performed once,
+at the end of the review, rather than piecemeal as each correction landed, so that no result is produced
+from a pipeline that a later correction changes again.
 
-The scGPT advantage over PCA is small: a Spearman gap of $+0.036$ at K\,$=$\,\NLearn{} and $+0.012$ at
-K\,$=$\,\NDrugs{}, of the same order as the seed-to-seed variation. Across three seeds the gap averages
-$+0.04$ and is not sign-consistent, ranging from $-0.00$ to $+0.09$, and it does not survive DrEval's
-normalized metric, so it should not be presented as an established margin until it has been reproduced over
-more seeds and a wider drug set. The external benchmark is itself preliminary, covering only the
-leave-cell-line-out split on the learnable subset rather than the leave-tissue-out and leave-drug-out
-settings or the full panel.
+A constraint on that regeneration is worth stating in advance, because it determines what the comparison
+can conclude. Two changes must never be made in the same run: on the evidence of this project, a change
+of target and a change of architecture applied together leave the outcome unattributable, and the
+collapse that was initially read as a statement about the representations turned out to be a property of
+the objective. The scGPT-versus-PCA margin previously observed was of the same order as the seed-to-seed
+variation, was not sign-consistent across seeds, and did not survive DrEval's normalized metric; whatever
+replaces it must therefore be established over multiple seeds before it is reported as a margin at all.
+The external benchmark is also incomplete, covering only the leave-cell-line-out split rather than the
+leave-tissue-out and leave-drug-out settings.
 
 \begin{revisionblock}
 \textbf{Reproducibility, and the standing of the numbers below (05.08.2026).} A review of the

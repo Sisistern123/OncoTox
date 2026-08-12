@@ -1,202 +1,36 @@
 \section{Results}
 \label{sec:results}
 
-\revision{\emph{Standing of these numbers, 05.08.2026.} Every result in this section was produced
-before the preprocessing corrections recorded in the Methods section, from the representations still on
-disk. The PCA arm is the one affected: it was computed under a doubly applied library-size
-normalization and without per-gene standardization. Re-running is deferred until the pipeline review is
-complete, so that the results are regenerated once from a settled pipeline; see Limitations.}
+\revision{\textbf{This section has been emptied rather than updated (12.08.2026).} Every quantitative
+result it previously carried has been withdrawn, and it is left deliberately bare instead of being
+qualified in place, because a caveated number in a results section is still read as a result. What was
+removed and why is recorded below so that the withdrawal is auditable rather than a silent deletion; the
+superseded values remain in the project record under
+\code{docs/steps/corrections-and-dead-ends.md}, which is the appropriate place for measurements that no
+longer hold.}
 
-\subsection{Per-drug standardization is what makes the multi-task objective learnable}
+Three changes, each independent of the others, invalidate every measurement previously reported here.
 
-Table~\ref{tab:target} compares the three targets across representations and head counts, with all other
-settings fixed. On the subset of \NLearn{} learnable drugs the three targets are statistically
-indistinguishable, which shows that the curve fit itself buys no accuracy over the dose average. The
-difference appears only at the full \NDrugs-head scale: both unstandardized targets collapse to
-approximately zero, with scGPT turning negative, whereas the standardized target retains
-$\rho=\rhoFullScgpt{}$ (scGPT). Per-drug standardization is therefore a prerequisite for a learnable
-large multi-task objective rather than a change to the information content of the label.
+First, the \textbf{training target was replaced} on 11.08.2026. The results were computed on an
+area-under-the-curve value derived from CTRPv2's published table by dividing by a quantity that does not
+represent the width of the integral, so the target itself was defective; and on a per-drug standardized
+variant of it that has since been retired. The target is now the CurveCurator re-fit described in
+Section~\ref{sec:target}, which is a different quantity rather than a rescaling of the old one.
 
-\begin{table}[t]
-\centering
-\caption{Out-of-fold Spearman correlation, averaged over the \NLearn{} learnable drugs, seed 42. The three
-targets tie at K\,$=$\,\NLearn{}, but only the standardized \code{auc\_z} survives at K\,$=$\,\NDrugs{}.
-Values are means of the per-drug rows in \code{outputs/target/target\_comparison.csv}
-(\code{notebooks/11}).}
-\label{tab:target}
-\begin{tabular}{llccc}
-\toprule
-Heads & Representation & \code{mean\_pv} & \code{auc} & \code{auc\_z} \\
-\midrule
-\NLearn{} & PCA   & 0.370 & 0.360 & \rhoTenPca{} \\
-\NLearn{} & scGPT & 0.396 & 0.405 & \rhoTenScgpt{} \\
-\NDrugs{} & PCA   & $+0.073$ & $-0.012$ & \rhoFullPca{} \\
-\NDrugs{} & scGPT & $-0.078$ & $-0.069$ & \rhoFullScgpt{} \\
-\bottomrule
-\end{tabular}
-\end{table}
+Second, the \textbf{drug panel was rebuilt} on 12.08.2026 (Section~\ref{sec:panel}). The earlier results
+were reported on compound sets chosen using our own response values --- a differential-response gate, and
+a literature panel whose candidate list had been pre-ranked on the same statistic. Both selections are
+withdrawn, so results reported over them describe a set of compounds that no longer defines the task.
 
-A set of single-parameter interventions on the unstandardized \NDrugs-head configuration locates the cause
-(Figure~\ref{fig:rescue}). Starting from the broken baseline ($\rho=-0.08$), heavier regularization, a
-smaller model, a different batch size and sample reweighting all leave the result unchanged or make it
-worse. Two changes help. Removing the regularization recovers most of the gap (to $\rho=+0.21$), which
-shows that the dropout had been interacting with the mis-scaled loss by starving the learnable heads of
-shared capacity. Standardizing the target recovers the signal fully (to $\rho=+0.33$) without weakening the
-regularization, which is why, once the target is corrected, regularization is flat and no longer a useful
-lever.
+Third, the \textbf{representations on disk predate the preprocessing corrections} recorded in
+Section~\ref{sec:data}. The principal component baseline was computed under a doubly applied library-size
+normalization and without per-gene standardization, and the transcript-level embeddings were produced
+before the gene-symbol repair, which changes which genes reach the model at all.
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.78\textwidth]{fig_rescue.png}
-\caption{\textbf{On the broken \NDrugs-head configuration, only removing regularization or standardizing
-the target recovers the signal.} Each bar applies a single change to the same unstandardized setting (raw
-\code{auc}, scGPT). Heavier regularization, a smaller model, a different batch size and reweighting (grey)
-do not help; removing regularization (orange) recovers most of the gap; per-drug standardization (blue)
-recovers it fully and addresses the cause. Source:
-\code{outputs/ablations/rescue\_k545.png} (\code{notebooks/10}).}
-\label{fig:rescue}
-\end{figure}
-
-\subsection{The corrected model ranks unseen cell lines at full head count}
-
-With the standardized target the model ranks unseen cell lines well above chance. On the learnable subset
-it reaches $\rho=\rhoTenScgpt{}$ (scGPT) and $\rho=\rhoTenPca{}$ (PCA), and it holds at
-$\rho=\rhoFullScgpt{}$ and $\rho=\rhoFullPca{}$ even when all \NDrugs{} heads are trained jointly, which
-shows that the large multi-task objective is trainable once the target is standardized.
-
-\subsection{Model capacity is exhausted; the ceiling is the number of independent cell lines}
-
-On the corrected setting, model-side tuning yields nothing further: regularization, capacity (from
-\ParamsHi{} down to \ParamsLo{} parameters) and batch size all leave the correlation flat. The decisive
-control is a ridge regression fitted to the \NIndep{} cell-line mean embeddings, with no single cells and
-no network, which reaches $\rho=\ridgePca{}$ (PCA) and essentially ties the PCA multi-layer perceptron
-($\rho=\mlpPcaR{}$). The deep single-cell apparatus adds a measurable margin only through scGPT
-($\rho=\mlpScgptR{}$), and even there the scGPT signal is nonlinear, since a linear head on scGPT drops to
-$\rho=\linScgptR{}$. The scGPT representation does, however, generalize better than PCA in the way the
-guiding hypothesis predicts: sharing an identical trunk, its training-to-validation gap on the corrected
-target is \gapScgpt{}, against \gapPca{} for PCA, so the foundation-model embedding overfits far less. The
-limiting factor is thus the small number of independent cell lines and the noise of the broadcast labels,
-not the representation or the architecture.
-
-\subsection{Against the field, the model clears the naive baseline but not the best-in-class model}
-
-Under the DrEval leave-cell-line-out protocol and its normalized metric (Table~\ref{tab:dreval},
-Figure~\ref{fig:dreval}), our model exceeds the NaiveMeanEffects baseline that half of the published field
-fails to beat, reaching a normalized Spearman correlation of \drScgptSp{} for scGPT against 0.000 for the
-baseline, and it slightly exceeds DrEval's own SingleDrug reference models on identical features
-($\rho=\drRfSp{}$ for their random forest). It remains below the best model the DrEval study reports, whose
-normalized coefficient of determination reaches about \drPaperRsq{} against our \drScgptRsq{}. The
-scGPT-over-PCA advantage seen in the internal evaluation shrinks to near noise once the mean effects are
-removed (normalized Spearman \drScgptSp{} versus \drPcaSp{}). Consistent with the ridge control above, this
-reproduces the study's central finding that most of the apparent performance in this field is the
-cell-line and drug mean effect rather than differential response.
-
-\begin{table}[t]
-\centering
-\caption{DrEval leave-cell-line-out benchmark, normalized metrics, mean over five folds. The model clears
-the NaiveMeanEffects baseline and edges DrEval's reference models on identical features. Data source:
-\code{outputs/dreval/dreval\_lco\_results.csv} (\code{notebooks/12}).}
-\label{tab:dreval}
-\begin{tabular}{lcc}
-\toprule
-Model & norm.\ Spearman & norm.\ $R^2$ \\
-\midrule
-NaiveMeanEffects (baseline) & 0.000 & 0.000 \\
-SingleDrugRandomForest (scGPT) & \drRfSp{} & 0.098 \\
-OncoMLP (X\_pca) & \drPcaSp{} & \drPcaRsq{} \\
-OncoMLP (X\_scGPT) & \drScgptSp{} & \drScgptRsq{} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.9\textwidth]{fig_dreval.png}
-\caption{\textbf{The naive predictors' raw performance is bias that the normalization removes.} DrEval
-leave-cell-line-out results, raw pooled correlation (left) and normalized (right). The naive predictors sit
-above zero on the left and collapse to zero on the right, which shows that their raw performance was the
-mean effect; the model remains above the baseline after normalization. Source:
-\code{outputs/dreval/dreval\_lco.png} (\code{notebooks/12}).}
-\label{fig:dreval}
-\end{figure}
-
-\begin{suggestionblock}
-\subsection{Retiring the standardization: the collapse was a head-count effect}
-
-The per-drug standardization was adopted because the untransformed area-under-the-curve target collapsed
-at full head count. A subsequent run isolates the cause. On an eight-compound panel selected from
-published sensitivity determinants rather than from our own response statistics, the \emph{untransformed}
-target reaches a cross-validated per-drug rank correlation of $0.377$ for scGPT, against $-0.069$ for the
-same target across all \NDrugs{} heads. The standardization was therefore never repairing the target; it
-was compensating for pooling compounds whose response variances differ by a factor of $81$, and on a panel
-where that ratio is $2.5$ the compensation is unnecessary. Removing the cause is preferable to correcting
-for it, because dividing by each compound's standard deviation rescales a noise-dominated compound up to
-full weight in the shared objective, which is a defect of its own.
-
-Two consequences follow for how results are reported. Predictions are now in the units of the assay, so
-the error is directly interpretable: a mean squared error of $0.0254$ against a per-drug-mean null of
-$0.030$ corresponds to roughly $15\,\%$ of the variance explained and a typical deviation of $0.16$
-viability. And the target is the quantity the source database publishes, which makes comparison against
-DrEval, GDSC and PRISM direct rather than mediated by a project-internal transform.
-
-\begin{table}[h]
-\centering
-\caption{\textbf{Out-of-fold performance on the literature panel, untransformed target.} Mean over the
-eight compounds, five-fold cross-validation grouped by cell line, one seed. Source:
-\code{outputs/panel/panel\_leaderboard.csv} (\code{notebooks/14}).}
-\begin{tabular}{lcccc}
-\toprule
-& \multicolumn{2}{c}{Spearman} & \multicolumn{2}{c}{MSE} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}
-Model & PCA & scGPT & PCA & scGPT \\
-\midrule
-MLP, unweighted            & $0.316 \pm 0.003$ & \textbf{0.377} & 0.0265 & 0.0254 \\
-MLP, density-weighted      & 0.308 & 0.369 & 0.0274 & 0.0254 \\
-Ridge on cell-line means   & 0.306 & 0.299 & 0.0270 & 0.0268 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The table reports pooled out-of-fold correlations, which the cross-validated design should be qualified
-with. Recomputing the score within each fold's held-out lines gives a fold-to-fold standard deviation of
-$0.028$ for PCA and $0.043$ for scGPT, and the spread across the eight compounds is larger still
-($0.111$ and $0.091$, with scGPT ranging from $0.296$ to $0.546$). The two dispersions answer different
-questions --- how much the result depends on which lines were held out, against how unevenly the model
-performs across compounds --- and neither substitutes for the other. The consequence for the comparison
-is that the scGPT advantage of $0.062$ is of the same order as a single fold standard deviation, which
-places it as consistent evidence rather than an established margin.
-
-The ridge control behaves as on every previous panel: it ties the PCA model ($0.306$ against $0.316$),
-while the scGPT model clears it by $0.077$. That margin was $0.082$ on the earlier, larger panel, so this
-is a replication rather than a new finding --- and a stronger one, because the compounds here were chosen
-without reference to our labels.
-
-Two properties of the runs qualify how precisely these numbers should be read. The PCA arm is not
-bit-reproducible: four executions of identical code and seed gave $0.313$, $0.315$, $0.317$ and $0.320$, while
-every other arm reproduced exactly. The cause is visible in the training logs --- the PCA model reaches
-its best validation epoch after a single epoch in four of five folds, against ten to twenty for scGPT
---- so its selected checkpoint is chosen among near-tied, barely-trained states. That is a mechanistic
-restatement of the ridge tie rather than a separate observation: a model that peaks after one pass over
-the data is doing little more than the null predictor it was initialized at. Absolute correlations are lower than on the earlier panel ($0.377$ against
-$0.402$), which is the expected direction: those compounds had been selected using all cell lines,
-validation and test included.
-
-\subsection{An imbalance correction that did not work}
-
-Because most cell lines of a given compound sit in a narrow band of the response range while the
-pharmacologically interesting extremes are sparse, an unweighted squared-error objective is dominated by
-the crowded centre. Weighting each observation by the inverse of a smoothed estimate of the label density
-is the established remedy \cite{dir,denseweight}, and it was applied per compound, estimated within each
-fold on training lines only. It does not help: mean rank correlation moves by $-0.006$ for PCA and $-0.008$
-for scGPT.
-
-The result is informative rather than merely negative, because the mechanism demonstrably operated. The
-standard deviation of the predictions rises from $0.062$ to $0.082$ (PCA) and $0.080$ (scGPT), which is
-the reduced shrinkage the weighting is designed to produce; the objective was reweighted as intended and
-the ranking simply did not follow. The explanation is visible in the label distributions. Before
-correction, several compounds appeared strongly right-skewed, but that tail consisted almost entirely of
-measurements above an area-under-the-curve of $1.0$, where the compound apparently improved growth
-relative to control --- assay artifact rather than biology. Once those $1.1\,\%$ of measurements are
-winsorized, every compound has an absolute skewness below $0.5$, and an imbalance correction has little
-imbalance left to act on.
-\end{suggestionblock}
+No attempt is made here to say which of the previous qualitative conclusions will survive. Some plausibly
+will --- the finding that a random split over cells leaks the label, because it follows from the label
+being constant within a cell line rather than from any property of the target, is the clearest candidate.
+But a conclusion that has not been re-measured on the corrected pipeline is a hypothesis about what the
+re-measurement will show, and presenting it as a result is the error this project has already made twice.
+The regeneration is a single pass over the whole pipeline, described in Section~\ref{sec:limitations};
+this section is written once from its output.

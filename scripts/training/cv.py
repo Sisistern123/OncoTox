@@ -155,9 +155,16 @@ def oof_predictions(
             x = torch.from_numpy(np.asarray(adata.obsm[rep], dtype=np.float32)[vac])
             pred[vac] = best(x).numpy()  # held-out lines only
 
+        val_lines = np.unique(groups[vac])
         folds.append({
             "fold": fold, "rep": rep, "n_train_lines": int(len(tr_lines)),
-            "n_val_lines": int(np.unique(groups[vac]).size),
+            "n_val_lines": int(val_lines.size),
+            # Which lines this fold held out, not just how many. The split is grouped by cell line, so
+            # a line belongs to exactly one fold and this assignment is total and unambiguous. It is
+            # recorded because anything fitting a baseline on the *training* folds needs it -- DrEval's
+            # normalization above all (scripts/evaluation/dreval_normalize.py) -- and re-deriving it
+            # downstream would mean a second copy of the fold rule that can drift from this one.
+            "val_lines": val_lines.tolist(),
             "best_epoch": hist.best_epoch, "best_val_obj": float(hist.best_val_mse),
         })
     return pred, folds
@@ -169,6 +176,7 @@ def line_level_predictions(
     drugs: list[str],
     *,
     truth: np.ndarray | None = None,
+    folds: list[dict] | None = None,
     group_col: str = "Cell_line",
     eligible_splits: tuple[str, ...] = ("train", "val"),
     **extra,
@@ -178,11 +186,28 @@ def line_level_predictions(
     :param truth: (n_cells, len(drugs)) labels to score against; defaults to the ``Y_ctrp`` columns
         of ``drugs``. Pass an explicit array to score every model against one common yardstick even
         when they trained on different scores.
+    :param folds: the fold log :func:`oof_predictions` returns. When given, each row gains a ``fold``
+        column saying which fold held that cell line out. **Pass it** unless there is a reason not to:
+        without it a prediction cannot be traced to the split that produced it, and any downstream
+        baseline has to be fitted on the same rows it will be subtracted from --- which is what
+        ``scripts/evaluation/dreval_normalize.py`` refuses to do.
     :param extra: constant columns to stamp on every row (e.g. ``rep=..., weighted=...``), so
         several configurations can be concatenated into one tidy table.
-    :returns: DataFrame(drug, cell_line, y_true, y_pred, **extra) -- the shape every downstream
-        analysis expects, including the cell-line-effect normalization.
+    :returns: DataFrame(drug, cell_line, y_true, y_pred[, fold], **extra) -- the shape every
+        downstream analysis expects.
+    :raises ValueError: if ``folds`` does not assign every predicted cell line to exactly one fold.
     """
+    line_fold: dict[str, int] = {}
+    if folds is not None:
+        for entry in folds:
+            for line in entry["val_lines"]:
+                if line in line_fold:
+                    raise ValueError(
+                        f"cell line {line!r} is held out by folds {line_fold[line]} and "
+                        f"{entry['fold']}; the split is not grouped by cell line."
+                    )
+                line_fold[line] = entry["fold"]
+
     groups = adata.obs[group_col].astype(str).to_numpy()
     eligible = adata.obs["split_ctrp"].isin(eligible_splits).to_numpy()
     all_drugs = list(adata.uns["ctrp_drugs"])
@@ -196,7 +221,15 @@ def line_level_predictions(
             ci = np.flatnonzero((groups == ln) & eligible)
             obs = ci[M[ci, j] & np.isfinite(pred[ci, j])]
             if obs.size:
-                rows.append({"drug": d, "cell_line": ln,
-                             "y_true": float(Y[obs, j].mean()),
-                             "y_pred": float(pred[obs, j].mean()), **extra})
+                row = {"drug": d, "cell_line": ln,
+                       "y_true": float(Y[obs, j].mean()),
+                       "y_pred": float(pred[obs, j].mean())}
+                if folds is not None:
+                    if ln not in line_fold:
+                        raise ValueError(
+                            f"cell line {ln!r} has predictions but no fold assigns it; the fold log "
+                            f"does not describe the run these predictions came from."
+                        )
+                    row["fold"] = line_fold[ln]
+                rows.append({**row, **extra})
     return pd.DataFrame(rows)

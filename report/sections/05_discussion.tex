@@ -1,54 +1,46 @@
 \section{Discussion}
 
-The results reframe an earlier, apparently negative finding. A first pass of this work had reported that
-neither representation could rank cell lines, with out-of-fold correlations near zero over the full drug
-panel. That outcome was substantially an artifact of the training target rather than a statement about the
-data or the representation. The initial score, a dose-averaged viability, left the per-drug variances
-untouched, so in the shared multi-task loss a handful of high-variance and largely uninformative
-compounds dominated the representation. Standardizing the target per drug removes this imbalance, and with
-it the model ranks unseen cell lines at correlations of \rhoFullScgpt{} across the panel and up to
-\rhoTenScgpt{} on a learnable subset. The standardization is best understood as a necessary preprocessing
-choice for a heterogeneous multi-task objective, not as a scientific result in itself; a head-to-head
-comparison of the candidate scores is informative mainly because it shows that the curve fit alone changes
-nothing and the standardization changes everything. The dominance of the target change is direct: on the
-unstandardized targets the same model collapses at full head count (Table~\ref{tab:target}), and no other
-single intervention on the broken configuration approaches it (Figure~\ref{fig:rescue}).
+\revision{\textbf{Rewritten 12.08.2026.} This section previously argued from measurements that have since
+been withdrawn (Section~\ref{sec:results}). What follows is restricted to what does not depend on them:
+the conditions the design must satisfy, each of which was arrived at by a failure rather than by
+foresight. Where a claim would need a number, it is stated as an open question rather than answered.}
 
-The corrected picture is modest but genuine, and it is best read against the standards the DrEval study
-sets for the field. The model clears the NaiveMeanEffects baseline that about half of published models
-fail to beat, and it edges DrEval's own reference models on identical features, but it remains below the best
-model that study reports and shows only a faint representation advantage once the mean effects are
-normalized away. The most informative internal result points the same way: a ridge regression on
-cell-line mean embeddings matches the deep model, so the information the current pipeline exploits is
-largely captured by a per-line average. This is the cell-line-effect bias that DrEval was designed to
-expose, reproduced here independently. The single-cell resolution and the scGPT embedding together add a
-small margin over that average, and scGPT needs a nonlinear head to realize it, which is the first
-concrete evidence that the embedding carries structure a linear model cannot reach. This lower reliance on
-memorization is the effect the guiding hypothesis anticipated, and it persists on the corrected target,
-where the scGPT model's training-to-validation gap (\gapScgpt{}) is far smaller than that of PCA
-(\gapPca{}) under an identical trunk.
+What the work has established so far is a set of prerequisites for the comparison it set out to make, and
+each was found by getting it wrong first.
 
-Taken together, the evidence indicates that the limiting factor at this stage is the label side rather
-than the model side. The task is defined on roughly \NIndep{} independent cell lines, each carrying one
-bulk value broadcast onto hundreds of cells, and model-side tuning is exhausted across regularization,
-capacity and batch size. Improving performance therefore requires acting on the labels and the data, not
-on the architecture.
+\textbf{The objective must not be captured by a minority of compounds.} In a shared multi-task loss with
+one masked squared-error term per drug, a compound's contribution scales with its response variance, so a
+few high-variance compounds can dominate the shared representation regardless of whether that variance
+carries any learnable signal. An early configuration collapsed to near-zero correlation for this reason
+and was misread as a statement about the representations. Whether the correction belongs in the target,
+in the loss, or in the composition of the panel is not settled --- per-drug standardization of the target
+was adopted and then retired, because it silently rescales a noise-dominated compound up to full weight,
+which is a defect of its own.
 
-\suggestion{It is worth stating explicitly what this reframing implies for the question the project set
-out to ask. The comparison that motivated the work, whether foundation-model embeddings beat a PCA
-baseline, is not answered here, and on this data it is not answerable: the margin is of the same order as
-the seed-to-seed variation, it does not survive normalization, and the effective sample size is the number
-of cell lines rather than the number of cells. What the work does answer is the prior question of what
-must be true before that comparison carries any information. Three conditions emerge from the results
-above, and none of them held at the outset. The training objective must be standardized across a
-heterogeneous set of drug heads, or a minority of high-variance and largely uninformative compounds
-captures the shared representation and drives every correlation to zero. The evaluation must be scored
-against a control that already absorbs the cell-line effect, since a ridge regression on cell-line mean
-embeddings reproduces the deep model's performance and a per-drug-mean null is too weak a bar to
-distinguish the two. And the reported metric must have the mean effects removed, because a substantial
-share of the raw correlation is attributable to which drug is potent and which line is broadly sensitive
-rather than to their interaction. Each condition is a way in which a conventional setup can report an
-apparent representation advantage that is not one, which is the mechanism the DrEval study
-\cite{dreval} identifies across the published literature and which is reproduced here independently on our
-own data. Read this way, the negative and diagnostic results are not preliminary steps toward the
-comparison; they are the finding, and the comparison is deferred until the data can support it.}
+\textbf{The control must already absorb the cell-line effect.} A per-drug-mean null is too weak a bar:
+some cell lines are broadly sensitive, and a model can score a respectable per-drug rank correlation by
+learning that alone. The appropriate control is a ridge regression on cell-line mean embeddings, which
+uses no single cells and no network, and the informative question is whether the single-cell apparatus
+clears it. This is the cell-line-effect bias the DrEval study \cite{dreval} was designed to expose. It
+also has a sharp consequence for the metric: under a leave-cell-line-out protocol, DrEval's normalization
+removes only the drug effect, because a held-out line's effect is by construction unknown to the
+baseline. A high normalized score is therefore not evidence of drug-specific signal in this setting, and
+separating the two requires a diagnostic that reads held-out labels rather than a metric.
+
+\textbf{The compounds must be selected without reference to our own labels.} Two successive panels were
+selected on response statistics --- a gate requiring a compound both to kill and to spare cell lines, and
+a literature panel whose candidates had been pre-ranked on the same quantity --- and both were withdrawn.
+The first excluded every cytostatic agent by construction; the second retained the label dependency it
+was built to remove. The panel is now defined by regulatory approval and published determinants
+(Section~\ref{sec:panel}), which is reproducible by someone who never sees our response values.
+
+\textbf{The effective sample size is the number of cell lines.} The label is defined per cell line and
+drug, so all cells of a line carry the same broadcast value and act as pseudo-replicates. The task is
+defined on roughly \NIndep{} independent examples, not on \NCells{} cells, and treating cells as
+independent understates every uncertainty by roughly the square root of the number of cells per line.
+This bounds what any architecture on this data can be expected to demonstrate, and it is the reason the
+next phase acts on the labels and the data rather than on the model.
+
+Read together, these are not preliminary steps toward the representation comparison. They are the finding
+of this stage, and the comparison is deferred until it can be made under conditions that would let it
+mean something.

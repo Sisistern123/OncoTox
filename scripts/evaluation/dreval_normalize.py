@@ -43,10 +43,11 @@ is therefore a diagnostic rather than a metric, not something to fold back into 
 
 **The fold column is required, and this is not pedantry.** The naive baseline must be fitted on the
 folds a prediction did *not* come from; fitting it on the same out-of-fold rows it will be subtracted
-from would let held-out labels define the baseline they are scored against. ⚠️ The current writer,
-``notebooks/3_panel_training.ipynb``, does **not** emit a fold column
-(``drug, cell_line, y_true, y_pred, rep, weighted``), so this script cannot run on the predictions in
-the tree. That is a change owed to notebook 3 at R5 of the sweep, not something to work around here.
+from would let held-out labels define the baseline they are scored against. The writer emits it:
+``cv.oof_predictions`` records each fold's held-out lines and ``cv.line_level_predictions(folds=...)``
+stamps them onto every row (wired 12.08.2026). ⚠️ **The committed
+``outputs/panel/panel_oof_predictions.csv`` predates that** and has no ``fold`` column, so this script
+raises on it — correctly. It becomes runnable when notebook 3 re-runs at R4 of the sweep.
 """
 
 from __future__ import annotations

@@ -13,16 +13,18 @@
 % HOW THEY ARE USED
 %   main.tex does \input{results_numbers} in the preamble, which defines the
 %   \newcommand macros below. The section files then cite a number as the macro,
-%   e.g. "\rhoFullScgpt{}" or "$\rho=\ridgePca$", never as a literal digit. So a
-%   number appears in exactly one place; editing it here updates every mention.
-%   (The two results tables in 04_results carry the full per-cell values inline,
-%   since a table is itself a single location; the macros cover the prose.)
+%   e.g. "\NLines{}", never as a literal digit. So a number appears in exactly
+%   one place; editing it here updates every mention.
+%
+%   As of 12.08.2026 this file defines DATA ONLY -- see the withdrawal note at
+%   the end. No macro here carries a model result.
 %
 % HOW TO UPDATE
 %   1. Re-run the relevant notebook -> refreshed CSV in notebooks/outputs/.
-%   2. Read the value from that CSV (means over per-drug / per-fold rows where
-%      noted) and edit the matching macro below.
+%   2. Read the value from that CSV and edit the matching macro below.
 %   3. Recompile (pdflatex main.tex, twice). No section file needs touching.
+%   Results macros are NOT re-added by hand: review item 12 replaces this file
+%   with an extraction script, and hand-transcription is what it exists to end.
 % =============================================================================
 
 % === dataset (docs/project_progress.md, notebooks/04) 
@@ -33,8 +35,6 @@
 \newcommand{\NIndep}{150}          % ~independent examples after held-out splits
 \newcommand{\NHvg}{5{,}000}        % highly variable genes (hvg5000 variant)
 \newcommand{\NVocab}{4{,}576}      % of those, in scGPT's vocabulary
-\newcommand{\NLearn}{10}           % learnable-drug subset size
-
 % === gene-symbol defect (notebooks/outputs/embeddings/gene_symbol_rescue.csv, 05.08.2026)
 % Genes discarded as out-of-vocabulary that are in fact IN scGPT's vocabulary under
 % their current HGNC symbol; recovered via prev_symbol in reference/hgnc_complete_set.txt.
@@ -54,30 +54,34 @@
 \newcommand{\RepDiffMed}{0.49}     % median disagreement, in units of the drug's across-line SD
 \newcommand{\RepDiffPct}{27.3}     % % of repeated pairs differing by more than that SD
 
-% === out-of-fold Spearman on auc_z, mean over the 10 learnable drugs
-% source: target/target_comparison.csv (mean of the per-drug `spearman` rows,
-%         filtered by score=auc_z, heads, rep)
-\newcommand{\rhoTenPca}{0.360}     % heads=K=10,  X_pca
-\newcommand{\rhoTenScgpt}{0.396}   % heads=K=10,  X_scGPT
-\newcommand{\rhoFullPca}{0.316}    % heads=K=545, X_pca
-\newcommand{\rhoFullScgpt}{0.328}  % heads=K=545, X_scGPT
-
-% === baselines / capacity: ablations/ablation_capacity.csv (`spearman`) 
-\newcommand{\ridgePca}{0.343}      % ridge (line-level), X_pca
-\newcommand{\mlpPcaR}{0.356}       % MLP (128,64) current, X_pca
-\newcommand{\mlpScgptR}{0.402}     % MLP (128,64) current, X_scGPT
-\newcommand{\linScgptR}{0.292}     % linear head, X_scGPT
-\newcommand{\ParamsHi}{74{,}954}   % params, MLP (128,64)
-\newcommand{\ParamsLo}{5{,}130}    % params, linear head
-% train-to-val MSE gap on auc_z, MLP (128,64): val_mse - train_mse
-\newcommand{\gapScgpt}{0.098}      % 0.8267 - 0.7290 (X_scGPT)
-\newcommand{\gapPca}{0.464}        % 0.9639 - 0.4995 (X_pca)
-
-% === DrEval LCO, normalized, mean over folds 1-5 
-% source: dreval/dreval_lco_results.csv (`Spearman: normalized`, `R^2: normalized`)
-\newcommand{\drScgptSp}{0.357}     % OncoMLP (X_scGPT)
-\newcommand{\drScgptRsq}{0.114}    % OncoMLP (X_scGPT)
-\newcommand{\drPcaSp}{0.340}       % OncoMLP (X_pca)
-\newcommand{\drPcaRsq}{0.086}      % OncoMLP (X_pca)
-\newcommand{\drRfSp}{0.339}        % SingleDrugRF (scgpt)
-\newcommand{\drPaperRsq}{19\%}     % paper's best LCO model, normalized R^2
+% =============================================================================
+% WITHDRAWN 12.08.2026 -- every macro carrying a MODEL RESULT has been removed.
+%
+% Three independent changes invalidated all of them, and none is a rescaling of
+% the old values, so they could not be converted:
+%   * the target was replaced on 11.08.2026 (CTRPv2's published AUC had been
+%     divided by the wrong quantity; the per-drug standardized variant of it was
+%     retired separately);
+%   * the drug panel was rebuilt on 12.08.2026 -- both earlier compound sets were
+%     selected using our own response values;
+%   * the representations on disk predate the preprocessing corrections.
+%
+% Removed: \NLearn, \rhoTenPca, \rhoTenScgpt, \rhoFullPca, \rhoFullScgpt,
+%          \ridgePca, \mlpPcaR, \mlpScgptR, \linScgptR, \gapScgpt, \gapPca,
+%          \ParamsHi, \ParamsLo, \drScgptSp, \drScgptRsq, \drPcaSp, \drPcaRsq,
+%          \drRfSp, \drPaperRsq.
+% The values themselves are kept, with what each was measured on, in
+% docs/steps/corrections-and-dead-ends.md. They are not restored here: a macro
+% that resolves is a macro that gets used.
+%
+% What remains ABOVE is DATA, not results -- counts and provenance of the two
+% sources, which no model run produced. Two caveats on them:
+%   * \NLines is 180 and becomes 181 at the sweep (the H292 alias recovers a
+%     screened cell line); it stays at 180 until an artifact supports 181.
+%   * the replicate-disagreement macros were computed on CTRPv2's own 2015
+%     distribution, which is no longer the target source, so they are stale in
+%     the same way and are due for re-derivation.
+%
+% The drug-panel counts in Methods are typed inline rather than defined here,
+% pending the extraction script (review item 12) that should replace this file.
+% =============================================================================
