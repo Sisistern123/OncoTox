@@ -35,7 +35,7 @@ Two outputs are written into the AnnData (both happen by default):
     * ``adata.uns["ctrp_score"]``: which measure Y_ctrp holds.
     * ``adata.obs["cellosaurus_id"]``: the cell line's Cellosaurus accession -- **recorded, never
       joined on**; the join key is still the normalized name. See
-      ``notebooks/data_and_harmonization/cell_line_join_verification.ipynb``.
+      ``notebooks/analysis/harmonization/cell_line_join_verification.ipynb``.
 
    Drugs are kept only if at least ``min_cell_lines`` distinct SCP542-overlapping
    cell lines were screened against them (default 50) so we don't add heads with
@@ -131,7 +131,7 @@ def _load_drevalpy_long(response_csv: Path, score: str) -> pd.DataFrame:
     * ``cellosaurus_id`` is carried through but **never joined on** -- resolving accessions is
       strictly worse as a key (172 of 198). It rides along so the target carries a persistent
       identifier, and so the join can be verified against one
-      (``notebooks/data_and_harmonization/cell_line_join_verification.ipynb``).
+      (``notebooks/analysis/harmonization/cell_line_join_verification.ipynb``).
 
     Rows with no value for the requested measure are dropped here rather than silently becoming
     unobserved entries. That matters for ``ln_ic50_cc``, which is absent for ~40 % of curves by
@@ -328,7 +328,7 @@ def run(
     # on** -- accessions resolve fewer SCP542 lines than names do (172 vs 180 of 198), so they make a
     # worse key; they are here so the target carries a citable identifier and so the name join can be
     # checked against an external authority. Verification and the ambiguity rules:
-    # notebooks/data_and_harmonization/cell_line_join_verification.ipynb.
+    # notebooks/analysis/harmonization/cell_line_join_verification.ipynb.
     line_to_cvcl = ctrp_full.drop_duplicates("ccl_name_norm").set_index("ccl_name_norm")[
         "cellosaurus_id"
     ]

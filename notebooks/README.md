@@ -1,60 +1,78 @@
 # OncoTox notebooks
 
-**A number means pipeline.** `1_` → `2_` → `3_` is the run order that rebuilds the data and the results.
-Everything else is analysis and lives in a named directory — no numbers, because there is no order to run
-them in. Figures and tables go to [`outputs/`](outputs/); model artifacts to `runs/` (git-ignored),
-indexed by `runs/runs_index.csv`.
+**A number means pipeline.** `1_` → `5_` is one path from raw data to a scored result, and running them
+in order rebuilds everything. Everything else is analysis and lives under [`analysis/`](analysis/) — no
+numbers, because there is no order to run those in. Figures and tables go to [`outputs/`](outputs/);
+model artifacts to `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 
 > ⛔ **The drug panel is void and a pipeline review is in progress** ([`docs/TODO.md`](../docs/TODO.md)).
-> Nothing computed on that panel is quotable until it is rebuilt — which affects `4_training` and
-> everything under `drug_selection/`.
+> Nothing computed on that panel is quotable until a run exists on the rebuilt one — which affects
+> `4_training` and everything derived from it.
 
 ## The pipeline
 
+Renumbered 12.08.2026 (Selin) from three stages to five, so that the numbered chain is a complete
+end-to-end pipeline rather than a partial one with the first build done by hand.
+
 | # | Notebook | What it does | Drives |
 |---|---|---|---|
-| **1** | `1_preprocessing.ipynb` | Builds the trainable data: recomputes the 512-d PCA baseline for both variants (§A) and builds the HVG-sweep variants including the scGPT re-embed (§B) | `scripts/preprocessing/run_preprocessing.py` |
-| **2** | `2_training.ipynb` | The PCA-vs-scGPT harness: 8-run matrix (load-or-train), 5-fold GroupKFold CV with test held out, per-drug correlation | `train_multitask.train_rep`, `cv_evaluate` |
-| **3** | `4_training.ipynb` | The current training run: `auc_cc`, per-fold density weighting, out-of-fold scoring against the ridge control. ⚠️ Its stored outputs are cleared and its panel is the void 8-drug one; it re-runs on `outputs/panel/panel.csv` at R4 of the sweep | `scripts/training/cv.py`, `density_weighting.py` |
+| **1** | `1_data.ipynb` | Fetches the pinned CTRPv2 response table and converts SCP542 into the raw h5ad, HVG-filtered | `pipeline.fetch`, `pipeline.convert` |
+| **2** | `2_drug_selection.ipynb` | **Which drugs does the model predict, and on whose authority?** FDA-approved list → what CTRPv2 screened → coverage over the overlap → the 11 with a verified published claim. Writes `outputs/panel/panel.csv` | `annotation/drug_annotation.py`, `sources/pubchem.py` |
+| **3** | `3_representations.ipynb` | scGPT embedding, CTRP targets, the frozen cell-line-grouped split, and the PCA baseline | `pipeline.scgpt/targets/splits/pca` |
+| **4** | `4_training.ipynb` | The training run: `auc_cc`, per-fold density weighting, out-of-fold scoring against the ridge control. ⚠️ Its stored outputs are cleared and its panel is the void 8-drug one; it re-runs on `outputs/panel/panel.csv` at R4 of the sweep | `scripts/training/cv.py`, `density_weighting.py` |
+| **5** | `5_evaluation.ipynb` | ⛔ **Stub.** External benchmark + diagnostics. Neither notebook it should absorb can run yet — both hardcode the removed `'auc'`, and `dreval_benchmark` also imports a deleted module. Blocked on **review item 11** | — |
 
-`1_` and `2_` call the **same entry points the CLI uses**, so the notebooks and the command line cannot
-drift — they are documentation *and* a re-run, not a fork.
+**Why drug selection is stage 2 and not an analysis notebook.** It reads exactly two things — the
+cell-line roster stage 1 writes and the response table stage 1 fetches — and it writes `panel.csv`,
+which stage 4 consumes. It is a step in the chain, and it sits before the representations because it
+needs none of them.
 
-> ⚠️ **`2_training`'s conclusions are superseded; its machinery is not.** The 8-run matrix and the
-> "ρ ≈ 0, the model cannot rank cell lines" reading were produced at K=545 on the legacy `mean_pv`
+**The panel does not feed stage 3.** `ctrp_to_h5ad` keeps every drug with enough coverage and the panel
+is applied as a column selection at training time. Split eligibility is derived from *"this line has at
+least one observed label"*, so restricting the target matrix to 11 drugs could drop lines and silently
+re-freeze the split (Selin, 12.08.2026 — see `3_representations` §B).
+
+**The notebooks are the orchestrator.** Each stage calls `scripts/preprocessing/pipeline.py`, where every
+step owns its own guard and preconditions, so running them out of order fails rather than producing
+something subtly wrong. `run_preprocessing.py`, the CLI that used to hold the step order, was
+[archived](../scripts/archive/README.md) that day: the order is the numbering of these notebooks, and a
+second copy of it in a CLI was a second thing to keep in step.
+
+> ⚠️ **`2_training.ipynb` is not yet folded in.** Its conclusions are superseded — the 8-run matrix and
+> the "ρ ≈ 0, the model cannot rank cell lines" reading were produced at K=545 on the legacy `mean_pv`
 > target, whose unstandardised per-drug variance was destroying the signal
-> ([why](../docs/steps/corrections-and-dead-ends.md#neither-representation-ranks-cell-lines--the-k545-null-result)).
-> It stays in the pipeline because re-running the matrix on the current target is an open task and this is
-> the only place that harness exists.
+> ([why](../docs/steps/corrections-and-dead-ends.md#neither-representation-ranks-cell-lines--the-k545-null-result))
+> — but its harness is the only place the PCA-vs-scGPT matrix exists. It becomes `4_training` §B; until
+> that fold happens it keeps its old filename and is **not** a numbered stage.
 
 ## Analysis
 
-### `data_and_harmonization/` — what is in the data, and does the join hold?
+Nothing here is on the pipeline path; each answers a question about it.
+
+### `analysis/qc/` — is the input what we think it is?
 
 | Notebook | Question it answers |
 |---|---|
-| `drug_catalog.ipynb` | Cross-database compound harmonization (CTRP / GDSC / PRISM / DrugBank) → writes `data/drug/*`. The **only** analysis notebook whose outputs another step consumes |
+| `verify_variants.ipynb` | QC of `hvg5000` vs `all_genes`, the PCA-vs-scGPT UMAP latent validation, and (§9) the gene-set sweep — heads-beating vs gene count under CV |
+| `gene_symbol_rescue.ipynb` | How many genes scGPT discarded that are in its vocabulary under a **current** HGNC symbol — the symbol-matching defect, quantified |
+
+### `analysis/harmonization/` — does the join hold?
+
+| Notebook | Question it answers |
+|---|---|
+| `cell_line_join_verification.ipynb` | **Does the name join pair the right two lines?** Resolves SCP542's names against the pinned Cellosaurus release and checks them against the accessions DrEval ship, with an independent tissue cross-check. Runs `scripts/sources/cellosaurus.py`, so the rules it documents are the rules the pipeline uses |
 | `drug_coverage.ipynb` | Per-drug coverage and response spread; the label distribution behind "why the task is hard". ⚠️ Its *learnability* section was built on `mean_pv` and is superseded; the target-distribution figures still stand |
-| `verify_variants.ipynb` | QC of `hvg5000` vs `all_genes`, the PCA-vs-scGPT UMAP latent validation, and (§9) the gene-set sweep — heads-beating vs gene count under CV, moved here from `2_training` §4 on 03.08.2026 and re-targeted to `auc` |
-| `cell_line_join_verification.ipynb` | **Does the name join pair the right two lines?** Resolves SCP542's names against the pinned Cellosaurus release and checks them against the accessions DrEval ship, with an independent tissue cross-check; §3 records what the target build produces for each measure. Runs `scripts/sources/cellosaurus.py`, so the rules it documents are the rules the pipeline uses |
+| `drug_catalog.ipynb` | Cross-database compound harmonization (CTRP / GDSC / PRISM / DrugBank). ⛔ **Needs a rewrite, not a re-run:** it hardcodes absolute `/Users/...` paths, never uses `PipelinePaths`, reads CTRPv2's retired `v20.*` tables, and its `../data/*` inputs are not in the repository |
 
-### `result_evaluation/` — is the number real?
+### `analysis/evaluation/` — is the number real?
 
-| Notebook | Question it answers |
-|---|---|
-| `dreval_benchmark.ipynb` | **How strong is this by the field's standard?** Our data and model through the real **DrEval** package (`drevalpy` 1.5.1): their LCO splits, their baselines, their metrics |
-| `diagnostics.ipynb` | The drug-selection gate defect, the proliferation test, and result dispersion across folds *and* drugs |
-
-### `drug_selection/` — which compounds enter the model
+Both are **temporarily** here rather than in `5_evaluation`, because both raise on their first cell.
+They move up when they run.
 
 | Notebook | Question it answers |
 |---|---|
-| `2_drug_selection.ipynb` | **Which drugs does the model predict, and on whose authority?** Builds the panel end to end: the FDA-approved list → the compounds CTRPv2 screened → coverage over our 181 cell lines → the 11 with a verified published claim. Writes `outputs/panel/panel.csv` |
-
-Rebuilt 12.08.2026 ([Step 01](../docs/steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026)).
-The three notebooks that used to live here selected on **our own response values** and are archived;
-the criterion is now external to our labels entirely. The notebook reads no pipeline artifact — only
-the response CSV — so it runs under the freeze and its output does not go stale when the h5ads do.
+| `dreval_benchmark.ipynb` | **How strong is this by the field's standard?** Our data and model through the real **DrEval** package (`drevalpy` 1.5.1): their LCO splits, their baselines, their metrics. ⛔ Broken twice over — see `5_evaluation` |
+| `diagnostics.ipynb` | The drug-selection gate defect, the proliferation test, and result dispersion across folds *and* drugs. ⛔ Hardcodes the removed `'auc'` |
 
 ### `archive/` — nothing here is load-bearing
 
@@ -87,9 +105,9 @@ any module is in [CLAUDE.md](../CLAUDE.md) under *Where things live*.
 | `ablations_and_rescue.ipynb` | **Ground 2**, archived 11.08.2026. *Why did the 545-head model fail, and what fixes it?* — the implicit σ²-weighting of the loss, the causal rescue test, the model-knob ablations, the ridge control. The whole argument is a head-to-head between `auc` and `auc_z`, both removed, so it cannot run. Re-wiring it to `auc_cc` / `ln_ic50_cc` would not preserve the argument; it would ask a different question. ⛔ **Its ablation and ridge tables are void (12.08.2026):** its `oof()` early-stopped on the fold it scored, so the MLP rows are flattered and the ridge row is not — [Corrections](../docs/steps/corrections-and-dead-ends.md#the-evidence-that-closed-model-side-tuning). The within-notebook *rescue* ranking survives, because every arm there carries the same leak |
 
 Two things are **not** grounds for archiving. **Superseded conclusions** — `2_training`'s results are void
-but its harness is the only way to re-run the matrix, so it stays in the pipeline. **A discredited
-criterion** — everything in `drug_selection/` is built on one, but it is the documented record of how
-selection was done and it re-runs after the rebuild.
+but its harness is the only way to re-run the matrix, so it survives as `4_training` §B. **A discredited
+criterion** — `2_drug_selection`'s predecessors were built on one, but it is the documented record of how
+selection was done, and the rebuilt panel replaced it rather than deleting the record.
 
 ## Re-running
 
@@ -99,12 +117,23 @@ Every training notebook has a **`RETRAIN` flag, default `False`** — it then lo
 Fits use `TrainConfig(epochs=25)`: across 36 recorded runs the best epoch was **median 6, max 11**, and
 early stopping (patience 10) never came close to 25 — the earlier cap of 50 only cost wall-clock.
 
-Data is built by the CLI, not by the notebooks (`--score` defaults to `auc`):
+**The notebooks build the data** — stages 1 and 3, by calling `scripts/preprocessing/pipeline.py`. There
+is no CLI to run instead; `run_preprocessing.py` was archived on 12.08.2026. To rebuild without a
+browser, execute the stages headless:
 
 ```bash
-uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \
-    --score auc --start-at targets --skip-scgpt      # one targets h5ad per --score
+uv run jupyter nbconvert --execute --inplace notebooks/1_data.ipynb
+uv run jupyter nbconvert --execute --inplace notebooks/3_representations.ipynb
 ```
+
+`--score` defaults to `auc_cc`; each score writes its own targets h5ad, so `ln_ic50_cc` does not
+overwrite it. Set `SCORE` in the stage-3 bootstrap cell to switch.
+
+> ⚠️ Until 12.08.2026 this section read *"Data is built by the CLI, not by the notebooks"*, which
+> contradicted three statements above it and the header cell of the notebook that has built the data
+> since it was written. What was true underneath it is narrower and is now in stage 1: the `hvg5000`
+> targets h5ad was originally built by a direct CLI call, because no notebook covered `fetch → targets`
+> at the time. One does now.
 
 All results in this repo use the **`hvg5000`** variant: scGPT embeds only the subset of those genes in
 its vocabulary, PCA is computed on all of them, and both representations come out **512-d**. Gene counts

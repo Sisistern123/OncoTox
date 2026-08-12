@@ -188,7 +188,7 @@ Reproducible in `notebooks/2_training.ipynb`; run dirs `runs/20260627_1913xx_*` 
 - **Net:** scGPT's robust, reproducible win is **lower overfitting**, not higher accuracy — and this
   now holds with input dimensionality matched, so it can no longer be dismissed as a capacity artifact.
 - **Which heads are even learnable** is driven by coverage + response variance — see
-  `notebooks/data_and_harmonization/drug_coverage.ipynb`: the ≈16-line drugs (n_val 221) are the unreliable/hardest heads,
+  `notebooks/analysis/harmonization/drug_coverage.ipynb`: the ≈16-line drugs (n_val 221) are the unreliable/hardest heads,
   while high-coverage high-variance drugs (docetaxel, gemcitabine, oligomycin a) are the easiest.
 
 > ⚠️ **Gap-metric caveat.** Train MSE is logged with dropout (0.5) + input-dropout (0.1) **active**, so
@@ -250,7 +250,7 @@ Pearson), restricted to the 461 drugs with real per-line variance (std ≥ 0.05,
 `notebooks/archive/learnability_filter.ipynb` → `notebooks/archive/learnable_subset_training.ipynb`. The §3 null result
 above pooled a few learnable heads with hundreds of flat, inert ones. **Filter first, then ask.**
 
-**The filter (`learnability_filter`).** The learnability score of [`drug_coverage`](../../notebooks/data_and_harmonization/drug_coverage.ipynb)
+**The filter (`learnability_filter`).** The learnability score of [`drug_coverage`](../../notebooks/analysis/harmonization/drug_coverage.ipynb)
 (`resp_std × cov_frac`) is **degenerate on `auc_z`** — the target is z-scored per drug, so every drug
 has std exactly 1.0 and all 545 tie. Spread is therefore measured on the **raw `auc` scale**, recovered
 exactly via `uns["ctrp_score_scale"]`/`["ctrp_score_center"]` (and that `scale` vector *is* the per-drug
@@ -261,7 +261,7 @@ toxic drug has no cross-line ranking to learn, however well covered it is. **6 /
 learnability are trained.**
 
 **What the raw label distribution looks like, and why a spread filter alone cannot bite.**
-`notebooks/data_and_harmonization/drug_coverage.ipynb` → `outputs/data/target_distribution.png`, four panels: (A) the
+`notebooks/analysis/harmonization/drug_coverage.ipynb` → `outputs/data/target_distribution.png`, four panels: (A) the
 viability histogram, (B) the per-drug response-std histogram, (C) the coverage-vs-std filter scatter,
 (D) per-drug response bands.
 
@@ -455,7 +455,7 @@ compounds.
 The Step-1 run itself, with its numbers and dispersion, is in
 [Corrections](corrections-and-dead-ends.md#the-step-1-training-run-on-the-voided-panel) — it was computed on the voided panel.
 
-### Benchmarked with the real DrEval package (`notebooks/result_evaluation/dreval_benchmark.ipynb`, 14.07.2026)
+### Benchmarked with the real DrEval package (`notebooks/analysis/evaluation/dreval_benchmark.ipynb`, 14.07.2026)
 
 Not a re-implementation: `pip install drevalpy` (v1.5.1, <https://github.com/daisybio/drevalpy>), and our
 data/model run through **their** `DrugResponseDataset`, **their** `split_dataset(mode="LCO")`, **their**
@@ -570,7 +570,7 @@ correction to an earlier claim that credited the curve fit rather than the stand
 
 > ⛔ **03.08.2026 — the numbers in this table are superseded.** They were produced on the retired
 > **`mean_pv`** target and cached at `outputs/legacy/training_545_mean_pv/hvg_sweep.csv`. The sweep
-> moved to `notebooks/data_and_harmonization/verify_variants.ipynb` §9 and was re-targeted to **`auc`**,
+> moved to `notebooks/analysis/qc/verify_variants.ipynb` §9 and was re-targeted to **`auc`**,
 > which no longer reads that cache — so the sweep currently has **no live numbers**. The table is kept
 > as the record of what was believed on 28.06.2026; do not quote it as current. Two further caveats
 > on it are in [Step 02](02-preprocessing-and-embeddings.md#decision--one-seeded-draw-at-1200-all_genes-is-a-sanity-check-03082026):
@@ -593,13 +593,14 @@ correction to an earlier claim that credited the curve fit rather than the stand
 > ⚠️ `hvg1000`–`hvg3000` have no measured expressed-gene counts, but they cannot reach the cap. The HVG
 > sets are **strictly nested** — `hvg1000 ⊂ hvg2000 ⊂ hvg3000 ⊂ hvg5000 ⊂ all_genes`, zero genes outside
 > the larger set at every step, verified 05.08.2026 in
-> `notebooks/data_and_harmonization/verify_variants.ipynb` §10a — so their per-cell counts are bounded by
+> `notebooks/analysis/qc/verify_variants.ipynb` §10a — so their per-cell counts are bounded by
 > `hvg5000`'s, whose own maximum sits below the cap. `hvg1000` is settled independently and needs no
 > check: 939 in-vocab genes cannot fill a 1,200-token sequence.
 
 Does either rep have a preferred gene-set size?
-`notebooks/data_and_harmonization/verify_variants.ipynb` §9 builds each variant
-(1k/2k/3k/5k **plus `all_genes`**, full pipeline incl. scGPT re-embed; `1_preprocessing` §B) and runs the same
+`notebooks/analysis/qc/verify_variants.ipynb` §9 builds each variant
+(1k/2k/3k/5k **plus `all_genes`**, full pipeline incl. scGPT re-embed; built by `1_preprocessing` §B until
+12.08.2026, when the sweep build moved out of the numbered pipeline to `analysis/qc/`) and runs the same
 **5-fold GroupKFold, test held out, all 545 drugs** — so the HVG-vs-all-genes comparison is
 apples-to-apples under identical CV:
 

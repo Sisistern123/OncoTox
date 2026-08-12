@@ -141,7 +141,7 @@ the genes it can embed.
 
 Changing the gene set means re-running `convert`, which forces a re-embed and a re-PCA; that is why
 `hvg5000` and `all_genes` live in **separate folders that never share files** (`guard_output`
-enforces it). `notebooks/data_and_harmonization/verify_variants.ipynb` checks these gene counts and the `X_pca` source at
+enforces it). `notebooks/analysis/qc/verify_variants.ipynb` checks these gene counts and the `X_pca` source at
 any time.
 
 ### The expression transform is the dataset's own (05.08.2026)
@@ -421,7 +421,7 @@ Three reasons, in descending order of weight.
 
 **1 — More genes buy nothing measurable.** The gene-set sweep
 ([Step 05](05-multitask-results.md#gene-set-sweep--heads-beating-vs-gene-count-incl-all_genes-28062026),
-`notebooks/data_and_harmonization/verify_variants.ipynb` §9, 28.06.2026) puts 1k/2k/3k/5k **and**
+`notebooks/analysis/qc/verify_variants.ipynb` §9, 28.06.2026) puts 1k/2k/3k/5k **and**
 `all_genes` through the same
 5-fold GroupKFold over all 545 drugs. Heads-beating-baseline is **flat across the whole axis** for both
 representations, and `all_genes` (PCA 204 ± 86, scGPT 184 ± 90) is no better than `hvg5000`
@@ -434,7 +434,7 @@ checkpoint's own pretraining configuration — `"max_seq_len": 1200`, `"trunc_by
 (`scGPT_human/args.json`). When a cell carries more expressed genes than the cap, the data collator draws
 a **random** subset rather than truncating (`scgpt/data_collator.py:143-169`). Measured over all 53,513
 cells of every variant's embeddings `.X` (post-OOV, i.e. the matrix actually tokenized) in
-`notebooks/data_and_harmonization/verify_variants.ipynb` §10b–§10c, 05.08.2026; per-cell counts cached
+`notebooks/analysis/qc/verify_variants.ipynb` §10b–§10c, 05.08.2026; per-cell counts cached
 to `outputs/embeddings/scgpt_nonzero_per_cell.npz`:
 
 | Variant | in scGPT vocab | expressed genes / cell (median · mean · max) | cells at or above the cap | **genes scGPT actually saw** (mean) |
@@ -634,7 +634,7 @@ gene set under `processed/scRNAseq_SCP542/all_genes/`. `convert` keeps all 22,72
 OOV-drop then leaves **20,570** in `.X` (what scGPT embeds), while **`X_pca` is computed on the full
 22,722 convert counts** — a genuine full-transcriptome PCA. So the trainable file is **53,513 ×
 20,570** in `.X`, carrying `X_scGPT` (from the 20,570 in-vocab genes) and `X_pca` (from all 22,722).
-`notebooks/data_and_harmonization/verify_variants.ipynb` checks the gene counts directly and plots the two variants'
+`notebooks/analysis/qc/verify_variants.ipynb` checks the gene counts directly and plots the two variants'
 UMAPs side by side. Evaluation of the all-genes side is still pending.
 
 ✅ On-plan / closes part of the HVG deviation by enabling the full-transcriptome comparison.
@@ -643,13 +643,13 @@ UMAPs side by side. Evaluation of the all-genes side is still pending.
 
 ## Latent-space validation (UMAP, Fig. 3 / Fig. 4)
 
-`notebooks/data_and_harmonization/verify_variants.ipynb` (§7) is the **standalone validation** (not part of the
+`notebooks/analysis/qc/verify_variants.ipynb` (§7) is the **standalone validation** (not part of the
 orchestrator): it builds PCA-vs-scGPT UMAPs for **both** variants via `sc.pp.neighbors` + UMAP,
 colored by `Cancer_type` (**Fig. 3**) and `viability_paclitaxel` (**Fig. 4**). It visually confirmed
 the hypothesis: PCA = discrete tissue "islands", scGPT = continuous shared manifold; paclitaxel
 sensitivity mixed across the scGPT manifold.
 
-**Outputs** (all under `notebooks/outputs/embeddings/`, written by `data_and_harmonization/verify_variants.ipynb` §8):
+**Outputs** (all under `notebooks/outputs/embeddings/`, written by `analysis/qc/verify_variants.ipynb` §8):
 
 | File | What it shows |
 |---|---|
@@ -726,27 +726,45 @@ are the reason the new measures carry the `_cc` suffix instead of reusing `auc`.
 
 ### Reproduce
 
-A documented, runnable walk-through of these commands lives in `notebooks/1_preprocessing.ipynb`, which
-drives the same `run_preprocessing.py` entry points the CLI uses, so the notebook and the command line
-cannot drift. `--score` defaults to `auc_cc`; passing it explicitly is what makes a comparison run
-unambiguous:
+The runnable walk-through is the numbered notebooks themselves: `notebooks/1_data.ipynb` (`fetch` →
+`convert`) and `notebooks/3_representations.ipynb` (`scgpt` → `targets` → `splits` → `pca`). Both drive
+`scripts/preprocessing/pipeline.py`, one function per step, each owning its own guard and preconditions.
+
+⚠️ **`run_preprocessing.py` was archived on 12.08.2026** and there is no CLI replacement — the step order
+is the notebook numbering, and a second copy of it in a CLI was a second thing to keep in step
+([`scripts/archive/README.md`](../../scripts/archive/README.md)). The commands this section used to give
+therefore no longer run. To rebuild without a browser:
+
 ```bash
-# From scratch (runs convert+HVG → embeddings → targets → splits → pca).
-# The scgpt step needs the separate scGPT env, hence --scgpt-python.
-# PCA width defaults to 512 (--pca-n-comps) to match the scGPT embedding.
-uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \
-    --score auc_cc --scgpt-python /path/to/scgpt-venv/bin/python
+# From scratch. Set SCGPT_PYTHON in the stage-3 bootstrap cell first: the scgpt
+# step needs the separate scGPT venv and raises without it (no interactive fallback).
+uv run jupyter nbconvert --execute --inplace notebooks/1_data.ipynb
+uv run jupyter nbconvert --execute --inplace notebooks/3_representations.ipynb
+```
 
-# Add the second measure on top of existing convert+embeddings (this is the
-# measure-comparison build; convert/scgpt are untouched and reused).
-uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 --all-drugs \
-    --score ln_ic50_cc --start-at targets --skip-scgpt
+Anything more selective is a direct call, which is what one-function-per-step buys — there is no
+`--start-at` to reconstruct:
 
-# Recompute only the 512-d PCA baseline in-place (what the 512-d switch needed).
-uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 \
-    --start-at pca --skip-scgpt --force-pca --pca-n-comps 512
+```python
+from scripts.layout import PipelinePaths
+from scripts.preprocessing import pipeline
 
-# training (--score selects which targets file to train on)
+# Add the second measure on top of the existing convert + embeddings. The embedding
+# is score-independent, so scgpt is simply not called; nothing is skipped or reused
+# by flag, it is just not invoked.
+paths = PipelinePaths.build(None, "hvg5000", "ln_ic50_cc")
+pipeline.targets(paths)
+pipeline.splits(paths)
+pipeline.pca(paths)
+
+# Recompute only the 512-d PCA baseline in place (what the 512-d switch needed).
+pipeline.pca(PipelinePaths.build(None, "hvg5000", "auc_cc"), n_comps=512, force=True)
+```
+
+`--score` defaults to `auc_cc`; each measure writes its own targets h5ad, so the two never overwrite
+each other. Training still has a CLI:
+
+```bash
 uv run scripts/training/train_multitask.py --use-rep X_scGPT --score auc_cc   # every kept drug
 uv run scripts/training/train_multitask.py --use-rep X_pca --score ln_ic50_cc --drugs paclitaxel
 ```

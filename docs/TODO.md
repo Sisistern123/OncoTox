@@ -199,7 +199,7 @@ every one of them was a step that looked settled and had never been checked.
       on record was computed on the void 8-drug panel.
   - [ ] **Left open by this item, routed elsewhere.** The 28.07 panel-void banner lifts only once a run
         exists on the new panel, i.e. at R4 of the sweep, not here.
-        `notebooks/result_evaluation/dreval_benchmark.ipynb` imports the now-archived
+        `notebooks/analysis/evaluation/dreval_benchmark.ipynb` imports the now-archived
         `dreval_normalize.py` and hardcodes the removed `'auc'` score, so it is broken twice over;
         untouched pending **item 11 (Evaluation)**, which also decides whether the fragility diagnostic
         returns ([why it was archived](../scripts/archive/README.md)).
@@ -402,17 +402,17 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
         stays true until a run exists on `outputs/panel/panel.csv`. Lifting it when the panel changed
         would have declared the numbers current a run too early.
 - [ ] **R5 · Re-run the analysis notebooks that read the retrained outputs.**
-      `result_evaluation/`: `diagnostics` (§5 dispersion), `dreval_benchmark` — the latter is
+      `analysis/evaluation/`: `diagnostics` (§5 dispersion), `dreval_benchmark` — the latter is
       **broken twice over** (imports the archived `dreval_normalize`, hardcodes the removed `'auc'`)
       and belongs to review item 11 before it can run at all.
-      `data_and_harmonization/drug_coverage` — **not optional**, the line count moves 180 → 181.
+      `analysis/harmonization/drug_coverage` — **not optional**, the line count moves 180 → 181.
       `2_drug_selection` does **not** need the retrained outputs — it reads only the
       response CSV — but re-run it anyway once preprocessing has, so the panel is regenerated against
       the same artifacts as everything else and `panel.csv` cannot silently predate them.
       **Two notebooks still have their stored outputs cleared** (11.08.2026), because their score
       literal changed to `auc_cc` and the old results could not be refreshed under the freeze — the
       code is correct and only the results are missing: `4_training` (c1) and
-      `data_and_harmonization/verify_variants` (c24).
+      `analysis/qc/verify_variants` (c24).
       **Archived and not re-run:** `target_comparison`, `ablations_and_rescue`, `replicate_variation`
       (targets that no longer exist, [why](./steps/corrections-and-dead-ends.md#retired-code-paths)),
       and — since 12.08.2026 — `learnability_filter`, `learnable_subset_training` and
@@ -767,7 +767,7 @@ prediction models with DrEval*, Nat. Commun. 2026. Half of published models don'
 drug-mean + cell-line-mean predictor. **Our ridge ≈ MLP finding is the field's norm, independently
 reproduced.** Our split *is* their LCO.
 
-Benchmarked with the real package (`drevalpy` 1.5.1) in `notebooks/result_evaluation/dreval_benchmark.ipynb`, and
+Benchmarked with the real package (`drevalpy` 1.5.1) in `notebooks/analysis/evaluation/dreval_benchmark.ipynb`, and
 separately re-normalized to remove the cell-line effect. Results in
 [Step 05](./steps/05-multitask-results.md); the first run's leak and the numbers it invalidated in
 [Corrections](./steps/corrections-and-dead-ends.md#the-first-dreval-benchmark--a-val-split-leak).
@@ -789,7 +789,7 @@ Unlike the items above these are questions, not scheduled work.*
   on `hvg5000`); compare against the paclitaxel **head** inside the K=545 run
   ([Step 05](./steps/05-multitask-results.md)).
 - Which low-coverage heads should be dropped or down-weighted? The ≈16-line drugs (n_val 221) are the
-  unreliable ones — quantified in `notebooks/data_and_harmonization/drug_coverage.ipynb` and
+  unreliable ones — quantified in `notebooks/analysis/harmonization/drug_coverage.ipynb` and
   [Step 05](./steps/05-multitask-results.md).
 - Should the loss move from uniform-per-entry to per-head / uncertainty weighting? *(Note: adaptive task
   weights are deliberately deferred — they estimate residual variance, mixing label noise with model

@@ -144,7 +144,7 @@ per variant: [Step 02](./steps/02-preprocessing-and-embeddings.md#hvg-5000-pipel
 > PCA-vs-scGPT result from this page** — it is an index and holds none of its own.
 
 Results: [Step 04](./steps/04-single-task-results.md) (single-task), [Step 05](./steps/05-multitask-results.md)
-(multi-task); per-drug coverage & learnability in `notebooks/data_and_harmonization/drug_coverage.ipynb`. Action list:
+(multi-task); per-drug coverage & learnability in `notebooks/analysis/harmonization/drug_coverage.ipynb`. Action list:
 [TODO.md](./TODO.md).
 
 > **PCA width matched to scGPT (27.06.2026).** The original matrix used a **~50-d** PCA (scanpy

@@ -117,7 +117,7 @@ checked directly:
 Also `PTRF`→`CAVIN1`, `CYR61`→`CCN1`, `LINC00152`→`CYTOR`, `H2AFJ`→`H2AJ`, `C6orf48`→`SNHG32`. Every
 old symbol absent from the vocabulary, every current one present.
 
-**Scale**, counted 05.08.2026 in `notebooks/data_and_harmonization/gene_symbol_rescue.ipynb` against
+**Scale**, counted 05.08.2026 in `notebooks/analysis/qc/gene_symbol_rescue.ipynb` against
 `reference/hgnc_complete_set.txt` (HGNC approved set, published 04.08.2026, pinned by SHA-256 because
 HGNC overwrites its download URL in place and publishes no dated archive —
 [provenance](../../reference/README.md)). Percentages are of the **whole transcriptome**: the source
@@ -236,7 +236,7 @@ in the docs and the report, still carries the defect in full. The repair takes e
 coverage ≥ 90 %. The differential-response condition was the part the loose `drug_coverage` gates lacked, and it
 was what took 545 drugs down to 10.
 
-**Overturned** 27.07.2026 (`notebooks/result_evaluation/diagnostics.ipynb`; the question that surfaced it was why
+**Overturned** 27.07.2026 (`notebooks/analysis/evaluation/diagnostics.ipynb`; the question that surfaced it was why
 `nutlin-3` was not in the panel). `auc ≤ 0.5` asks *does the line die* — absolute potency, which is
 essentially the per-drug mean. But the target subtracts that mean and the metric is Spearman, which
 reads only the ordering of lines. **The gate selected on the one quantity the model is neither given
@@ -306,7 +306,7 @@ spread-verified, and **drawn from a kill-filtered pool**.
 
 **What it affected.** The Step 1 training run (`notebooks/4_training.ipynb`), the distribution
 and weighting design (`notebooks/archive/panel_distributions.ipynb`), the dispersion figures
-(`notebooks/result_evaluation/diagnostics.ipynb` §5), the panel rows in [Step 05](05-multitask-results.md), and the
+(`notebooks/analysis/evaluation/diagnostics.ipynb` §5), the panel rows in [Step 05](05-multitask-results.md), and the
 corresponding numbers in `report/`. The *methodological* findings from that run survive — the collapse
 was a head-count effect, density weighting is a null, the ridge tie replicates — because none of them
 depends on which eight drugs were chosen. The *numbers* must be re-derived.
@@ -362,7 +362,7 @@ gate defect propagated into it. And only `dasatinib` and `methotrexate` overlapp
 the eight were compounds the previous filter never named.
 
 The selection also **promoted `data/drug/all_sources_drug_catalog.csv` from "exploratory, consumed by no
-model" to a selection input.** The catalog is built in `notebooks/data_and_harmonization/drug_catalog.ipynb` from CTRP's
+model" to a selection input.** The catalog is built in `notebooks/analysis/harmonization/drug_catalog.ipynb` from CTRP's
 official `v20.meta.per_compound.txt`, mapping `gene_symbol_of_protein_target` → `target`,
 `target_or_activity_of_compound` → `moa_or_pathway`, `cpd_status` → `compound_status`
 ([Step 01](01-datasets-and-harmonization.md)). The rebuild will use it the same way, so that promotion
@@ -390,7 +390,7 @@ Null (per-drug mean) MSE is 0.030, so these read directly: the scGPT model expla
 **in AUC units**, RMSE ≈ 0.16 viability.
 
 **Dispersion**, computed from the stored out-of-fold predictions without retraining
-(`notebooks/result_evaluation/diagnostics.ipynb` §5, `outputs/diagnostics/result_dispersion.csv`):
+(`notebooks/analysis/evaluation/diagnostics.ipynb` §5, `outputs/diagnostics/result_dispersion.csv`):
 
 | | pooled ρ | sd across the 5 folds | sd across the 8 drugs | per-drug range |
 |---|---|---|---|---|
@@ -697,7 +697,7 @@ number ([TODO](../TODO.md)).
 
 ### The first DrEval benchmark — a val-split leak
 
-**Established** 14.07.2026 (`notebooks/result_evaluation/dreval_benchmark.ipynb`) with `drevalpy` 1.5.1 under their LCO
+**Established** 14.07.2026 (`notebooks/analysis/evaluation/dreval_benchmark.ipynb`) with `drevalpy` 1.5.1 under their LCO
 protocol, on the 5-drug best-case subset.
 
 **Overturned** the same day: `run_oncomlp` was passing the **test fold** as the validation loader, so
@@ -947,7 +947,7 @@ they were drawn from was not, which is a separate defect.
 helps scGPT.
 
 **Not reproduced** 28.06.2026 (then `notebooks/2_training.ipynb` §4; since 03.08.2026
-`notebooks/data_and_harmonization/verify_variants.ipynb` §9), the gene-set sweep at 1k/2k/3k/5k plus
+`notebooks/analysis/qc/verify_variants.ipynb` §9), the gene-set sweep at 1k/2k/3k/5k plus
 `all_genes` under identical 5-fold CV: both representations are **flat across the whole axis** (PCA
 ~203–216 heads beating baseline, scGPT ~184–193), val MSE constant at 0.0105–0.0107. PCA's `all_genes`
 value of 204 sits mid-band, *below* `hvg3000`'s 216. There is no sweet spot and no all-genes advantage
@@ -1022,7 +1022,7 @@ the most visible axis in scRNA-seq, and cell cycle is the top recurrent program 
 *this* dataset. If the cell-line effect were largely proliferation, it would explain both why
 ridge-on-line-means ties the MLP and why removing the cell-line effect costs ~20 % of the signal.
 
-**Test** (`notebooks/result_evaluation/diagnostics.ipynb`). The dataset ships the authors' own published per-cell scores
+**Test** (`notebooks/analysis/evaluation/diagnostics.ipynb`). The dataset ships the authors' own published per-cell scores
 (`G1/S_score`, `G2/M_score`, plus all 12 heterogeneity programs), so no scoring choice of ours entered.
 Averaged per line and correlated against the cell-line effect — the mean over drugs of the per-drug
 z-scored AUC, which is DrEval's definition. Outputs:
@@ -1121,7 +1121,7 @@ to expose invisible join errors.
   ccl_availability, ccle_primary_site, ccle_primary_hist, ccle_hist_subtype_1` — no `ACH-`, no
   `CVCL_`. SCP542's `Metadata.txt` carries none either. The only `ACH-` strings in the repository are
   PRISM's own row labels (`ACH-000361::P108::PR500A::REP1M`) appearing as transient cell output in
-  `notebooks/data_and_harmonization/drug_catalog.ipynb`; nothing is written to a catalog file. So the
+  `notebooks/analysis/harmonization/drug_catalog.ipynb`; nothing is written to a catalog file. So the
   migration was never a refactor — it required adopting an external resource (DepMap `sample_info.csv`
   or a Cellosaurus release) as a new dataset, with its own version, provenance and licence.
 - **The invisible join errors were found without it.** The audit checked the join directly and it
@@ -1216,7 +1216,7 @@ no longer exist at those paths.
 | Retired | When | Superseded by |
 |---|---|---|
 | `train_baseline.py`, `train_scGPT.py` | 26.05.2026 | `train_multitask.py --drugs paclitaxel --use-rep X_pca\|X_scGPT` — K=1 reduces exactly to plain MSE |
-| `notebooks/hvg_vs_all_genes_umap.ipynb`, `notebooks/scgpt_umap.ipynb` | 27.06.2026 | consolidated into `notebooks/data_and_harmonization/verify_variants.ipynb` |
+| `notebooks/hvg_vs_all_genes_umap.ipynb`, `notebooks/scgpt_umap.ipynb` | 27.06.2026 | consolidated into `notebooks/analysis/qc/verify_variants.ipynb` |
 | `notebooks/10_ablations.ipynb` | — | consolidated into `notebooks/archive/ablations_and_rescue.ipynb` |
 | `notebooks/01_scDAExploration.ipynb` | 30.07.2026 | renamed to `notebooks/archive/scdrugatlas_exploration.ipynb`. It explores **scDrugAtlas**, not SCP542 — the index's notebook table mislabelled it for months. Archived because the data source itself was [rejected](#scdrugatlas-and-clintox-as-data-sources), not because the notebook is wrong |
 | `notebooks/03_analysis.ipynb` | 30.07.2026 | **un-archived** and renamed to `notebooks/archive/ctrp_prism_repurposing.ipynb`. Read-only CTRP→PRISM and clinical-phase mapping; writes nothing, but it is the only notebook that loads `GDSC2_fitted_dose_response_27Oct23.xlsx`, which the "externalize the spread requirement" item needs |
