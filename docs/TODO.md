@@ -409,9 +409,24 @@ every one of them was a step that looked settled and had never been checked.
         exists on the new panel, i.e. at R4 of the sweep, not here.
         `notebooks/analysis/evaluation/dreval_benchmark.ipynb` cannot run: **three of the functions it
         imports from `scripts/evaluation/dreval_normalize.py` were deleted on 12.08.2026** with the
-        cell-line-effect diagnostic, so its import cell raises. Untouched pending **item 11
-        (Evaluation)**, which also decides whether that diagnostic returns
-        ([why it was archived](../scripts/archive/README.md)).
+        cell-line-effect diagnostic, so its import cell raises.
+        ✅ **DECIDED 12.08.2026 (Selin): rewire the import cell to DrEval's own recipe — `load_oof` +
+        `normalized_evaluation`.** The deleted fragility diagnostic is **not** restored; it stays
+        retired and is recoverable at `bf93084` if it is ever wanted. Two consequences beyond fixing
+        the import: the notebook stops **re-training 20 models of its own**, and it scores the
+        line-level out-of-fold predictions `4a_percell_training` already writes — so it benchmarks the
+        model this project actually produces rather than a re-fit of it, against the same predictions
+        every other evaluation reads. Rejected: restoring the diagnostic under its own name outside a
+        file called after DrEval, which keeps a capability nothing currently asks for and leaves the
+        benchmark re-training regardless.
+        ⚠️ **Check the interaction with item 10's epoch fix before writing either.** If the rewire
+        removes training from this notebook entirely, then setting `epochs=50` on a config nothing
+        trains with is dead code that reads as meaningful, and the epoch defect is closed *by the
+        rewire* rather than by the fix — a closed-by-accident, to be labelled as one rather than
+        quietly disappearing.
+        **This is on the critical path**: it unblocks `5_evaluation`, which must be **authored before
+        R4 runs**, because audit 09's finding is that the loss comparison and the capacity
+        re-derivation both need their metric set fixed before the run rather than after seeing one.
         *(Corrected 12.08.2026 — this said the notebook "imports the now-archived `dreval_normalize.py`
         and hardcodes the removed `'auc'` score, so it is broken twice over". Both were false: the module
         is **live** at `scripts/evaluation/dreval_normalize.py`, restored paper-only the same day, and
@@ -630,8 +645,67 @@ every one of them was a step that looked settled and had never been checked.
         (Spearman), order at the top (NDCG@K against a random null), values (RMSE in AUC units) and
         spread (calibration slope) — get a section each in `notebooks/5_evaluation.ipynb`, which is
         written but not yet built. Item 11 owns the metric set and records it.
-- [ ] **10 · Training** — optimizer, weight decay groups, epochs, early stopping, and the `mps`
-      nondeterminism that moves the PCA arm across identical runs.
+- [x] **10 · Training — walked 12.08.2026. Nothing here gates R2.** Optimizer, weight-decay groups,
+      epochs, early stopping and the `mps` nondeterminism, read against the code.
+  - [x] **The `mps` nondeterminism does not reproduce under current code.** Measured on the real
+        classes and the real `train_model` loop, synthetic input, nothing read or written: at the real
+        workload's scale — 34,000 cells, 512-d input, 11 heads, 25 epochs — three identical runs are
+        **bit-identical**, max |Δ val MSE| 0.000e+00, same best epoch, same final loss. Identical on CPU,
+        and identical with and without the explicit DataLoader generator, because `train_model` calls
+        `set_seed` before the loader is first iterated so `RandomSampler` draws from a freshly seeded
+        global RNG either way. Run at two scales deliberately — concluding "deterministic" from an
+        underpowered test is the silent-zero error. **So `06_limitations`'s 0.313 / 0.315 / 0.317 /
+        0.320 is not re-derivable**, and the honest replacement is stronger than a caveat: at a fixed
+        seed the training loop is bit-reproducible on `mps`. ⚠️ **Scope:** this exercises the *training
+        loop*, not the full CV chain on real data — five folds, the line-level aggregation, the
+        Spearman. Those are deterministic numpy given deterministic input, but they have not been run,
+        so the claim is the loop's, not the chain's. Certifying the chain needs real data and waits for
+        R2. **This also discharges audit 12's outstanding clause** — the 28.07.2026 no-action decision
+        required measuring the non-determinism where it matters, and it is now measured.
+  - [ ] **Adam → AdamW (Selin, 12.08.2026).** Weight decay is currently added as L2 to the gradient
+        under `optim.Adam` rather than decoupled. Loshchilov & Hutter, *Decoupled Weight Decay
+        Regularization*, ICLR 2019, showed the two are not equivalent under Adam and that the decoupled
+        form is the one that behaves as intended. It interacts directly with the grouping audit 08
+        changed — *which* parameters are decayed and *how* decay is applied are one decision — so the
+        grouping is unchanged and only the application moves. **R4-side; lands with the training branch,
+        not before R2.**
+        ⚠️ **And `weight_decay = 0.0`, written explicitly (Selin, 12.08.2026).** Not a default and not
+        an oversight: **at `1e-3` under AdamW there is effectively no weight decay at all.** Measured on
+        the real `OncoMLP` with the real grouping, synthetic data at workload scale, 8 epochs —
+        weight-matrix L2 norm **8.971** at `wd=1e-3` against **8.975** with decay switched off, a 0.04 %
+        difference, while **Adam** at the same nominal value gave **5.597**, i.e. ~38 % shrinkage.
+        Matching Adam's shrinkage under AdamW needs `wd ≈ 1.0`, three orders of magnitude up. The
+        arithmetic: AdamW's step is `θ -= lr·wd·θ`, a factor of `1 − 1e-6` per step at `lr=1e-3`, where
+        Adam's L2 enters the gradient and is amplified by `1/sqrt(v)`.
+        So the choice was between carrying a number that does nothing, reverse-engineering `wd ≈ 1.0` to
+        reproduce the shrinkage of runs that are **themselves void**, or saying plainly that this model
+        trains **without weight decay** — dropout 0.5 and the input dropout as the only regularizers.
+        The third was taken. **The justification is narrow and deliberately so:** no sourced value exists
+        for either optimizer, dropout is already substantial, and a decay nobody can justify is worse
+        than none. ⛔ It is **not** justified by "the model is not regularization-limited" — that
+        hypothesis's refutation rested on the weight-decay axis of the
+        [void ablation](./steps/corrections-and-dead-ends.md#the-evidence-that-closed-model-side-tuning),
+        so **whether this model needs weight decay is now an open question, not a settled one.**
+        ⚠️ **Consequence for R4:** its model differs from every recorded run in its regularization —
+        those had ~38 % shrinkage, R4 has none. One more reason R4 establishes a baseline rather than
+        measuring a delta.
+        *(Item 10's optimizer finding closes here — decoupled decay is what Loshchilov & Hutter argue
+        for and it is now in use. What replaces it is the open regularization question above, not
+        nothing.)*
+  - [ ] **`dreval_benchmark` trains for 25 epochs where everything else runs 50 → set it to 50
+        explicitly (Selin, 12.08.2026).** It is the only caller that passes no `epochs` and so falls to
+        `TrainConfig`'s default, which every other caller overrides. **This is not a change to the
+        benchmark — it is the benchmark silently running half the training the pipeline uses**, so the
+        notebook answering "how strong is this by the field's standard" has been scoring a weaker model
+        than the field would see. Nobody chose 25 for it. R5-side.
+  - [x] **Weight-decay groups — nothing left beyond AdamW above.** Audit 08 replaced
+        `exclude_output_from_decay` with the conventional grouping and verified it by fault injection.
+  - [x] **Early stopping — nothing left that gates anything.** Audit 07 closed the leak with
+        `inner_holdout`. Two observations, both R4-side and neither blocking: the improvement threshold
+        is an absolute `1e-6` on val MSE, which against a typical `auc_cc` MSE around 0.026 is a
+        0.004 % relative bar, so nearly any change registers as improvement and `patience` runs longer
+        than it reads; and at 50 epochs rather than 25, `patience=10` can now actually fire, where
+        before the cap was reached first.
 - [ ] **11 · Evaluation** — metric, cell→line aggregation, baselines (ridge, `NaiveMeanEffects`),
       dispersion across folds *and* drugs, raw vs normalized.
   - [ ] **⚠️ A blind spot in the metric set, not in any one result (found 12.08.2026, audit 09).**
@@ -757,6 +831,11 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
         since the seed band on Spearman is ±0.04 and larger than most differences seen so far. Scored on
         all four quantities in `5_evaluation`, which is what lets a spread effect be seen at all — the
         previous null was measured on Spearman and MSE, both blind to it.
+        ⚠️ **If Huber ever returns, `beta` returns unsourced with it.** Audit 09 left
+        `TrainConfig.huber_beta = 0.05` at its value deliberately, to be derived in the comparison *if*
+        Huber were included. Dropping Huber made that defect stop applying rather than fixing it — a
+        closed-by-accident, recorded here so it does not have to be rediscovered. `0.05` against
+        ~0.163 RMSE puts roughly three quarters of residuals in the linear region.
         ⚠️ **HUBER DROPPED 12.08.2026 (Selin); this read MSE / MAE / Huber until then, and item 9C —
         derive Huber's `beta` from the residual scale — goes with it.** Two grounds. Huber's role in the
         grid was to be the point *between* L2 and L1, and its position is set entirely by `beta`: at
