@@ -267,10 +267,10 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 | Core hypothesis: scGPT overfits less than PCA | ✅ Confirmed — **generalization only**, not accuracy | [Step 05](./steps/05-multitask-results.md) |
 | Does the model rank cell lines at all? | ✅ Yes, on drugs that carry signal | [Step 05](./steps/05-multitask-results.md); the earlier "no" is [superseded](./steps/corrections-and-dead-ends.md#neither-representation-ranks-cell-lines--the-k545-null-result) |
 | Is scGPT's lead over PCA real? | 🟡 Sign-consistent, **not a proven margin** — single seed, on the since-voided panel | [Step 05](./steps/05-multitask-results.md), [TODO](./TODO.md) (seeds are blocking) |
-| Does the deep single-cell apparatus beat ridge on line means? | 🟡 Only with scGPT (+0.077); PCA ties | [Step 03](./steps/03-model-and-training-design.md#the-baseline-that-actually-binds-ridge-on-150-line-mean-embeddings) |
+| Does the deep single-cell apparatus beat ridge on line means? | 🟡 Open — the measured margin is void, and only the network arm was flattered | [Step 03](./steps/03-model-and-training-design.md#the-baseline-that-actually-binds-ridge-on-150-line-mean-embeddings) |
 | Is the model over-regularized / too big? | ❌ No — model-side tuning is **closed** | [Step 03](./steps/03-model-and-training-design.md#these-hyperparameters-are-not-worth-tuning-ablated-13072026), [Corrections](./steps/corrections-and-dead-ends.md#the-model-is-over-regularized-or-too-small) |
 | External benchmark (DrEval LCO, normalized) | ✅ Above naive, below best-in-class | [Step 05](./steps/05-multitask-results.md); the first run's leak in [Corrections](./steps/corrections-and-dead-ends.md#the-first-dreval-benchmark--a-val-split-leak) |
-| Does the signal survive removing the cell-line effect? | ✅ Mostly — costs scGPT 0.048, PCA 0.011 | [Corrections](./steps/corrections-and-dead-ends.md#the-step-1-training-run-on-the-voided-panel) (measured on the voided panel) |
+| Does the signal survive removing the cell-line effect? | 🟡 Open — the measurement is void, and the metric that produced it does not test this under LCO | [Corrections](./steps/corrections-and-dead-ends.md#the-step-1-training-run-on-the-voided-panel) (measured on the voided panel) |
 | Is the cell-line effect proliferation? | ❌ No — tested and refuted | [Corrections](./steps/corrections-and-dead-ends.md#the-cell-line-effect-is-largely-proliferation) |
 | Does inverse-density loss weighting help? | ❌ No — clean negative | [Corrections](./steps/corrections-and-dead-ends.md#inverse-density-loss-weighting-improves-ranking) |
 | Was `auc_z` the right target? | ❌ No — retired 27.07.2026 | [Corrections](./steps/corrections-and-dead-ends.md#auc_z-as-the-training-target) |
@@ -304,18 +304,42 @@ matched to scGPT, removing the dimensionality confound — [Step 05](./steps/05-
 *The governing rule: never change the target and the architecture in the same run. That is what made the
 June result take weeks to unpick, and it is why the 27.07 step moved only the target and the loss.*
 
-**1. MIL / attention pooling — next.** Not one more architecture to try, but the **minimal change that
-makes research question 2 askable at all**: today the constant-within-line label means the objective
-penalizes any difference the model predicts between two cells of one line. A bag constrains only the
-aggregate. It is also the only untested capacity lever (regularization, size, batch, reweighting are all
-measured flat), it removes the 82× line-weighting artifact structurally (one bag = one line = one
-example), and its attention weights are the clinically interesting readout — which subpopulation drives
-the response. It needs no new data and it is falsifiable: it has to beat the per-cell MLP *and* ridge on
-line means, and failing both is itself a reportable result.
+**1. MIL — next, and it is `4b_mil_training`.** Not one more architecture to try, but the **minimal
+change that makes research question 2 askable at all**: today the constant-within-line label means the
+objective penalizes any difference the model predicts between two cells of one line. A bag constrains
+only the aggregate. It removes the line-weighting artifact structurally (one bag = one line = one
+example), and it makes the per-cell prediction the clinically interesting readout — which subpopulation
+drives the response. It needs no new data.
 
-**2. scDEAL-style bulk pretraining + more cell lines — after MIL.** Every remaining lever is label-side:
-model tuning is closed, ridge ties the MLP, the density weighting was a null. What binds is ~150
-independent cell lines each carrying one broadcast bulk value. The screens themselves are much larger —
+> ⛔ **Two claims were removed from the paragraph above (12.08.2026), both already retracted in
+> [TODO](./TODO.md) on 11.08.2026 and left standing here.** MIL was called *"the only untested capacity
+> lever"* — it is not a capacity lever at all, and there is no untested one; that phrasing survives from
+> the Q1 framing and implies a reserve of unexplored performance that does not exist. And the success
+> criterion was given as *"it has to beat the per-cell MLP and ridge on line means, and failing both is
+> itself a reportable result"*, which scores a Q2 experiment on a Q1 criterion. The controls are a
+> **floor, not the criterion**. The 82× figure was also dropped from this sentence — it is owned by
+> [Step 03](./steps/03-model-and-training-design.md), and this page must not restate it.
+>
+> ⚠️ **This heading read *"MIL / attention pooling"*, and that is now the wrong branch (`58fadd7`).**
+> The design is **instance-level** MIL: every cell carries its own predicted response rather than an
+> attention weight over a pooled embedding — readable at the individual cell, at an expected cost in
+> predictive accuracy, taken deliberately because Q2 is a question about readability. **And the success
+> criterion is no longer open**, contrary to what this page said an hour earlier: it is pre-registered
+> in [`4b_mil_training.ipynb`](../notebooks/4b_mil_training.ipynb) §2 as a synthetic positive control
+> (precondition), within-line spread (necessary condition), cross-seed reproducibility against a
+> shuffled-cell control (**the test**) and confound regression (**veto**). One number is outstanding —
+> `Q2_CONTROL_THRESHOLD` — and it is the single blank keeping 4b a stub.
+
+**2. scDEAL-style bulk pretraining + more cell lines — after MIL.** The remaining levers are argued to
+be label-side. ⛔ **The three measurements behind that argument are void (12.08.2026), for two different
+reasons.** *Model tuning is closed* and *ridge ties the MLP* come from runs whose checkpoint was chosen
+on the fold it was scored on, on a retired target and a voided panel — re-derived minimally at R4
+([TODO](./TODO.md) item 8C). *The density weighting was a null* is **not** one of those runs and fails
+differently: audit 09 found the metrics it was judged on could not have seen the effect it was used to
+rule out, so it is **re-tested rather than retired**, with `alpha` swept over {off, 0.5, 1.0} as an arm
+of the loss comparison ([TODO](./TODO.md) item 9A). What survives is the
+structural argument, which needs no run: the label is per cell line, so the independent sample size is
+the line count and not the cell count. The screens themselves are much larger —
 CTRPv2 ~1,100 lines, GDSC ~970, PRISM ~900 — so the labels exist and single-cell expression is what is
 missing. scDEAL pretrains a denoising autoencoder on bulk and aligns the bulk and single-cell latent
 spaces by domain adaptation, which attacks that gap directly instead of copying one bulk value onto ~300
@@ -325,8 +349,12 @@ because MIL's outcome decides whether the single-cell framing is worth building 
 
 **Deferred with reasons, not as a backlog:** the base quantity (EC50/Emax instead of AUC — a second
 target change, would collide with MIL); seeds (preliminary results with a fixed seed are acceptable until
-a margin is quoted as a number); the input-scale confound (PCA inputs ~78× larger than scGPT under one
-learning rate — cheap, but it qualifies an old conclusion rather than advancing a new one); learned task
+a margin is quoted as a number); the input-scale asymmetry between the two arms under one learning rate
+(cheap, but it qualifies an old conclusion rather than advancing a new one — and its size has to be
+re-measured before it can be argued from, since `sc.pp.scale` entered the PCA path on 05.08.2026 and
+standardizing genes moves component magnitudes; the ~78× this line used to quote is
+[stale](./TODO.md#after-the-sweep--the-one-review-item-that-needs-new-runs), and the naive
+"different effective step size" reading of it does not survive LayerNorm plus Adam); learned task
 weights (they estimate residual variance, mixing label noise with model error).
 
 ---

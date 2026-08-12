@@ -37,7 +37,7 @@ was built to remove. The panel is now defined by regulatory approval and publish
 
 \textbf{The effective sample size is the number of cell lines.} The label is defined per cell line and
 drug, so all cells of a line carry the same broadcast value and act as pseudo-replicates. The task is
-defined on roughly \NIndep{} independent examples, not on \NCells{} cells, and treating cells as
+defined on roughly \NLinesCV{} independent examples, not on \NCells{} cells, and treating cells as
 independent understates every uncertainty by roughly the square root of the number of cells per line.
 This bounds what any architecture on this data can be expected to demonstrate, and it is the reason the
 next phase acts on the labels and the data rather than on the model.

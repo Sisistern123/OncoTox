@@ -32,7 +32,24 @@
 \newcommand{\NDrugs}{545}          % CTRPv2 compounds in the overlap
 \newcommand{\NCells}{53{,}513}     % single cells
 \newcommand{\NGenes}{22{,}722}     % genes in the distributed SCP542 matrix
-\newcommand{\NIndep}{150}          % ~independent examples after held-out splits
+% \NIndep was RETIRED 12.08.2026 (Selin) -- it named two different quantities at once
+% (see the note at the foot of this file). Replaced by the two below, each named for
+% what it counts. Which quantity the effective sample size means is SETTLED; its VALUE
+% is not -- both are computed against \NLines and move with it at the sweep.
+\newcommand{\NLinesCV}{153}        % cell lines inside the cross-validation: train+val, test
+                                   % held out. 70+15% of \NLines. Stated as fact in
+                                   % sections/03_methods.tex Evaluation, docs/steps/03
+                                   % ("covers 153 of the 180 labelled lines") and docs/steps/05.
+                                   % THIS is what the effective sample size means here
+                                   % (Selin, 12.08.2026): 03_methods Evaluation names the 153
+                                   % train+val lines and cites the effective sample size for the
+                                   % same protocol two sentences later, so they cannot differ.
+                                   % Becomes ~154 at the sweep -- do not hand-adjust, see R6.
+\newcommand{\NLinesFit}{126}       % cell lines in the fixed TRAIN split alone (70% of \NLines),
+                                   % i.e. what remains once BOTH val and test are removed.
+                                   % A training-set size: no uncertainty reported here is taken
+                                   % over it, which is why it is not the effective sample size.
+                                   % Defined for precision; not currently cited in prose.
 \newcommand{\NHvg}{5{,}000}        % highly variable genes (hvg5000 variant)
 \newcommand{\NVocab}{4{,}576}      % of those, in scGPT's vocabulary
 % === gene-symbol defect (notebooks/outputs/embeddings/gene_symbol_rescue.csv, 05.08.2026)
@@ -75,12 +92,31 @@
 % that resolves is a macro that gets used.
 %
 % What remains ABOVE is DATA, not results -- counts and provenance of the two
-% sources, which no model run produced. Two caveats on them:
+% sources, which no model run produced. Four caveats on them, added/extended
+% 12.08.2026 by the docs-vs-code audit:
 %   * \NLines is 180 and becomes 181 at the sweep (the H292 alias recovers a
 %     screened cell line); it stays at 180 until an artifact supports 181.
+%     The line count is Selin's own open item as of 12.08.2026 -- this audit
+%     changed no line-count number here or in the sections.
 %   * the replicate-disagreement macros were computed on CTRPv2's own 2015
 %     distribution, which is no longer the target source, so they are stale in
 %     the same way and are due for re-derivation.
+%   * \NVocab (4,576) is the pre-repair vocabulary count and is superseded in
+%     code by \NVocabRepaired (4,704); it is still quoted as the live figure in
+%     03_methods.tex Data, under an adjacent revision block that says so.
+%     \NVocabRepaired goes away and \NVocab takes the measured value at R6.
+%   * \NIndep was RETIRED 12.08.2026 (Selin's ruling). It named two quantities
+%     at once: it was DEFINED as the effective sample size after the held-out
+%     splits, but its VALUE 150 came from the ridge control's line count -- a
+%     different quantity, and one this report no longer reports. Split into
+%     \NLinesCV (153) and \NLinesFit (126) above, each named for what it counts.
+%     Every prose site citing the effective sample size takes \NLinesCV, decided
+%     12.08.2026 and no longer an assumption: 03_methods Evaluation names the 153
+%     train+val lines and cites the effective sample size for that same protocol
+%     two sentences later, so one macro serves all four sites. \NLinesCV and
+%     \NLinesFit are themselves derived from \NLines, so both are provisional
+%     until R2-R5 regenerate -- 153 becomes ~154. R6 re-reads them from the
+%     artifact; they are NOT adjusted by hand, which is item 12's whole point.
 %
 % The drug-panel counts in Methods are typed inline rather than defined here,
 % pending the extraction script (review item 12) that should replace this file.

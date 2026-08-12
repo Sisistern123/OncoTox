@@ -51,6 +51,133 @@
 > which rebuild the UMAPs and overwrite `outputs/embeddings/umap_cancertype_pca_vs_scgpt.png`. Anything
 > that **trains** waits unconditionally, `verify_variants` §9 among it.
 
+> # ⛔ 12.08.2026 — NUMBERS AND CLAIMS CLEARED FROM THE DOCS AND THE REPORT
+>
+> **What this was.** A docs-vs-code audit, asked for by Selin: *are the docs and the report up to date
+> and non-redundant with the code, and are there numbers or hypotheses stated without a re-run?* The
+> current pipeline was confirmed with the supervising session rather than read off the docs. Its ruling,
+> which governs everything below: **nothing has been re-run and nothing on disk is current** — the only
+> sanctioned exceptions since the 03.08 freeze are read-only measurements (`verify_variants` §10a–§10c,
+> `gene_symbol_rescue`) and `2_drug_selection`, which reads the response CSV and no pipeline artifact.
+>
+> **What "cleared" meant here, since it needed a rule.** Taken literally, *every* number in the docs is
+> unsupported by a current run, and clearing all of them would delete the record that
+> [Corrections](./steps/corrections-and-dead-ends.md) and [Step 05](./steps/05-multitask-results.md)
+> exist to hold — which Selin decided on 11.08.2026 to keep. So the rule applied was: **clear a number
+> where it is presented as currently holding, and leave it where it is already marked as the record of
+> what was believed.** Nothing under an existing ⛔/⚠️ banner was touched. If the intended scope was
+> wider, say so — the wider pass is mechanical from here.
+>
+> **⚠️ These are removals, not re-derivations. Every item below is now *unevidenced*, not *answered*.**
+> Several were load-bearing arguments; deleting the number does not settle the question it answered, and
+> R6 has to write the replacement from regenerated artifacts rather than restore what was here.
+>
+> ### Cleared — and therefore open again
+>
+> | What was stated as live | Where | Why it could not stand |
+> |---|---|---|
+> | *"The gene-set size is not critical"* + the sweep's heads-beating counts and val MSEs | `03_methods.tex` §Data; [Step 02](./steps/02-preprocessing-and-embeddings.md) §Why HVG-5000 is the default, reason 1 | The sweep has **no live numbers** — [Step 05](./steps/05-multitask-results.md) already banners the same table as superseded. Step 02 restated it unmarked *and* as reason 1 for the live default, so **HVG-5000 now rests on reasons 2 and 3 alone** |
+> | Pearson tracks Spearman within 0.02 | `03_methods.tex` §Evaluation | Empirical, on the retired target and voided panel |
+> | Synthetic mean-effects predictor scores normalized ρ = **0.98** | `03_methods.tex` §Evaluation; `dreval_normalize.py` docstring; `scripts/archive/README.md` | **No code in the repo produces it and no artifact records it** — it exists only in prose, presented as "demonstrated". The *mechanism* is verifiable and was kept |
+> | MPS band = 0.313 / 0.315 / 0.317 / 0.320 | `06_limitations.tex` | Void runs. That MPS is non-deterministic stands; the **width** of the band does not, and differences are currently being called interpretable against a number that no longer applies |
+> | `pred_std` 0.53 / 0.47 against "a true spread of **1.0**" | `06_limitations.tex` | The 1.0 is `auc_z`'s unit variance — stated in units the pipeline no longer produces |
+> | Density weighting "does not help" | `project_progress.md` | Void panel, and the deltas fall inside the MPS band. **Superseded the same day by audit 09**, which found the sharper fault — the metrics could not have seen the effect — and re-tests rather than retires it (item 9A). Audit 09 owns the `06_limitations.tex` correction; this audit's weaker note there was dropped on rebase |
+> | *"averaging a line's cells loses nothing measurable"* / ridge ties the MLP / model-side tuning closed | `06_limitations.tex`, `project_progress.md`, scorecard | Only the network arm early-stopped on the fold it was scored on. The tie is an **upper bound on the network's side** — the honest ordering may favour ridge (item 8C) |
+> | ~a fifth of the signal is the cell-line effect | `06_limitations.tex` | Void run, deleted normalization, **and cited at `outputs/dreval/…`, a path that does not exist** |
+> | scGPT−PCA margin "was **not** sign-consistent across seeds" | `06_limitations.tex` | ⚠️ **Direct contradiction with [Step 05](./steps/05-multitask-results.md)** — both marked unsupported, neither resolved. Own item below |
+> | MIL is *"the only untested capacity lever"*; must beat ridge to be worthwhile | `06_limitations.tex`, `project_progress.md` | **Already retracted 11.08.2026** in this file and left standing in both. Controls are a floor; what counts as a positive Q2 result is still **Selin's open decision**, to be fixed *before* the run |
+> | +0.077 / 0.048 / 0.011 / 82× / ~78× on the index page | `project_progress.md` | Void, **and** the index is barred from holding numbers by its own conventions |
+>
+> ### ⛔ Open — the seed sign-consistency conflict, to be settled by the rerun and not by choosing now
+>
+> **Two documents say opposite things about the same three-seed check, and neither is re-derivable under
+> the freeze.** Ruled 12.08.2026 (Selin): **do not pick a side.** This is corrected *after* the rerun,
+> from the regenerated artifact.
+>
+> | Location | What it currently claims |
+> |---|---|
+> | `report/sections/06_limitations.tex` | the scGPT−PCA margin *"was **not** sign-consistent across seeds, and did not survive DrEval's normalized metric"* |
+> | [Step 05](./steps/05-multitask-results.md#learnability-filtered-subset--the-signal-was-there-all-along-13072026) | *"Gap = +0.075 ± 0.038, **sign-consistent** across all three seeds"* — seeds 42/1/7, gaps +0.043 / +0.066 / +0.117 |
+>
+> **Both are marked unsupported in the meantime** — the report's characterisation was cleared on
+> 12.08.2026, and Step 05's table already sits under that page's ⛔ void banner. Neither may be quoted.
+>
+> **Actionable at R4/R6, in that order.** R4 produces ≥ 3 seeds on the rebuilt panel and the current
+> target (already blocking there). At R6, read the sign consistency off that run and write **one**
+> statement into both locations, deleting the loser rather than reconciling the wording. The old runs
+> cannot arbitrate it: they were on a retired target, a voided panel, representations predating the
+> preprocessing corrections, and — for the MLP arms — an early-stopping leak that was not uniform across
+> the two representations, which is itself a mechanism capable of flipping a small margin's sign.
+>
+> ### Not cleared — surfaced instead, because fixing them means deciding something
+>
+> - **180 vs 181 — owned elsewhere, deliberately untouched here.** Selin is deciding this one herself
+>   (12.08.2026), so this audit changed **no** line-count number in the report and files no task for it.
+>
+> ### Fixed outright — code contradicted, no judgement needed
+>
+> - `notebooks/README.md` §4 and `4a_percell_training.ipynb` §B both claimed §B's outputs go to
+>   **`outputs/matrix/`**, a directory that has never existed — the documentation of the `OUT_MATRIX`
+>   defect fixed in `f6cbef4`, left behind when the code was fixed. Both now name
+>   `outputs/legacy/training_545_mean_pv/`, which is also where the previous run's artifacts sit, so §B
+>   **overwrites in place**.
+> - `report/README.md` documented `pdflatex` twice and *"no `bibtex` run needed — references are a manual
+>   `thebibliography`"*. `07_bibliography.tex` is `\bibliographystyle` + `\bibliography{../references}`,
+>   i.e. real bibtex, and `.bbl` is gitignored. **Verified in this worktree, which had no `.bbl`:**
+>   `pdflatex` alone reports `No file main.bbl`; the four-step sequence gives 0 undefined references over
+>   17 pages. Same defect `cf3ad3f` fixed in `.gitignore` and did not carry here.
+> - `report/README.md` named `\rhoFullScgpt` / `\ridgePca` as example macros and described "two results
+>   tables" — all removed with the 12.08 withdrawal — and gave `cp` commands refreshing
+>   **`fig_rescue.png` and `fig_dreval.png`, which no `.tex` file references** and whose sources are a
+>   dead notebook and a void run. `fig_umap.png` is the only figure the report uses.
+> - **`\NIndep` named two quantities at once and is retired** (Selin's ruling, 12.08.2026). It was
+>   defined as *"independent examples after held-out splits"* but carried the value **150**, which was a
+>   ridge control's line count — a different quantity, and one the report no longer reports. Replaced by
+>   two macros named for what each counts: **`\NLinesCV` = 153** (lines inside the cross-validation, test
+>   held out) and **`\NLinesFit` = 126** (the fixed training split alone). **Every site citing the
+>   effective sample size takes `\NLinesCV` — confirmed by Selin 12.08.2026, so it is a decision and not
+>   a reading.** What settles it is two sentences of `03_methods.tex` §Evaluation: it names *"the 153
+>   training and validation lines"*, then cites the effective sample size for that same protocol, so the
+>   two cannot differ, and one macro then serves all four sites. It also matches the quantity's role —
+>   every use of it says uncertainty is governed by lines rather than cells, and the metric reported is a
+>   correlation across the lines CV predicts exactly once. **126 is a training-set size and no reported
+>   uncertainty is taken over it.** The *"held-out split**s**"* plural was loose: under this protocol
+>   there is no standing validation holdout at all, since `inner_holdout` draws its slice from each
+>   fold's own training lines. ⚠️ **The choice of quantity is settled; the value is not** — both macros
+>   are derived from `\NLines`, so 153 becomes ~154 at the sweep. Re-read at R6, never hand-adjusted.
+> - **The two false statements about `dreval_benchmark` are corrected** — item 6's sub-bullet and R5,
+>   with the R5 hold lifted by Selin for exactly this and nothing else. `dreval_normalize.py` is live at
+>   `scripts/evaluation/`; `e804f07` fixed the `'auc'` literal; the real blocker is that three imported
+>   functions were deleted with the cell-line-effect diagnostic (item 11). One blocker, not two.
+> - [Step 02](./steps/02-preprocessing-and-embeddings.md) §HVG-5000 pipeline outputs stated the on-disk
+>   counts with no marker; it now records that the symbol repair moves 4,576 → 4,704, the `H292` alias
+>   moves 180 → 181 and every split size with it, and that **`add_pca.TRAIN_SPLIT_COLS` no longer writes
+>   `X_pca_train_paclitaxel`** (verified: `TRAIN_SPLIT_COLS = ("split_ctrp",)`).
+>
+> ### Re-based onto `58fadd7`, and two of the clearings above were overtaken by it
+>
+> This audit was cut against `f6cbef4`; Selin committed **`58fadd7`** while it was running, splitting
+> stage 4 into `4a_percell_training` / `4b_mil_training` and **pre-registering the Q2 criterion**. The
+> branch was rebased and the notebook edit followed the rename. Two consequences the audit had to take
+> back, because they are now wrong in the *other* direction:
+>
+> - **The Q2 success criterion is no longer an open decision.** It is fixed in
+>   [`4b_mil_training.ipynb`](../notebooks/4b_mil_training.ipynb) §2 as four stages with distinct roles —
+>   synthetic positive control (precondition), within-line spread (necessary condition), cross-seed
+>   reproducibility against a shuffled-cell control (**the test**), confound regression (**veto**). What
+>   remains open is **one number**, `Q2_CONTROL_THRESHOLD`, plus the stage-1 and stage-2 fractions
+>   derived from it. Wherever this audit wrote "an open decision for Selin", read "pre-registered; one
+>   threshold outstanding" — corrected in the report and in `project_progress.md`.
+>   ⚠️ ***Agreed plan, Step 2* below still describes the whole criterion as undecided** and was not
+>   touched by `58fadd7`'s path repointing. Pointer added there; the bullet itself is Selin's to retire.
+> - **"Attention weights are the readout" is now wrong.** `58fadd7` chose **instance-level MIL, not
+>   attention pooling** (Ilse, Tomczak & Welling, ICML 2018): every cell gets a predicted *response*,
+>   not a *weight* over a pooled embedding, trading predictive performance for readability at the
+>   instance. The report and `project_progress.md` both still described attention weights as the
+>   clinically interesting readout; both corrected. The subpopulation-predictivity test that would have
+>   used top-k cells is deliberately **not** in the criterion — selecting cells by their predicted value
+>   and scoring them against the line's true response is biased by construction.
+
 - start bei data download, schau genauer auf drug selection, suche publications dafür raus
 - data harmonization genauer anschauen
       - bulk und sc annotation merge -- wie genau wurde es gemacht, ist es valide?
@@ -199,10 +326,15 @@ every one of them was a step that looked settled and had never been checked.
       on record was computed on the void 8-drug panel.
   - [ ] **Left open by this item, routed elsewhere.** The 28.07 panel-void banner lifts only once a run
         exists on the new panel, i.e. at R4 of the sweep, not here.
-        `notebooks/analysis/evaluation/dreval_benchmark.ipynb` imports the now-archived
-        `dreval_normalize.py` and hardcodes the removed `'auc'` score, so it is broken twice over;
-        untouched pending **item 11 (Evaluation)**, which also decides whether the fragility diagnostic
-        returns ([why it was archived](../scripts/archive/README.md)).
+        `notebooks/analysis/evaluation/dreval_benchmark.ipynb` cannot run: **three of the functions it
+        imports from `scripts/evaluation/dreval_normalize.py` were deleted on 12.08.2026** with the
+        cell-line-effect diagnostic, so its import cell raises. Untouched pending **item 11
+        (Evaluation)**, which also decides whether that diagnostic returns
+        ([why it was archived](../scripts/archive/README.md)).
+        *(Corrected 12.08.2026 — this said the notebook "imports the now-archived `dreval_normalize.py`
+        and hardcodes the removed `'auc'` score, so it is broken twice over". Both were false: the module
+        is **live** at `scripts/evaluation/dreval_normalize.py`, restored paper-only the same day, and
+        the `'auc'` literal was fixed in `e804f07`. One blocker, not two.)*
 - [ ] **7 · Splits — walked 12.08.2026.** Confirmed sound: grouping is by cell line everywhere, the
       fixed `test` set is outside CV by construction (`eligible_splits=("train","val")`) and **has never
       been used by anything**, the MLP and the ridge control share one partition through
@@ -460,9 +592,15 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
         stays true until a run exists on `outputs/panel/panel.csv`. Lifting it when the panel changed
         would have declared the numbers current a run too early.
 - [ ] **R5 · Re-run the analysis notebooks that read the retrained outputs.**
-      `analysis/evaluation/`: `diagnostics` (§5 dispersion), `dreval_benchmark` — the latter is
-      **broken twice over** (imports the archived `dreval_normalize`, hardcodes the removed `'auc'`)
-      and belongs to review item 11 before it can run at all.
+      `analysis/evaluation/`: `diagnostics` (§5 dispersion), `dreval_benchmark` — the latter **raises on
+      its import cell**, because three of the functions it takes from
+      `scripts/evaluation/dreval_normalize.py` were deleted on 12.08.2026 with the cell-line-effect
+      diagnostic; it belongs to review item 11 before it can run at all.
+      *(Corrected 12.08.2026, with the R5 hold lifted for exactly this by Selin. This read "broken twice
+      over (imports the archived `dreval_normalize`, hardcodes the removed `'auc'`)". Neither is true:
+      the module is **live** at `scripts/evaluation/dreval_normalize.py` — archived and restored
+      paper-only on the same day — and `e804f07` fixed the `'auc'` literal. One blocker, not two. No
+      other part of R5 was touched.)*
       `analysis/harmonization/drug_coverage` — **not optional**, the line count moves 180 → 181.
       `2_drug_selection` does **not** need the retrained outputs — it reads only the
       response CSV — but re-run it anyway once preprocessing has, so the panel is regenerated against
@@ -504,6 +642,30 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       `03_methods.tex` §Drug panel selection (150 / 120 / 57 / 44 / 11, the 90 % cut, 91.2–98.3 %
       coverage, 102 and 15 unmatched compounds, 13 parent-CID matches) — via item 12's extraction
       script, since adding them by hand is the defect that item exists to remove.
+  - [ ] **Re-read every number *derived* from the cell-line count — not just `\NLines` itself**
+        (added 12.08.2026 by the docs audit, on Selin's ruling). R6's list above is **instance-based**:
+        it names `\NLines`, the ⚠️ 181 markers and the `project_progress.md` note, i.e. the places
+        180 appears *as itself*. A second class moves with it and is named nowhere — numbers **computed
+        against** the line count, which are wrong the moment it changes even though they never print it.
+        **The rule, because the list below is not the whole of it: any number derived from the cell-line
+        count is provisional until R2–R5 regenerate, and R6 re-reads it from the artifact rather than
+        adjusting it by hand.** Hand-adjustment is exactly the defect item 12 exists to remove, and a
+        derived number is the easiest place for it to hide — nothing in the text looks stale.
+        Known instances, to start from and not to stop at:
+    - [ ] `\NLinesCV` (**153**) and `\NLinesFit` (**126**) in `report/results_numbers.tex` — both are
+          70+15 % and 70 % of `\NLines`, so both move; 153 becomes ~154. They are cited in
+          `02_introduction`, `03_methods` (§Data and §Evaluation) and `05_discussion`.
+    - [ ] Prose of the shape *"X of the 180 …"*, where the 180 is load-bearing rather than decorative —
+          [Step 03](./steps/03-model-and-training-design.md) has *"covers 153 of the 180 labelled
+          lines"*; sweep [Step 05](./steps/05-multitask-results.md) and `project_progress.md` for the
+          same shape, and the split-distribution tables (126 / 27 / 27 lines, and their cell counts)
+          with them.
+    - [ ] The 18 unassigned lines / 6,286 cells, which is `198 − \NLines` and therefore moves to 17.
+    - [ ] ⚠️ **Not in this class, and must not be swept into it:** the drug-panel funnel and coverage
+          figures in `03_methods.tex` §Drug panel selection. `2_drug_selection` reads the response CSV
+          rather than a pipeline artifact, so those were **already computed on 181** — they are the one
+          place where the corrected count is live today. Whether that is left as is or reconciled is
+          Selin's own open item; this sub-item does not touch it.
       [Step 01](./steps/01-datasets-and-harmonization.md) the ⚠️ 181 marker;
       [Step 02](./steps/02-preprocessing-and-embeddings.md) the ⛔/⚠️ blocks on truncated, unseeded,
       symbol-limited embeddings; [Step 05](./steps/05-multitask-results.md) the ⚠️ 181 marker and every
