@@ -41,44 +41,59 @@ AUDIT AGAINST THOSE RULES — 12.08.2026, not yet applied
 -------------------------------------------------------
 Every title, caption, annotation and axis label in this file, judged twice: *does it assert a
 result?* and *is it a scientific caption or a headline?* **Nothing below has been rewritten.** The
-figures are held until R4, and the three ⛔ entries cannot be rewritten before then anyway — a title
-naming what the run showed has to wait for the run. Listed here so the pass is a checklist rather
-than a rediscovery.
+figures are held until R4, and the ⛔ entries cannot be rewritten before then anyway — a title naming
+what the run showed has to wait for the run. A checklist, so the pass is not a rediscovery.
 
-⛔ **Asserts a result — must be rewritten from what the run shows, not before:**
-  671   ``"one seed — only scGPT clears the ridge control"``   a finding from the void 8-drug run,
-        used as the *stage-8 label of the pipeline diagram*, so the pipeline drawing states an
-        outcome as though it were a step.
-  1013  ``"The weighting fired — and the ranking did not move"``   the 27.07 conclusion, on the
-        figure drawn from the run that re-tests exactly that claim.
-  1034  ``"above the line: the model hedges less"``  ·  1036  ``"on the line: no gain, no loss"``
+**Keyed by function and by the opening words of the string — never by line number.** The first
+version of this audit was keyed by line, and the commit that recorded it is the commit that broke
+it: inserting this docstring pushed every cited site down by about 76 lines. Line numbers into a
+file under active edit decay silently, and a checklist that sends the reader to the wrong place is
+worse than none, because it will be trusted. ``grep -n`` on the quoted words finds each site in any
+ref.
 
-⛔ **Asserts a setting that is now a swept arm, not a fact:**
-  242   ``"trained with the density-weighted masked MSE"``   states weighting is on *and* that the
-        loss is squared error. Under item 9A ``alpha`` in {0.0, 0.5, 1.0} and the loss is MSE / MAE /
-        Huber — both are arms. Same defect class as the objective figure's old title.
-  650   ``"rare response values weighted up"``   same: true only for ``alpha > 0``.
+⛔ **Asserts a result — rewrite from what the run shows, not before:**
+  ``build_pipeline_flow``   "one seed — only scGPT clears the ridge control"
+        A finding from the void 8-drug run used as the **stage-8 label of the pipeline diagram**, so
+        the drawing of the pipeline presents an outcome as though it were one of its steps.
+  ``build_loss_effect``     "The weighting fired — and the ranking did not move"
+        The 27.07 conclusion, on the figure drawn from the run that re-tests that very claim.
+  ``build_loss_effect``     "above the line: the model hedges less" · "on the line: no gain, no loss"
+
+⛔ **Asserts a swept arm as a fact:**
+  ``draw_architecture``     "per-cell MLP · trained with the density-weighted masked MSE"
+        States both that weighting is on and that the loss is squared error. Under item 9A ``alpha``
+        is in {0.0, 0.5, 1.0} and the loss is MSE / MAE / Huber — both are arms.
+  ``build_pipeline_flow``   "unscreened pairs dropped, rare response values weighted up"
+        Same class: true only for ``alpha > 0``.
 
 ⚠️ **Headline register — true, but the wrong form:**
-  236   ``"Model architecture — one cell in, one AUC per panel drug out"``   the tagline after the
-        dash is a strapline; ``"Model architecture"`` is the caption.
-  842   ``"The objective — a weighted, masked mean error"``   mine, written this morning, same shape.
-  844   ``"per-drug scaling belongs here, in the loss, rather than in the labels"``   an argument.
-  332   ``"The target is uncentred: … Any per-drug scaling belongs in the loss, not in the target."``
-        four lines of reasoning set as a figure caption. Factually accurate; belongs in Methods.
+  ``draw_architecture``     "Model architecture — one cell in, one AUC per panel drug out"
+        The clause after the dash is a strapline; "Model architecture" is the caption.
+  ``draw_loss_objective``   "The objective — a weighted, masked mean error"     (written 12.08, mine)
+  ``draw_loss_objective``   "per-drug scaling belongs here, in the loss, rather than in the labels"
+  ``draw_architecture``     "The target is uncentred: the head bias is initialized to …"
+        Four lines of reasoning set as a caption. Accurate, and belongs in Methods where it can be
+        cited. A *different passage* from the PLOTTED/CURRENT disclaimer below, in the same function
+        — the two sit ten lines apart and have been confused once already.
 
-⚠️ **Infographic register — rule 3.** ``loss_01_objective.png``'s three rounded colour-filled callout
-  boxes (866-879) and grey italic asides; the architecture diagram's circles, arrows and heat strips.
-  Both are mine to redraw at R4.
+⚠️ **Infographic register (rule 3).** ``draw_loss_objective``'s three rounded colour-filled callout
+  boxes and grey italic asides; ``draw_architecture``'s circles, arrows and heat strips. Both mine
+  to redraw at R4.
 
-⚠️ **Hardcoded counts — rule 4.** 123, 124, 141, 159, 186, 522, 536, 540 and 293. **293 is already
-  wrong**: "the 8 heads are the 8 rows of one Linear(64 → 8)" describes the architecture, inside the
-  architecture diagram, and the rebuilt panel has 11 drugs. 124/186's ``180 trainable`` becomes 181.
+⚠️ **Hardcoded counts (rule 4).**
+  ``draw_architecture``     "the 8 heads are the 8 rows of one Linear(64 → 8)"  — **already wrong**:
+        it describes the architecture, inside the architecture diagram, and the rebuilt panel has 11.
+  ``build_pipeline``        "CTRPv2 545 drugs" · "overlap 190* lines · 180 trainable" ·
+                            "K=545 · out-of-fold over 153 lines" · "out-of-fold CV over 153 lines" ·
+                            "* 190 = name-matches …"          — ``180`` becomes 181 at the sweep.
+  ``build_pipeline_flow``   "one cell line = 56–1,990 cells" · "545 drugs  →" · "8  the panel"
 
-✅ **Correct as written; do not sweep in:** 343-346, which deliberately contrasts what is PLOTTED
-  (the superseded run) against the CURRENT PIPELINE — that disclaimer is the reason the figure is
-  readable at all. 320/322 (``"high AUC = resistant"``) are legends, not interpretation. 127's
-  ``"Results withdrawn"`` is a plan-status key.
+✅ **Correct as written; do not sweep in:**
+  ``draw_architecture``     "PLOTTED: the superseded run … CURRENT PIPELINE: auc_cc, …"
+        Deliberately contrasts what is plotted against the current pipeline; that disclaimer is what
+        makes the figure readable at all.
+  ``draw_architecture``     "high AUC = resistant" and its sensitive counterpart — legends.
+  ``build_pipeline``        "Results withdrawn" — a plan-status key.
 
 **And one artifact that is not a figure**, written to ``report/`` rather than ``docs/figures/``:
 
