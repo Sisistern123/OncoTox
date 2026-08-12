@@ -7,7 +7,7 @@
 > label dependency it was built to remove — and 32 approved or clinical compounds, `nutlin-3` among them,
 > were excluded for the wrong reason.
 >
-> **Everything computed on it is therefore provisional:** the step-1 run (`4_training`), the
+> **Everything computed on it is therefore provisional:** the step-1 run (`4a_percell_training`), the
 > distributions and weighting design (`panel_distributions`), the dispersion figures (`diagnostics` §5), the panel rows in
 > [Step 05](./steps/05-multitask-results.md), and the corresponding numbers in the report. Do not quote
 > any of them, and do not build on them.
@@ -233,7 +233,7 @@ every one of them was a step that looked settled and had never been checked.
         scored on it is void on target and panel grounds. R2 creates the file itself; committing it
         there is where the guard starts to protect something (added to R2).
   - [ ] **C · The per-drug-mean null is computed two different ways.** `cv_evaluate` fits its constant
-        on the fold's fitting lines (honest); `4_training.ipynb` §4 computes `null_mse` from the
+        on the fold's fitting lines (honest); `4a_percell_training.ipynb` §4 computes `null_mse` from the
         variance of the **held-out** truth, an oracle constant fitted on the rows it is scored against.
         Conservative — it makes the model look worse — but they are not the same bar and one figure
         cannot be read against the other. Also `_per_drug_train_mean` averages over cells, so lines
@@ -305,7 +305,7 @@ every one of them was a step that looked settled and had never been checked.
         re-run** — trunk `(128,64)` vs a bare linear head, both representations, against `RidgeCV` on the
         same folds and the rebuilt panel; not the four-knob sweep. Scheduled at R4.
   - [ ] **Found on the way, routed elsewhere.** `--epochs` defaults to 50 in the CLI, 25 in `TrainConfig`
-        and `4_training`, and `4_training` §B sets 50 → **item 10**. `dreval_benchmark.ipynb` builds
+        and `4a_percell_training`, and `4a_percell_training` §B sets 50 → **item 10**. `dreval_benchmark.ipynb` builds
         `OncoMLP` by hand and so has neither mechanic from A → **item 11**, which owns that notebook.
         `ScGPTDrugDataset` has no consumers — the `train_baseline.py` / `train_scGPT.py` its docstring
         names were deleted in `090f957` — and the `norm="batch"` / `"none"` branches are never exercised
@@ -381,8 +381,8 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 - [ ] **R4 · Retrain.** The `DataLoader`s now take an explicit generator and the inputs change under R2,
       so no run under `runs/` is reproducible from current code. Requires the target (item 5) and the
       panel (item 6) settled first, and **never both in one run**. Scope: the 8-run matrix + 5-fold CV
-      (`4_training.ipynb` (§B), `train_multitask.py`) — expected to **overturn** the Steps 04–05 numbers, not
-      refresh them; `4_training.ipynb` on the rebuilt panel; ridge / `NaiveMeanEffects` on the same
+      (`4a_percell_training.ipynb` (§B), `train_multitask.py`) — expected to **overturn** the Steps 04–05 numbers, not
+      refresh them; `4a_percell_training.ipynb` on the rebuilt panel; ridge / `NaiveMeanEffects` on the same
       folds; `verify_variants.ipynb` §9; and 4A below. Blockers already recorded: **≥ 3 seeds** before any
       scGPT − PCA margin is quoted, and train-only drug selection inside each fold.
   - [ ] **The minimal capacity re-derivation** (item 8C, 12.08.2026): trunk `(128,64)` vs a bare linear
@@ -394,7 +394,7 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
         initializes head biases at the fitting-fold per-drug means, and weight decay skips the biases and
         the LayerNorm parameters while now applying to the output weight matrix, which
         `exclude_output_from_decay` had exempted. So the panel run's configuration also changed, not only
-        the matrix's — `4_training` §6 is not a like-for-like predecessor of its own next execution.
+        the matrix's — `4a_percell_training` §6 is not a like-for-like predecessor of its own next execution.
   - [ ] **Expect every CV number to move down, for two reasons at once** (item 7, 12.08.2026): the
         optimistic epoch selection is gone, and each fold now fits on ~104 lines instead of 122. A drop
         is the change working, not a regression. The two causes cannot be separated after the fact, so
@@ -414,7 +414,7 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       the same artifacts as everything else and `panel.csv` cannot silently predate them.
       **Two notebooks still have their stored outputs cleared** (11.08.2026), because their score
       literal changed to `auc_cc` and the old results could not be refreshed under the freeze — the
-      code is correct and only the results are missing: `4_training` (c1) and
+      code is correct and only the results are missing: `4a_percell_training` (c1) and
       `analysis/qc/verify_variants` (c24).
       **Archived and not re-run:** `target_comparison`, `ablations_and_rescue`, `replicate_variation`
       (targets that no longer exist, [why](./steps/corrections-and-dead-ends.md#retired-code-paths)),
@@ -601,7 +601,7 @@ The per-drug variance-weighting prerequisites this plan originally carried (`σ_
 then `r_j/σ_j²`) were **never needed** — per-drug variance is a K=545 problem and the panel dissolved it:
 [Corrections](./steps/corrections-and-dead-ends.md#per-drug-variance-weighting--dissolved-by-a-scope-change-never-needed).
 
-### Step 1 — run 27.07.2026 (`notebooks/4_training.ipynb`), open items only
+### Step 1 — run 27.07.2026 (`notebooks/4a_percell_training.ipynb`), open items only
 
 Raw `auc` winsorized at 1.1, 8-drug panel, per-sample inverse-density weights fitted per fold on training
 lines only, output layer excluded from weight decay, head biases initialized to train-fold per-drug means,
@@ -757,7 +757,7 @@ and [Corrections](./steps/corrections-and-dead-ends.md#the-model-is-over-regular
       instrument, not a performance lever — the item lives in* Agreed plan, Step 2 *and is not scored
       on beating ridge.)* What stays open here is narrower: if line-level ρ is all that is ever
       reported, the per-cell framing needs a justification that does not depend on Q2 succeeding.
-- [ ] **Add ridge (line-level) to `4_training` §B's comparison tables** so every future claim is scored against it.
+- [ ] **Add ridge (line-level) to `4a_percell_training` §B's comparison tables** so every future claim is scored against it.
 - [ ] *(Optional)* **z-score train-only.** The per-drug mean/std currently use all 180 lines, val/test
       included — mild leakage. Fixing it means computing splits before the targets step.
 - [ ] *(Stretch)* cluster cell lines by response and **stratify train/val/test** (high/med/low) for

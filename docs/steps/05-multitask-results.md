@@ -66,7 +66,7 @@ CTRPv2 (180 = lines with actual post-QC measurements; the audit's 190 counts ros
 - 70/15/15 is the design target at the **cell-line** level (`create_splits._split_cell_lines`); the
   **cell** percentages differ slightly because lines carry different cell counts.
 - `unassigned` = **18 lines / 6,286 cells** (SCP542 lines with no CTRP measurement; 198 → 180 measured).
-- **Cross-validation** (`notebooks/4_training.ipynb` §B2) **holds `test` out** and resamples only the
+- **Cross-validation** (`notebooks/4a_percell_training.ipynb` §B2) **holds `test` out** and resamples only the
   153 train+val lines via 5-fold GroupKFold, so test is never seen in CV.
 
 **Model & training:** a single `OncoMLP` with `output_dim = K`, fed by `MultiDrugDataset`
@@ -137,7 +137,7 @@ of 1.0.
 
 **The 8-run matrix (512-d, 27.06.2026; all share `split_ctrp`, n_train 34,126 / n_val 7,121).**
 Per-drug-mean baseline: **~0.043** (K=1 paclitaxel, data-derived, rep-independent), **0.0097** (K=545).
-Reproducible in `notebooks/4_training.ipynb (§B)`; run dirs `runs/20260627_1913xx_*` (see
+Reproducible in `notebooks/4a_percell_training.ipynb (§B)`; run dirs `runs/20260627_1913xx_*` (see
 `runs/runs_index.csv`).
 
 **Single-task (K=1 paclitaxel) — the overfitting story** (gap = val − train, at the best epoch):
@@ -200,7 +200,7 @@ Reproducible in `notebooks/4_training.ipynb (§B)`; run dirs `runs/20260627_1913
 ### Is the difference real? — 5-fold cross-validation (27.06.2026)
 
 The single-split numbers above rest on **27 val lines**, so they are point estimates. To test
-robustness, `cv_evaluate` (`notebooks/4_training.ipynb` §B2) runs **5-fold GroupKFold over `Cell_line`,
+robustness, `cv_evaluate` (`notebooks/4a_percell_training.ipynb` §B2) runs **5-fold GroupKFold over `Cell_line`,
 holding the fixed `test` set out** and resampling only the 153 train+val lines (~122 train / ~31 val
 per fold). On `hvg5000`:
 

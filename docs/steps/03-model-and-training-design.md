@@ -141,7 +141,7 @@ log-concentration scale instead of clustering near 0.9. That has to be checked b
 trained, not assumed.
 
 **Until 12.08.2026 only one of the three training paths did either of these** — `cv.oof_predictions`,
-which `4_training` drives. `train_multitask.cv_evaluate` (the CV behind the 8-run matrix) and
+which `4a_percell_training` drives. `train_multitask.cv_evaluate` (the CV behind the 8-run matrix) and
 `train_multitask.train_rep` (the fixed-split path) initialized no head bias and ran with
 `exclude_output_from_decay` at its `False` default, so on an uncentred target the matrix trained against
 an offset the panel run did not, and the two were never the same experiment. Both now take
@@ -351,7 +351,7 @@ labels define the baseline they are scored against. `scripts/evaluation/dreval_n
 requires the column and refuses to run without it.
 
 ⚠️ The committed `panel_oof_predictions.csv` predates this and has no `fold` column, so that script
-correctly raises on it. It becomes runnable when `4_training.ipynb` re-runs at R4 of the sweep.
+correctly raises on it. It becomes runnable when `4a_percell_training.ipynb` re-runs at R4 of the sweep.
 
 ---
 
@@ -382,7 +382,7 @@ as flags (`--use-rep`, `--drugs`, `--batch-size 128`, `--epochs 50`, `--lr`, `--
 `--dropout`, `--input-dropout`, `--loss {mse,huber}`, `--hidden-dims`, `--seed`); run artifacts are
 written by `create_run_dir`/`save_run` ([Step 05](05-multitask-results.md)).
 
-Both the CLI and `notebooks/4_training.ipynb (§B)` drive one training run through the same
+Both the CLI and `notebooks/4a_percell_training.ipynb (§B)` drive one training run through the same
 `train_multitask.train_rep(...)` function (datasets → per-drug-mean baseline → `OncoMLP` → `train_model`
 → `save_run`), returning the run dir, history, and per-drug MSE arrays. The notebook is the
 **reproducible PCA-vs-scGPT comparison**: it trains both reps at the matched 512-d width and writes

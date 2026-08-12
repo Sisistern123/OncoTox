@@ -7,7 +7,7 @@ model artifacts to `runs/` (git-ignored), indexed by `runs/runs_index.csv`.
 
 > ⛔ **The drug panel is void and a pipeline review is in progress** ([`docs/TODO.md`](../docs/TODO.md)).
 > Nothing computed on that panel is quotable until a run exists on the rebuilt one — which affects
-> `4_training` and everything derived from it.
+> `4a_percell_training` and everything derived from it.
 
 ## The pipeline
 
@@ -19,7 +19,7 @@ end-to-end pipeline rather than a partial one with the first build done by hand.
 | **1** | `1_data.ipynb` | Fetches the pinned CTRPv2 response table and converts SCP542 into the raw h5ad, HVG-filtered | `pipeline.fetch`, `pipeline.convert` |
 | **2** | `2_drug_selection.ipynb` | **Which drugs does the model predict, and on whose authority?** FDA-approved list → what CTRPv2 screened → coverage over the overlap → the 11 with a verified published claim. Writes `outputs/panel/panel.csv` | `scripts/annotation/drug_annotation.py`, `scripts/sources/pubchem.py` |
 | **3** | `3_representations.ipynb` | scGPT embedding, CTRP targets, the frozen cell-line-grouped split, and the PCA baseline | `pipeline.scgpt/targets/splits/pca` |
-| **4** | `4_training.ipynb` | The training run: `auc_cc`, per-fold density weighting, out-of-fold scoring against the ridge control. ⚠️ Its stored outputs are cleared and its panel is the void 8-drug one; it re-runs on `outputs/panel/panel.csv` at R4 of the sweep | `scripts/training/cv.py`, `density_weighting.py` |
+| **4** | `4a_percell_training.ipynb` | The training run: `auc_cc`, per-fold density weighting, out-of-fold scoring against the ridge control. ⚠️ Its stored outputs are cleared and its panel is the void 8-drug one; it re-runs on `outputs/panel/panel.csv` at R4 of the sweep | `scripts/training/cv.py`, `density_weighting.py` |
 | **5** | `5_evaluation.ipynb` | ⛔ **Stub.** External benchmark + diagnostics. Neither notebook it should absorb can run yet — both hardcode the removed `'auc'`, and `dreval_benchmark` also imports a deleted module. Blocked on **review item 11** | — |
 
 **Why drug selection is stage 2 and not an analysis notebook.** It reads exactly two things — the
@@ -38,7 +38,7 @@ something subtly wrong. `run_preprocessing.py`, the CLI that used to hold the st
 [archived](../scripts/archive/README.md) that day: the order is the numbering of these notebooks, and a
 second copy of it in a CLI was a second thing to keep in step.
 
-> ⚠️ **`4_training` has two sections, and they answer different questions.** §A is the panel run. §B is
+> ⚠️ **`4a_percell_training` has two sections, and they answer different questions.** §A is the panel run. §B is
 > the PCA-vs-scGPT 8-run matrix, folded in from `2_training.ipynb` on 12.08.2026, which is retired by
 > that merge. §B's conclusions are superseded — the matrix and the "ρ ≈ 0, the model cannot rank cell
 > lines" reading were produced at K=545 on the legacy `mean_pv` target, whose unstandardised per-drug
@@ -113,7 +113,7 @@ any module is in [CLAUDE.md](../CLAUDE.md) under *Where things live*.
 | `ablations_and_rescue.ipynb` | **Ground 2**, archived 11.08.2026. *Why did the 545-head model fail, and what fixes it?* — the implicit σ²-weighting of the loss, the causal rescue test, the model-knob ablations, the ridge control. The whole argument is a head-to-head between `auc` and `auc_z`, both removed, so it cannot run. Re-wiring it to `auc_cc` / `ln_ic50_cc` would not preserve the argument; it would ask a different question. ⛔ **Its ablation and ridge tables are void (12.08.2026):** its `oof()` early-stopped on the fold it scored, so the MLP rows are flattered and the ridge row is not — [Corrections](../docs/steps/corrections-and-dead-ends.md#the-evidence-that-closed-model-side-tuning). The within-notebook *rescue* ranking survives, because every arm there carries the same leak |
 
 Two things are **not** grounds for archiving. **Superseded conclusions** — the 8-run matrix's results are
-void but its harness is the only way to re-run it, so it survives as `4_training` §B rather than going
+void but its harness is the only way to re-run it, so it survives as `4a_percell_training` §B rather than going
 here. **A discredited criterion** — `2_drug_selection`'s predecessors were built on one, but it is the
 documented record of how selection was done, and the rebuilt panel replaced it rather than deleting the
 record.

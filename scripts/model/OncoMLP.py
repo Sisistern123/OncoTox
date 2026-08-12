@@ -43,8 +43,9 @@ class OncoMLP(nn.Module):
 
         # "batch" and "none" look dead -- every construction in scripts/ passes "layer" -- but they
         # are not. `norm` is persisted to run_meta.json by save_run and read back verbatim when
-        # `4_training` reconstructs a saved model (`OncoMLP(..., norm=m['norm'])`), so any run that
-        # recorded another value still needs its branch to reload. Checked 12.08.2026 (Selin):
+        # `4a_percell_training` reconstructs a saved model (`OncoMLP(..., norm=m['norm'])`), so
+        # any run that recorded another value still needs its branch to reload. Checked
+        # 12.08.2026 (Selin):
         # keep them, and say why, rather than narrow the constructor to what today's callers happen
         # to pass. LayerNorm remains the only value any current path uses, for the reason in the
         # class docstring.

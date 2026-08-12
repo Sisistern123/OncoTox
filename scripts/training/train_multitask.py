@@ -230,7 +230,7 @@ def train_rep(
     """Train one multi-task OncoMLP for ``use_rep`` and persist a run dir.
 
     This is the single source of truth for a training run; both the CLI
-    (``main``) and ``notebooks/4_training.ipynb`` call it so they cannot drift.
+    (``main``) and ``notebooks/4a_percell_training.ipynb`` call it so they cannot drift.
 
     ``init_head_bias`` starts each head at that drug's mean over the **train split's cell
     lines** (``OncoMLP.init_head_bias_``). Added 12.08.2026: this path had never done it, so on a

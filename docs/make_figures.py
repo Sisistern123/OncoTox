@@ -274,7 +274,7 @@ def draw_architecture(ax, *, compact: bool = False):
     if not compact:
         # Epoch count moved to the "plotted" line above: it is a property of the run shown, not of
         # the architecture, and the cap is itself under review (item 10 owns whether TrainConfig's
-        # default of 25 moves to the 50 that 4_training passes). Naming it here made the
+        # default of 25 moves to the 50 that 4a_percell_training passes). Naming it here made the
         # architecture caption go stale every time the cap moved.
         ax.text(43.2, 22.6, "hidden block  =  Linear → LayerNorm → GELU → Dropout 0.5      ·      "
                             "input dropout 0.1      ·      Adam, early stopping (patience 10)",

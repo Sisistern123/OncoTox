@@ -304,7 +304,7 @@ The eight compounds remain defensible *as compounds*; what was silently pre-filt
 were drawn from**. The honest description of the panel as executed: literature-anchored,
 spread-verified, and **drawn from a kill-filtered pool**.
 
-**What it affected.** The Step 1 training run (`notebooks/4_training.ipynb`), the distribution
+**What it affected.** The Step 1 training run (`notebooks/4a_percell_training.ipynb`), the distribution
 and weighting design (`notebooks/archive/panel_distributions.ipynb`), the dispersion figures
 (`notebooks/analysis/evaluation/diagnostics.ipynb` §5), the panel rows in [Step 05](05-multitask-results.md), and the
 corresponding numbers in `report/`. The *methodological* findings from that run survive — the collapse
@@ -370,7 +370,7 @@ stands even though the panel does not.
 
 ### The Step 1 training run on the voided panel
 
-**Run** 27.07.2026, `notebooks/4_training.ipynb`. The first execution of the retired-`auc_z`
+**Run** 27.07.2026, `notebooks/4a_percell_training.ipynb`. The first execution of the retired-`auc_z`
 setup: target raw `auc` winsorized at 1.1, the 8-drug literature panel, per-sample inverse-density
 weights fitted per fold on training lines only, output layer excluded from weight decay, head biases
 initialized to the train-fold per-drug means. Architecture, splits, optimizer and batching unchanged, so
@@ -514,7 +514,7 @@ at the time the single largest improvement the project had made.
 Both are within-drug monotone transforms, so neither was ever visible to the metric — **`auc_z` was a
 loss-weighting scheme in disguise**. And the collapse it was introduced to fix turned out to be a
 **head-count** effect rather than a target property: the same raw `auc` scores −0.069 at K=545 and
-**+0.377** at K=8 (`notebooks/4_training.ipynb`). Removing the cause works at least as well as
+**+0.377** at K=8 (`notebooks/4a_percell_training.ipynb`). Removing the cause works at least as well as
 compensating for it, without amplifying noise-dominated drugs.
 
 It also carried a standing leak: `center` and `scale` were computed once over all 180 overlapping lines,
@@ -588,7 +588,7 @@ dissolved — is recorded under [Process failures](#process-failures).*
 
 ### "Neither representation ranks cell lines" — the K=545 null result
 
-**Established** 27.06.2026 (`notebooks/4_training.ipynb` §B3): per-drug Spearman between predicted and
+**Established** 27.06.2026 (`notebooks/4a_percell_training.ipynb` §B3): per-drug Spearman between predicted and
 true response across held-out lines, over the 461 drugs with real per-line variance, came out at
 **−0.02 (PCA) / −0.05 (scGPT)**, with only ~4 % of drugs above ρ = 0.3. Read at the time as the
 project's central finding — that at this label resolution the task is barely learnable beyond the mean,
@@ -781,7 +781,7 @@ as mechanics rather than as choices.
 
 **Overturned 12.08.2026 (review item 8) — they were only ever applied in `cv.oof_predictions`.**
 `train_multitask.cv_evaluate` and `train_multitask.train_rep`, which together produce the entire 8-run
-matrix, initialized no head bias, and `4_training.ipynb` (§B) never set `exclude_output_from_decay`, whose
+matrix, initialized no head bias, and `4a_percell_training.ipynb` (§B) never set `exclude_output_from_decay`, whose
 default was `False`. So the matrix path trained heads that start near 0 and are pulled back toward 0,
 while the panel path started them at the drug mean and never decayed them. Two arms of the same project
 under different rules, with the docs describing only one of them. `dreval_benchmark.ipynb`, which builds
@@ -946,7 +946,7 @@ they were drawn from was not, which is a separate defect.
 **Claimed** as a hunch from the earlier matrix runs — and its mirror, that HVG filtering specifically
 helps scGPT.
 
-**Not reproduced** 28.06.2026 (then `notebooks/4_training.ipynb` §B4; since 03.08.2026
+**Not reproduced** 28.06.2026 (then `notebooks/4a_percell_training.ipynb` §B4; since 03.08.2026
 `notebooks/analysis/qc/verify_variants.ipynb` §9), the gene-set sweep at 1k/2k/3k/5k plus
 `all_genes` under identical 5-fold CV: both representations are **flat across the whole axis** (PCA
 ~203–216 heads beating baseline, scGPT ~184–193), val MSE constant at 0.0105–0.0107. PCA's `all_genes`
@@ -984,7 +984,7 @@ the regression analogue of class weighting — should reduce the shrinkage and i
 in `scripts/training/density_weighting.py`, fitted per fold on training lines only via
 `scripts/training/cv.py`.
 
-**Refuted** 27.07.2026 (`notebooks/4_training.ipynb`): **−0.006 (PCA) / −0.008 (scGPT)** mean
+**Refuted** 27.07.2026 (`notebooks/4a_percell_training.ipynb`): **−0.006 (PCA) / −0.008 (scGPT)** mean
 Spearman. Per drug a wash — `selumetinib` +0.09 / +0.06, `tanespimycin` −0.06 / −0.06. The
 pre-registered expectation ("MSE worse, Spearman better") also failed; both stayed flat, which is what a
 null intervention looks like.
