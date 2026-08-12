@@ -173,6 +173,17 @@
 > | `scripts/model/dataset.py:26` (`resolve_rep` docstring) | *"still leaky, and documented as such"* | Same, and it is the code's own description of itself |
 > | `docs/steps/02`, the `X_pca` table row | *"used for: UMAPs and latent-space validation — **and every CV run**"* | ⚠️ A **table cell**, not prose: a sweep for "leaky" or "not fixed" will not find it |
 > | `report/sections/06_limitations_and_outlook.tex:81` | *"those remain on the all-cells decomposition, **and gene selection remains an all-cells step for both arms**"* | ⚠️ **Half-true at R4**, the nastiest of the four — the second clause stays true *permanently* under decision 1, while the first changes. Editing it as one unit will break the half that is right |
+> | `report/sections/06_limitations_and_outlook.tex:65-76` | *"the PCA baseline was tuned to the cells it was evaluated on … **the bias runs toward the control, so any scGPT advantage measured this way is conservative**"*, and the `\revision` after it, *"both asymmetries … accumulate rather than offset"* | **This is the retracted lower-bound claim, in its other home.** Valid today, because the premise it rests on — the rotation using every cell — is still what the code does. `fitc` dissolves the premise at R4 and the conclusion with it. §Methods no longer asserts it; **this passage still does**, so the retraction is only half-propagated until R4 |
+>
+> ⚠️ **One thing in that last passage is wrong *today*, not at R4, and it is a different defect from the
+> freeze.** Line 67 reads *"The scGPT embedding is **not fitted on this data at all**"*. It is: scGPT is
+> fed our CPM matrix. Selin corrected exactly this phrasing on 12.08.2026, and §Methods now states the
+> accurate version — same cells, same normalization, same transform, same gene set, with the fitted
+> mean/std/rotation as the single asymmetry. **So the report currently contradicts itself on whether the
+> embedding is fitted on this data.** Not fixed here: the sentence sits inside a reproducibility block
+> that R6 rewrites wholesale, and correcting one clause of a paragraph whose conclusion is also due to
+> change would leave a half-corrected argument, which is worse than a wholly stale one. **Fix both at
+> R4/R6 together, or neither.**
 >
 > ⏸️ **The mechanism is not final, and the flag holds either way.** Decision 2 — *how* the CV PCA is
 > fitted — was reopened on cost the same day it was taken: a per-fold fit at training time needs
