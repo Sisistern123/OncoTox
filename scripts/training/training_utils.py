@@ -52,18 +52,7 @@ class TrainConfig:
     early_stop_patience: int = 10
     log_every: int = 5
     seed: int = 42
-    loss: str = "mse"  # "mse", "mae" or "huber" -- the three arms of review item 9A
-    # ⚠️ Unsourced, and mis-scaled for the current target (found 12.08.2026, audit 09). Introduced
-    # with the original multi-task commit (ed8897c) and never revisited across three target changes.
-    # `smooth_l1_loss` is quadratic only below `beta` and linear above it, and 0.05 sits well under
-    # the typical residual on `auc_cc` -- the panel run's RMSE was ~0.163, which puts roughly three
-    # quarters of residuals in the LINEAR region. So `--loss huber` behaves closer to L1 than to the
-    # "quadratic near 0, robust in the tail" that docs/steps/03 describes. Nothing uses it today
-    # (`loss` defaults to "mse"), so it is left as-is rather than silently rescaled: `beta` is a
-    # threshold on the residual scale and picking one is an analysis decision. If the loss
-    # comparison in review item 9 includes Huber, `beta` is derived there from the residual scale
-    # rather than inherited from here.
-    huber_beta: float = 0.05
+    loss: str = "mse"  # "mse" or "mae" -- the two arms of review item 9A
     # Decay the weight matrices, exempt the biases and the normalization parameters. This is the
     # standard grouping -- HuggingFace transformers' `Trainer.create_optimizer`
     # (`no_decay = ["bias", "LayerNorm.weight"]`), inherited from the BERT reference
@@ -131,31 +120,28 @@ def _make_loss_fn(config: TrainConfig, multitask: bool):
     Single-task callers can pass ``mask=None`` and get the plain loss.
     Multi-task callers must pass ``mask`` (same shape as ``targets``).
 
-    **All three losses go through the identical masked reduction**, ``sum(err * M) / sum(M)``, with
+    **Both losses go through the identical masked reduction**, ``sum(err * M) / sum(M)``, with
     the density weights substituting for the 0/1 mask when weighting is on. That is what makes them
     comparable as arms of one experiment: an MAE that bypassed the mask would be a different
     estimator rather than a different loss, and the comparison in review item 9A would not mean what
     it says. Only ``per_elem`` differs between them.
     """
     name = config.loss.lower()
-    if name not in {"mse", "mae", "huber"}:
-        raise ValueError(f"Unknown loss: {config.loss!r} (expected 'mse', 'mae' or 'huber')")
+    if name not in {"mse", "mae"}:
+        raise ValueError(f"Unknown loss: {config.loss!r} (expected 'mse' or 'mae')")
 
     if name == "mse":
         per_elem = lambda preds, targets: (preds - targets) ** 2
-    elif name == "mae":
-        # Added 12.08.2026 (Selin) as the second arm of item 9A's loss comparison. It carries no
-        # parameter, which is half its appeal here: MSE and MAE can be compared without also
-        # choosing a constant, where Huber cannot -- its `beta` is a threshold on the residual
-        # scale and `TrainConfig.huber_beta`'s 0.05 is unsourced and mis-scaled for `auc_cc`.
+    else:
+        # Added 12.08.2026 (Selin) as the second arm of item 9A's loss comparison, and since
+        # 12.08.2026 the only alternative to MSE: Huber was removed rather than kept, because its
+        # position in the grid is set entirely by `beta` -- so keeping it meant deciding a parameter
+        # -- and at the 0.05 it carried it behaves close to MAE, so the grid would have run two
+        # near-duplicate columns. MAE carries no parameter at all, which is half its appeal.
         # Less pulled by the sparse extremes than squared error, which is the same axis the
         # density weighting acts on -- so the two are not independent and the grid is read as a
         # grid, not as two separate one-dimensional sweeps.
         per_elem = lambda preds, targets: (preds - targets).abs()
-    else:
-        per_elem = lambda preds, targets: nn.functional.smooth_l1_loss(
-            preds, targets, beta=config.huber_beta, reduction="none"
-        )
 
     if multitask:
         def loss_fn(preds, targets, mask):
@@ -234,7 +220,7 @@ def train_model(
     val MSE seen during training, not the final-epoch weights.
 
     Multi-task batches (3-tuples ``(x, y, mask)``) are detected automatically
-    from ``train_loader``. In that case the loss is masked-MSE / masked-Huber
+    from ``train_loader``. In that case the loss is masked-MSE / masked-MAE
     and the printed metric is the overall masked val MSE; the top-k best/worst
     per-drug val MSEs are also printed when ``drug_names`` is provided.
     """

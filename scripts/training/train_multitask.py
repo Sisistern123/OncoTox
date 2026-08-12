@@ -87,7 +87,7 @@ def _parse_args():
     parser.add_argument("--weight-decay", type=float, default=1e-3)
     parser.add_argument("--dropout", type=float, default=0.5)
     parser.add_argument("--input-dropout", type=float, default=0.1)
-    parser.add_argument("--loss", default="mse", choices=("mse", "mae", "huber"))
+    parser.add_argument("--loss", default="mse", choices=("mse", "mae"))
     parser.add_argument(
         "--hidden-dims",
         nargs="+",
