@@ -45,7 +45,24 @@ class TrainConfig:
     # each fold now fits on ~104 lines rather than 122, so where training peaks can move.
     epochs: int = 25
     lr: float = 1e-3
-    weight_decay: float = 1e-3
+    # 0.0, and this is a decision rather than a default (Selin, 12.08.2026). **The model trains
+    # without weight decay**, with dropout 0.5 and input dropout 0.1 as the only regularizers.
+    #
+    # It follows from the AdamW switch below. Measured before deciding: AdamW at the inherited 1e-3
+    # gives a weight-matrix L2 norm of 8.971 against 8.975 with decay off -- 0.04 %, i.e. nothing --
+    # where Adam at the same nominal value gave 5.597, a 38 % shrinkage. Matching Adam under AdamW
+    # needs wd ~= 1.0, three orders of magnitude up. So 1e-3 could not be carried across: it would
+    # have read as a deliberate setting while doing nothing at all.
+    #
+    # The rejected alternative was wd ~= 1.0, which reverse-engineers a value to reproduce the
+    # shrinkage of runs that are themselves void on target and panel grounds.
+    #
+    # ⚠️ **Whether this model needs weight decay is OPEN, not settled.** Do not justify 0.0 by "the
+    # model is not regularization-limited": that refutation rested on the weight-decay axis of an
+    # ablation which is itself void, so the evidence for it is gone. The honest justification is
+    # narrower -- no sourced value exists for either optimizer, dropout is already substantial, and
+    # a decay nobody can justify is worse than none.
+    weight_decay: float = 0.0
     grad_clip: float | None = 1.0
     scheduler_patience: int = 3
     scheduler_factor: float = 0.5
@@ -236,14 +253,42 @@ def train_model(
         print(f"[{tag}] Multi-task mode detected (masked {config.loss.upper()}).")
 
     loss_fn = _make_loss_fn(config, multitask=multitask)
+    # AdamW (Selin, 12.08.2026, review item 10), and `weight_decay` set to 0.0 with it -- see the
+    # field's own comment for why those two are one decision rather than two.
+    #
+    # The argument for the switch: Loshchilov & Hutter, *Decoupled Weight Decay
+    # Regularization*, ICLR 2019, show that passing `weight_decay` to Adam adds an L2 term to the
+    # gradient which Adam's adaptive scaling then divides through, so decay strength is entangled
+    # with gradient history, and that the decoupled form is what "weight decay" normally means. That
+    # so the decoupled form is what "weight decay" normally means, and it is now what we use.
+    #
+    # The migration carried a price, measured before switching
+    # (8 epochs, real OncoMLP, real grouping, synthetic data at workload scale):
+    #
+    #     Adam   wd=1e-3 : weight-matrix L2 norm 5.597
+    #     AdamW  wd=1e-3 : weight-matrix L2 norm 8.971
+    #     AdamW  wd=0    : weight-matrix L2 norm 8.975   <- no-decay reference
+    #
+    # AdamW at the SAME nominal value is indistinguishable from no weight decay at all -- 0.04 % from
+    # the zero-decay run -- while Adam at 1e-3 shrinks the weight matrices by 38 %. AdamW's step is
+    # `theta -= lr*wd*theta`, a factor of 1 - 1e-6 per step at these settings; Adam's L2 enters the
+    # gradient and is amplified by 1/sqrt(v). Reproducing Adam's shrinkage under AdamW needs
+    # wd ~= 1.0, three orders of magnitude up.
+    #
+    # So migrating meant re-deriving `weight_decay`, and no sourced value exists for either
+    # optimizer. Rather than carry 1e-3 -- which under AdamW does nothing while looking deliberate --
+    # the decay is set to 0.0 and the model trains without it.
+    #
+    # Audit 08's grouping is untouched by any of this: *which* parameters are decayed was settled
+    # there, and only *how* decay is applied was ever in question.
     if config.no_decay_bias_and_norm:
         groups = _decay_param_groups(model, config.weight_decay)
         print(f"[{tag}] Weight decay {config.weight_decay:g} on "
               f"{sum(p.numel() for p in groups[0]['params'])} weight parameters; "
               f"{sum(p.numel() for p in groups[1]['params'])} bias/norm parameters exempt.")
-        optimizer = optim.Adam(groups, lr=config.lr)
+        optimizer = optim.AdamW(groups, lr=config.lr)
     else:
-        optimizer = optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
+        optimizer = optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         mode="min",

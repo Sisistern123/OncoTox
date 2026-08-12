@@ -84,7 +84,15 @@ def _parse_args():
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--weight-decay", type=float, default=1e-3)
+    parser.add_argument(
+        "--weight-decay",
+        type=float,
+        default=0.0,
+        help="0.0 by default: under AdamW the inherited 1e-3 is indistinguishable from no "
+             "decay at all (TrainConfig.weight_decay). Kept in step with the dataclass so the "
+             "CLI and the notebooks cannot train different models -- the defect review item "
+             "10 found with --epochs.",
+    )
     parser.add_argument("--dropout", type=float, default=0.5)
     parser.add_argument("--input-dropout", type=float, default=0.1)
     parser.add_argument("--loss", default="mse", choices=("mse", "mae"))
