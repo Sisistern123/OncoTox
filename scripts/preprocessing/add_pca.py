@@ -246,7 +246,14 @@ def run(
 
     # The train-fitted keys are computed FIRST, and read src.X directly: sc.pp.scale below
     # standardizes src.X in place, so afterwards it is no longer the transformed matrix.
-    X_log = src.X.toarray() if sparse.issparse(src.X) else np.asarray(src.X)
+    # float32 (Selin, 12.08.2026). Chosen for the per-fold CV fits, where the counts matrix is
+    # 53,513 x 5,000 and float64 doubles peak memory to ~4.4 GB, and extended here so the
+    # descriptive all-cells fit and the per-fold fits stay identical in kind -- the property
+    # she established on 10.08.2026 when she harmonized `ddof` to 1, that the two differ only in
+    # which cells they see. It is a preprocessing change: `X_pca` moves in its last digits.
+    X_log = (src.X.toarray() if sparse.issparse(src.X) else np.asarray(src.X)).astype(
+        np.float32, copy=False
+    )
     for col in split_cols:
         key = train_pca_key(col)
         if key not in todo:
