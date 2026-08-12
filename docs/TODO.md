@@ -630,8 +630,44 @@ every one of them was a step that looked settled and had never been checked.
         (Spearman), order at the top (NDCG@K against a random null), values (RMSE in AUC units) and
         spread (calibration slope) — get a section each in `notebooks/5_evaluation.ipynb`, which is
         written but not yet built. Item 11 owns the metric set and records it.
-- [ ] **10 · Training** — optimizer, weight decay groups, epochs, early stopping, and the `mps`
-      nondeterminism that moves the PCA arm across identical runs.
+- [x] **10 · Training — walked 12.08.2026. Nothing here gates R2.** Optimizer, weight-decay groups,
+      epochs, early stopping and the `mps` nondeterminism, read against the code.
+  - [x] **The `mps` nondeterminism does not reproduce under current code.** Measured on the real
+        classes and the real `train_model` loop, synthetic input, nothing read or written: at the real
+        workload's scale — 34,000 cells, 512-d input, 11 heads, 25 epochs — three identical runs are
+        **bit-identical**, max |Δ val MSE| 0.000e+00, same best epoch, same final loss. Identical on CPU,
+        and identical with and without the explicit DataLoader generator, because `train_model` calls
+        `set_seed` before the loader is first iterated so `RandomSampler` draws from a freshly seeded
+        global RNG either way. Run at two scales deliberately — concluding "deterministic" from an
+        underpowered test is the silent-zero error. **So `06_limitations`'s 0.313 / 0.315 / 0.317 /
+        0.320 is not re-derivable**, and the honest replacement is stronger than a caveat: at a fixed
+        seed the training loop is bit-reproducible on `mps`. ⚠️ **Scope:** this exercises the *training
+        loop*, not the full CV chain on real data — five folds, the line-level aggregation, the
+        Spearman. Those are deterministic numpy given deterministic input, but they have not been run,
+        so the claim is the loop's, not the chain's. Certifying the chain needs real data and waits for
+        R2. **This also discharges audit 12's outstanding clause** — the 28.07.2026 no-action decision
+        required measuring the non-determinism where it matters, and it is now measured.
+  - [ ] **Adam → AdamW (Selin, 12.08.2026).** Weight decay is currently added as L2 to the gradient
+        under `optim.Adam` rather than decoupled. Loshchilov & Hutter, *Decoupled Weight Decay
+        Regularization*, ICLR 2019, showed the two are not equivalent under Adam and that the decoupled
+        form is the one that behaves as intended. It interacts directly with the grouping audit 08
+        changed — *which* parameters are decayed and *how* decay is applied are one decision — so the
+        grouping is unchanged and only the application moves. **R4-side; lands with the training branch,
+        not before R2.**
+  - [ ] **`dreval_benchmark` trains for 25 epochs where everything else runs 50 → set it to 50
+        explicitly (Selin, 12.08.2026).** It is the only caller that passes no `epochs` and so falls to
+        `TrainConfig`'s default, which every other caller overrides. **This is not a change to the
+        benchmark — it is the benchmark silently running half the training the pipeline uses**, so the
+        notebook answering "how strong is this by the field's standard" has been scoring a weaker model
+        than the field would see. Nobody chose 25 for it. R5-side.
+  - [x] **Weight-decay groups — nothing left beyond AdamW above.** Audit 08 replaced
+        `exclude_output_from_decay` with the conventional grouping and verified it by fault injection.
+  - [x] **Early stopping — nothing left that gates anything.** Audit 07 closed the leak with
+        `inner_holdout`. Two observations, both R4-side and neither blocking: the improvement threshold
+        is an absolute `1e-6` on val MSE, which against a typical `auc_cc` MSE around 0.026 is a
+        0.004 % relative bar, so nearly any change registers as improvement and `patience` runs longer
+        than it reads; and at 50 epochs rather than 25, `patience=10` can now actually fire, where
+        before the cap was reached first.
 - [ ] **11 · Evaluation** — metric, cell→line aggregation, baselines (ridge, `NaiveMeanEffects`),
       dispersion across folds *and* drugs, raw vs normalized.
   - [ ] **⚠️ A blind spot in the metric set, not in any one result (found 12.08.2026, audit 09).**
@@ -757,6 +793,11 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
         since the seed band on Spearman is ±0.04 and larger than most differences seen so far. Scored on
         all four quantities in `5_evaluation`, which is what lets a spread effect be seen at all — the
         previous null was measured on Spearman and MSE, both blind to it.
+        ⚠️ **If Huber ever returns, `beta` returns unsourced with it.** Audit 09 left
+        `TrainConfig.huber_beta = 0.05` at its value deliberately, to be derived in the comparison *if*
+        Huber were included. Dropping Huber made that defect stop applying rather than fixing it — a
+        closed-by-accident, recorded here so it does not have to be rediscovered. `0.05` against
+        ~0.163 RMSE puts roughly three quarters of residuals in the linear region.
         ⚠️ **HUBER DROPPED 12.08.2026 (Selin); this read MSE / MAE / Huber until then, and item 9C —
         derive Huber's `beta` from the residual scale — goes with it.** Two grounds. Huber's role in the
         grid was to be the point *between* L2 and L1, and its position is set entirely by `beta`: at
