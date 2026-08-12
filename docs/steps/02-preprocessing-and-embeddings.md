@@ -310,7 +310,7 @@ comparability with everything run before it.
 > ⚠️ **Corrected 12.08.2026.** This paragraph used to end *"**This will hard-fail the panel rebuild**,
 > which is the intended behaviour"*. That is no longer true, and the reason is a decision taken the same
 > day: **the panel does not feed `ctrp_to_h5ad`**
-> ([Step 01](01-datasets-and-harmonization.md#the-panel-does-not-enter-the-target-build-decided-12082026-selin)).
+> ([Step 03](03-model-and-training-design.md#the-drug-panel-is-a-training-time-choice-not-a-property-of-the-target-file-12082026)).
 > `M_ctrp` is built over every drug clearing `--min-cell-lines`, so a panel revision does not change
 > which lines carry at least one label, does not change eligibility, and therefore cannot trip the
 > guard. The coupling this sentence described was real while the panel *could* reach the target matrix;

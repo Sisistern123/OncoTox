@@ -41,7 +41,7 @@ The gene-set size is not critical: an earlier sweep from
 (\code{notebooks/07}), so the \NHvg-gene selection is used throughout.
 \revision{\emph{Correction, 05.08.2026.} That sweep was computed on the legacy \code{mean\_pv} response
 score rather than the \code{auc} target used throughout this report, so its numbers are superseded; it
-now lives in \code{notebooks/data\_and\_harmonization/verify\_variants.ipynb}, \S9, and the reference to
+now lives in \code{notebooks/analysis/qc/verify\_variants.ipynb}, \S9, and the reference to
 \code{notebooks/07} above is stale. Its \emph{all-genes} arm is also not the full transcriptome as far as
 scGPT is concerned: the model reads at most 1{,}200 genes per cell, drawn at random from that cell's
 non-zero genes, and in the all-genes variant every cell exceeds that cap. What the sweep compared for
@@ -257,9 +257,9 @@ of the available lines. Selecting on it would reintroduce the potency filter des
 appearance of a data-quality rule. Where the two response measures are compared, the comparison is
 restricted at evaluation to compounds with sufficient IC50 coverage, with the per-compound counts
 reported. The selection is implemented in
-\code{notebooks/drug\_selection/literature\_panel.ipynb}, which reads only the response table and writes
+\code{notebooks/2\_drug\_selection.ipynb}, which reads only the response table and writes
 the panel with its citations to \code{notebooks/outputs/panel/panel.csv}; the compound identifier
-resolution is in \code{scripts/preprocessing/drug\_annotation.py} and
+resolution is in \code{scripts/annotation/drug\_annotation.py} and
 \code{scripts/sources/pubchem.py}.
 
 \subsection{Representation and model}
@@ -376,7 +376,7 @@ far this generalizes: the repeats come from only \NRepLines{} cell lines, each r
 almost the whole compound set, and CTRPv2 did not select those lines at random. The figure therefore
 indicates that a material share of the target is screening noise, but it does not establish a numeric
 ceiling on the achievable correlation. Quantified in
-\code{notebooks/data\_and\_harmonization/replicate\_variation.ipynb}, with the underlying pairs in
+\code{notebooks/archive/replicate\_variation.ipynb}, with the underlying pairs in
 \code{notebooks/outputs/data/replicate\_variation.csv}.
 
 \subsection{Evaluation}
