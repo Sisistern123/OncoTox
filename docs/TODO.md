@@ -669,6 +669,29 @@ every one of them was a step that looked settled and had never been checked.
         changed — *which* parameters are decayed and *how* decay is applied are one decision — so the
         grouping is unchanged and only the application moves. **R4-side; lands with the training branch,
         not before R2.**
+        ⚠️ **And `weight_decay = 0.0`, written explicitly (Selin, 12.08.2026).** Not a default and not
+        an oversight: **at `1e-3` under AdamW there is effectively no weight decay at all.** Measured on
+        the real `OncoMLP` with the real grouping, synthetic data at workload scale, 8 epochs —
+        weight-matrix L2 norm **8.971** at `wd=1e-3` against **8.975** with decay switched off, a 0.04 %
+        difference, while **Adam** at the same nominal value gave **5.597**, i.e. ~38 % shrinkage.
+        Matching Adam's shrinkage under AdamW needs `wd ≈ 1.0`, three orders of magnitude up. The
+        arithmetic: AdamW's step is `θ -= lr·wd·θ`, a factor of `1 − 1e-6` per step at `lr=1e-3`, where
+        Adam's L2 enters the gradient and is amplified by `1/sqrt(v)`.
+        So the choice was between carrying a number that does nothing, reverse-engineering `wd ≈ 1.0` to
+        reproduce the shrinkage of runs that are **themselves void**, or saying plainly that this model
+        trains **without weight decay** — dropout 0.5 and the input dropout as the only regularizers.
+        The third was taken. **The justification is narrow and deliberately so:** no sourced value exists
+        for either optimizer, dropout is already substantial, and a decay nobody can justify is worse
+        than none. ⛔ It is **not** justified by "the model is not regularization-limited" — that
+        hypothesis's refutation rested on the weight-decay axis of the
+        [void ablation](./steps/corrections-and-dead-ends.md#the-evidence-that-closed-model-side-tuning),
+        so **whether this model needs weight decay is now an open question, not a settled one.**
+        ⚠️ **Consequence for R4:** its model differs from every recorded run in its regularization —
+        those had ~38 % shrinkage, R4 has none. One more reason R4 establishes a baseline rather than
+        measuring a delta.
+        *(Item 10's optimizer finding closes here — decoupled decay is what Loshchilov & Hutter argue
+        for and it is now in use. What replaces it is the open regularization question above, not
+        nothing.)*
   - [ ] **`dreval_benchmark` trains for 25 epochs where everything else runs 50 → set it to 50
         explicitly (Selin, 12.08.2026).** It is the only caller that passes no `epochs` and so falls to
         `TrainConfig`'s default, which every other caller overrides. **This is not a change to the
