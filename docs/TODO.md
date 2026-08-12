@@ -984,8 +984,11 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 > → `4a_percell_training` → `4b_mil_training` → `5_evaluation`. `4b` **stopped being a stub on
 > 13.08.2026**: its criterion is implemented in §3 against `scripts/training/mil.py`, and it now runs
 > after `4a` rather than being outside the chain, because stage 1 reads `4a`'s within-line spread
-> table. Two of its parameters are ⬜ open (`PCA_SEED`, and the aggregation of the per-pair tests)
-> and stage 6 ⛔ cannot be evaluated at all — see the notebook's own §3.3, §3.5 and §3.8.
+> table. `PCA_SEED` was settled at 42 on 13.08.2026; what remains is the ⬜ aggregation of the
+> per-pair tests, and stage 6, whose two missing covariates are recoverable from the raw
+> `UMIcount_data.txt` by a preprocessing pass. **Neither gates the rerun** — both are computed from
+> the saved per-cell prediction arrays and can be settled afterwards without retraining. See the
+> notebook's own §3.3, §3.5 and §3.8.
 > **Verified 13.08.2026: no
 > numbered notebook reads any analysis notebook's output — zero, across all six.** The chain is
 > self-contained and nothing outside it can gate it.

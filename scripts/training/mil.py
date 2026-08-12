@@ -341,8 +341,9 @@ def bag_oof_predictions(
         alike, and if the representation moved with the seed as well, the comparison would mix
         model-initialization variation with PCA-fit variation and could not tell them apart. Defaults
         to ``config.seed`` -- the per-cell path's behaviour, so nothing changes silently for a caller
-        that does not set it. ⬜ **Which of the two 4b should use is Selin's, and is open at
-        13.08.2026**; the notebook names the value in one place so it can be flipped there.
+        that does not set it. **4b passes 42 for all three model seeds (Selin, 13.08.2026)**, so its
+        stage 2 measures the model given a fixed representation rather than the pipeline as a whole;
+        the cost is that the seeds are then independent draws of the model and not of the PCA fit.
     """
     config = config or TrainConfig()
     hidden_dims = tuple(hidden_dims or DEFAULT_HIDDEN_DIMS[rep])
