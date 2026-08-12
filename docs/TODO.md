@@ -732,6 +732,19 @@ every one of them was a step that looked settled and had never been checked.
         (Spearman), order at the top (NDCG@K against a random null), values (RMSE in AUC units) and
         spread (calibration slope) — get a section each in `notebooks/5_evaluation.ipynb`, which is
         written but not yet built. Item 11 owns the metric set and records it.
+    - ⚠️ **The four sections exist; the table that puts them side by side does not (13.08.2026).**
+      §1.4–1.7 each compute their quantity and §1.3 defines `decide()`, which applies the rule — but
+      nothing assembles the four into one row per arm, and **`decide()` has no call site in the
+      notebook at all**: its `def` is the only occurrence of the name. So *"`5_evaluation` is done"*
+      is true of the quantities and false of the notebook. Two requirements are already recorded in
+      §1.6 and have to survive into the table: each quantity's **`n_drugs`** appears beside it,
+      because they are not always over the same panel (on a synthetic arm `order` averaged over 11
+      drugs and `top_of_order` over 10, the thin drug having fallen below `TOP_K`); and the
+      **different-drug-set check between arms**, which §1.6 flags but leaves to §1.3, where arms
+      meet. **Where this sits in R1–R6 is open** — the table needs no rerun output to be *written*,
+      but it cannot be *exercised* until R4 supplies a file with more than one arm in it.
+      Reported by the preprocessing session on handover, 13.08.2026; the no-call-site claim verified
+      against `notebooks/5_evaluation.ipynb` the same day.
   - [x] **How `order` is computed — decided by Selin, 13.08.2026.** Four sub-choices, all settled
         before any of the six arms is run, because the last comparison failed by choosing after seeing
         the numbers. **Spearman**, **per drug then averaged**, **unweighted mean across the 11 drugs**,
