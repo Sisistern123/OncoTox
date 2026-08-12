@@ -161,13 +161,30 @@ def fold_pca_projections(
     class the 03.08 freeze exists to police -- and gitignored, so invisible in review, and failing by
     producing plausible wrong numbers rather than an error.
 
-    ⚠️ **float32 (Selin, 12.08.2026), while ``add_pca``'s descriptive all-cells fit still runs
-    float64.** The two therefore now differ in dtype as well as in which cells they see, which
-    weakens -- for these fold fits only -- the property she established on 10.08.2026 when she
-    harmonized ``ddof`` to 1. Recorded rather than hidden: it is a real asymmetry, it was chosen with
-    the memory figures in front of her, and extending float32 to ``add_pca`` would restore the
-    property at the cost of changing ``X_pca`` in its last digits, which makes it a preprocessing
-    change. If that is later decided, this cast and that one must move together.
+    **float32 throughout, here and in ``add_pca`` (Selin, 12.08.2026).** Both fits were extended
+    together so they stay identical in kind, preserving the property she established on 10.08.2026
+    when she harmonized ``ddof`` to 1 -- that the descriptive fit and the train-only fits differ
+    only in which cells they see. Extending it makes ``X_pca`` move in its last digits, so this is a
+    preprocessing change and R2 runs after it.
+
+    **Fitted on the fold's ``fit_cells``, not its whole training side (Selin, 12.08.2026).** The two
+    arms already receive the same cells, the same per-cell CPM and log transform, and the same
+    all-cells HVG gene set. The single asymmetry between them is that **PCA needs a fit estimated
+    across cells -- mean, std, rotation -- and scGPT needs none**: its weights are pretrained and
+    frozen, and its value binning digitizes each cell against that cell's own distribution. Because
+    that fit is the only asymmetry, the narrower it is, the more of any measured difference is
+    attributable to the representation rather than to how much the control's fit was allowed to see.
+    Using the whole training side would hand the control ~18 % more cells that scGPT structurally
+    cannot receive.
+
+    It also removes an exception: PCA is now fitted on the same set as ``fit_weight_fns`` and the
+    head-bias initialization, so no per-fold statistic is different for a reason someone has to
+    remember.
+
+    ⚠️ **The cost, which is not hidden:** ~15 % fewer cells for a 512-component fit, so a scGPT win
+    invites the question whether PCA was undersold. The answer is that the fit still uses ~85 % of
+    the fold's training cells, and the alternative would give the control an advantage the other arm
+    cannot have.
 
     :param fit_masks: one boolean mask over all cells per fold, marking the cells that fold's PCA may
         be fitted on. Whatever set the caller passes is the set the fit sees.
@@ -200,6 +217,41 @@ def fold_pca_projections(
     del X_log, src  # the caller trains next; it needs the projections, not the gene matrix
     _FOLD_PCA_CACHE[key] = projections
     return projections
+
+
+#: Scratch ``obsm`` key holding the current fold's PCA projection. Overwritten per fold; never
+#: persisted, because it is meaningful only alongside the fold assignment that produced it.
+CV_FOLD_PCA_KEY = "_X_pca_cv_fold"
+
+
+def fold_pca_projections_for(
+    rep: str,
+    counts_h5ad: str | Path | None,
+    fit_masks: list[np.ndarray],
+    *,
+    seed: int = 42,
+) -> list[np.ndarray] | None:
+    """Per-fold projections when ``rep`` is a PCA representation, ``None`` when it is not.
+
+    The one place that decides whether cross-validation needs a per-fold fit, so that
+    :func:`oof_predictions` and :func:`cv_evaluate` cannot answer it differently. scGPT needs
+    nothing: its weights are pretrained and frozen, and its value binning digitizes each cell
+    against that cell's own distribution, so no statistic is estimated across cells at all.
+
+    :raises ValueError: if a PCA rep is requested without ``counts_h5ad``. Falling back to the
+        stored all-cells ``X_pca`` is exactly the leak decision 2 closes, and a silent fallback is
+        how it would come back.
+    """
+    if not rep.startswith("X_pca"):
+        return None
+    if counts_h5ad is None:
+        raise ValueError(
+            f"rep={rep!r} under cross-validation needs `counts_h5ad` so the PCA can be fitted per "
+            f"fold (Selin, 12.08.2026). Without it the only available projection is the all-cells "
+            f"X_pca, whose coordinates depend on the held-out lines -- the leak this replaces. Pass "
+            f"PipelinePaths.raw_h5ad, or use a representation that needs no fit."
+        )
+    return fold_pca_projections(counts_h5ad, fit_masks, seed=seed)
 
 
 def per_drug_line_mean(y_lines: np.ndarray, obs_lines: np.ndarray) -> np.ndarray:
@@ -237,6 +289,7 @@ def oof_predictions(
     alpha: float = DEFAULT_ALPHA,
     cap: float = DEFAULT_CAP,
     init_head_bias: bool = True,
+    counts_h5ad: str | Path | None = None,
     tag: str = "oof",
 ) -> tuple[np.ndarray, list[dict]]:
     """Fit ``n_splits`` cell-line-grouped folds and return out-of-fold per-cell predictions.
@@ -270,21 +323,34 @@ def oof_predictions(
     Y = np.asarray(adata.obsm["Y_ctrp"], dtype=np.float32)[:, kcol]
     M = np.asarray(adata.obsm["M_ctrp"], dtype=bool)[:, kcol]
 
-    pred = np.full((adata.n_obs, len(drugs)), np.nan, dtype=float)
-    folds: list[dict] = []
-    for fold, (tr, va) in enumerate(fold_split, start=1):
+    # Every fold's masks are computed before any training, because the per-fold PCA below fits all
+    # folds from one load of the counts matrix. The fold's training lines split once more: the model
+    # is fitted on `fitc` and early stopping watches `stopc`. The scored fold `vac` enters neither,
+    # so the checkpoint that predicts it was not chosen by it -- see inner_holdout above.
+    masks = []
+    for tr, va in fold_split:
         trc = np.zeros(adata.n_obs, dtype=bool)
         trc[idx[tr]] = True
         vac = np.zeros(adata.n_obs, dtype=bool)
         vac[idx[va]] = True
-
-        # The fold's training lines split once more: the model is fitted on `fitc` and early
-        # stopping watches `stopc`. The scored fold `vac` enters neither, so the checkpoint that
-        # predicts it was not chosen by it -- see inner_holdout above.
         fitc, stopc = inner_holdout(groups, trc)
+        masks.append((trc, fitc, stopc, vac))
 
-        fit_ds = MultiDrugDataset(adata=adata, use_rep=rep, cell_mask=fitc, drugs=drugs)
-        stop_ds = MultiDrugDataset(adata=adata, use_rep=rep, cell_mask=stopc, drugs=drugs)
+    projections = fold_pca_projections_for(rep, counts_h5ad, [m[1] for m in masks], seed=config.seed)
+
+    pred = np.full((adata.n_obs, len(drugs)), np.nan, dtype=float)
+    folds: list[dict] = []
+    for fold, (trc, fitc, stopc, vac) in enumerate(masks, start=1):
+        # Under a per-fold PCA the representation differs per fold, so it is written to a scratch
+        # obsm key the datasets then read. Overwritten each iteration: MultiDrugDataset copies the
+        # array at construction, so no fold can see another's projection.
+        rep_key = rep
+        if projections is not None:
+            rep_key = CV_FOLD_PCA_KEY
+            adata.obsm[rep_key] = projections[fold - 1]
+
+        fit_ds = MultiDrugDataset(adata=adata, use_rep=rep_key, cell_mask=fitc, drugs=drugs)
+        stop_ds = MultiDrugDataset(adata=adata, use_rep=rep_key, cell_mask=stopc, drugs=drugs)
 
         # per-drug statistics from the FITTING lines only (never cells, never held-out lines, and
         # not the early-stopping lines either: a set that decides when to stop must not also have
@@ -326,7 +392,9 @@ def oof_predictions(
         )
         best = best.to("cpu").eval()  # train_model leaves it on mps/cuda
         with torch.no_grad():
-            x = torch.from_numpy(np.asarray(adata.obsm[rep], dtype=np.float32)[vac])
+            # rep_key, not rep: under a per-fold PCA the held-out cells must be projected
+            # through THIS fold's rotation, the one fitted without them.
+            x = torch.from_numpy(np.asarray(adata.obsm[rep_key], dtype=np.float32)[vac])
             pred[vac] = best(x).numpy()  # held-out lines only
 
         val_lines = np.unique(groups[vac])

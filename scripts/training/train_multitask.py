@@ -441,6 +441,7 @@ def cv_evaluate(
     dropout: float = 0.5,
     input_dropout: float = 0.1,
     init_head_bias: bool = True,
+    counts_h5ad: str | None = None,
     group_col: str = "Cell_line",
     eligible_splits: tuple[str, ...] = ("train", "val"),
 ) -> list[dict]:
@@ -490,22 +491,36 @@ def cv_evaluate(
     idx, fold_split = grouped_folds(
         adata, n_splits=n_splits, group_col=group_col, eligible_splits=eligible_splits
     )
-    folds: list[dict] = []
-    for fold, (tr, va) in enumerate(fold_split, start=1):
+    # Masks for every fold before any training: the per-fold PCA fits all folds from one load of
+    # the counts matrix. The training lines split once more -- the model is fitted on `fit_cells`,
+    # early stopping watches `stop_cells`, and `val_cells` is only ever scored. Until 12.08.2026 the
+    # scored fold was also the early-stopping set, so every metric below was a minimum over epochs
+    # on its own scored data (docs/steps/03, "The early-stopping set is nested").
+    masks = []
+    for tr, va in fold_split:
         train_cells = np.zeros(adata.n_obs, dtype=bool)
         val_cells = np.zeros(adata.n_obs, dtype=bool)
         train_cells[idx[tr]] = True
         val_cells[idx[va]] = True
-
-        # The training lines split once more: the model is fitted on `fit_cells`, early stopping
-        # watches `stop_cells`, and the fold `val_cells` is only ever scored. Until 12.08.2026 the
-        # scored fold was also the early-stopping set, so every metric below was a minimum over
-        # epochs on its own scored data (docs/steps/03, "The early-stopping set is nested").
         fit_cells, stop_cells = inner_holdout(groups_all, train_cells)
+        masks.append((train_cells, fit_cells, stop_cells, val_cells))
 
-        fit_ds = MultiDrugDataset(adata=adata, use_rep=use_rep, cell_mask=fit_cells, drugs=drugs)
-        stop_ds = MultiDrugDataset(adata=adata, use_rep=use_rep, cell_mask=stop_cells, drugs=drugs)
-        val_ds = MultiDrugDataset(adata=adata, use_rep=use_rep, cell_mask=val_cells, drugs=drugs)
+    # Same helper `oof_predictions` uses -- one implementation, so the two CV paths cannot answer
+    # "what does this fold's PCA see" differently.
+    projections = fold_pca_projections_for(
+        use_rep, counts_h5ad, [m[1] for m in masks], seed=config.seed
+    )
+
+    folds: list[dict] = []
+    for fold, (train_cells, fit_cells, stop_cells, val_cells) in enumerate(masks, start=1):
+        rep_key = use_rep
+        if projections is not None:
+            rep_key = CV_FOLD_PCA_KEY
+            adata.obsm[rep_key] = projections[fold - 1]
+
+        fit_ds = MultiDrugDataset(adata=adata, use_rep=rep_key, cell_mask=fit_cells, drugs=drugs)
+        stop_ds = MultiDrugDataset(adata=adata, use_rep=rep_key, cell_mask=stop_cells, drugs=drugs)
+        val_ds = MultiDrugDataset(adata=adata, use_rep=rep_key, cell_mask=val_cells, drugs=drugs)
         fit_loader = DataLoader(
             fit_ds,
             batch_size=batch_size,
@@ -551,10 +566,10 @@ def cv_evaluate(
         folds.append({
             "fold": fold,
             "rep": use_rep,
-            "n_train_lines": int(np.unique(groups_all[idx][tr]).size),
+            "n_train_lines": int(np.unique(groups_all[train_cells]).size),
             "n_fit_lines": int(np.unique(groups_all[fit_cells]).size),
             "n_stop_lines": int(np.unique(groups_all[stop_cells]).size),
-            "n_val_lines": int(np.unique(groups_all[idx][va]).size),
+            "n_val_lines": int(np.unique(groups_all[val_cells]).size),
             # best_val_mse, train_mse_at_best and gap all come from the training curve, so they are
             # measured on the fitting and early-stopping slices -- NOT on the scored fold. The
             # numbers that describe the fold are model_mean_mse / baseline_mean_mse and the
