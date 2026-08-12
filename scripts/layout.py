@@ -114,6 +114,24 @@ class PipelinePaths:
         return self.data_root / "scRNAseq_SCP542" / "other" / "UMIcount_data.txt"
 
     @property
+    def prism_dir(self) -> Path:
+        """PRISM Repurposing (Public 24Q2), under the shared metadata root.
+
+        Read by `analysis/harmonization/drug_catalog.ipynb` and by nothing on the pipeline path.
+        PRISM is harmonized but **not wired into training** — see Step 06's cross-database item.
+        """
+        return self.metadata_dir / "PRISM_REPURPOSED"
+
+    @property
+    def drugbank_file(self) -> Path:
+        """DrugBank's full database export. ⚠️ **Non-commercial licence; never redistributed.**
+
+        It sits outside the repository for that reason, and is one of the two grounds on which
+        `<repo>/data/` stays gitignored (Step 01, *Licences*).
+        """
+        return self.data_root / "full database.xml"
+
+    @property
     def umi_qc_csv(self) -> Path:
         """Per-cell depth and mitochondrial fraction, cached beside the variant directories.
 

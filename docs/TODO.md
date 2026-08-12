@@ -1114,7 +1114,18 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 > silent-failure mode**, and it is not a coding slip — each one was a deliberate convenience whose
 > default outlived the state it was written for.
 >
-> **`2_drug_selection` reads three things, and two documents each named a different wrong pair.**
+> **`2_drug_selection` reads FOUR things, and three documents each named a different wrong subset —
+> including this one (corrected 13.08.2026).** The fourth is
+> `data/drug/all_sources_drug_catalog.csv`, which reaches `annotate_compounds(...)` as a **path
+> argument** rather than through a `read_csv` call, so the extraction that produced this enumeration
+> did not see it. That is the same failure the enumeration was written to catch, in the enumeration
+> itself: a scan that matches on call sites misses a dependency passed as data. It matters
+> doubly here — that catalog is `drug_catalog.ipynb`'s output, so the pipeline **does** consume an
+> analysis notebook's artifact, which contradicts the "no numbered notebook reads any analysis
+> notebook's output — zero, across all six" claim recorded below. ⬜ **That claim needs re-checking
+> by hand, not by grep.**
+>
+> The original finding stands as written:
 > `outputs/README` said *"only the response CSV, so it runs under the freeze"* — it also reads the
 > cell-line roster from `paths.raw_h5ad`, an **R2 artifact**, so the sentence understated a dependency
 > on the very rerun it argued independence from. `notebooks/README` said *"exactly two things"*,

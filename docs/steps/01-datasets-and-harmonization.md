@@ -357,6 +357,23 @@ split on `_`):
 | PRISM | 915 | 182 | 16 |
 
 **Drug / compound harmonization** — the notebook builds a unified catalog
+> ⛔ **The GDSC figures in this audit are STALE, pending a re-run (13.08.2026, Selin).** GDSC was
+> removed from `analysis/harmonization/drug_catalog.ipynb` — it entered as an artifact of a
+> learnability analysis run once for a co-student, and **the drug selection must not be done on
+> GDSC**. The dataset, its provenance and its licence terms above are unchanged and the file is
+> untouched; what changed is that the catalog no longer carries a GDSC arm.
+>
+> **Five numbers below cannot be recomputed until that notebook re-runs**, and are marked rather than
+> guessed: the coverage-table GDSC row, the source-row total (**7,415**, of which 295 are GDSC), the
+> normalized-name overlaps **CTRPv2↔GDSC 66** and **GDSC↔PRISM 144**, the FDA-status line
+> **GDSC 118/295 (40.0 %)**, and the metric-coverage GDSC row. Only `CTRPv2↔PRISM 218` survives
+> unchanged, because it never involved GDSC.
+>
+> ✅ **No pipeline number is affected, and it is checkable rather than asserted:**
+> `scripts/annotation/drug_annotation.py` filters the catalog with
+> `catalog[catalog.dataset == "CTRPv2"]` and asserts the key type on the next line, so GDSC rows
+> could never reach the panel.
+
 `data/drug/all_sources_drug_catalog.csv` (7,415 source rows; GDSC 295 / CTRPv2 545 / PRISM 6,575;
 union 7,040) by matching compounds three ways, in increasing confidence:
 
