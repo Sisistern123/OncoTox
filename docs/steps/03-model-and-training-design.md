@@ -53,6 +53,44 @@ and the train/val/test grouping.
   over a shared trunk — there are no separate per-drug sub-networks. The default catalog is
   **K = 545** CTRPv2 drugs.
 
+### The prediction is per cell; the line-level table is derived from it (13.08.2026)
+
+The input contract above has a mirror that went unwritten until 13.08.2026, and its absence had a
+consequence. **Every model in this project predicts per cell** — that is what the output layer emits,
+one value per (cell, drug). The line-level number is a **mean over that line's cells**, computed at
+scoring time by `cv.line_level_predictions` because the *label* exists only per line and a prediction
+has to meet it there. It is a derived quantity, not what the model produces.
+
+**A third aggregation, therefore, distinct from the two MSE aggregations
+[below](#exact-loss--mse-definitions-training_utilspy):**
+
+| Aggregation | Where | Over what |
+|---|---|---|
+| entry-pooled MSE | `best_val_mse` | (cell, drug) entries |
+| macro per-drug MSE | `model_mean_mse` | cells within a drug, then drugs |
+| **prediction, cells → line** | `line_level_predictions` | a line's cells, mean, at scoring time |
+
+**Until 13.08.2026 the derived table was written and the native output was discarded.**
+`oof_predictions` returns `pred` of shape `(n_cells, len(drugs))`, `4a_percell_training` passed it
+straight into `line_level_predictions`, and the array went out of scope at the end of the cell. Nothing
+in this project had ever persisted a per-cell prediction — which is why the within-line spread that
+`4b`'s stage 1 compares against did not exist for any run, and could not be recovered from any artifact
+on disk.
+
+**Both models now persist it (Selin, 13.08.2026).** `4a` and `4b` write per-cell predictions in one
+format so the two are comparable cell for cell:
+
+- `runs/percell/` — the arrays, `(n_cells, K)` per arm as `float32`, with `cell_index.csv` and
+  `drug_order.json` carrying the row and column identities. Gitignored with the rest of `runs/`: large,
+  and re-created by re-running the notebook.
+- `outputs/panel/panel_within_line_spread.csv` — one row per (rep, alpha, drug, cell line) with that
+  line's within-line spread, cell count and mean prediction. Committed, because it is the table `4b`'s
+  criterion reads, and a criterion should point at an artifact a reader can open.
+
+⚠️ **`pred_std` is not this.** The column of that name in `outputs/panel/panel_per_drug_correlation.csv`
+is the spread of *line-level* predictions **across** cell lines — a between-line quantity, and the exact
+opposite of the within-line spread. It is the first thing a reader looking for "the spread" will find.
+
 ### The drug panel is a training-time choice, not a property of the target file (12.08.2026)
 
 `ctrp_to_h5ad` *can* restrict the target matrix to a named compound list — `target_drugs`, exposed as
