@@ -373,9 +373,19 @@ every one of them was a step that looked settled and had never been checked.
         **item 11 (Evaluation)**, which owns the baselines.
   - [x] **DECIDED 12.08.2026 (Selin) — what may a fit see. Handed over from item 3 (10.08.2026):
         three fits, one question.** Decided together, as the item required, so the three answers are
-        consistent. The shared grounds: all three are **unsupervised** — no fit sees a response label —
-        and all bias **toward** the PCA control, since scGPT's per-cell binning draws on no other cell,
-        so any scGPT-over-PCA margin measured under them is a lower bound rather than an inflated one.
+        consistent. The shared grounds: all three are **unsupervised** — no fit sees a response label.
+        ⚠️ **Retracted 12.08.2026, same day, by decision 2's own resolution.** This line first read that
+        all three fits bias *toward* the PCA control, "so any scGPT-over-PCA margin measured under them
+        is a lower bound rather than an inflated one". **That does not survive `fitc`.** The lower-bound
+        claim rested specifically on the baseline's fit being estimated over cells the model never
+        trained on — which is exactly what restricting it to `fitc` removes. Gene selection stays
+        all-cells (decision 1), but both arms receive the identical set, so it favours neither. Kept
+        here rather than deleted because it is the kind of sentence that gets quoted into an abstract,
+        and it would have been quoted on grounds this decision dissolved. **What survives is narrower
+        and on a different footing:** the embedding reads only its in-vocabulary subset of the selected
+        genes — 4,704 of 5,000 on `hvg5000` — which no fitting-set choice touches. The restriction to
+        `fitc` is therefore about **attributability**, not conservatism: it is the one knob that could
+        move a difference for a reason unrelated to the representations.
         **1 — HVG stays all-cells.** Keeping one gene set keeps folds, arms and Step 05's gene-set sweep
         comparable; a train-only HVG set would be fold-dependent, so "the 5,000 HVGs" would stop being a
         single object. **2 — the cross-validated PCA is fitted per fold, at training time**, on
