@@ -187,14 +187,20 @@ def draw_architecture(ax, *, compact: bool = False):
     fs = 0.70 if compact else 1.0
     xc, xe, lx, x0, span = ((4.5, 9.5, [16, 23, 29, 35], 49.0, 10.5) if compact else
                             (6.0, 14.0, [26, 39, 51, 62], 76.0, 17.0))
-    ax.set_xlim(0, 62 if compact else 100); ax.set_ylim(23 if compact else 14, 47 if compact else 52)
+    # Non-compact lower bound dropped 14 -> 11 on 12.08.2026 to make room for the "plotted" note
+    # below the uncentred-target paragraph. Compact is untouched: it is embedded in pipeline.png,
+    # which has its own layout, and it draws neither of those notes.
+    ax.set_xlim(0, 62 if compact else 100); ax.set_ylim(23 if compact else 11, 47 if compact else 52)
     ax.set_aspect("equal"); ax.axis("off")
 
     if not compact:
         ax.text(0, 51, "Model architecture — one cell in, one AUC per panel drug out",
                 ha="left", va="top", fontsize=13, fontweight="bold", color=INK)
-        ax.text(0, 48.0, "per-cell MLP · target = raw AUC (winsorized at 1.1) · 8-drug literature "
-                         "panel · trained with the density-weighted masked MSE (loss_01–03)",
+        # The bars come from figure_data.npz, built on the superseded run, so "winsorized at 1.1",
+        # "8-drug" and "25 epochs" are accurate about what is PLOTTED and wrong only if read as the
+        # current pipeline. Split into two lines on 12.08.2026 (Selin) so the distinction is on the
+        # figure rather than only in the README caption.
+        ax.text(0, 48.0, "per-cell MLP · trained with the density-weighted masked MSE (loss_01–03)",
                 ha="left", va="top", fontsize=8.5, color=GREY)
 
     # ---------- INPUT: one cell -> embedding vector ----------
@@ -238,8 +244,12 @@ def draw_architecture(ax, *, compact: bool = False):
                  boxstyle="round,pad=0.3,rounding_size=1.2",
                  fill=False, edgecolor=BLUE, lw=1.2, linestyle="--", zorder=0))
     if not compact:
+        # Epoch count moved to the "plotted" line above: it is a property of the run shown, not of
+        # the architecture, and the cap is itself under review (item 10 owns whether TrainConfig's
+        # default of 25 moves to the 50 that 4_training passes). Naming it here made the
+        # architecture caption go stale every time the cap moved.
         ax.text(43.2, 22.6, "hidden block  =  Linear → LayerNorm → GELU → Dropout 0.5      ·      "
-                            "input dropout 0.1      ·      Adam, 25 epochs, early stopping",
+                            "input dropout 0.1      ·      Adam, early stopping (patience 10)",
                 ha="center", va="top", fontsize=8.2, color=INK)
         ax.text(43.2, 19.8, "the 8 heads are the 8 rows of one Linear(64 → 8) over a shared trunk — "
                             "there is no per-drug sub-network",
@@ -286,6 +296,15 @@ def draw_architecture(ax, *, compact: bool = False):
             "the drug's mean (~0.7) and decay would pull it to 0.  Any per-drug scaling belongs in the "
             "loss, not in the target.",
             ha="left", va="top", fontsize=8.2, color=INK)
+
+    # The bars come from figure_data.npz, built on the superseded run, so "winsorized at 1.1",
+    # "8-drug" and "25 epochs" are accurate about what is PLOTTED and wrong only if read as the
+    # current pipeline. Stated on the figure rather than only in the README caption. Plain ASCII:
+    # matplotlib's default font has no glyph for the warning emoji and renders it as a tofu box.
+    ax.text(0, 12.6,
+            "PLOTTED: the superseded run — auc winsorized at 1.1, the void 8-drug panel, 25 epochs."
+            "    CURRENT PIPELINE: auc_cc, no winsorization, the rebuilt 11-drug panel, 50 epochs.",
+            ha="left", va="top", fontsize=8.0, color=RED)
 
 
 def build_architecture():
