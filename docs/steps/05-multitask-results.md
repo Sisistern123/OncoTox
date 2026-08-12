@@ -4,6 +4,28 @@
 model over all 545 CTRPv2 drugs, its results vs. the per-drug-mean baseline, and the run-versioning
 ledger that records every training run.*
 
+> # ⛔ 13.08.2026 — NO NUMBER ON THIS PAGE IS CURRENTLY SUPPORTED
+>
+> Every result here predates the pipeline review and rests on at least one of: a **retired target**
+> (`mean_pv`, `auc`, `auc_z` — the target has been `auc_cc` since 11.08.2026), the **void 8-drug panel**
+> (rebuilt to 11 drugs on 12.08.2026), or the **early-stopping leak** fixed 12.08.2026, under which
+> every out-of-fold prediction and CV metric on record is a minimum over epochs on its own scored data.
+> Do not quote from this page, and do not compare a regenerated number to one here without saying which
+> of those three the old one carried.
+>
+> ⚠️ **The DrEval benchmark section is named separately because it reads as a standing external
+> validation and carries no marker of its own.** Its normalized ρ **0.511 ± 0.085** and R² **0.224**,
+> and the claims built on them — *"clears `NaiveMeanEffects` decisively"*, *"directly comparable to
+> DIPK 11 % and Random Forest 19 %"*, *"scGPT > PCA is confirmed externally"* — are void on two further
+> grounds. They were measured on the retired `auc` target; and **since `66442d2` the benchmark runs on
+> the rebuilt 11-drug panel, which shares exactly one drug — `dasatinib` — with the ten it used.** That
+> is a different benchmark, not a refreshed one, so a future DrEval number is not comparable to this one
+> at all. The *"+0.075 ± 0.038 we measured ourselves"* that the section calls an independent replication
+> was itself **withdrawn** (`1971990`).
+>
+> **This lifts per section as R4–R6 regenerate what each rests on — it is not one event.** The sections
+> already carrying their own dated banners keep them; this one covers what they do not.
+
 This moves from plan-Phase-2 (single-task) into plan-Phase-3 (masked-loss multi-task). Masked-loss
 mechanics are in [Step 03](03-model-and-training-design.md). These are the **multi-task (all-drugs,
 K=545) rows of the 8-run experiment matrix**

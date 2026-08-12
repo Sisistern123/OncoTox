@@ -383,11 +383,24 @@ every one of them was a step that looked settled and had never been checked.
         the `np.random.seed(42)` in `gen_embeds.py` is for. The docs' earlier claim that this had been
         *measured* on 200 cells was retracted — no code behind it, and nothing to compare against:
         [Retracted claims](./steps/corrections-and-dead-ends.md#the-scgpt-binning-invariance-was-verified-on-200-cells).
-- [ ] **5 · Target** — AUC vs EC50 vs Emax: AUC conflates potency with efficacy and the tested
-      concentration range spans 0.13–600 µM. Winsorizing threshold. Are all statistics per fold?
-      Related open leak: the per-drug target mean/std are computed over every cell line, val and test
-      included. **If this audit changes the target, `report/sections/03_methods.tex` §Response target
-      changes with it** — it was rewritten 10.08.2026 to state raw `auc`.
+- [x] **5 · Target — ANSWERED 11.08.2026 by audit 05; marked closed 13.08.2026.** The target moved to
+      **DrEval's reprocessed CTRPv2 (`auc_cc`)**, re-fitted from CTRPv2's raw dose-response with
+      CurveCurator and normalised per replicate against the no-drug control. Full record:
+      [Step 01](./steps/01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026).
+      The original AUC-vs-EC50-vs-Emax question is answered by that move rather than by a separate
+      comparison: the objection was that our own AUC conflated potency with efficacy over a
+      0.13–600 µM range, and the replacement is a curve fit rather than a trapezoid over sampled
+      concentrations.
+      ⚠️ **This item stayed unchecked for two days while its body described a pipeline that no longer
+      existed**, which is why it is recorded rather than quietly ticked. Two things it said were wrong
+      by the time anyone read it: the report was said to *"state raw `auc`"* — the target is `auc_cc`;
+      and it named as a *"related open leak"* the per-drug target mean/std computed over every cell
+      line including val and test. **That leak no longer exists.** It was the `auc_z` per-drug
+      z-scoring, retired 27.07.2026, and `ctrp_to_h5ad.py` records that the `ctrp_score_center` /
+      `ctrp_score_scale` keys which existed only to invert it went with it.
+      **Left open deliberately, and routed:** the winsorizing threshold is retired (`DEFAULT_WINSOR`,
+      11.08.2026 — the benchmark applies no clipping "to maintain comparability to previous studies and
+      avoid data loss"), and "are all statistics per fold?" was answered by items 7 and 8, not here.
 - [x] **6 · Drug selection — REBUILT 12.08.2026. The panel is 11 drugs.** Full record in
       [Step 01](./steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026);
       produced by `notebooks/2_drug_selection.ipynb` → `notebooks/outputs/panel/panel.csv`.
@@ -431,7 +444,11 @@ every one of them was a step that looked settled and had never been checked.
         and hardcodes the removed `'auc'` score, so it is broken twice over". Both were false: the module
         is **live** at `scripts/evaluation/dreval_normalize.py`, restored paper-only the same day, and
         the `'auc'` literal was fixed in `e804f07`. One blocker, not two.)*
-- [ ] **7 · Splits — walked 12.08.2026.** Confirmed sound: grouping is by cell line everywhere, the
+- [x] **7 · Splits — walked 12.08.2026; CLOSED 13.08.2026 when the three fits were decided.** 7A fixed
+      in code, 7B accepted rather than patched, 7C routed to item 11, and the three fits handed over
+      from item 3 — what may a fit see — are now decided by Selin (HVG stays all-cells; the CV PCA is
+      fitted per fold on `fitc`; the never-training cells stay in). Nothing in this item is outstanding.
+      Confirmed sound: grouping is by cell line everywhere, the
       fixed `test` set is outside CV by construction (`eligible_splits=("train","val")`) and **has never
       been used by anything**, the MLP and the ridge control share one partition through
       `cv.grouped_folds` rather than two that agree by seed, the per-fold statistics are fitted inside
@@ -751,8 +768,30 @@ every one of them was a step that looked settled and had never been checked.
         that may outrank the model is not a throwaway control and should not be computed twice.
         Sequenced **after item 8C**, which re-derives the ridge comparison at R4 on the rebuilt panel,
         and **after `5_evaluation` exists**, which item 11 already blocks.
-- [ ] **12 · Reproducibility** — seeds, determinism, what is derived in code versus typed by hand.
-      Anything that exists only as a shell command is not a result. *Seeds are now fixed
+- [x] **12 · Reproducibility — walked 12.08.2026; CLOSED 13.08.2026. Nothing here gates R2.** Seeds
+      swept across 22 script modules and 14 live notebooks for every stochastic call site: **19 checked,
+      17 seeded, 2 flagged and both false positives on inspection** — one a docstring containing the
+      string "PCA(512)", one `RidgeCV`, which takes no `random_state` because its solver is closed-form.
+      So **0 genuinely unseeded of 19**. Determinism: the 28.07.2026 no-action decision holds — `set_seed`
+      sets random/numpy/torch/cuda/mps and forces no flags, exactly as specified — and its second clause,
+      *measure the non-determinism where it matters*, was discharged by audit 10, which found the
+      training loop bit-reproducible on `mps` at a fixed seed. `frozen_split` **raises** rather than
+      guessing when the data holds an eligible line the frozen file does not cover, so the 180 → 181
+      recovery fails loudly instead of silently reassigning.
+      ⚠️ **Two things stay open and are tracked at R6, not here.** (1) The hand-transcription below —
+      16 macros, all cited, but `results_numbers.tex`'s dataset block points at `notebooks/04`, removed
+      by the restructure, and that dead pointer is the provenance for **13 of the file's 16 citations**.
+      (2) `\NLinesCV` and `\NLinesFit` are **derived**, not transcribed — hand-arithmetic at 85 % and
+      70 % of `\NLines`, with **no artifact to extract from**, so an extraction script pointed at CSVs
+      cannot produce them. That distinction has to be settled before item 12's fix is scoped.
+      ⚠️ **And the item's own standard is currently failed by our tooling**: `scripts/` holds only
+      `layout.py` and `check_resolved_paths.py`, so every other verification number quoted during the
+      audits — links, artifact references, command paths, notebook validity, module imports, report page
+      counts — came from scripts in agents' scratch directories and **cannot be re-derived by anyone**.
+      The asymmetry that explains it: `check_resolved_paths.py` was committed because it caught a defect
+      that had already bitten; checks written to *confirm* work passed on first run and never entered the
+      repo. That predicts which check is lost next — whichever currently passes.
+      *Seeds are now fixed
       (`gen_embeds.py`, `add_pca.py`, the training `DataLoader`s) and determinism was decided
       28.07.2026 as no-action, so what is left is the hand-copying:* **`report/results_numbers.tex` is
       transcribed by hand from CSVs under `notebooks/outputs/` with no extraction script**, so every
@@ -760,11 +799,23 @@ every one of them was a step that looked settled and had never been checked.
       macros (`\NRepPairs`, `\NRepLines`, `\RepDiffMed`, `\RepDiffPct`). Related and already fixed:
       `report/main.pdf` was tracked and went stale whenever a `.tex` changed; it is now untracked and
       built from source.
-- [ ] **13 · Code redundancy, stale code, notebook restructuring** — not a pipeline stage, so it runs
-      last. The **code** half of Selin's "redundanz, staleness, file overload" note; the documentation
-      half was done 05.08.2026. Open: duplicated code across scripts and notebooks, code used nowhere,
-      restructuring and archiving of outdated notebooks, and whether too many files are produced for
-      nothing.
+- [x] **13 · Code redundancy, stale code, notebook restructuring — CLOSED 13.08.2026.** The **code**
+      half of Selin's "redundanz, staleness, file overload" note; the documentation half was done
+      05.08.2026. Done across 12.08: the notebooks restructured into the five-stage pipeline
+      (`1_data` → `5_evaluation`, analysis regrouped under `analysis/{qc,harmonization,evaluation}`),
+      `1_preprocessing` and the `run_preprocessing.py` CLI archived in favour of
+      `scripts/preprocessing/pipeline.py`, dead outputs moved to `notebooks/outputs/legacy/`, dead code
+      archived (`ScGPTDrugDataset` and the single-drug chain), and `scripts/check_resolved_paths.py`
+      added — a pre-merge check for paths built from variables, written after three such defects in one
+      week, one of which would have silently recomputed a cross-validation while reporting that it had
+      loaded committed folds.
+      ⚠️ **Deliberately left, and Selin's to schedule rather than this item's to finish:** 22 hardcoded
+      absolute `/Users` paths across 6 live notebooks — `drug_catalog` holds 14 of them and needs a
+      rewrite rather than path edits, since it also reads CTRPv2's retired `v20.*` tables and inputs
+      that are not in the repository; four cwd-dependent relative writes, two of which write **into**
+      `outputs/legacy/` from a live notebook; three notebooks pointing `OUT` at the flat `outputs/`
+      root (latent — every current call site re-appends its subdirectory); and two orphaned report
+      figures referenced by no `.tex`.
 
 **Working agreement for the session, restated because it was broken today:** no step of the analysis gets
 decided silently. If a choice affects what enters the model or how a number is computed, it is proposed
