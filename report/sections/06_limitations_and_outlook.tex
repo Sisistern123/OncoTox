@@ -21,9 +21,15 @@ A constraint on that regeneration is worth stating in advance, because it determ
 can conclude. Two changes must never be made in the same run: on the evidence of this project, a change
 of target and a change of architecture applied together leave the outcome unattributable, and the
 collapse that was initially read as a statement about the representations turned out to be a property of
-the objective. The scGPT-versus-PCA margin previously observed was of the same order as the seed-to-seed
-variation, was not sign-consistent across seeds, and did not survive DrEval's normalized metric; whatever
-replaces it must therefore be established over multiple seeds before it is reported as a margin at all.
+the objective. Whatever scGPT-versus-PCA margin replaces the withdrawn one must be established over
+multiple seeds before it is reported as a margin at all, since the margins measured on this data have
+been of the same order as the seed-to-seed variation.
+\revision{\emph{A characterisation of the previous margin was removed here (12.08.2026).} It stated that
+the margin was not sign-consistent across seeds and did not survive the normalized metric. The project
+record states the opposite on the first point --- the three-seed check it refers to was sign-consistent
+--- and the two cannot both stand. Neither is re-derivable: both describe runs on a retired target and a
+voided panel. The requirement to establish a margin over multiple seeds does not depend on which
+reading was right, so it is kept and the characterisation is not.}
 The external benchmark is also incomplete, covering only the leave-cell-line-out split rather than the
 leave-tissue-out and leave-drug-out settings.
 
@@ -46,9 +52,15 @@ which would multiply the cost of every experiment and leave each individual resu
 The hardware also bounds what can be checked. FlashAttention is CUDA-only and cannot be installed on this
 machine, so scGPT runs through the standard attention implementation; this is numerically equivalent but
 is why embedding one gene-set variant takes about twenty minutes here, and why the variants are not
-regenerated on demand. Training on the MPS backend is not bit-reproducible: four identical runs of the
-PCA arm returned Spearman correlations of 0.313, 0.315, 0.317 and 0.320 while every other arm was exact,
-so differences smaller than that band are not interpretable.
+regenerated on demand. Training on the MPS backend is not bit-reproducible: repeated identical runs of
+the PCA arm returned different Spearman correlations while every other arm was exact, so differences
+below the run-to-run band are not interpretable.
+\revision{\emph{The width of that band is withdrawn (12.08.2026).} Four correlations were quoted here to
+size it. They were measured on the retired target and the voided compound panel, from representations
+that predate the preprocessing corrections, so they no longer describe this pipeline; the values are
+kept as a record in \code{docs/steps/corrections-and-dead-ends.md}. That MPS is non-deterministic is a
+property of the backend and stands, but \emph{how large} the resulting band is has to be re-measured
+before any difference is called interpretable or uninterpretable against it.}
 
 A second asymmetry concerns how each representation is built, and it bears on the comparison itself. The
 principal components were fitted on the full expression matrix: gene selection, per-gene standardization
@@ -67,15 +79,18 @@ For the fixed train/validation/test split this is now corrected: standardization
 on the training lines alone and applied to the held-out ones, as described in the Methods. It is
 \emph{not} corrected for the cross-validated results, whose folds are drawn at training time and so have
 no stored train-only projection; those remain on the all-cells decomposition, and gene selection remains
-an all-cells step for both arms. The numbers reported below all predate the correction in any case.
+an all-cells step for both arms.
 
 Finally, the preprocessing corrections described in the Methods section change what the code produces,
-and nothing has been recomputed. \textbf{Every number in this report was produced by the pipeline as it
-stood before those corrections}, from the representations still on disk. They are reported as the record
-of what was actually run; re-running is deliberately deferred until the pipeline review is complete, so
-that results are regenerated once from a settled pipeline rather than repeatedly from a moving one. The
-embedding script was itself, until this review, an untracked file outside the repository, and is now
-versioned alongside the results it produces.
+and nothing has been recomputed. Re-running is deliberately deferred until the pipeline review is
+complete, so that results are regenerated once from a settled pipeline rather than repeatedly from a
+moving one. The embedding script was itself, until this review, an untracked file outside the
+repository, and is now versioned alongside the results it produces.
+\revision{\emph{Two sentences were removed here (12.08.2026), both of the form ``the numbers below
+predate the correction''.} They described how to read results this report no longer contains: the
+quantitative content was withdrawn rather than caveated (Section~\ref{sec:results}), so a rule for
+interpreting it has nothing left to qualify and reads as an assurance that some numbers survived. None
+did.}
 \end{revisionblock}
 
 \suggestion{A further limitation concerns the loss rather than the labels. The response values of a given
@@ -106,12 +121,24 @@ answered only once a calibration measure sits alongside the rank and error metri
 The clearest opportunities for improvement follow from the diagnosis that the task is label-limited. First,
 the training target can be aligned with the evaluation by regressing on the doubly normalized residual, in
 which both the drug and the cell-line mean effects are removed, with the means estimated only on the
-training lines of each fold; this matches the quantity DrEval rewards, and an initial check
-(\code{outputs/dreval/dreval\_normalized.csv}) indicates that about a fifth of the current signal is the
-cell-line effect alone. Second, the single-cell resolution has
-yet to justify itself, since averaging a line's cells loses nothing measurable; a pooling model that
-predicts the line label from a bag of cells, for example through attention, is the natural test and must
-beat the ridge control to be worthwhile.
+training lines of each fold; this matches the quantity DrEval rewards.
+\revision{\emph{The size of that prize is withdrawn (12.08.2026).} A share of the signal attributable to
+the cell-line effect alone was quoted here from
+\code{notebooks/outputs/dreval/dreval\_normalized.csv} --- a file produced on the retired target and the
+voided panel, by a locally invented normalization that has since been deleted, and cited under a
+directory path that does not exist. The alignment remains the first item to try; how much it can recover
+is unmeasured.}
+Second, whether the single-cell resolution earns itself is an
+open question: a pooling model that predicts the line label from a bag of cells, for example through
+attention, is the natural test.
+\revision{\emph{Two claims were removed from that sentence (12.08.2026).} It asserted that averaging a
+line's cells ``loses nothing measurable'' --- the ridge-versus-network tie behind that phrase came from a
+comparison in which only the network arm chose its checkpoint on the fold it was scored on, so the tie is
+an upper bound on the network's side and the honest ordering is not known. And it required the pooling
+model to ``beat the ridge control to be worthwhile'', which scores an experiment about within-line
+heterogeneity on a line-level accuracy criterion; the project record reframed that on 11.08.2026, with
+the controls as a floor rather than the success criterion, and what a positive result would be is
+recorded as an open decision rather than answered here.}
 \suggestion{This point deserves to be stated more sharply, because it bears directly on the second
 research question. The pharmacological label is constant within a cell line, and the masked objective
 therefore requires every cell of a line to regress onto the same scalar. Any difference the model
@@ -138,29 +165,37 @@ efficacy and toxicity, fine-tunable on clinical outcomes.
 
 \begin{suggestionblock}
 The order of the next two steps is deliberate rather than a matter of convenience. \textbf{Multiple-instance
-learning} comes first because it is the only untested capacity lever and, more importantly, the minimal
-change that makes the second research question answerable at all: under the present objective every cell
-of a line is regressed onto the same scalar, so within-line variation is scored as error rather than as
-the quantity of interest. Predicting a line's response from a bag of its cells constrains only the
-aggregate, and the resulting attention weights identify which subpopulation drives the response, which is
-the readout the clinical motivation calls for. It requires no additional data, and it is falsifiable: it
-must exceed both the per-cell model and the ridge control, and failing both would establish that
-single-cell resolution does not pay for itself here.
+learning} comes first because it is the minimal change that makes the second research question answerable
+at all: under the present objective every cell of a line is regressed onto the same scalar, so within-line
+variation is scored as error rather than as the quantity of interest. Predicting a line's response from a
+bag of its cells constrains only the aggregate, and the resulting attention weights identify which
+subpopulation drives the response, which is the readout the clinical motivation calls for. It requires no
+additional data.
+\revision{\emph{Two characterisations were removed here (12.08.2026), both retracted in the project
+record on 11.08.2026.} Multiple-instance learning was called ``the only untested capacity lever''; it is
+not a capacity lever at all, and no untested one remains, so that phrase both misdescribes the method and
+implies a reserve of unexplored performance that does not exist. And the falsifiability condition was
+given as exceeding the per-cell model and the ridge control, with failure establishing that single-cell
+resolution does not pay for itself --- which scores a heterogeneity experiment on a line-level accuracy
+criterion. The controls remain as a floor. What counts as a positive result is an open decision, to be
+fixed before the run rather than after seeing one, and it requires a control saying what \emph{no}
+heterogeneity signal looks like.}
 
-\textbf{Bulk pretraining in the manner of scDEAL} follows. Every remaining lever is on the label side:
-model-side tuning is exhausted, a ridge regression on cell-line means matches the deep model, and the
-density weighting reported above was a null.
-\revision{\emph{Correction, 12.08.2026.} The two claims in that sentence rest on an ablation study whose
-evidence no longer holds: it selected each model's checkpoint on the very fold it then scored, on a
-target and a compound set both since withdrawn, and the notebook can no longer be executed because those
-target files were deleted. The bias is one-sided --- the ridge control has no early stopping and was
-never flattered, while the neural arms were --- so the reported tie between them is an upper bound on the
-network's side, and the ordering may in fact favour the ridge. The claim that model-side tuning is
-exhausted survives here only as an argument from the label resolution, namely that roughly one hundred
-and fifty independent measurements cannot support a search over architectures, and not as a measured
-result. A minimal re-derivation --- the trunk against a bare linear head, for both representations,
-scored against the ridge control on identical folds --- is scheduled with the regeneration of the
-pipeline.} What binds is the small number of independent cell lines,
+\textbf{Bulk pretraining in the manner of scDEAL} follows. The remaining levers are argued to be on the
+label side.
+\revision{\emph{The three measurements that argument rested on are withdrawn (12.08.2026):} that
+model-side tuning is exhausted, that a ridge regression on cell-line means matches the deep model, and
+that the density weighting was a null. All three come from an ablation study whose evidence no longer
+holds: it selected each model's checkpoint on the very fold it then scored, on a target and a compound
+set both since withdrawn, and the notebook can no longer be executed because those target files were
+deleted. The bias is one-sided --- the ridge control has no early stopping and was never flattered, while
+the neural arms were --- so the reported tie between them is an upper bound on the network's side, and
+the ordering may in fact favour the ridge. The claim that model-side tuning is exhausted survives here
+only as an argument from the label resolution, namely that of order one hundred and fifty independent
+measurements cannot support a search over architectures, and not as a measured result. A minimal
+re-derivation --- the trunk against a bare linear head, for both representations, scored against the
+ridge control on identical folds --- is scheduled with the regeneration of the pipeline.} What binds is
+the small number of independent cell lines,
 each carrying a single broadcast value. The screens themselves are far larger --- CTRPv2 covers roughly
 1{,}100 lines against the \NLines{} in the present intersection --- so the labels exist and it is the
 single-cell expression that is missing. Pretraining a denoising autoencoder on bulk expression and

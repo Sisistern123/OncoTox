@@ -49,7 +49,12 @@ second copy of it in a CLI was a second thing to keep in step.
 > §B keeps `cv_evaluate` rather than moving to `oof_predictions`: the two became consistent on
 > 12.08.2026 (both initialise the head bias and share `cv.grouped_folds`), and only their *return*
 > differs — §A needs predictions, §B needs per-fold metrics such as `gap`, which `oof_predictions` does
-> not return. Outputs go to `outputs/matrix/`, not §A's `outputs/panel/`.
+> not return. Outputs go to `outputs/legacy/training_545_mean_pv/`, not §A's `outputs/panel/`.
+>
+> *(Corrected 12.08.2026: this read `outputs/matrix/`, a directory that has never existed. It is the
+> blast radius of the path defect fixed in `f6cbef4` — `OUT_MATRIX` was `outputs`/`matrix` while every
+> call site appends `legacy`/`training_545_mean_pv`, so paths resolved one level too deep into a
+> missing directory and the CV guard silently recomputed instead of loading the committed folds.)*
 
 ## Analysis
 

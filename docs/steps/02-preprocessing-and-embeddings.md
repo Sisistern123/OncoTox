@@ -435,6 +435,15 @@ fits** were not produced by identical code. `_pca_fitted_on_train` now passes
 - Paclitaxel labels: 44,367 / 53,513 cells
 - `split_paclitaxel`: train **31,824** / val **5,035** / test **7,508** / unassigned **9,146**
 
+> ⚠️ **Every count above describes the artifacts on disk, not what the current code produces
+> (12.08.2026).** Three changes are already in the tree and land at the sweep: the gene-symbol repair
+> takes **4,576 → 4,704** in-vocab genes, so the OOV count and the `.X` width move with it
+> ([TODO](../TODO.md) item 3A); the `H292` alias and the experiment de-duplication take the trainable
+> overlap **180 → 181** lines, adding 213 cells, so the cell counts and every split size move; and
+> `add_pca.TRAIN_SPLIT_COLS` no longer includes `split_paclitaxel`, so `X_pca_train_paclitaxel` is no
+> longer written — existing h5ads keep the key and nothing reads it. Re-read this list from the
+> regenerated artifacts at **R6**.
+
 The model/training upgrade that landed alongside this work is in
 [Step 03](03-model-and-training-design.md); the single-task numbers are in
 [Step 04](04-single-task-results.md).
@@ -443,14 +452,23 @@ The model/training upgrade that landed alongside this work is in
 
 Three reasons, in descending order of weight.
 
-**1 — More genes buy nothing measurable.** The gene-set sweep
-([Step 05](05-multitask-results.md#gene-set-sweep--heads-beating-vs-gene-count-incl-all_genes-28062026),
-`notebooks/analysis/qc/verify_variants.ipynb` §9, 28.06.2026) puts 1k/2k/3k/5k **and**
-`all_genes` through the same
-5-fold GroupKFold over all 545 drugs. Heads-beating-baseline is **flat across the whole axis** for both
-representations, and `all_genes` (PCA 204 ± 86, scGPT 184 ± 90) is no better than `hvg5000`
-(210 ± 73 / 189 ± 94) — it sits mid-band for PCA and lowest of all for scGPT. Val MSE is constant at
-0.0105–0.0107 throughout.
+**1 — More genes bought nothing measurable, on a sweep that no longer has live numbers.**
+
+> ⛔ **The figures that stood here are cleared (12.08.2026), and this reason currently carries no
+> evidence.** This paragraph quoted the gene-set sweep's heads-beating counts and val MSEs — the same
+> table [Step 05](05-multitask-results.md#gene-set-sweep--heads-beating-vs-gene-count-incl-all_genes-28062026)
+> already carries under a ⛔ banner saying the sweep **has no live numbers**: it was produced on the
+> retired `mean_pv` target and read from a cache the code no longer opens, and §9 has not been re-run
+> since it was re-pointed. Restating them here, unmarked, both dressed a superseded measurement as a
+> live justification and put the same number in two places, which
+> [the doc conventions](../project_progress.md#maintaining-these-docs-conventions) forbid. Reasons 2 and
+> 3 below do not depend on it and are unaffected — they are properties of the input length and the
+> vocabulary, not of any training run. **HVG-5000 therefore rests on those two reasons alone until §9
+> re-runs at R4**, and whether the flat result reproduces on `auc_cc` is open.
+
+The sweep itself — 1k/2k/3k/5k **and** `all_genes` through the same 5-fold GroupKFold over all 545 drugs
+(`notebooks/analysis/qc/verify_variants.ipynb` §9, first run 28.06.2026) — is the right experiment and is
+scheduled to run again; only its numbers are gone.
 
 **2 — At the input length we run, `all_genes` is randomly subsampled and `hvg5000` is not.** We embed
 with `max_length=1200` (`gen_embeds.py`), which is `embed_data`'s default and matches the `scGPT_human`
@@ -481,6 +499,15 @@ it as a random draw rather than a dispersion-selected set.
 > ⚠️ **Supersedes the 03.08.2026 figures.** This table previously carried `hvg5000` and `all_genes` only,
 > from an ad-hoc `h5py` pass that existed as a shell command rather than as code. The re-runnable
 > measurement reproduces both rows exactly and adds the three smaller variants.
+>
+> ⚠️ **Measured on the embeddings currently on disk, which the gene-symbol repair changes (noted
+> 12.08.2026).** The *in scGPT vocab* column is what `gen_embeds.py` resolved **before** the repair
+> landed in code on 05.08.2026; at the sweep it becomes **4,704** for `hvg5000` and **21,332** for
+> `all_genes` ([TODO](../TODO.md) item 3A). More in-vocab genes means more expressed genes per cell, so
+> every column to its right moves with it — including how hard the cap binds. The qualitative reading is
+> not at risk (`hvg5000` stays far below 1,200 and `all_genes` stays fully capped), but the digits are
+> due for re-measurement at **R3**, and §10a–§10c are stale again despite having run under the audit's
+> read-only exception.
 
 So at HVG-5000 scGPT sees every gene surviving the filter in all but one cell, whereas at `all_genes` it
 sees a random ~34 % of each cell — a different third on each run. Under this configuration, feeding the

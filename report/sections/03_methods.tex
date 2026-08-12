@@ -36,13 +36,17 @@ vocabulary, so no gene embedded today can be lost by it. It raises the \NHvg-gen
 the embeddings are rebuilt once, from a settled pipeline, at the end of the review, so every number
 in this report belongs to the pipeline as described before this paragraph.
 \end{revisionblock}
-The gene-set size is not critical: an earlier sweep from
-1{,}000 genes to the full transcriptome showed no advantage for any particular count
-(\code{notebooks/07}), so the \NHvg-gene selection is used throughout.
-\revision{\emph{Correction, 05.08.2026.} That sweep was computed on the legacy \code{mean\_pv} response
-score rather than the \code{auc} target used throughout this report, so its numbers are superseded; it
-now lives in \code{notebooks/analysis/qc/verify\_variants.ipynb}, \S9, and the reference to
-\code{notebooks/07} above is stale. Its \emph{all-genes} arm is also not the full transcriptome as far as
+The \NHvg-gene selection is used throughout.
+\revision{\emph{The justification for that choice is withdrawn (12.08.2026).} This sentence read ``the
+gene-set size is not critical'', on the evidence of an earlier sweep from 1{,}000 genes to the full
+transcriptome that showed no advantage for any particular count. That sweep has no live numbers: it was
+computed on the legacy \code{mean\_pv} response score, which has since been removed from the pipeline
+along with its reader, and the cache it was read from is archived. It was cited as \code{notebooks/07},
+a path that no longer exists; the sweep now lives in
+\code{notebooks/analysis/qc/verify\_variants.ipynb}, \S9, and has not been re-run. So
+\NHvg{} is at present a choice carried forward from a superseded measurement, not one this report can
+justify --- and the two readings below narrow what the measurement could ever have supported.}
+\revision{\emph{Correction, 05.08.2026.} That sweep's \emph{all-genes} arm is also not the full transcriptome as far as
 scGPT is concerned: the model reads at most 1{,}200 genes per cell, drawn at random from that cell's
 non-zero genes, and in the all-genes variant every cell exceeds that cap. What the sweep compared for
 scGPT was therefore about 589 dispersion-selected genes per cell at \NHvg{} against about 1{,}199
@@ -387,10 +391,17 @@ ceiling on the achievable correlation. Quantified in
 Cell lines are evaluated out of fold. A 5-fold group $k$-fold split, grouped by cell line, is applied to
 the 153 training and validation lines, so that no cell of a test line is seen during training. Each line
 is predicted exactly once, the per-cell predictions of a line are averaged to the line level, and the
-Spearman correlation between predicted and true values across the roughly \NIndep{} lines is computed per
-drug and averaged over drugs. This protocol replaces an earlier fixed 27-line validation split, on which
-the standard error of a correlation is approximately 0.2 and effects below 0.4 are not measurable. The
-Pearson correlation tracks the Spearman value within 0.02 throughout.
+Spearman correlation between predicted and true values across those lines is computed per drug and
+averaged over drugs. This protocol replaces an earlier fixed 27-line validation split, on which the
+standard error of a correlation is approximately 0.2 and effects below 0.4 are not measurable --- a
+property of the sample size, not a measurement on these data.
+\revision{\emph{One sentence was removed here (12.08.2026): that the Pearson correlation tracks the
+Spearman value within 0.02 throughout.} It is an empirical claim about runs on the retired target and the
+voided panel, and nothing has been re-run, so the agreement between the two coefficients is unmeasured on
+the current pipeline. Both are reported when they are re-measured; neither may stand in for the other
+until then. The line count in this paragraph was also removed: \NIndep{} is the number this report
+defines for the effective sample size, while the cross-validation described above resamples 153 lines,
+and quoting the first for the second made two different quantities look like one.}
 
 For external comparison, the model is additionally evaluated with the DrEval package \cite{dreval}
 (version 1.5.1), using its leave-cell-line-out splits, its baselines and its evaluation routine without
@@ -408,11 +419,19 @@ leave-cell-line-out every scored line is by construction absent from those folds
 resolves to zero and the subtraction removes the \emph{drug} effect alone.
 
 This is correct behaviour for a prediction benchmark --- no model can know an unseen line's effect ---
-but it means a high normalized score is not evidence that a model has learned anything
-drug-specific. Demonstrated rather than argued: a synthetic predictor emitting nothing but
-\code{mean + line effect + drug effect}, with no drug-specific signal whatsoever, scores a normalized
-Spearman correlation of \textbf{0.98} under this protocol, pooled and per drug alike. The question of
-how much of a per-drug correlation is drug-specific biology rather than general cell-line fragility is
-therefore left open by this metric, and answering it requires a diagnostic that reads held-out labels
---- which is not a metric and is deferred rather than folded into the benchmark.
+but it means a high normalized score is not evidence that a model has learned anything drug-specific: a
+predictor emitting nothing but \code{mean + line effect + drug effect}, with no drug-specific signal
+whatsoever, retains the line effect in truth and prediction alike, where it correlates with itself. The
+question of how much of a per-drug correlation is drug-specific biology rather than general cell-line
+fragility is therefore left open by this metric, and answering it requires a diagnostic that reads
+held-out labels --- which is not a metric and is deferred rather than folded into the benchmark.
+\revision{\emph{A figure was removed from this paragraph (12.08.2026).} It reported that such a synthetic
+predictor scores a normalized Spearman correlation of 0.98 under this protocol, and presented it as
+demonstrated rather than argued. No code in this repository produces that value and no stored artifact
+records it: it appears only in prose, in this section and in the module docstring it was taken from.
+Under this project's own convention a number with no re-runnable producer is not a result, so it is
+withdrawn. What survives without it is the mechanism, which is verifiable from the source --- an unseen
+cell line receives effect zero, which is \code{drevalpy}'s behaviour and not a choice made here, so the
+subtraction removes the drug effect alone. Quantifying the consequence needs a synthetic-predictor check
+that is written down and run.}
 \end{revisionblock}
