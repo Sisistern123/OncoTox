@@ -339,7 +339,21 @@ multi-task coupling. The target is implemented in \code{scripts/preprocessing/ct
 \textbf{\code{auc\_z} was retired on 27.07.2026; the target is now the raw curve-fit AUC, winsorized at
 1.1 (added 10.08.2026).} Every result reported here was produced on \code{auc\_z} and is unaffected by
 the change --- but the pipeline default is now \code{auc}, and the reasoning above no longer describes
-what it does. Decomposing \code{auc\_z} into its two operations shows that neither was ever visible to
+what it does.
+\revision{\emph{Superseded twice over, 11.08.2026.} Both the measure and the winsorization named in
+this heading are gone. The target is \code{auc\_cc}, the area under DrEval's CurveCurator re-fit of
+CTRPv2's raw dose-response data --- a different quantity, not a rescaling of the one described here,
+which is why every model result in this report is withdrawn rather than converted
+(Section~\ref{sec:results}). The measure this paragraph calls \code{auc} was CTRPv2's published
+\code{area\_under\_curve} divided by \code{conc\_pts\_fit}, a divisor that counts the concentration
+points surviving outlier censoring rather than the width of the integral, so it was inflated for
+exactly those cell lines whose measurements were noisiest. It was removed with its reader code, and
+\code{layout.CTRP\_SCORES} now admits only \code{auc\_cc} and \code{ln\_ic50\_cc} --- so a command
+passing \code{--score auc} raises. The winsorization at 1.1 went with it, and deliberately: the
+threshold was never sourced, the benchmark this work follows applies no clipping at all so as to stay
+comparable with previous studies, and the upper tail it was introduced to suppress was largely an
+artifact of the defective divisor. The decomposition of \code{auc\_z} that follows is unaffected --- it
+is an argument about centering and scaling, not about which AUC they are applied to.} Decomposing \code{auc\_z} into its two operations shows that neither was ever visible to
 the evaluation. The centering is inert: the per-drug head bias absorbs the drug mean, and a per-drug
 Spearman correlation is invariant to a shift. The scaling is not a property of the target at all but a
 loss-weighting scheme in disguise, since dividing drug $j$ by $\sigma_j$ is exactly weighting its
@@ -362,7 +376,25 @@ standard deviations is a factor of about 2.5 rather than 80. The per-drug weight
 A minority of cell-line--drug combinations were screened by CTRPv2 in two separate experiments. Their
 two measurements are averaged into the single value used as the target, without weighting by replicate
 count and without excluding pairs whose measurements disagree; where a combination was screened once,
-that measurement is used as is. The disagreement between repeated measurements is nonetheless
+that measurement is used as is.
+\begin{revisionblock}
+\textbf{The pipeline no longer averages anything, and has not since 11.08.2026.} The sentence above
+describes the previous target build and is retained only because the measurement that follows it was
+made against that build. Under the current source, replicate disagreement is handled inside the curve
+fit rather than after it: DrEval fit one curve across a compound's replicates, so a repeated
+measurement arrives already reconciled. What reaches the pipeline is one fitted value repeated once
+per source experiment, and \code{ctrp\_to\_h5ad.\_deduplicate\_measurements} drops those exact
+duplicates and \emph{raises} on any pair that is not identical, rather than reconciling it. The
+averaging rule this paragraph states could therefore not run today; a disagreeing pair is an error
+someone has to decide about, which is what makes the decision revisitable.
+
+The numbers below are unaffected as measurements but are stale as description. They were computed on
+CTRPv2's own 2015 distribution, which stopped being the target source on the same date, so they
+quantify the problem that motivated the switch rather than a property of the target now in use. They
+are due for re-derivation on the current source, and the notebook that produced them is archived
+because it reads tables the pipeline no longer touches.
+\end{revisionblock}
+The disagreement between repeated measurements is nonetheless
 substantial and is reported here rather than left implicit, because it sets the scale against which any
 correlation in Section~\ref{sec:results} should be read. Of the cell-line--drug pairs inside the
 SCP542 intersection, \NRepPairs{} were screened twice, never more. Expressed relative to the spread of
@@ -395,3 +427,21 @@ reimplementation. As recommended by the framework, metrics are reported after th
 effects have been removed from both the true and predicted responses, and they are pooled over all
 cell-line-drug pairs rather than averaged per drug, so they are not directly comparable to the per-drug
 correlations above.
+\begin{revisionblock}
+\textbf{Under this split design the cell-line effect is not in fact removed (added 12.08.2026).} The
+sentence above describes the normalization as the framework defines it, and the implementation is
+theirs unmodified --- but stating it that way overclaims what the metric controls for here, and
+Section~\ref{sec:discussion} already says so. The baseline subtracted is
+\code{overall mean + cell-line effect + drug effect}, fitted on the training folds. Under
+leave-cell-line-out every scored line is by construction absent from those folds, so its effect
+resolves to zero and the subtraction removes the \emph{drug} effect alone.
+
+This is correct behaviour for a prediction benchmark --- no model can know an unseen line's effect ---
+but it means a high normalized score is not evidence that a model has learned anything
+drug-specific. Demonstrated rather than argued: a synthetic predictor emitting nothing but
+\code{mean + line effect + drug effect}, with no drug-specific signal whatsoever, scores a normalized
+Spearman correlation of \textbf{0.98} under this protocol, pooled and per drug alike. The question of
+how much of a per-drug correlation is drug-specific biology rather than general cell-line fragility is
+therefore left open by this metric, and answering it requires a diagnostic that reads held-out labels
+--- which is not a metric and is deferred rather than folded into the benchmark.
+\end{revisionblock}
