@@ -21,7 +21,15 @@ end-to-end pipeline rather than a partial one with the first build done by hand.
 | **3** | `3_representations.ipynb` | scGPT embedding, CTRP targets, the frozen cell-line-grouped split, and the PCA baseline | `pipeline.scgpt/targets/splits/pca` |
 | **4a** | `4a_percell_training.ipynb` | The per-cell training run: `auc_cc`, per-fold density weighting, out-of-fold scoring against the ridge control. Persists **per-cell** predictions (`runs/percell/`) and their within-line spread (`outputs/panel/panel_within_line_spread.csv`), which `4b` stage 1 reads. ⚠️ Its stored outputs are cleared and its panel is the void 8-drug one; it re-runs on `outputs/panel/panel.csv` at R4 of the sweep | `scripts/training/cv.py`, `density_weighting.py` |
 | **4b** | `4b_mil_training.ipynb` | **The instrument for Q2** — instance-level MIL, one bag = one cell line, full-line bags, mean pooling. Asks whether within-line transcriptional heterogeneity survives into per-cell response predictions. Its criterion was fixed in §2 on 13.08.2026 before any model existed and contains no threshold chosen by judgement. ⚠️ **Runs after `4a`**, on matching folds, target and representation — stage 1 compares against `4a`'s within-line spread. Writes `outputs/mil/`. Stage 6, the confound veto, runs on all four covariates since 13.08.2026 — `total_counts` and `pct_counts_mt` are recovered from the raw UMI matrix in preprocessing (§3.8) | `scripts/training/mil.py`, `cv.py` |
-| **5** | `5_evaluation.ipynb` | ⛔ **Stub.** External benchmark + diagnostics. Neither notebook it should absorb can run yet — both hardcode the removed `'auc'`, and `dreval_benchmark` also imports a deleted module. Blocked on **review item 11** | — |
+| **5** | `5_evaluation.ipynb` | **Scores the arms, then absorbs the external benchmark and the diagnostics.** §1 computes the four quantities — order, top-of-order, values, spread (a calibration slope with its intercept) — over `4a`'s out-of-fold predictions, through identical code for the per-cell and MIL architectures, so the two are comparable by construction. §1 runs at **R4** because item 9A's loss comparison cannot be judged without the calibration slope; §2 and §3 absorb `dreval_benchmark` and `diagnostics` at **R5** and stay in `analysis/evaluation/` until then. Running it top to bottom before R5 fails halfway, by design. Open: the guard margins, the second baseline, squared-vs-absolute error, folds-vs-seeds | `scripts/evaluation/dreval_normalize.py` |
+
+> **Row 5 corrected 13.08.2026.** It read *"⛔ **Stub.** External benchmark + diagnostics. Neither
+> notebook it should absorb can run yet — both hardcode the removed `'auc'`, and `dreval_benchmark`
+> also imports a deleted module."* Every clause of that is now false: the notebook has a written §1
+> that scores the arms, both code defects were fixed (`e804f07`, `af2cfa9`), and what actually holds
+> §2 and §3 is **data** — they need R4's and R5's outputs. The direction of the error is why this is
+> corrected rather than quietly replaced: "raises on its first cell" sends the next reader to repair
+> code that is already correct.
 
 **Why drug selection is stage 2 and not an analysis notebook.** It reads exactly two things — the
 cell-line roster stage 1 writes and the response table stage 1 fetches — and it writes `panel.csv`,
