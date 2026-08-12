@@ -409,9 +409,24 @@ every one of them was a step that looked settled and had never been checked.
         exists on the new panel, i.e. at R4 of the sweep, not here.
         `notebooks/analysis/evaluation/dreval_benchmark.ipynb` cannot run: **three of the functions it
         imports from `scripts/evaluation/dreval_normalize.py` were deleted on 12.08.2026** with the
-        cell-line-effect diagnostic, so its import cell raises. Untouched pending **item 11
-        (Evaluation)**, which also decides whether that diagnostic returns
-        ([why it was archived](../scripts/archive/README.md)).
+        cell-line-effect diagnostic, so its import cell raises.
+        ✅ **DECIDED 12.08.2026 (Selin): rewire the import cell to DrEval's own recipe — `load_oof` +
+        `normalized_evaluation`.** The deleted fragility diagnostic is **not** restored; it stays
+        retired and is recoverable at `bf93084` if it is ever wanted. Two consequences beyond fixing
+        the import: the notebook stops **re-training 20 models of its own**, and it scores the
+        line-level out-of-fold predictions `4a_percell_training` already writes — so it benchmarks the
+        model this project actually produces rather than a re-fit of it, against the same predictions
+        every other evaluation reads. Rejected: restoring the diagnostic under its own name outside a
+        file called after DrEval, which keeps a capability nothing currently asks for and leaves the
+        benchmark re-training regardless.
+        ⚠️ **Check the interaction with item 10's epoch fix before writing either.** If the rewire
+        removes training from this notebook entirely, then setting `epochs=50` on a config nothing
+        trains with is dead code that reads as meaningful, and the epoch defect is closed *by the
+        rewire* rather than by the fix — a closed-by-accident, to be labelled as one rather than
+        quietly disappearing.
+        **This is on the critical path**: it unblocks `5_evaluation`, which must be **authored before
+        R4 runs**, because audit 09's finding is that the loss comparison and the capacity
+        re-derivation both need their metric set fixed before the run rather than after seeing one.
         *(Corrected 12.08.2026 — this said the notebook "imports the now-archived `dreval_normalize.py`
         and hardcodes the removed `'auc'` score, so it is broken twice over". Both were false: the module
         is **live** at `scripts/evaluation/dreval_normalize.py`, restored paper-only the same day, and
