@@ -203,15 +203,30 @@
 > were left alone *because* they were accurate, and the same accuracy is what makes them false the moment
 > the option goes.
 >
-> | Where | What it says |
-> |---|---|
-> | `docs/steps/03-model-and-training-design.md:14` | optimizes a masked **MSE or Huber** loss |
-> | `docs/steps/03-model-and-training-design.md:199` | `smooth_l1_loss(beta=0.05)` for `--loss huber` |
-> | `docs/steps/03-model-and-training-design.md:415` | the CLI flag list, `--loss {mse,huber}` |
-> | `docs/project_progress.md:137` | *"fully supervised regression (masked **MSE/Huber**)"* — ⚠️ an index page, so it reads as current |
+> ⚠️ **Each of the four is wrong twice over once that branch lands, not once.** The branch **adds MAE**
+> as well as removing Huber (`291440e`, then `f16b3ec`), and **MAE is not on `main` today** — `main`'s
+> code offers `{mse, huber}`. So the fix is a *substitution*, not a deletion, and a sweep that only
+> strikes "Huber" leaves all four still wrong, now by omission. Written out so it is mechanical:
+>
+> | Where | Reads today (accurate against `main`) | Becomes |
+> |---|---|---|
+> | `docs/steps/03-model-and-training-design.md:14` | optimizes a masked **MSE** or **Huber** loss | **MSE** or **MAE** |
+> | `docs/steps/03-model-and-training-design.md:199` | `sq = (pred − y)²` (MSE), or `smooth_l1_loss(beta=0.05)` for `--loss huber` | MSE, or `l1_loss` for `--loss mae` — `smooth_l1_loss` and `huber_beta` are both gone |
+> | `docs/steps/03-model-and-training-design.md:429` | the CLI flag list, `--loss {mse,huber}` | `--loss {mse,mae}` |
+> | `docs/project_progress.md:137` | *"fully supervised regression (masked **MSE/Huber**)"* | masked **MSE/MAE** — ⚠️ an index page, so it reads as current |
+>
+> *(Line numbers refreshed 12.08.2026 — the CLI site moved 415 → 429 when the loss-comparison note above
+> was added to the same file. Re-grep rather than trusting them if that file moves again.)*
 >
 > ✅ The *decision* half is already done: Step 03's loss-comparison grid is **MSE / MAE × α ∈ {off, 0.5,
 > 1.0}, six arms**, with the grounds recorded. Only the code descriptions are waiting.
+>
+> **Why these are not corrected in advance, stated because it looks like an omission.** There is **no
+> defect on `main` today** — all four match `main`'s code exactly. Correcting them now would put the docs
+> ahead of the code in *both* directions at once: claiming MAE exists when it does not, and denying Huber
+> when it does. That is the same self-contradiction-on-merge that `06_limitations:67` was, except
+> self-inflicted. **They land in the commit that merges the R4 training branch**, which is also the only
+> moment at which the replacement column above becomes true.
 >
 > ⏸️ **The mechanism is not final, and the flag holds either way.** Decision 2 — *how* the CV PCA is
 > fitted — was reopened on cost the same day it was taken: a per-fold fit at training time needs
