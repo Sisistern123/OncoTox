@@ -959,6 +959,14 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 > **The order — the numbered chain in sequence, then everything else (Selin, 13.08.2026).** Two groups,
 > run one after the other rather than interleaved.
 >
+> ⚠️ **PROVISIONAL — this was produced out of sequence and is not yet the plan of record.** It was
+> written while Gate 1 ("close everything still open or wrong") was still open, and Gate 4 exists
+> precisely to *re-decide the order* once Gates 1–3 have reported. That dependency is not theoretical:
+> on the day this was written, a Gate 1 finding moved `diagnostics` and `dreval_benchmark` from "blocked,
+> cannot run at all" to "waits for R4" (`35fe0bc`), which changed where both sit. Any further Gate 1
+> finding can move it again. **Read the structure and the verified dependency counts as established;
+> read the sequence as a proposal until Gate 4 confirms it.**
+>
 > **1 · The numbered chain, strictly sequential.** `1_data` → `2_drug_selection` → `3_representations`
 > → `4a_percell_training` → `5_evaluation`. `4b_mil_training` is a three-cell stub holding a
 > pre-registered success criterion; it has no code and nothing to run. **Verified 13.08.2026: no
