@@ -107,30 +107,56 @@ def _parse_args():
     return parser.parse_args()
 
 
+def _to_lines(
+    dataset: MultiDrugDataset, preds: np.ndarray | None = None
+) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
+    """Collapse a dataset from cells to cell lines: ``(y_lines, obs_lines, pred_lines)``.
+
+    **Everything this module scores is scored per cell line, not per cell (audit 11, 12.08.2026).**
+    The label is one measurement per (cell line, drug), broadcast onto that line's cells, so a
+    cell-level mean weighs a 1,990-cell line 35x a 56-cell line for the same single measurement --
+    the imbalance docs/steps/03 records as a factor of 82 across the loss. Until 12.08.2026 these
+    metrics were per cell, which meant the "heads beating baseline" counts were reported at the
+    resolution that same document calls dishonest.
+
+    Labels collapse by lookup (:func:`density_weighting.line_level`), since they are constant within
+    a line; predictions collapse by **averaging** the line's cells, which is what
+    :func:`cv.line_level_predictions` already did for the out-of-fold path. The two now agree.
+    """
+    if dataset.groups is None:
+        raise ValueError(
+            "dataset has no cell-line labels, so it cannot be scored per line. Check that "
+            "obs['Cell_line'] exists -- scoring per cell is deliberately not offered as a fallback, "
+            "because it is the defect this function exists to remove."
+        )
+    groups = dataset.groups
+    lines = np.unique(groups)
+    y_lines, obs_lines = line_level(
+        dataset.y.numpy(), dataset.mask.numpy().astype(bool), groups, lines
+    )
+    pred_lines = None
+    if preds is not None:
+        pred_lines = np.vstack([preds[groups == ln].mean(axis=0) for ln in lines])
+    return y_lines, obs_lines, pred_lines
+
+
 def _per_drug_train_mean(train_dataset: MultiDrugDataset) -> np.ndarray:
-    """Per-drug train mean viability over observed (mask=1) entries only."""
-    y = train_dataset.y.numpy()
-    m = train_dataset.mask.numpy()
-    sums = (y * m).sum(axis=0)
-    counts = m.sum(axis=0)
-    means = np.full(sums.shape, np.nan, dtype=np.float64)
-    means[counts > 0] = sums[counts > 0] / counts[counts > 0]
-    return means
+    """Per-drug train mean response, averaged over **cell lines**, over observed entries only."""
+    y_lines, obs_lines, _ = _to_lines(train_dataset)
+    return per_drug_line_mean(y_lines, obs_lines).astype(np.float64)
 
 
 def _per_drug_constant_mse(constants: np.ndarray, dataset: MultiDrugDataset) -> tuple[np.ndarray, np.ndarray]:
-    """Per-drug MSE if we predict `constants[k]` for every cell of head k.
+    """Per-drug MSE over **cell lines** if we predict ``constants[k]`` for head k.
 
-    Returns (mse_per_drug, counts_per_drug). MSE is NaN for heads with no
-    observed val entries.
+    Returns ``(mse_per_drug, n_lines_per_drug)`` -- the count is now cell lines, not cells. NaN for
+    heads with no observed line here, and for heads whose constant is NaN for want of train support.
     """
-    y = dataset.y.numpy()
-    m = dataset.mask.numpy()
+    y_lines, obs_lines, _ = _to_lines(dataset)
     safe_const = np.where(np.isnan(constants), 0.0, constants)
-    preds = np.broadcast_to(safe_const[None, :], y.shape)
-    sq = (preds - y) ** 2 * m
-    sums = sq.sum(axis=0)
-    counts = m.sum(axis=0)
+    sq = (safe_const[None, :] - y_lines) ** 2
+    sums = np.where(obs_lines, sq, 0.0).sum(axis=0)
+    counts = obs_lines.sum(axis=0)
     mse = np.full(sums.shape, np.nan, dtype=np.float64)
     mse[counts > 0] = sums[counts > 0] / counts[counts > 0]
     # Heads with no train support => no baseline prediction => NaN.
@@ -184,27 +210,33 @@ def _print_baseline_comparison(
 
 def _evaluate_model_per_drug_mse(
     model: torch.nn.Module,
-    val_loader: DataLoader,
+    val_dataset: MultiDrugDataset,
     device: torch.device,
+    batch_size: int = 256,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Per-drug val MSE for the (already-best-state) model."""
-    model.eval()
-    sums = None
-    counts = None
-    with torch.no_grad():
-        for batch_x, batch_y, batch_mask in val_loader:
-            batch_x = batch_x.to(device)
-            batch_y = batch_y.to(device)
-            batch_mask = batch_mask.to(device)
-            preds = model(batch_x)
-            sq = ((preds - batch_y) ** 2) * batch_mask
-            s = sq.sum(dim=0).cpu().numpy()
-            n = batch_mask.sum(dim=0).cpu().numpy()
-            sums = s if sums is None else sums + s
-            counts = n if counts is None else counts + n
+    """Per-drug val MSE for the (already-best-state) model, **over cell lines**.
 
-    if sums is None or counts is None:
+    Predictions are made per cell and then averaged to one value per line before being scored, which
+    is the same collapse :func:`cv.line_level_predictions` performs. Returns
+    ``(mse_per_drug, n_lines_per_drug)``.
+
+    Takes the dataset rather than a ``DataLoader`` (changed 12.08.2026, audit 11): the loader has no
+    idea which line each cell came from, and scoring per line needs that. The loader it builds is
+    unshuffled, so rows stay aligned with ``dataset.groups``.
+    """
+    model.eval()
+    loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    chunks = []
+    with torch.no_grad():
+        for batch_x, _, _ in loader:
+            chunks.append(model(batch_x.to(device)).cpu().numpy())
+    if not chunks:
         return np.array([]), np.array([])
+
+    y_lines, obs_lines, pred_lines = _to_lines(val_dataset, np.vstack(chunks))
+    sq = (pred_lines - y_lines) ** 2
+    sums = np.where(obs_lines, sq, 0.0).sum(axis=0)
+    counts = obs_lines.sum(axis=0)
     mse = np.full(sums.shape, np.nan, dtype=np.float64)
     mse[counts > 0] = sums[counts > 0] / counts[counts > 0]
     return mse, counts
@@ -334,7 +366,7 @@ def train_rep(
     )
 
     device = pick_device()
-    model_mse, _ = _evaluate_model_per_drug_mse(best_model, val_loader, device)
+    model_mse, _ = _evaluate_model_per_drug_mse(best_model, val_dataset, device)
     if print_comparison:
         _print_baseline_comparison(
             drug_names=train_dataset.drug_names,
@@ -481,7 +513,9 @@ def cv_evaluate(
             generator=torch.Generator().manual_seed(config.seed),
         )
         stop_loader = DataLoader(stop_ds, batch_size=batch_size, shuffle=False)
-        val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+        # No val loader: the scored fold is read through `val_ds` so that predictions can be
+        # averaged to one value per cell line before scoring (audit 11). A loader cannot say which
+        # line a row came from.
 
         baseline_const = _per_drug_train_mean(fit_ds)
         baseline_mse, _ = _per_drug_constant_mse(baseline_const, val_ds)
@@ -507,7 +541,7 @@ def cv_evaluate(
             model, fit_loader, stop_loader, config=config, tag=tag,
             drug_names=fit_ds.drug_names,
         )
-        model_mse, _ = _evaluate_model_per_drug_mse(best_model, val_loader, device)
+        model_mse, _ = _evaluate_model_per_drug_mse(best_model, val_ds, device)
 
         finite = np.isfinite(baseline_mse) & np.isfinite(model_mse)
         n_total = int(finite.sum())
