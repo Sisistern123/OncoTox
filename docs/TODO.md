@@ -102,7 +102,7 @@ every one of them was a step that looked settled and had never been checked.
         measurements differ by a median of **0.49×** the drug's spread across cell lines, and **27.3 %
         of them differ by more than that full spread**. Quantified in
         `notebooks/archive/replicate_variation.ipynb` →
-        `outputs/data/replicate_variation.{png,csv}`; written up in
+        `outputs/legacy/replicate_variation.{png,csv}`; written up in
         [Step 01](./steps/01-datasets-and-harmonization.md#genuine-repeats-are-averaged-and-they-disagree-more-than-the-targets-own-spread-10082026).
         **Six of 181 lines is not a random sample**, so this bounds nothing numerically — it says only
         that a substantial share of the target is screening noise, which items 5 (target), 6 (drug
@@ -228,7 +228,7 @@ every one of them was a step that looked settled and had never been checked.
         [Step 02](./steps/02-preprocessing-and-embeddings.md) and `report/sections/03_methods.tex` both
         stated it *was* versioned. So `frozen_split` has taken its redraw branch on every run and the
         guard has never been in force. **Both claims corrected.** Freezing the current assignment was
-        considered and rejected: it is recoverable anyway — `outputs/panel/panel_oof_predictions.csv`
+        considered and rejected: it is recoverable anyway — `outputs/legacy/panel_void_8drug/panel_oof_predictions.csv`
         names all 153 train+val lines, so the test set is the labelled lines it omits — and every number
         scored on it is void on target and panel grounds. R2 creates the file itself; committing it
         there is where the guard starts to protect something (added to R2).
@@ -722,7 +722,7 @@ comparison are written up in [Step 03](./steps/03-model-and-training-design.md) 
       **GDSC2** (`data/GDSC2_fitted_dose_response_27Oct23.xlsx`) or PRISM instead of on the CTRP labels we
       train on. Cheaper than fold-internal selection and would make the panel genuinely label-blind.
 - [ ] **Loosen to ~20–50 drugs** — a handful is a diagnostic, not a model. Where does the signal die as
-      the criterion relaxes? (`outputs/learnability/ctrp_drug_learnability_auc.csv` is already ranked for
+      the criterion relaxes? (`outputs/legacy/learnability/ctrp_drug_learnability_auc.csv` is already ranked for
       this, though it is ranked on the [discredited gate](./steps/corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability).)
 - [ ] **Re-run the full 8-run matrix + CV on the current target** for a like-for-like against the
       `mean_pv` Steps 04–05 numbers. **Expect this to overturn them, not refresh them**

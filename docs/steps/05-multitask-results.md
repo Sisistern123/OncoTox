@@ -304,7 +304,7 @@ readable directly.) Per drug: `ml162` 0.59/**0.65**, `1s,3r-rsl-3` 0.58/**0.59**
   whose variance has a transcriptional cause, not merely high-variance drugs.
 - **First non-tie between the reps — and it survives a seed check (13.07.2026).** scGPT leads on every
   aggregate and on 4/5 drugs, most clearly where PCA collapses (`kx2-391`, 0.28 vs 0.11). Repeating the
-  **K=545 `auc_z`** configuration over **3 seeds** (`target_comparison`, `outputs/target/seed_stability.csv`):
+  **K=545 `auc_z`** configuration over **3 seeds** (`target_comparison`, `outputs/legacy/target/seed_stability.csv`):
 
   | seed | PCA | scGPT | gap |
   |---|---|---|---|
@@ -416,11 +416,19 @@ on the literature**, and which the rebuild should reconsider: `sirolimus`, `nera
 `cytarabine hydrochloride`, `gdc-0941`.
 
 **Considered and set aside on coverage**, recorded so they are not re-proposed without checking it first:
-`trametinib` and `at13387` (coverage only **0.46** of the 180 trainable lines), and `gemcitabine`
-(coverage **0.86**) — mechanistically apt via `RRM1`/`TYMS`, and worth revisiting if the coverage
-threshold is set below 0.9. `kx2-391` was also excluded, for a different and stronger reason: its signal
-was entirely the cell-line effect
+`trametinib` and `at13387` (coverage only **0.46** of the 180 trainable lines). `kx2-391` was also
+excluded, for a different and stronger reason: its signal was entirely the cell-line effect
 ([Corrections](corrections-and-dead-ends.md#kx2-391-carries-drug-specific-signal)).
+
+> ⚠️ **`gemcitabine` was listed here and is not set aside — corrected 12.08.2026.** This passage
+> recorded it at coverage **0.86**, below the 0.9 threshold, and told the rebuild to revisit it only if
+> the threshold moved. On the current response source its coverage is **0.983**, the joint highest in
+> the panel, and it is *in* the rebuilt panel
+> ([Step 01](01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026),
+> `outputs/panel/panel.csv`). The 0.86 was measured on CTRPv2's own 2015 distribution, which stopped
+> being the target source on 11.08.2026; the threshold never moved. Left visible rather than deleted
+> because this paragraph is written as instructions to the rebuild, and a reader following it would
+> otherwise exclude a compound the rebuild had already selected.
 
 **The determinants split by data modality, which makes any panel drawn from them a hypothesis test.**
 Our input is expression only:

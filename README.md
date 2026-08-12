@@ -19,24 +19,20 @@ All project documentation lives in [`docs/`](docs/):
   superseded, retracted or abandoned — nothing in it is a live result.
 - **[docs/TODO.md](docs/TODO.md)** — what is next and what blocks it. Read its banner first.
 
-### The pipeline
-
-![OncoTox pipeline](docs/figures/pipeline.png)
-
-> ⛔ **This figure is computed on the retired `auc` target, winsorized at 1.1, and the void 8-drug
-> panel** — both superseded on 11.–12.08.2026. Its shape is current; its numbers and its drug list are
-> not. It is regenerated at R4 of the sweep, and is not regenerated before then because doing so would
-> mean re-running the pipeline under the
-> [freeze](docs/TODO.md).
-
 ### Status against the plan
 
 ![OncoTox pipeline status overview](docs/figures/pipeline_overview.png)
 
-All figures live in [docs/figures/](docs/figures/) and are regenerated together with
-`uv run docs/make_figures.py`. ⛔ **Only the status overview above is current.** The other five were
-computed on the retired target and the void panel; the same applies to `model_architecture.png`,
-`loss_02_weights.png` and `loss_03_effect.png`. They are relabelled, not recomputed, until R4.
+All figures live in [docs/figures/](docs/figures/) and are built with `uv run docs/make_figures.py`.
+
+⛔ **The pipeline diagram is archived, not shown.** It, along with `model_architecture.png`,
+`loss_02_weights.png` and `loss_03_effect.png`, is derived from the targets h5ad or from a training
+run — and neither exists on the current target, since preprocessing has not re-run under the
+[freeze](docs/TODO.md) and the last training run used the void 8-drug panel. They are **not** built
+from the retired `auc` h5ad still on disk: a figure that can only be produced from a target the
+pipeline no longer writes is not reproducible by a standard run. `make_figures.py` skips each with a
+reason and they return by themselves at R4 — see
+[`docs/figures/archive/`](docs/figures/archive/).
 
 ## Layout
 

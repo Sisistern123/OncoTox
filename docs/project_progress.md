@@ -42,17 +42,20 @@ A standalone LaTeX write-up of the current state lives in [`../report/`](../repo
 
 ## Pipeline overview (at a glance)
 
-![OncoTox pipeline](./figures/pipeline.png)
+> ⛔ **The pipeline diagram is [archived](./figures/archive/), not shown here (12.08.2026).** It is
+> derived from the targets h5ad and from a training run, and neither exists on the current target:
+> preprocessing has not re-run under the [freeze](TODO.md), and the last training run used the void
+> 8-drug panel. It is deliberately **not** rebuilt from the retired `auc` h5ad still on disk — a
+> figure reproducible only from a target the pipeline no longer writes is not reproducible by a
+> standard run. The same applies to `model_architecture.png`, `loss_02_weights.png` and
+> `loss_03_effect.png`. All four return at R4; `make_figures.py` skips each with a printed reason
+> until then.
 
-What actually runs, stage by stage: the sparse (cell line × drug) response matrix, the drug panel
+What the pipeline does, stage by stage — the sparse (cell line × drug) response matrix, the drug panel
 funnel, the cell-line-grouped folds, the two representations that are compared, the per-cell MLP,
-the weighted loss, and the out-of-fold scoring. Details in
-[Step 03](steps/03-model-and-training-design.md).
-
-> ⛔ **Computed on the retired `auc` target, winsorized at 1.1, and the void 8-drug panel.** The
-> stage-by-stage *shape* is current; the numbers and the drug list are not. Regenerated at R4 of the
-> sweep — not before, because it reads pipeline artifacts the [freeze](TODO.md) holds. The same applies
-> to `model_architecture.png`, `loss_02_weights.png` and `loss_03_effect.png`.
+the weighted loss, and the out-of-fold scoring — is in
+[Step 03](steps/03-model-and-training-design.md), and the notebooks that run it are
+[`notebooks/`](../notebooks/README.md) stages 1–5.
 
 ![OncoTox pipeline status overview](./figures/pipeline_overview.png)
 
@@ -65,19 +68,29 @@ corrected and re-rendered on 12.08.2026 without touching a frozen artifact.
 
 ### The figure set
 
+**Current — pure drawings, always reproducible:**
+
 | figure | shows | argument lives in |
 |---|---|---|
-| `figures/pipeline.png` | the pipeline, stage by stage | [Step 03](steps/03-model-and-training-design.md) |
 | `figures/pipeline_overview.png` | status against the written plan | this file |
-| `figures/model_architecture.png` | one cell in, one AUC per panel drug out | [Step 03](steps/03-model-and-training-design.md) |
 | `figures/loss_01_objective.png` | what the objective is made of | working report §4 |
-| `figures/loss_02_weights.png` | one drug's label density and the weight curve it produces | working report §4 |
-| `figures/loss_03_effect.png` | what the weighting did: spread up, ranking flat | working report §9 |
 
-All six are regenerated together with `uv run docs/make_figures.py` (source:
-`docs/make_figures.py`). Panels drawn from data read `docs/figures/figure_data.npz` — a small cache
-of line-level labels, fold ids and the observation mask, rebuilt from the targets h5ad when absent —
-and the CSVs in `notebooks/outputs/panel/`, so no figure can drift from the numbers.
+**[Archived](./figures/archive/) 12.08.2026 — derived from data, and not reproducible today:**
+
+| figure | shows | why it is archived |
+|---|---|---|
+| `figures/archive/pipeline.png` | the pipeline, stage by stage | needs the targets cache *and* the panel CSVs |
+| `figures/archive/model_architecture.png` | one cell in, one AUC per panel drug out | needs the targets cache |
+| `figures/archive/loss_02_weights.png` | one drug's label density and the weight curve it produces | needs the targets cache |
+| `figures/archive/loss_03_effect.png` | what the weighting did: spread up, ranking flat | needs a **training output**, so no h5ad can rebuild it |
+
+The first three read `figure_data.npz`, rebuilt from the **`auc_cc`** targets h5ad — which has never
+been written, because preprocessing has not re-run under the [freeze](TODO.md). They are deliberately
+**not** built from the retired `auc` h5ad still on disk: a figure reproducible only from a target the
+pipeline no longer writes is not reproducible by a standard run. `uv run docs/make_figures.py` builds
+the two current figures and skips these four with a printed reason; every skip clears by itself at R4.
+The drug panel is read from `notebooks/outputs/panel/panel.csv` rather than duplicated in
+`make_figures.py`, which is how the old 8-drug copy went stale.
 
 ---
 

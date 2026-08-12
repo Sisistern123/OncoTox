@@ -1,24 +1,35 @@
-"""Generate the OncoTox slide/doc graphics into ``docs/figures/``:
+"""Generate the OncoTox slide/doc graphics into ``docs/figures/``.
+
+**Pure drawings — always reproducible, always built:**
 
   pipeline_overview.png    status of the whole project against the plan (steps 01-08)
-  pipeline.png             the pipeline as a picture: data -> drug panel -> split ->
-                           representation -> model -> loss -> evaluation -> result
-  model_architecture.png   one cell in, one AUC per panel drug out
   loss_01_objective.png    what the objective is made of
-  loss_02_weights.png      where the weights come from — one drug's label density and weight curve
+
+**Derived from data — currently SKIPPED, and archived (12.08.2026):**
+
+  pipeline.png             the pipeline as a picture, stage by stage
+  model_architecture.png   one cell in, one AUC per panel drug out
+  loss_02_weights.png      one drug's label density and the weight curve fitted to it
   loss_03_effect.png       what the weighting did, per drug: spread up, ranking flat
+
+The four read either ``figure_data.npz`` -- rebuilt from the ``auc_cc`` targets h5ad -- or a
+training output under ``notebooks/outputs/panel/``. Neither exists on the current target:
+preprocessing has not re-run under the freeze, and the last training run was on the void 8-drug
+panel. **They are not built from the retired ``auc`` h5ad that is still on disk**, because a figure
+that can only be produced from a target the pipeline no longer writes is not reproducible by a
+standard run -- and one that renders anyway is worse than one that is absent, since nothing on its
+face says which target it came from. Each is skipped with a printed reason; the superseded PNGs are
+in ``docs/figures/archive/`` with a README. Every skip clears by itself at R4.
+
+The drug panel is read from ``notebooks/outputs/panel/panel.csv`` rather than duplicated here. It
+was a hardcoded 8-compound list until 12.08.2026, which is how it went stale when the panel was
+rebuilt -- the two share only three compounds.
 
 The figures carry a caption at most; the argument behind them lives in the prose. Note that
 ``docs/progress_report_*.md`` is **untracked by design**, so a fresh clone will not have it --
 the tracked source for every claim is ``docs/steps/`` (§4 the weighting, §9 the Step-1 result
 correspond to Step 03 and Step 05) and
 ``docs/steps/03-model-and-training-design.md`` (architecture, loss, target).
-
-Setup as of 27.07.2026: target = raw AUC winsorized at 1.1, no per-drug z-score; the per-drug
-scaling moved out of the target and into the loss as an inverse-label-density sample weight.
-
-Panels drawn from real data read ``docs/figures/figure_data.npz`` (rebuilt from the targets h5ad
-on first run) and the CSVs in ``notebooks/outputs/panel/``.
 
 Run:  uv run docs/make_figures.py
 """
@@ -38,6 +49,10 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 FIG = HERE / "figures"
 PANEL_OUT = ROOT / "notebooks" / "outputs" / "panel"
+# The 27.07.2026 training run's outputs, archived 12.08.2026: they were produced on the void 8-drug
+# panel and cannot be recreated by a standard run, so they moved out of outputs/panel/. Only the
+# archived figures read them, and each guards on existence first.
+LEGACY_PANEL = ROOT / "notebooks" / "outputs" / "legacy" / "panel_void_8drug"
 
 GREEN = "#2e7d32"; GREEN_FILL = "#c8e6c9"
 AMBER = "#b8860b"; AMBER_FILL = "#ffe9b3"
@@ -47,9 +62,22 @@ GREY = "#777777"; GREY_FILL = "#e8e8e8"
 INK = "#1a1a1a"
 MUTED = "#52514e"
 
-#: The literature panel (docs/steps/01, progress report §2) — the order every figure uses.
-PANEL = ["methotrexate", "dasatinib", "paclitaxel", "vincristine",
-         "afatinib", "topotecan", "tanespimycin", "selumetinib"]
+def _panel() -> list[str]:
+    """The drug panel, read from ``outputs/panel/panel.csv`` — the file that defines it.
+
+    Hardcoded as eight compounds until 12.08.2026, which is how it went stale: the panel was
+    rebuilt on FDA approval and published determinants and this copy was not. The rebuilt panel
+    shares only ``paclitaxel``, ``dasatinib`` and ``afatinib`` with the old one, so it was never an
+    extension of it. ``drug_key`` is the spelling the response data uses (*Cisplatin* is
+    ``platin``), which is what the h5ad is indexed by.
+    """
+    import pandas as pd
+
+    return pd.read_csv(PANEL_OUT / "panel.csv")["drug_key"].tolist()
+
+
+#: The drug panel — the order every figure uses. Read from panel.csv, not maintained here.
+PANEL = _panel()
 
 
 def box(ax, x, y, w, h, title, lines, edge, fill, title_color=None, dashed=False,
@@ -165,7 +193,7 @@ def _heat_strip(ax, xc, y0, y1, vals, cmap, w=2.4):
                  edgecolor=INK, lw=1.3, zorder=4))
 
 
-#: One real held-out cell line, scGPT, unweighted run (notebooks/outputs/panel/panel_oof_predictions.csv,
+#: One real held-out cell line, scGPT, unweighted run (notebooks/outputs/legacy/panel_void_8drug/panel_oof_predictions.csv,
 #: fold in which SKES1_BONE was held out). Predicted vs measured AUC for the eight panel drugs. Used
 #: instead of an invented vector so the figure shows the actual output scale -- including the visible
 #: shrinkage (predictions span 0.37-0.75 against a measured 0.04-0.91).
@@ -308,6 +336,8 @@ def draw_architecture(ax, *, compact: bool = False):
 
 
 def build_architecture():
+    if _needs_data("model_architecture.png"):
+        return
     fig, ax = plt.subplots(figsize=(17.0, 6.6))
     draw_architecture(ax)
     out = FIG / "model_architecture.png"
@@ -338,15 +368,24 @@ def figure_data() -> dict:
 
     from scripts.layout import DEFAULT_CTRP_SCORE, PipelinePaths
 
-    # Was PipelinePaths.build(..., "auc") with a np.clip at DEFAULT_WINSOR. Both were removed from
-    # the pipeline on 11.08.2026: CTRP_SCORES rejects "auc", so this raised ValueError, and the
-    # DEFAULT_WINSOR import above it raised ImportError before that. Neither fired in practice
-    # because figure_data.npz is committed and short-circuits this whole function -- so the
-    # breakage was invisible until the cache is deleted, which is exactly what R4 does. Fixed
-    # 12.08.2026; no winsorization now, matching the pipeline.
-    src = ad.read_h5ad(
-        PipelinePaths.build(None, "hvg5000", DEFAULT_CTRP_SCORE).targets_h5ad, backed="r"
-    )
+    # auc_cc ONLY, and deliberately no fallback (Selin, 12.08.2026). Until 11.08.2026 this read the
+    # retired `auc` target and clipped at DEFAULT_WINSOR; both were removed from the pipeline, so
+    # the call raised ValueError and the import above it ImportError. Neither ever fired, because
+    # the committed cache short-circuits this function -- the breakage was invisible.
+    #
+    # The retired `auc` h5ad is still on disk and these figures COULD be built from it. They are
+    # not: a figure that can only be produced from a target the pipeline no longer writes is not
+    # reproducible by a standard run, and one that renders anyway is worse than one that is absent,
+    # because nothing on it says which target it came from. If the auc_cc h5ad is missing, this
+    # raises and the figures that need it are skipped by their callers.
+    target_h5ad = PipelinePaths.build(None, "hvg5000", DEFAULT_CTRP_SCORE).targets_h5ad
+    if not target_h5ad.exists():
+        raise FileNotFoundError(
+            f"{target_h5ad.name} does not exist, so the figure cache cannot be built.\n"
+            f"  Run stages 1 and 3 (1_data, 3_representations) first.\n"
+            f"  The retired `auc` h5ad is NOT used as a substitute -- see the comment above."
+        )
+    src = ad.read_h5ad(target_h5ad, backed="r")
     all_drugs = list(src.uns["ctrp_drugs"])
     kcol = [all_drugs.index(d) for d in PANEL]
     Y = np.asarray(src.obsm["Y_ctrp"], dtype=float)
@@ -390,10 +429,27 @@ def figure_data() -> dict:
 
 
 def panel_corr():
-    """``notebooks/outputs/panel/panel_per_drug_correlation.csv`` as a DataFrame."""
+    """``notebooks/outputs/legacy/panel_void_8drug/panel_per_drug_correlation.csv`` as a DataFrame."""
     import pandas as pd
 
-    return pd.read_csv(PANEL_OUT / "panel_per_drug_correlation.csv")
+    return pd.read_csv(LEGACY_PANEL / "panel_per_drug_correlation.csv")
+
+
+def _needs_data(name: str) -> bool:
+    """True if ``name`` cannot be built right now; prints why.
+
+    Added 12.08.2026. The figures split cleanly in two: some are pure drawings and always build,
+    the rest are derived from the targets h5ad or from a training output. The derived ones are only
+    reproducible by a standard pipeline run on ``auc_cc``, and that has not happened -- so rather
+    than render them from whatever happens to be on disk, they are skipped and their superseded
+    PNGs are archived under ``docs/figures/archive/``.
+    """
+    try:
+        figure_data()
+    except FileNotFoundError as exc:
+        print(f"  {name}: SKIPPED — {str(exc).splitlines()[0]}")
+        return True
+    return False
 
 
 def _tidy(ax, *, grid="", ticks=True):
@@ -418,6 +474,8 @@ def build_pipeline_flow():
     ``loss_01_objective.png`` with ``compact=True``, so the pipeline cannot drift away from the
     standalone figures. Everything that needs a sentence lives in the docs, not on the slide.
     """
+    if _needs_data("pipeline.png"):
+        return
     d = figure_data()
     corr = panel_corr()
     import pandas as pd
@@ -586,7 +644,7 @@ def build_pipeline_flow():
     stage(64.5, ROW2_TITLE, "7", "Evaluation",
           "cells → one value per line,\nSpearman within each drug", ROW2_CAP)
     ax = fig.add_axes([0.655, 0.155, 0.125, 0.255])
-    oof = pd.read_csv(PANEL_OUT / "panel_oof_predictions.csv")
+    oof = pd.read_csv(LEGACY_PANEL / "panel_oof_predictions.csv")
     g8 = oof[(oof.rep == "X_scGPT") & (~oof.weighted) & (oof.drug == "dasatinib")]
     ax.scatter(g8.y_true, g8.y_pred, s=11, color=BLUE, alpha=0.55, edgecolor="white", lw=0.35)
     rho = corr[(corr.rep == "X_scGPT") & (~corr.weighted) & (corr.drug == "dasatinib")].spearman.iloc[0]
@@ -601,7 +659,7 @@ def build_pipeline_flow():
     stage(82.0, ROW2_TITLE, "8", "Result",
           "one seed — only scGPT clears\nthe ridge control", ROW2_CAP)
     ax = fig.add_axes([0.868, 0.155, 0.115, 0.255])
-    ridge = pd.read_csv(PANEL_OUT / "panel_ridge_baseline.csv")
+    ridge = pd.read_csv(LEGACY_PANEL / "panel_ridge_baseline.csv")
     bars = [
         ("scGPT MLP", corr[(corr.rep == "X_scGPT") & (~corr.weighted)].spearman.mean(), AMBER),
         ("PCA MLP", corr[(corr.rep == "X_pca") & (~corr.weighted)].spearman.mean(), GREY),
@@ -717,6 +775,8 @@ def draw_weight_curve(ax, *, drug: str = "dasatinib", compact: bool = False):
 
 def build_loss_weights():
     """Where the weights come from: one drug's label density, and the curve it produces."""
+    if _needs_data("loss_02_weights.png"):
+        return
     import sys
 
     sys.path.insert(0, str(ROOT))
@@ -782,6 +842,21 @@ def build_loss_weights():
 def build_loss_effect():
     """What the weighting did: the spread it was designed to raise, and the ranking it did not move."""
     corr = panel_corr()
+
+    # This figure is the one thing here that cannot follow the panel. Its input is a TRAINING
+    # output -- per-drug correlations from the 27.07 run on the void 8-drug panel -- so unlike the
+    # label-derived panels it cannot be rebuilt by re-reading the h5ad; it needs a re-run, which the
+    # freeze holds until R4. With the rebuilt panel only 3 of 11 drugs have a row, so it would
+    # quietly plot three points and read as a complete comparison. Skipped instead, leaving the
+    # committed PNG (captioned as void) in place.
+    have = set(corr["drug"])
+    missing = [d for d in PANEL if d not in have]
+    if missing:
+        print(f"  loss_03_effect.png: SKIPPED -- panel_per_drug_correlation.csv has no rows for "
+              f"{len(missing)} of {len(PANEL)} panel drugs ({', '.join(missing[:4])}"
+              f"{'...' if len(missing) > 4 else ''}). It is a training output; re-runs at R4.")
+        return
+
     reps = [("X_scGPT", AMBER, "scGPT"), ("X_pca", GREY, "PCA")]
 
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(10.5, 5.4))
