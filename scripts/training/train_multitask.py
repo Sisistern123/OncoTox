@@ -38,8 +38,9 @@ import scanpy as sc
 from sklearn.model_selection import GroupKFold
 
 from scripts.model.OncoMLP import DEFAULT_HIDDEN_DIMS as OncoMLP_DEFAULT_HIDDEN_DIMS
-from scripts.model.OncoMLP import OncoMLP
+from scripts.model.OncoMLP import OncoMLP, init_head_bias_
 from scripts.model.dataset import MultiDrugDataset
+from scripts.training.density_weighting import line_level
 from scripts.training.training_utils import (
     TrainConfig,
     create_run_dir,
@@ -217,6 +218,7 @@ def train_rep(
     batch_size: int = 128,
     dropout: float = 0.5,
     input_dropout: float = 0.1,
+    init_head_bias: bool = True,
     data_root: str | None = None,
     variant: str | None = None,
     tag: str | None = None,
@@ -227,6 +229,10 @@ def train_rep(
 
     This is the single source of truth for a training run; both the CLI
     (``main``) and ``notebooks/07_training.ipynb`` call it so they cannot drift.
+
+    ``init_head_bias`` starts each head at that drug's mean over the **train split's cell
+    lines** (``OncoMLP.init_head_bias_``). Added 12.08.2026: this path had never done it, so on a
+    target centred near 0.9 it trained against an offset ``cv.oof_predictions`` did not.
 
     Returns a results dict with ``run_dir``, ``summary``, ``history``, the
     per-drug val MSE arrays (model + per-drug-mean baseline), ``drug_names``,
@@ -285,6 +291,22 @@ def train_rep(
         norm="layer",
         output_dim=output_dim,
     )
+    if init_head_bias:
+        # Train split only. Per line, not per cell -- see cv.per_drug_line_mean.
+        from scripts.training.cv import per_drug_line_mean
+
+        if train_dataset.groups is None:
+            raise ValueError(
+                "train_dataset has no cell-line labels, so the per-drug means cannot be taken per "
+                "line. Check that obs['Cell_line'] exists, or pass init_head_bias=False."
+            )
+        y_lines, obs_lines = line_level(
+            train_dataset.y.numpy(),
+            train_dataset.mask.numpy().astype(bool),
+            train_dataset.groups,
+            np.unique(train_dataset.groups),
+        )
+        init_head_bias_(model, per_drug_line_mean(y_lines, obs_lines))
 
     if drugs:
         scope = "subset"
@@ -344,6 +366,8 @@ def train_rep(
             "dropout_rate": dropout,
             "input_dropout": input_dropout,
             "norm": "layer",
+            "init_head_bias": init_head_bias,
+            "no_decay_bias_and_norm": config.no_decay_bias_and_norm,
             "batch_size": batch_size,
             "loss": config.loss,
             "n_train_cells": len(train_dataset),
@@ -384,6 +408,7 @@ def cv_evaluate(
     batch_size: int = 128,
     dropout: float = 0.5,
     input_dropout: float = 0.1,
+    init_head_bias: bool = True,
     group_col: str = "Cell_line",
     eligible_splits: tuple[str, ...] = ("train", "val"),
 ) -> list[dict]:
@@ -404,6 +429,11 @@ def cv_evaluate(
     (``cv.inner_holdout``) so the scored fold decides nothing about the model that
     predicts it. The per-drug-mean baseline is fitted on the fitting lines for the
     same reason.
+
+    ``init_head_bias`` starts each head at that drug's mean over the fold's fitting lines
+    (``OncoMLP.init_head_bias_``), which ``cv.oof_predictions`` has always done and this
+    function did not until 12.08.2026 — so the two CV paths were not running the same
+    experiment on a target centred near 0.9.
 
     Returns a list of per-fold dicts: best_val_mse, train_mse_at_best, gap
     (early-stopping − fitting MSE at the best epoch), n_beats / n_total (heads
@@ -426,7 +456,7 @@ def cv_evaluate(
     # Same partition helper as scripts.training.cv.oof_predictions, so metrics computed here and
     # predictions produced there refer to identical folds. Imported inside the function because cv
     # imports this module for nothing else -- see DEFAULT_HIDDEN_DIMS above.
-    from scripts.training.cv import grouped_folds, inner_holdout
+    from scripts.training.cv import grouped_folds, inner_holdout, per_drug_line_mean
 
     idx, fold_split = grouped_folds(
         adata, n_splits=n_splits, group_col=group_col, eligible_splits=eligible_splits
@@ -467,6 +497,14 @@ def cv_evaluate(
             norm="layer",
             output_dim=len(fit_ds.drug_names),
         )
+        if init_head_bias:
+            # Fitting lines only -- the early-stopping slice and the scored fold are both excluded,
+            # for the same reason the baseline constant above is fitted here.
+            g_fit = groups_all[fit_cells]
+            y_lines, obs_lines = line_level(
+                fit_ds.y.numpy(), fit_ds.mask.numpy().astype(bool), g_fit, np.unique(g_fit)
+            )
+            init_head_bias_(model, per_drug_line_mean(y_lines, obs_lines))
         tag = f"cv{fold}/{n_splits}_{use_rep}"
         best_model, history = train_model(
             model, fit_loader, stop_loader, config=config, tag=tag,

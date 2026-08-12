@@ -137,7 +137,18 @@ single-cell resolution does not pay for itself here.
 
 \textbf{Bulk pretraining in the manner of scDEAL} follows. Every remaining lever is on the label side:
 model-side tuning is exhausted, a ridge regression on cell-line means matches the deep model, and the
-density weighting reported above was a null. What binds is the small number of independent cell lines,
+density weighting reported above was a null.
+\revision{\emph{Correction, 12.08.2026.} The two claims in that sentence rest on an ablation study whose
+evidence no longer holds: it selected each model's checkpoint on the very fold it then scored, on a
+target and a compound set both since withdrawn, and the notebook can no longer be executed because those
+target files were deleted. The bias is one-sided --- the ridge control has no early stopping and was
+never flattered, while the neural arms were --- so the reported tie between them is an upper bound on the
+network's side, and the ordering may in fact favour the ridge. The claim that model-side tuning is
+exhausted survives here only as an argument from the label resolution, namely that roughly one hundred
+and fifty independent measurements cannot support a search over architectures, and not as a measured
+result. A minimal re-derivation --- the trunk against a bare linear head, for both representations,
+scored against the ridge control on identical folds --- is scheduled with the regeneration of the
+pipeline.} What binds is the small number of independent cell lines,
 each carrying a single broadcast value. The screens themselves are far larger --- CTRPv2 covers roughly
 1{,}100 lines against the \NLines{} in the present intersection --- so the labels exist and it is the
 single-cell expression that is missing. Pretraining a denoising autoencoder on bulk expression and

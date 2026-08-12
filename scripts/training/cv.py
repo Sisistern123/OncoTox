@@ -25,7 +25,7 @@ from sklearn.model_selection import GroupKFold, GroupShuffleSplit
 from torch.utils.data import DataLoader
 
 from scripts.model.dataset import MultiDrugDataset
-from scripts.model.OncoMLP import DEFAULT_HIDDEN_DIMS, OncoMLP
+from scripts.model.OncoMLP import DEFAULT_HIDDEN_DIMS, OncoMLP, init_head_bias_
 from scripts.training.density_weighting import (
     DEFAULT_ALPHA,
     DEFAULT_CAP,
@@ -101,6 +101,24 @@ def inner_holdout(
     fit_cells[pos[fit_i]] = True
     stop_cells[pos[stop_i]] = True
     return fit_cells, stop_cells
+
+
+def per_drug_line_mean(y_lines: np.ndarray, obs_lines: np.ndarray) -> np.ndarray:
+    """Each drug's mean over the cell lines that were screened against it.
+
+    Per **line**, not per cell: the label is broadcast to every cell of a line, so a cell-level mean
+    would weigh a 1,990-cell line 35x a 56-cell line for the same single measurement. Drugs with no
+    observation in the input get 0.0 -- a head with nothing to fit has no mean to start from, and 0
+    is the untouched-``nn.Linear`` neighbourhood rather than a value invented for it.
+
+    Take ``y_lines`` / ``obs_lines`` from :func:`density_weighting.line_level` over the fitting lines
+    of a fold. The same array serves the head-bias initialization and any per-drug null.
+    """
+    return np.array(
+        [y_lines[obs_lines[:, j], j].mean() if obs_lines[:, j].any() else 0.0
+         for j in range(y_lines.shape[1])],
+        dtype=np.float32,
+    )
 
 
 def oof_predictions(
@@ -189,12 +207,7 @@ def oof_predictions(
             output_dim=len(drugs),
         )
         if init_head_bias:
-            means = np.array(
-                [y_lines[obs_lines[:, j], j].mean() if obs_lines[:, j].any() else 0.0
-                 for j in range(len(drugs))], dtype=np.float32)
-            head = [m for m in model.modules() if isinstance(m, torch.nn.Linear)][-1]
-            with torch.no_grad():
-                head.bias.copy_(torch.from_numpy(means))
+            init_head_bias_(model, per_drug_line_mean(y_lines, obs_lines))
 
         # Explicit generator: without one, RandomSampler seeds itself from the global torch
         # RNG at iteration time, which happens to be seeded because train_model calls

@@ -104,6 +104,7 @@ class MultiDrugDataset(Dataset):
         adata=None,
         cell_mask=None,
         all_cells_pca: bool = False,
+        group_col: str = "Cell_line",
     ):
         """Load a multi-drug split.
 
@@ -194,6 +195,15 @@ class MultiDrugDataset(Dataset):
         self.y = torch.from_numpy(Y)
         self.mask = torch.from_numpy(M.astype(np.float32, copy=False))
         self.drug_names: list[str] = drug_names
+        # Which cell line each retained cell came from, and which cells those were. The label is
+        # broadcast to every cell of a line, so any per-drug statistic has to be taken per line --
+        # and a caller that only holds the dataset (``train_rep``, which is given a path rather
+        # than an adata) had no way to do that. Added 12.08.2026 for the head-bias initialization.
+        self.cell_mask: np.ndarray = split_mask
+        self.groups: np.ndarray | None = (
+            adata.obs[group_col].astype(str).to_numpy()[split_mask]
+            if group_col in adata.obs.columns else None
+        )
 
         n_per_cell = M.sum(axis=1)
         n_per_drug = M.sum(axis=0)

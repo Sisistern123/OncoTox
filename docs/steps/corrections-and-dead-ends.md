@@ -50,6 +50,9 @@ so the improvement is auditable.
 
 | Date | What |
 |---|---|
+| 12.08.2026 | [The same val-split leak, in the code that produced everything else](#the-same-val-split-leak-in-the-code-that-produced-everything-else) — fixed once in the DrEval notebook 14.07.2026 and never carried into `cv.py`; **every out-of-fold prediction and CV metric on record is a minimum over epochs on its own scored data** |
+| 12.08.2026 | [The evidence that closed model-side tuning](#the-evidence-that-closed-model-side-tuning) — the same leak, in the ablation notebook, on a retired target and a discredited drug set; only the MLP rows are flattered and ridge ties them |
+| 12.08.2026 | [The two uncentred-target mechanics ran in one training path of three](#the-two-uncentred-target-mechanics-ran-in-one-training-path-of-three) — the 8-run matrix trained against an offset the panel run did not, and the flag did not do what the docs said |
 | 11.08.2026 | [The `auc` target was divided by the wrong quantity](#the-auc-target-was-divided-by-the-wrong-quantity) — `conc_pts_fit` counts points surviving outlier censoring, not the width of the integral; **every `auc` number is void**, and the target source was replaced rather than the divisor fixed |
 | 05.08.2026 | [scGPT discarded genes that are in its vocabulary under their current symbols](#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols) — exact symbol match against an older annotation; **repaired in code 05.08.2026, takes effect at the sweep** |
 | 28.07.2026 | [The 8-drug literature panel, and every number computed on it](#the-8-drug-literature-panel-and-every-number-computed-on-it) — drawn from a pre-filtered pool |
@@ -560,9 +563,10 @@ at ≈ 1.0 rather than ≈ 0.0097.
 **Replaced by** raw `auc` winsorized at 1.1, with the weighting moved into the loss where it can be
 estimated per fold on training lines only — which also closed the leak. No per-drug weight is applied:
 the variance imbalance is a K=545 problem, and on a comparable panel the σ range is ~2.5× rather than
-81×. Two mechanics are forced by a target near 0.7 instead of 0 — the output layer is excluded from
-weight decay (`TrainConfig.exclude_output_from_decay`), and each head's bias is initialized at the
-fold's per-drug mean. Current definition: [Step 03](03-model-and-training-design.md).
+81×. Two mechanics are forced by a target near 0.7 instead of 0 — weight decay is applied to the weight
+matrices only (`TrainConfig.no_decay_bias_and_norm`; until 12.08.2026 the narrower and non-standard
+`exclude_output_from_decay`), and each head's bias is initialized at the fold's per-drug mean. Current
+definition: [Step 03](03-model-and-training-design.md).
 
 ### Per-drug variance weighting — dissolved by a scope change, never needed
 
@@ -732,6 +736,69 @@ grouped, become the early-stopping set and the fold is scored clean. Design, the
 and the separate inner seed: [Step 03](03-model-and-training-design.md#the-early-stopping-set-is-nested-inside-the-training-lines-12082026).
 **No number has been re-run under it** — every result on record still carries the bias, and they all move
 down at the sweep, from the removed selection and from ~104 training lines per fold where there were 122.
+
+### The evidence that closed model-side tuning
+
+**Established** 13.07.2026 by `notebooks/archive/ablations_and_rescue.ipynb`: four model-side knobs are
+flat, `RidgeCV` on 150 line-mean embeddings ties the PCA MLP, and scGPT-plus-a-hidden-layer is the only
+configuration that clears ridge (+0.06). It became the project's standing instruction — *don't spend more
+time on architecture or hyperparameters, the remaining levers are label-side* — and the reason MIL is
+next rather than a bigger model.
+
+**Overturned 12.08.2026 (review item 8).** The notebook's `oof()` calls
+`train_model(model, tl, DataLoader(va_ds, ...))`, so **the scored fold is the checkpoint-selection set** —
+the same leak recorded above, in the notebook that produced the tuning tables. Three further defects
+compound it, each independently sufficient: the target is `auc_z`, [retired](#auc_z-as-the-training-target)
+27.07.2026; the five drugs come from the
+[learnability gate](#the-learnability-gate-measured-potency-not-rankability), discredited 12.08.2026; and
+the notebook is archived under ground 2 — the `auc`/`auc_z` targets file no longer exists, so it cannot
+be re-run to check any of this.
+
+**The bias is one-sided, which is what makes it more than bookkeeping.** `RidgeCV` selects its penalty by
+generalized cross-validation inside the training fold and has no early stopping, so the ridge column was
+never flattered while every MLP column was — and on the PCA arm the two are *equal* (0.428 / 0.428). The
+honest ordering could therefore be ridge **above** the PCA MLP, which is a different claim from the one
+on record. The +0.06 that carries the project's strongest Q1 statement is likewise a margin between a
+flattered number and a clean one.
+
+**Not overturned by this:** the *rescue* result in the same notebook (removing regularization recovers
+~70 % of the K=545 collapse) is a within-notebook comparison in which every arm carries the same leak, so
+the ranking it establishes survives even though its levels do not. And the general argument — ~150
+independent labels cannot support architecture search — is an argument about the data, not a measurement,
+and stands on its own.
+
+**Replaced by** nothing yet. What gets re-derived and what does not is [TODO](../TODO.md) item 8C: the
+minimal re-run at R4 is trunk `(128,64)` vs a bare linear head, both representations, against ridge on the
+same folds and the rebuilt panel — the single comparison the load-bearing claim rests on, not the four-knob
+sweep. Until it exists, "model-side tuning is closed" is an instruction without live evidence.
+
+### The two uncentred-target mechanics ran in one training path of three
+
+**Established** 27.07.2026: on a target centred near 0.9 the head biases must start at the per-drug means
+and must not be decayed toward 0, both recorded in
+[Step 03](03-model-and-training-design.md#the-uncentred-target-is-handled-the-same-way-in-every-training-path)
+as mechanics rather than as choices.
+
+**Overturned 12.08.2026 (review item 8) — they were only ever applied in `cv.oof_predictions`.**
+`train_multitask.cv_evaluate` and `train_multitask.train_rep`, which together produce the entire 8-run
+matrix, initialized no head bias, and `2_training.ipynb` never set `exclude_output_from_decay`, whose
+default was `False`. So the matrix path trained heads that start near 0 and are pulled back toward 0,
+while the panel path started them at the drug mean and never decayed them. Two arms of the same project
+under different rules, with the docs describing only one of them. `dreval_benchmark.ipynb`, which builds
+`OncoMLP` by hand, also has neither — left alone because it is broken twice over and belongs to item 11.
+
+**The flag itself was also wrong.** `exclude_output_from_decay` exempted the *whole output `Linear`,
+weight matrix included*, and still decayed the LayerNorm parameters and hidden-layer biases — while
+Step 03 described the standard convention ("biases and LayerNorm parameters therefore go in a
+`weight_decay=0` group"), which is a different grouping. Neither the code nor the doc matched the other.
+
+**Replaced by** `TrainConfig.no_decay_bias_and_norm` (default on), implemented in
+`training_utils._decay_param_groups` — every weight matrix decayed including the output's, every bias and
+normalization parameter exempt, which is HuggingFace `transformers`' `Trainer.create_optimizer` grouping
+from the BERT reference implementation — and by `init_head_bias=True` on all three paths, via
+`OncoMLP.init_head_bias_` over `cv.per_drug_line_mean`. **Takes effect at R4.** The size of either
+handicap has never been measured; it is not measured now either, and the change is made on the convention
+rather than on evidence.
 
 ### The Steps 04–05 numbers as a comparable baseline
 

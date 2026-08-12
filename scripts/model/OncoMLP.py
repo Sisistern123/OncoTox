@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+import numpy as np
+import torch
 import torch.nn as nn
 
 # Matched trunk for a fair PCA-vs-scGPT comparison: both reps use the same hidden layers, so only the
@@ -66,3 +68,40 @@ class OncoMLP(nn.Module):
 
     def forward(self, x):
         return self.network(x)
+
+
+def init_head_bias_(model: nn.Module, means: np.ndarray) -> None:
+    """Start each head at its drug's mean instead of at ~0. In place.
+
+    ``nn.Linear`` initializes biases uniformly in ±1/sqrt(fan_in), so an untouched model predicts
+    near 0 while ``auc_cc`` sits near 0.9 -- the first epochs then go on climbing to the drug means
+    rather than on the differences between cell lines, and early stopping here regularly selects
+    epoch 1-3. Initializing the final bias at the base rate is standard practice for exactly this
+    reason (Lin et al., *Focal Loss for Dense Object Detection*, ICCV 2017, §4.1 "prior" init, done
+    there for a class prior rather than a regression mean).
+
+    ``means`` must be one value per head, computed on the *fitting* lines of the fold and nowhere
+    else -- it is a statistic of the labels, so a mean over held-out lines would inform training.
+
+    ⚠️ **This does not make the model start at the null predictor, only near its level.** The head's
+    weight rows are still randomly initialized (mean row norm ~0.58 over a LayerNorm'd 64-d hidden
+    vector), so at initialization the predictions already scatter with a standard deviation of ~0.31
+    across cells -- against a true across-line spread of order 0.17 on ``auc_cc``. Measured on
+    synthetic unit-variance input at seeds 42 and 0; the mean prediction lands at 0.76 and 0.96 for
+    a requested 0.90. Starting genuinely *at* the null would also require shrinking the output
+    layer's weight initialization, which Lin et al. do (sigma=0.01 on the final layer) and this
+    project has not decided. Open, audit 08.
+
+    Applied 12.08.2026 to all three training paths. Before that only ``cv.oof_predictions`` did it,
+    so the fixed-split and 8-run-matrix paths trained against an offset the panel run did not:
+    docs/steps/03, *The uncentred target is handled the same way in every training path*.
+    """
+    head = [m for m in model.modules() if isinstance(m, nn.Linear)][-1]
+    means = np.asarray(means, dtype=np.float32)
+    if means.shape != head.bias.shape:
+        raise ValueError(
+            f"means has shape {means.shape}, but the output layer has {tuple(head.bias.shape)} "
+            f"heads -- one mean per drug is required, in the drug column order."
+        )
+    with torch.no_grad():
+        head.bias.copy_(torch.from_numpy(means))

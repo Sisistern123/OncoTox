@@ -46,11 +46,17 @@ class TrainConfig:
     seed: int = 42
     loss: str = "mse"  # "mse" or "huber"
     huber_beta: float = 0.05
-    # Exclude the output layer (the per-drug heads) from weight decay. Needed on an
-    # uncentred target: on raw AUC each head bias must sit near the drug's mean (~0.7)
-    # and decay actively pulls it to 0, whereas on a per-drug z-scored target the
-    # optimum is 0 and decay is free. Off by default so existing runs are unchanged.
-    exclude_output_from_decay: bool = False
+    # Decay the weight matrices, exempt the biases and the normalization parameters. This is the
+    # standard grouping -- HuggingFace transformers' `Trainer.create_optimizer`
+    # (`no_decay = ["bias", "LayerNorm.weight"]`), inherited from the BERT reference
+    # implementation -- and it is on by default because it is the convention, not because this
+    # target needs it. It happens to matter more than usual here: `auc_cc` is centred near 0.9,
+    # so each head bias must sit at its drug's mean and decay pulls it toward 0.
+    #
+    # Replaced `exclude_output_from_decay` (12.08.2026), which exempted the whole output
+    # `Linear` -- its weight matrix included -- and left the LayerNorm parameters and the hidden
+    # biases decayed. That is neither the convention nor what docs/steps/03 described.
+    no_decay_bias_and_norm: bool = True
     log_per_drug_topk: int = 5  # how many best/worst per-drug val MSEs to print
 
 
@@ -128,6 +134,29 @@ def _make_loss_fn(config: TrainConfig, multitask: bool):
     return loss_fn
 
 
+def _decay_param_groups(model: nn.Module, weight_decay: float) -> list[dict]:
+    """Split parameters into a decayed and a non-decayed group.
+
+    Weight matrices are decayed; every bias and every normalization parameter is not. Modules are
+    walked with ``recurse=False`` so each parameter is classified exactly once by the module that
+    owns it, which is what lets a LayerNorm's ``weight`` be recognized as a norm parameter rather
+    than as a weight matrix.
+    """
+    decay: list[nn.Parameter] = []
+    no_decay: list[nn.Parameter] = []
+    norm_types = (nn.LayerNorm, nn.BatchNorm1d, nn.GroupNorm)
+    for module in model.modules():
+        is_norm = isinstance(module, norm_types)
+        for name, p in module.named_parameters(recurse=False):
+            if not p.requires_grad:
+                continue
+            (no_decay if (is_norm or name.endswith("bias")) else decay).append(p)
+    return [
+        {"params": decay, "weight_decay": weight_decay},
+        {"params": no_decay, "weight_decay": 0.0},
+    ]
+
+
 def _format_per_drug_block(
     per_drug_mse: np.ndarray,
     per_drug_n: np.ndarray,
@@ -181,16 +210,11 @@ def train_model(
         print(f"[{tag}] Multi-task mode detected (masked {config.loss.upper()}).")
 
     loss_fn = _make_loss_fn(config, multitask=multitask)
-    if config.exclude_output_from_decay:
-        head = [m for m in model.modules() if isinstance(m, nn.Linear)][-1]
-        head_ids = {id(p) for p in head.parameters()}
-        groups = [
-            {"params": [p for p in model.parameters() if id(p) not in head_ids],
-             "weight_decay": config.weight_decay},
-            {"params": list(head.parameters()), "weight_decay": 0.0},
-        ]
-        print(f"[{tag}] Output layer excluded from weight decay "
-              f"({sum(p.numel() for p in head.parameters())} params).")
+    if config.no_decay_bias_and_norm:
+        groups = _decay_param_groups(model, config.weight_decay)
+        print(f"[{tag}] Weight decay {config.weight_decay:g} on "
+              f"{sum(p.numel() for p in groups[0]['params'])} weight parameters; "
+              f"{sum(p.numel() for p in groups[1]['params'])} bias/norm parameters exempt.")
         optimizer = optim.Adam(groups, lr=config.lr)
     else:
         optimizer = optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)

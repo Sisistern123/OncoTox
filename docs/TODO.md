@@ -254,14 +254,65 @@ every one of them was a step that looked settled and had never been checked.
            disk today) with no CTRPv2 label, 11.4 % of the atlas. Not a test leak; a separate question
            about whether the representation should be shaped by data the model never sees.
         Any change here alters the gene set and therefore every number, so it lands in the sweep.
-- [ ] **8 · Model** — architecture, capacity, and whether the shared-trunk multi-head design is still the
-      right one for a small panel. **This is where MIL falls.** The per-cell framing is an architectural
-      choice: every cell of a line carries that line's label, so the design cannot express within-line
-      variation — which is what makes **Q2 unanswerable under it**, and what MIL exists to change. This
-      item decides whether the current architecture stands until MIL is built, and what MIL has to
-      replace; the design itself, its controls and the open decision on what counts as a positive Q2
-      result stay in one place, *Agreed plan, Step 2*. Note the objective side of the same fact — that
-      the loss actively penalizes the within-line variation — belongs to item 9.
+- [ ] **8 · Model — walked 12.08.2026.** Confirmed sound: the architecture is what
+      [Step 03](./steps/03-model-and-training-design.md#model-architecture--regularization-oncomlppy-25052026)
+      says it is, the trunk is genuinely matched between the arms, the "K heads" are the K rows of one
+      output `Linear` over a shared trunk with no per-drug sub-network, and inference runs under
+      `.eval()` so dropout is off when predictions are made. **The shared trunk is 74,304 parameters at
+      every panel size — only the head layer scales with K**, at 65 parameters per drug: 715 of 75,019
+      at K=11 (1.0 %), 35,425 of 109,729 at K=545 (32.3 %). So the capacity the heads compete *for* is
+      fixed no matter how many of them there are, which is what makes "capacity competition between
+      heads" the right description of the K=545 collapse and a bigger panel no cheaper in trunk than a
+      smaller one. Against ~153 independent labels. Counts from `arch_facts.py` (audit 08, synthetic
+      input, nothing trained).
+      **The per-cell framing stands until MIL replaces it, and what MIL has to replace is the dataset and
+      the loss, not `OncoMLP`** — the encoder carries over unchanged as the instance model. Q2's design,
+      its controls and the open decision on what counts as a positive result stay in *Agreed plan,
+      Step 2*; the objective side — that the loss penalizes the within-line variation — is item 9.
+  - [x] **A · The two uncentred-target mechanics ran in one training path of three — FIXED IN CODE
+        12.08.2026.** Head-bias initialization and the weight-decay exemption were applied only in
+        `cv.oof_predictions`; `train_multitask.cv_evaluate` and `train_rep`, which produce the entire
+        8-run matrix, had neither, so on a target centred near 0.9 the matrix trained against an offset
+        the panel run did not. The flag was also not what the docs described: `exclude_output_from_decay`
+        exempted the whole output `Linear`, weight matrix included, while still decaying the LayerNorm
+        parameters. **Replaced with the standard grouping (Selin, 12.08.2026):**
+        `TrainConfig.no_decay_bias_and_norm`, default on — every weight matrix decayed, every bias and
+        normalization parameter exempt, as in HuggingFace `transformers`' `Trainer.create_optimizer` from
+        the BERT reference implementation — plus `init_head_bias=True` on all three paths via
+        `OncoMLP.init_head_bias_`, with the means taken per **line** (`cv.per_drug_line_mean`).
+        Record: [Corrections](./steps/corrections-and-dead-ends.md#the-two-uncentred-target-mechanics-ran-in-one-training-path-of-three).
+        **Takes effect at R4.** Note the target itself was left uncentred: per-drug mean-centring is the
+        more standard fix and was rejected here because it is a target change and pre-empts half of S1.
+    - [ ] **Open, not decided: the bias init does not start the model at the null predictor.** It fixes
+          the level only approximately — the randomly initialized head weight rows already scatter
+          predictions with sd ≈0.31 at initialization, against a true across-line spread of order 0.17,
+          and the mean lands at 0.76 / 0.96 for a requested 0.90 at seeds 42 / 0 (`init_spread.py`,
+          synthetic). Starting genuinely at the null needs the output layer's *weights* initialized small
+          as well — Lin et al. use σ = 0.01 alongside the bias prior. **Selin's call**, and it is a
+          second architecture change, so it should not ride along with A.
+  - [ ] **B · `input_dropout=0.1` is matched in value but not in effect between the arms.** It zeroes
+        each input coordinate independently. scGPT's 512 dimensions are entangled and comparable in
+        magnitude, so the perturbation is uniformly small; PCA's are variance-ordered, so one draw in ten
+        deletes PC1. Same expected variance removed, far heavier-tailed for PCA — and the "matched trunk
+        ⇒ fair comparison" argument covers the trunk, not the input regularizer. Settleable from
+        `uns["pca_fits"]["variance_ratio"]` once R2 writes it (item 4B), before any decision to change it.
+  - [ ] **C · The evidence that closed model-side tuning is void — decide the minimal re-derivation.**
+        `ablations_and_rescue.ipynb` early-stopped on the fold it scored, on retired `auc_z`, over the
+        five drugs of the discredited gate, and cannot be re-run.
+        [Corrections](./steps/corrections-and-dead-ends.md#the-evidence-that-closed-model-side-tuning).
+        Only the MLP rows are flattered — ridge has no early stopping — and ridge *ties* the PCA MLP, so
+        the honest ordering may be ridge above it. **Scope agreed (Selin, 12.08.2026): the minimal
+        re-run** — trunk `(128,64)` vs a bare linear head, both representations, against `RidgeCV` on the
+        same folds and the rebuilt panel; not the four-knob sweep. Scheduled at R4.
+  - [ ] **Found on the way, routed elsewhere.** `--epochs` defaults to 50 in the CLI, 25 in `TrainConfig`
+        and `3_panel_training`, and `2_training` sets 50 → **item 10**. `dreval_benchmark.ipynb` builds
+        `OncoMLP` by hand and so has neither mechanic from A → **item 11**, which owns that notebook.
+        `ScGPTDrugDataset` has no consumers — the `train_baseline.py` / `train_scGPT.py` its docstring
+        names were deleted in `090f957` — and the `norm="batch"` / `"none"` branches are never exercised
+        → **item 13**. LayerNorm makes the forward pass invariant to input rescaling up to the first
+        `Linear`'s bias (78× moves the output by 0.074 against a spread of 0.377; zeroing that bias drops
+        it to 8e-6), so **4A's premise needs restating before 4A is run** — the naive "different
+        effective step size" argument does not go through under LayerNorm plus Adam.
 - [ ] **9 · Loss** — masking, per-sample weighting (the density weighting was a null — drop or keep?),
       per-line weighting (the 82× artifact), and what the objective actually rewards.
 - [ ] **10 · Training** — optimizer, weight decay groups, epochs, early stopping, and the `mps`
@@ -331,6 +382,16 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       refresh them; `3_panel_training.ipynb` on the rebuilt panel; ridge / `NaiveMeanEffects` on the same
       folds; `verify_variants.ipynb` §9; and 4A below. Blockers already recorded: **≥ 3 seeds** before any
       scGPT − PCA margin is quoted, and train-only drug selection inside each fold.
+  - [ ] **The minimal capacity re-derivation** (item 8C, 12.08.2026): trunk `(128,64)` vs a bare linear
+        head (`hidden_dims=()`), both representations, against `RidgeCV` on the *same* folds via
+        `cv.grouped_folds`, on the rebuilt panel. ~20 fits. It re-establishes the one claim that carries
+        weight — *scGPT needs the nonlinearity and PCA does not* — whose current evidence is void. Do not
+        widen it into the four-knob sweep; that question is not what the load-bearing claim rests on.
+  - [ ] **Two settings change here that no run on record used** (item 8A): every training path now
+        initializes head biases at the fitting-fold per-drug means, and weight decay skips the biases and
+        the LayerNorm parameters while now applying to the output weight matrix, which
+        `exclude_output_from_decay` had exempted. So the panel run's configuration also changed, not only
+        the matrix's — `3_panel_training` §6 is not a like-for-like predecessor of its own next execution.
   - [ ] **Expect every CV number to move down, for two reasons at once** (item 7, 12.08.2026): the
         optimistic epoch selection is gone, and each fold now fits on ~104 lines instead of 122. A drop
         is the change working, not a regression. The two causes cannot be separated after the fact, so
@@ -370,6 +431,11 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       not an edit: `04_results.tex` was emptied to a withdrawal note, and `01_abstract.tex`,
       `05_discussion.tex` and `06_limitations_and_outlook.tex` had every quantitative claim removed.
       They are written once, from the regenerated artifacts.
+      **`03_methods.tex` §Representation and model describes the architecture but not the training
+      configuration** — no optimizer, learning rate, weight-decay grouping, early stopping or head-bias
+      initialization appears anywhere in the report, so a reader cannot reconstruct the run. Write it
+      here from `TrainConfig` and [Step 03](./steps/03-model-and-training-design.md#the-uncentred-target-is-handled-the-same-way-in-every-training-path)
+      (noted 12.08.2026, audit 08).
       **Define the drug-panel counts as macros** rather than the inline digits currently in
       `03_methods.tex` §Drug panel selection (150 / 120 / 57 / 44 / 11, the 90 % cut, 91.2–98.3 %
       coverage, 102 and 15 unmatched compounds, 13 parent-CID matches) — via item 12's extraction
@@ -663,6 +729,17 @@ comparison are written up in [Step 03](./steps/03-model-and-training-design.md) 
       train-only selection.
 
 ## Model-side tuning is closed (13.07.2026)
+
+> ⛔ **The evidence for this section is void (12.08.2026, audit 08) — the instruction stands only as an
+> argument, not as a measurement.** The notebook behind every number below chose each model's checkpoint
+> on the fold it then scored, on the retired `auc_z` target, over the five drugs of the discredited
+> learnability gate, and it can no longer be run.
+> [Corrections](./steps/corrections-and-dead-ends.md#the-evidence-that-closed-model-side-tuning).
+> **The ridge tie is the load-bearing part and it is the part most at risk:** ridge has no early stopping
+> so it was never flattered, the MLP was, and on PCA the two are equal — the honest ordering may put ridge
+> ahead. Re-derived at R4 by the minimal re-run in item 8C. The argument that survives without the
+> numbers is that ~153 independent labels cannot support architecture search, which is a fact about the
+> data rather than a result.
 
 Four knobs — regularization, capacity, batch size, sample reweighting — are **all flat**, and `RidgeCV` on
 the 150 cell-line mean embeddings **ties the PCA MLP**. Tables, the rescue test on the broken setting, and

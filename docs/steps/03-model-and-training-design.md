@@ -87,22 +87,45 @@ It is also what makes **research question 2 structurally unanswerable under this
 objective penalises exactly the within-line variation Q2 asks about. MIL is the instrument for that
 question, not a capacity lever — see [TODO](../TODO.md).
 
-### Two mechanics forced by a target centred near 0.9 rather than 0
+### The uncentred target is handled the same way in every training path
 
-Both are silent if missed — nothing errors, the model simply trains against a handicap — so they are
-recorded with the code that causes them.
+Two mechanics follow from a target sitting near 0.9 rather than 0. Both are silent if missed — nothing
+errors, the model simply trains against a handicap — so they are recorded with the code that causes them.
 
-1. **The output layer must be excluded from weight decay.** `optim.Adam(..., weight_decay=1e-3)`
-   (`scripts/training/training_utils.py:179`) decays **every** parameter, head biases included. Each
-   head's bias must sit near its drug's mean — around 0.9 on `auc_cc` — and decay pulls it toward 0.
-   Biases and LayerNorm parameters therefore go in a `weight_decay=0` group:
-   `TrainConfig.exclude_output_from_decay`, default **off** so older runs reproduce unchanged.
-2. **Head biases must be initialized at the train-fold per-drug means.** `nn.Linear` initializes them
-   within ±0.125, so the model otherwise starts far from the null predictor rather than at it.
+1. **Weight decay is applied to the weight matrices, not to the biases and normalization parameters.**
+   `optim.Adam(..., weight_decay=1e-3)` decays **every** parameter it is given, head biases included,
+   and each head's bias must sit near its drug's mean. The grouping is the standard one —
+   HuggingFace `transformers`' `Trainer.create_optimizer` (`no_decay = ["bias", "LayerNorm.weight"]`),
+   inherited from the BERT reference implementation — and it is on because it is the convention, not
+   because this target invented a need for it: `TrainConfig.no_decay_bias_and_norm`, default **on**,
+   implemented in `training_utils._decay_param_groups`.
+2. **Head biases are initialized at the fitting-fold per-drug means** (`OncoMLP.init_head_bias_`), so
+   the model does not spend its first epochs climbing from `nn.Linear`'s ±0.125 to ~0.9. Initializing a
+   final layer at the base rate is standard for exactly this reason — Lin et al., *Focal Loss for Dense
+   Object Detection*, ICCV 2017 §4.1, done there for a class prior rather than a regression mean. The
+   means are taken **per cell line** (`cv.per_drug_line_mean`), not per cell, because the label is
+   broadcast across a line's cells.
 
-⚠️ Neither carries over to `ln_ic50_cc` unchanged: its per-drug means are spread across a
+⚠️ **It starts the model near the null predictor's *level*, not at the null predictor.** The head's
+weight rows are still randomly initialized, so at initialization predictions already scatter with a
+standard deviation of ≈0.31 across cells, against a true across-line spread of order 0.17 on `auc_cc`;
+the mean prediction lands at 0.76 and 0.96 for a requested 0.90 at seeds 42 and 0. Measured on synthetic
+unit-variance input, `init_spread.py` under audit 08 — an architecture property, no data read. Starting
+genuinely *at* the null would also require shrinking the output layer's weight initialization, which
+Lin et al. do (σ = 0.01) and **this project has not decided**.
+
+⚠️ Neither mechanic carries over to `ln_ic50_cc` unchanged: its per-drug means are spread across a
 log-concentration scale instead of clustering near 0.9. That has to be checked before that measure is
 trained, not assumed.
+
+**Until 12.08.2026 only one of the three training paths did either of these** — `cv.oof_predictions`,
+which `3_panel_training` drives. `train_multitask.cv_evaluate` (the CV behind the 8-run matrix) and
+`train_multitask.train_rep` (the fixed-split path) initialized no head bias and ran with
+`exclude_output_from_decay` at its `False` default, so on an uncentred target the matrix trained against
+an offset the panel run did not, and the two were never the same experiment. Both now take
+`init_head_bias=True` by default. The record, including what the superseded flag actually did:
+[Corrections](corrections-and-dead-ends.md#the-two-uncentred-target-mechanics-ran-in-one-training-path-of-three).
+**Takes effect at R4.**
 
 ### Per-drug Spearman is affine-invariant — and what that implies
 
@@ -348,6 +371,15 @@ notebook and command line cannot diverge.
 
 ## These hyperparameters are not worth tuning (ablated 13.07.2026)
 
+> ⛔ **Every MLP number in this section is void (found 12.08.2026, audit 08), and the ridge row is not.**
+> The notebook behind both tables chose each model's checkpoint on the fold it then scored — the same
+> early-stopping leak audit 07 fixed in the pipeline — on the retired `auc_z` target, over five drugs
+> chosen by the discredited learnability gate, and it can no longer be run because those target files
+> were deleted. `RidgeCV` has no early stopping, so **the baseline was never flattered and the MLP rows
+> were**, which is the one direction that matters when the two are tied. What has to be re-derived and
+> what does not:
+> [Corrections](corrections-and-dead-ends.md#the-evidence-that-closed-model-side-tuning).
+
 `notebooks/archive/ablations_and_rescue.ipynb` sweeps four model-side knobs on the 5 learnable drugs, scored with
 out-of-fold per-drug Spearman (the metric of [Step 05](05-multitask-results.md)). **Every axis is flat,
 and the defaults above are at or within noise of the best setting on all of them:**
@@ -401,3 +433,11 @@ the 34k cells are an illusion of sample size.
 > (+0.06): scGPT's own linear head drops to 0.438, so it genuinely *needs* the nonlinearity, while PCA
 > gains nothing from one. That asymmetry is the strongest evidence to date that the scGPT embedding
 > encodes something PCA's does not.
+
+⚠️ **The +0.06 is a margin between a flattered number and a clean one (12.08.2026).** Only the MLP rows
+carry the early-stopping leak; ridge selects its penalty by generalized cross-validation inside the
+training fold and was always honest. The MLP-minus-ridge differences in the table are therefore upper
+bounds, and the PCA row — where the two are *equal* — can go negative once the leak is removed. Which
+would say the per-cell model is beaten by a ridge on 153 line-mean vectors, a different claim from the
+one written above. **The decision on the row that matters is recorded in [TODO](../TODO.md) item 8C:
+re-derive trunk vs bare linear head, both representations, against ridge on the same folds, at R4.**
