@@ -134,7 +134,7 @@ Step 08   + clinical fine-tuning               (continuous pre-train → binary 
   [retired](./steps/corrections-and-dead-ends.md#auc_z-as-the-training-target) and none is comparable
   to `auc_cc` — `auc` (divided by the wrong quantity), `auc_z` (per-drug z-scored `auc`), and the
   legacy `mean_pv` that still backs Steps 04–05.
-- Training is **fully supervised regression** (masked MSE/Huber). scGPT is a **frozen** self-supervised
+- Training is **fully supervised regression** (masked MSE/MAE). scGPT is a **frozen** self-supervised
   feature prior; the mask handles label sparsity but does **not** make it semi-supervised.
 
 ---

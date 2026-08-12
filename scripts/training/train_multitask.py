@@ -40,7 +40,13 @@ from sklearn.model_selection import GroupKFold
 from scripts.model.OncoMLP import DEFAULT_HIDDEN_DIMS as OncoMLP_DEFAULT_HIDDEN_DIMS
 from scripts.model.OncoMLP import OncoMLP, init_head_bias_
 from scripts.model.dataset import MultiDrugDataset
-from scripts.training.cv import grouped_folds, inner_holdout, per_drug_line_mean
+from scripts.training.cv import (
+    CV_FOLD_PCA_KEY,
+    fold_pca_projections_for,
+    grouped_folds,
+    inner_holdout,
+    per_drug_line_mean,
+)
 from scripts.training.density_weighting import line_level
 from scripts.training.training_utils import (
     TrainConfig,

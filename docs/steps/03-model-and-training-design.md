@@ -11,7 +11,7 @@ each tied to the code that implements it (`scripts/model/`, `scripts/training/`)
 
 The downstream task is a **continuous regression**: map one cell's transcriptomic representation to
 a drug-response scalar. It is **fully supervised** — `train_model` in
-`scripts/training/training_utils.py` optimizes a (masked) **MSE** or **Huber** loss directly against
+`scripts/training/training_utils.py` optimizes a (masked) **MSE** or **MAE** loss directly against
 observed labels, with no classification, pseudo-labeling, or consistency/contrastive objective.
 
 The *weak supervision* lives in the **labels, not the algorithm**. The response value is a **bulk**
@@ -196,7 +196,7 @@ the cross-database block-sparse matrix in [Step 06](06-planned-work.md#a-cross-d
 `train_model` auto-detects multi-task batches by peeking for a 3-tuple `(x, y, mask)`
 (`_is_multitask_loader`) and switches loss accordingly (`_make_loss_fn`):
 
-- **Per-element error** `sq = (pred − y)²` (MSE), or `smooth_l1_loss(beta=0.05)` for `--loss huber`
+- **Per-element error** `sq = (pred − y)²` (MSE), or `l1_loss` for `--loss mae`
   (robust to the occasional outlier viability while staying quadratic near 0).
 - **Masked batch loss** = `(sq · M).sum() / M.sum()` (`_masked_mean`, denominator clamped ≥ 1) —
   the mean over **only observed (cell, drug) entries**. Gradients therefore flow *only* through
@@ -296,10 +296,13 @@ rule is fixed *before* the run, and ≥3 seeds are needed for any difference to 
 > loss. **MSE and MAE already bracket the axis** (pure quadratic against pure absolute), so Huber adds
 > cost without adding a corner. This retires review item 9C's `huber_beta` question with it.
 >
-> ⚠️ **The code still exposes `--loss huber`**, so the mechanics described elsewhere on this page —
-> `smooth_l1_loss(beta=0.05)`, the `{mse,huber}` flag — remain accurate descriptions of what the code
-> does and are deliberately not rewritten here. Only the *comparison* dropped it. Whether the option is
-> removed from the code is the model session's call, not this page's.
+> ✅ **Huber has since left the code as well** (`f16b3ec`, merged 13.08.2026): `--loss` is `{mse, mae}`,
+> and `TrainConfig.huber_beta`, the name check and the `smooth_l1_loss` branch are all gone. The
+> mechanics described elsewhere on this page were rewritten in the same change.
+> *(This block previously read "the code still exposes `--loss huber`", which was accurate when the
+> comparison dropped Huber but the code had not. It became false the moment that branch merged, and the
+> sentences it protected were exactly the ones that then needed rewriting — an inversion worth keeping
+> visible: text left alone **because** it was accurate is the text that goes stale first.)*
 
 **Beating that baseline, not the raw MSE, is the honest metric**, and on `auc_cc` the raw number is
 actively misleading: the labels cluster near 0.9 with a small spread, so an absolute MSE around 0.01
@@ -426,7 +429,7 @@ the end rather than the last-epoch weights. Which lines that validation set is d
 subject of *The early-stopping set is nested inside the training lines* above — under cross-validation
 it is no longer the scored fold. The single entrypoint `train_multitask.py` exposes these
 as flags (`--use-rep`, `--drugs`, `--batch-size 128`, `--epochs 50`, `--lr`, `--weight-decay`,
-`--dropout`, `--input-dropout`, `--loss {mse,huber}`, `--hidden-dims`, `--seed`); run artifacts are
+`--dropout`, `--input-dropout`, `--loss {mse,mae}`, `--hidden-dims`, `--seed`); run artifacts are
 written by `create_run_dir`/`save_run` ([Step 05](05-multitask-results.md)).
 
 Both the CLI and `notebooks/4a_percell_training.ipynb (§B)` drive one training run through the same
