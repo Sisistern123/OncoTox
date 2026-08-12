@@ -47,13 +47,21 @@ A standalone LaTeX write-up of the current state lives in [`../report/`](../repo
 What actually runs, stage by stage: the sparse (cell line × drug) response matrix, the drug panel
 funnel, the cell-line-grouped folds, the two representations that are compared, the per-cell MLP,
 the weighted loss, and the out-of-fold scoring. Details in
-[Step 03](steps/03-model-and-training-design.md); the current numbers in the working report.
+[Step 03](steps/03-model-and-training-design.md).
+
+> ⛔ **Computed on the retired `auc` target, winsorized at 1.1, and the void 8-drug panel.** The
+> stage-by-stage *shape* is current; the numbers and the drug list are not. Regenerated at R4 of the
+> sweep — not before, because it reads pipeline artifacts the [freeze](TODO.md) holds. The same applies
+> to `model_architecture.png`, `loss_02_weights.png` and `loss_03_effect.png`.
 
 ![OncoTox pipeline status overview](./figures/pipeline_overview.png)
 
-Green = done / on-plan · amber = addition or partial · red (dashed) = still missing.
-Stages 1–6 are complete; the red boxes (cross-database PRISM/GDSC heads and the XAI stretch goal)
-are the remaining work.
+Green = done / on-plan · amber = addition beyond plan · grey = results withdrawn · red (dashed) = still
+missing. Stages 1–3 are complete; **stages 4 and 5 have had every model result withdrawn** (12.08.2026 —
+the target was replaced, the panel rebuilt, and the representations predate the preprocessing
+corrections), and they are re-measured at R4. The red boxes — cross-database PRISM/GDSC heads and the
+XAI stretch goal — are the unstarted work. This figure is a pure drawing and carries no data, so it was
+corrected and re-rendered on 12.08.2026 without touching a frozen artifact.
 
 ### The figure set
 

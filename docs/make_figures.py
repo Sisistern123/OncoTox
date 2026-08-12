@@ -80,18 +80,19 @@ def build_pipeline():
 
     ax.text(50, 98, "OncoTox Pipeline — Status Overview", ha="center", va="top",
             fontsize=17, fontweight="bold", color=INK)
-    ax.text(50, 93.5, "as of 2026-07-14   ·   reference: project_planning_v2.pdf   ·   steps: docs/steps/",
+    ax.text(50, 93.5, "as of 2026-08-12   ·   reference: project_planning_v2.pdf   ·   steps: docs/steps/",
             ha="center", va="top", fontsize=9.5, color=GREY)
     handles = [
         mpatches.Patch(facecolor=GREEN_FILL, edgecolor=GREEN, label="Done / on-plan"),
         mpatches.Patch(facecolor=AMBER_FILL, edgecolor=AMBER, label="Addition beyond plan"),
+        mpatches.Patch(facecolor=GREY_FILL, edgecolor=GREY, label="Results withdrawn"),
         mpatches.Patch(facecolor=RED_FILL, edgecolor=RED, label="Not started (planned)"),
     ]
     ax.legend(handles=handles, loc="center", bbox_to_anchor=(0.5, 0.885),
-              ncol=3, fontsize=9.5, frameon=True, framealpha=0.9)
+              ncol=4, fontsize=9.5, frameon=True, framealpha=0.9)
 
     box(ax, XS[0], ROW_A, W, H, "01 · Datasets & harmonization",
-        ["SCP542 53,513 cells x 22,722 g", "CTRPv2 545 drugs · target: auc_z",
+        ["SCP542 53,513 cells x 22,722 g", "CTRPv2 545 drugs · target: auc_cc",
          "overlap 190* lines · 180 trainable"], GREEN, GREEN_FILL)
     box(ax, XS[1], ROW_A, W, H, "02 · Preprocessing & embeddings",
         ["scGPT X_scGPT = 512-d", "gene-set sweep 1k-5k + all_genes",
@@ -99,13 +100,18 @@ def build_pipeline():
     box(ax, XS[2], ROW_A, W, H, "03 · Model & training design",
         ["per-cell input -> viability", "masked MSE · matched (128,64) MLP",
          "PCA & scGPT both 512-d"], GREEN, GREEN_FILL)
+    # Results withdrawn 12.08.2026 -- the target was replaced, the panel rebuilt, and the
+    # representations predate the preprocessing corrections. These boxes named specific numbers
+    # ("best scGPT val MSE 0.0336"; "target fix (auc_z): rho ~0 -> ~0.4") until then. They say so
+    # rather than quietly dropping them: a status figure with the number silently removed reads as
+    # a stage that was never measured, which is not what happened.
     box(ax, XS[3], ROW_A, W, H, "04 · Single-task baseline",
-        ["paclitaxel, leak-free split", "best scGPT val MSE 0.0336",
-         "1 DB · 1 score · 1 drug"], GREEN, GREEN_FILL)
+        ["paclitaxel, leak-free split", "results WITHDRAWN 12.08.2026",
+         "1 DB · 1 score · 1 drug"], GREY, GREY_FILL, title_color=GREY)
 
     box(ax, XS[0], ROW_B, W, H, "05 · Multi-task + fair eval",
-        ["K=545 · out-of-fold over 153 lines", "target fix (auc_z): rho ~0 -> ~0.4",
-         "scGPT >= PCA · benchmarked (DrEval)"], GREEN, GREEN_FILL)
+        ["K=545 · out-of-fold over 153 lines", "results WITHDRAWN 12.08.2026",
+         "re-measured at R4 of the sweep"], GREY, GREY_FILL, title_color=GREY)
     box(ax, XS[1], ROW_B, W, H, "06 · Cross-database  (MISSING)",
         ["CTRPv2 + PRISM + GDSC", "efficacy + toxicity heads",
          "the 'combine all' goal"], RED, RED_FILL, title_color=RED, dashed=True)
@@ -116,12 +122,16 @@ def build_pipeline():
         ["reusable pan-cancer FM", "fine-tune on clinical (binary)",
          "overarching main goal"], RED, RED_FILL, title_color=RED, dashed=True)
 
-    BAND_Y, BAND_H = 5, 13
+    # BAND_H raised from 13 on 12.08.2026: the band gained a third line when the retired auc_z
+    # target and the retracted learnability filter were relabelled rather than deleted.
+    BAND_Y, BAND_H = 4, 15
     box(ax, XS[0], BAND_Y, 94, BAND_H, "Additions beyond the written plan",
         ["512-d PCA (matched to scGPT)  ·  out-of-fold CV over 153 lines  ·  per-drug correlation metric  ·  "
          "gene-set sweep  ·  cancer-type UMAPs  ·  cell-line-grouped split (leak fix)  ·  run versioning\n"
-         "per-drug z-scored target (auc_z = 1/sigma^2 head weighting)  ·  learnability filter  ·  "
-         "ridge line-level control  ·  external benchmark against DrEval (drevalpy)"],
+         "ridge line-level control  ·  external benchmark against DrEval (drevalpy)  ·  "
+         "nested early-stopping split\n"
+         "RETIRED: per-drug z-scored target (auc_z)  ·  RETRACTED: learnability filter (measured potency, "
+         "not rankability)"],
         AMBER, AMBER_FILL, title_color=AMBER)
 
     for i in range(3):

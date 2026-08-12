@@ -23,12 +23,20 @@ All project documentation lives in [`docs/`](docs/):
 
 ![OncoTox pipeline](docs/figures/pipeline.png)
 
+> ⛔ **This figure is computed on the retired `auc` target, winsorized at 1.1, and the void 8-drug
+> panel** — both superseded on 11.–12.08.2026. Its shape is current; its numbers and its drug list are
+> not. It is regenerated at R4 of the sweep, and is not regenerated before then because doing so would
+> mean re-running the pipeline under the
+> [freeze](docs/TODO.md).
+
 ### Status against the plan
 
 ![OncoTox pipeline status overview](docs/figures/pipeline_overview.png)
 
 All figures live in [docs/figures/](docs/figures/) and are regenerated together with
-`uv run docs/make_figures.py`.
+`uv run docs/make_figures.py`. ⛔ **Only the status overview above is current.** The other five were
+computed on the retired target and the void panel; the same applies to `model_architecture.png`,
+`loss_02_weights.png` and `loss_03_effect.png`. They are relabelled, not recomputed, until R4.
 
 ## Layout
 
