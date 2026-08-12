@@ -52,7 +52,7 @@ class TrainConfig:
     early_stop_patience: int = 10
     log_every: int = 5
     seed: int = 42
-    loss: str = "mse"  # "mse" or "huber"
+    loss: str = "mse"  # "mse", "mae" or "huber" -- the three arms of review item 9A
     # ⚠️ Unsourced, and mis-scaled for the current target (found 12.08.2026, audit 09). Introduced
     # with the original multi-task commit (ed8897c) and never revisited across three target changes.
     # `smooth_l1_loss` is quadratic only below `beta` and linear above it, and 0.05 sits well under
@@ -128,15 +128,30 @@ def _masked_mean(per_elem: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
 def _make_loss_fn(config: TrainConfig, multitask: bool):
     """Return a callable ``loss_fn(preds, targets, mask=None) -> scalar tensor``.
 
-    Single-task callers can pass ``mask=None`` and get plain MSE / Huber.
+    Single-task callers can pass ``mask=None`` and get the plain loss.
     Multi-task callers must pass ``mask`` (same shape as ``targets``).
+
+    **All three losses go through the identical masked reduction**, ``sum(err * M) / sum(M)``, with
+    the density weights substituting for the 0/1 mask when weighting is on. That is what makes them
+    comparable as arms of one experiment: an MAE that bypassed the mask would be a different
+    estimator rather than a different loss, and the comparison in review item 9A would not mean what
+    it says. Only ``per_elem`` differs between them.
     """
     name = config.loss.lower()
-    if name not in {"mse", "huber"}:
-        raise ValueError(f"Unknown loss: {config.loss!r}")
+    if name not in {"mse", "mae", "huber"}:
+        raise ValueError(f"Unknown loss: {config.loss!r} (expected 'mse', 'mae' or 'huber')")
 
     if name == "mse":
         per_elem = lambda preds, targets: (preds - targets) ** 2
+    elif name == "mae":
+        # Added 12.08.2026 (Selin) as the second arm of item 9A's loss comparison. It carries no
+        # parameter, which is half its appeal here: MSE and MAE can be compared without also
+        # choosing a constant, where Huber cannot -- its `beta` is a threshold on the residual
+        # scale and `TrainConfig.huber_beta`'s 0.05 is unsourced and mis-scaled for `auc_cc`.
+        # Less pulled by the sparse extremes than squared error, which is the same axis the
+        # density weighting acts on -- so the two are not independent and the grid is read as a
+        # grid, not as two separate one-dimensional sweeps.
+        per_elem = lambda preds, targets: (preds - targets).abs()
     else:
         per_elem = lambda preds, targets: nn.functional.smooth_l1_loss(
             preds, targets, beta=config.huber_beta, reduction="none"

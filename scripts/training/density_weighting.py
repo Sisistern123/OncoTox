@@ -37,10 +37,24 @@ a handful of extreme lines driving a fit over ~150 points, and it is a safety li
 choice. Sweeping it as well would confound the alpha result, since alpha and cap trade against each
 other by construction.
 
-⚠️ Note that inverse-density weighting remains a
-`refuted hypothesis <../../docs/steps/corrections-and-dead-ends.md#inverse-density-loss-weighting-improves-ranking>`_
-on the void panel and the retired target. It is re-tested rather than assumed, and it is re-tested
-because the explanation given for that null rested on a winsorization the pipeline no longer applies.
+⚠️ Inverse-density weighting is on record as a
+`refuted hypothesis <../../docs/steps/corrections-and-dead-ends.md#inverse-density-loss-weighting-improves-ranking>`_.
+It is re-tested rather than assumed, for **three** independent reasons, of which the first two are the
+strong ones:
+
+1. **Its verdict is a CV mean-Spearman number of the class the early-stopping leak invalidated.** Every
+   out-of-fold prediction behind it came from a checkpoint chosen on the fold it was then scored on
+   (fixed 12.08.2026, :func:`cv.inner_holdout`).
+2. **It was measured on `auc`**, a target withdrawn 11.08.2026 because it had been divided by the wrong
+   quantity, and on the void 8-drug panel.
+3. **Its mechanism argument no longer describes the pipeline** -- "after winsorizing at 1.1 the
+   distributions are near-symmetric, so there was nothing left to correct" -- because that
+   winsorization was retired 11.08.2026 and the per-drug skew of `auc_cc` has never been measured.
+
+And a fourth thing, which is why "flat" was never evidence of "no effect": the null was read off
+Spearman and MSE alone, and this weighting changes *spread* rather than *order*. Both metrics are
+structurally blind to that. The calibration slope added in ``5_evaluation`` is what makes the re-test
+able to tell an absent effect from an invisible one.
 
 Note that clipping and renormalizing interact: renormalizing after a clip can push values back over
 the cap (an earlier version reported a maximum of 13.1 under a cap of 10). The normalizing constant is

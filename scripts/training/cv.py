@@ -18,13 +18,23 @@ scoring per cell would score pseudo-replicates.
 
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+import scanpy as sc
 import torch
+from scipy import sparse
 from sklearn.model_selection import GroupKFold, GroupShuffleSplit
 from torch.utils.data import DataLoader
 
 from scripts.model.dataset import MultiDrugDataset
+# `_pca_fitted_on_train` is private to add_pca, and is imported here deliberately rather than
+# reimplemented: the per-fold fit must be the *same* fit as the descriptive one, differing only in
+# which cells it sees. A second implementation is how those two silently drift apart.
+from scripts.preprocessing.add_pca import DEFAULT_N_COMPS, _pca_fitted_on_train
+from scripts.preprocessing.expression import kinker_transform
 from scripts.model.OncoMLP import DEFAULT_HIDDEN_DIMS, OncoMLP, init_head_bias_
 from scripts.training.density_weighting import (
     DEFAULT_ALPHA,
@@ -101,6 +111,95 @@ def inner_holdout(
     fit_cells[pos[fit_i]] = True
     stop_cells[pos[stop_i]] = True
     return fit_cells, stop_cells
+
+
+_FOLD_PCA_CACHE: dict[str, list[np.ndarray]] = {}
+
+
+def _fold_key(counts_h5ad: Path, fit_masks: list[np.ndarray], n_comps: int, seed: int) -> str:
+    """Digest of the fold assignment itself, not of fold indices.
+
+    Two runs with different eligible line sets must never share an entry, so the key is built from
+    the masks' contents. Fold *index* would collide across different partitions of the same size.
+    """
+    h = hashlib.sha256()
+    h.update(f"{counts_h5ad}|{n_comps}|{seed}".encode())
+    for m in fit_masks:
+        h.update(np.packbits(np.asarray(m, dtype=bool)).tobytes())
+    return h.hexdigest()
+
+
+def fold_pca_projections(
+    counts_h5ad: str | Path,
+    fit_masks: list[np.ndarray],
+    *,
+    n_comps: int = DEFAULT_N_COMPS,
+    seed: int = 42,
+) -> list[np.ndarray]:
+    """One PCA per fold, each fitted on that fold's own cells: ``[(n_cells, n_comps)] * n_folds``.
+
+    **Decision 2 of the three fits (Selin, 12.08.2026): the cross-validated PCA is fitted per fold,
+    at training time, and this closes the leak rather than documenting it.** Until then CV read the
+    all-cells ``X_pca``, so a held-out line's coordinates depended on held-out lines --
+    ``resolve_rep`` returns ``use_rep`` unchanged when ``split_col is None``, which is the CV case.
+
+    **It must read the counts file, not the targets ``.X``.** The two carry different gene sets: PCA
+    is fitted on the full HVG set (5,000 for ``hvg5000``) while the targets ``.X`` has scGPT's
+    out-of-vocabulary genes dropped (4,704 after the symbol repair). Refitting from the targets file
+    would silently lose 296 genes relative to the descriptive fit and produce coordinates that are
+    not comparable with it. Measured 12.08.2026; this is the reason the extra 2.15 GB read exists,
+    and the reason not to "simplify" it to whatever matrix is already in memory.
+
+    **Load once, fit every fold, release.** The counts matrix is dense 53,513 x 5,000, cast to
+    float32 on load -- 1.07 GB rather than the 2.14 GB it occupies on disk as float64. The five
+    projections it produces total 0.55 GB. Reading the file per fold would cost 10.75 GB of I/O for
+    an identical result. Peak is ~2.2 GB during the fits and ~0.55 GB afterwards, because the matrix
+    is dropped before the caller starts training.
+
+    Results are cached **in process** under a digest of the fold assignment. Not on disk: a cached
+    projection under ``runs/`` would be an artifact outliving the code that produced it -- the exact
+    class the 03.08 freeze exists to police -- and gitignored, so invisible in review, and failing by
+    producing plausible wrong numbers rather than an error.
+
+    ⚠️ **float32 (Selin, 12.08.2026), while ``add_pca``'s descriptive all-cells fit still runs
+    float64.** The two therefore now differ in dtype as well as in which cells they see, which
+    weakens -- for these fold fits only -- the property she established on 10.08.2026 when she
+    harmonized ``ddof`` to 1. Recorded rather than hidden: it is a real asymmetry, it was chosen with
+    the memory figures in front of her, and extending float32 to ``add_pca`` would restore the
+    property at the cost of changing ``X_pca`` in its last digits, which makes it a preprocessing
+    change. If that is later decided, this cast and that one must move together.
+
+    :param fit_masks: one boolean mask over all cells per fold, marking the cells that fold's PCA may
+        be fitted on. Whatever set the caller passes is the set the fit sees.
+    """
+    counts_h5ad = Path(counts_h5ad)
+    key = _fold_key(counts_h5ad, fit_masks, n_comps, seed)
+    if key in _FOLD_PCA_CACHE:
+        return _FOLD_PCA_CACHE[key]
+
+    src = sc.read_h5ad(counts_h5ad)
+    kinker_transform(src)  # log2(1 + CPM/10), the dataset authors' own transform -- as add_pca does
+    X_log = (src.X.toarray() if sparse.issparse(src.X) else np.asarray(src.X)).astype(
+        np.float32, copy=False
+    )
+    genes = np.asarray(src.var_names)
+    projections = []
+    for fold, mask in enumerate(fit_masks, start=1):
+        n_fit = int(np.asarray(mask, dtype=bool).sum())
+        if n_comps > min(n_fit, X_log.shape[1]):
+            raise ValueError(
+                f"n_comps={n_comps} exceeds min(n_fit={n_fit}, n_genes={X_log.shape[1]}) for fold "
+                f"{fold}. A fold cannot be projected onto more components than it has cells."
+            )
+        proj, _record = _pca_fitted_on_train(
+            X_log, np.asarray(mask, dtype=bool), n_comps, seed,
+            genes=genes, fitted_on=f"{n_fit} cells in the fitting set of CV fold {fold}",
+        )
+        projections.append(proj)
+        print(f"  fold {fold}: PCA fitted on {n_fit} cells -> {proj.shape}")
+    del X_log, src  # the caller trains next; it needs the projections, not the gene matrix
+    _FOLD_PCA_CACHE[key] = projections
+    return projections
 
 
 def per_drug_line_mean(y_lines: np.ndarray, obs_lines: np.ndarray) -> np.ndarray:
