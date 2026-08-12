@@ -256,13 +256,25 @@ all-cells fits that scGPT structurally cannot have, and the bias runs toward the
 scGPT-over-PCA margin measured this way is conservative. This qualifies every PCA-vs-scGPT number in
 the project and belongs next to review item 4's input-scale asymmetry in `docs/TODO.md`.
 
+> ⏳ **Valid as written, and its premise changes at R4 (dated 12.08.2026).** The conservatism above rests
+> on `X_pca` being fitted over **every** cell, which is what the pipeline does today — so the paragraph
+> describes the runs on record and is deliberately not rewritten in advance. The decision below fits the
+> cross-validated rotation on each fold's own fitting cells, at which point the baseline is no longer
+> estimated over cells the model never trained on, and **this conclusion stops following**. The sentence
+> to revisit is *"the bias runs toward the control … is conservative"*, not the paragraph around it.
+> ⚠️ Do not sweep the **gene-symbol** conservatism into the same edit — that one survives untouched, as
+> no choice of fitting set changes which genes reach the model
+> ([Corrections](corrections-and-dead-ends.md#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols)).
+
 #### What may a fit see — decided 12.08.2026 (Selin)
 
 The three fits above were established facts and open questions until now, and review item 7 required them
 to be **decided together**, or they would get three inconsistent answers. Two of the three are settled
-below. The conservatism argued in the paragraph above is not a caveat discovered afterwards — **both
-decisions were taken knowing it**, which is what makes them defensible: each keeps a fit that favours the
-control, in exchange for a property worth more than the margin it costs.
+below, and both keep an all-cells fit. **What that buys is comparability, not conservatism** — a
+distinction worth making precisely, because the fit-generosity argument above does not survive decision 2
+and must not be borrowed to justify these two. Neither of them favours the control: the gene set is
+**shared**, so both arms receive the identical result, and the one fit that did favour the control — the
+rotation — is the one being restricted.
 
 **1 — HVG selection stays all-cells, for both arms.** It is the one fit the two representations share.
 The alternative, selecting genes on each fold's training lines, makes the gene set **fold-dependent**: at
