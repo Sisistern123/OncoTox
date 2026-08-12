@@ -280,6 +280,32 @@ Walk the whole thing once, in order, deciding three things at each stage: **what
 open**, **what has never actually been verified**. The last column is where today's problems came from —
 every one of them was a step that looked settled and had never been checked.
 
+> ### ✅ Gate 1 sweep — all 65 unchecked boxes read against the code (13.08.2026)
+>
+> **Ten of the sixty-five were not work.** Every box making a checkable claim about the code was
+> verified against the source rather than believed. Five described work already done — the
+> `Adam → AdamW` migration, both clauses of the per-drug-mean null, `dreval_benchmark`'s epoch count,
+> and the 🔴 head-bias item — and five were written against a **retired target or a retracted
+> criterion** (`z-score train-only` on the withdrawn `auc_z`, and four boxes scoped to the 5-drug
+> learnability subset). All ten are now closed or marked, each keeping what it claimed in the past
+> tense so the record of what was believed survives the correction.
+>
+> **The one worth learning from is the 🔴.** It was dated the same day it was swept, read *"NOT
+> fixed — Selin's call"*, and the fix was already committed — in `8b6a678`, whose subject says so.
+> A red flag that outlives its defect costs the same attention as a real one, and this is the second
+> instance of the same shape in two days: `notebooks/README.md` row 5 sent readers to repair a
+> notebook that already worked. **The failure mode is a list that is only ever appended to.**
+>
+> **What the sweep leaves genuinely open before the rerun is small:** `TrainConfig.epochs = 25`
+> against every caller passing 50, `dreval` cell 8's missing `DataLoader` generator (benign, fragile),
+> `NaiveMeanEffects` as the default baseline, and two decisions that are Selin's — where the ridge
+> baseline lives, and whether this model needs weight decay at all.
+>
+> **Three items are unblocked by R2 rather than blocking it.** PCA's 512 components, the
+> `input_dropout` asymmetry between the arms, and item 4A's input-scale measurement all resolve from
+> `uns["pca_fits"]["variance_ratio"]`, which `add_pca.py` writes. They sit **between R2 and R4**.
+> Everything else is either the rerun itself (R2–R6) or post-project.
+
 - [x] **1 · Data acquisition — walked 10.08.2026.** Release, files, date and origin now recorded per
       source in [Step 01](./steps/01-datasets-and-harmonization.md#provenance--what-was-retrieved-from-where-when),
       together with the two data roots (`~/Desktop/OncoTox/data` and `<repo>/data`), which nothing had
@@ -477,13 +503,16 @@ every one of them was a step that looked settled and had never been checked.
         names all 153 train+val lines, so the test set is the labelled lines it omits — and every number
         scored on it is void on target and panel grounds. R2 creates the file itself; committing it
         there is where the guard starts to protect something (added to R2).
-  - [ ] **C · The per-drug-mean null is computed two different ways.** `cv_evaluate` fits its constant
-        on the fold's fitting lines (honest); `4a_percell_training.ipynb` §4 computes `null_mse` from the
-        variance of the **held-out** truth, an oracle constant fitted on the rows it is scored against.
-        Conservative — it makes the model look worse — but they are not the same bar and one figure
-        cannot be read against the other. Also `_per_drug_train_mean` averages over cells, so lines
-        weigh by their cell count, where `density_weighting.line_level` is per line. Routed to
-        **item 11 (Evaluation)**, which owns the baselines.
+  - [x] **C · CLOSED 13.08.2026 (Gate 1 sweep) — both clauses were fixed and the box was not.**
+        It read: *"The per-drug-mean null is computed two different ways. `cv_evaluate` fits its
+        constant on the fold's fitting lines (honest); `4a_percell_training.ipynb` §4 computes
+        `null_mse` from the variance of the **held-out** truth, an oracle constant fitted on the rows
+        it is scored against … Also `_per_drug_train_mean` averages over cells, so lines weigh by
+        their cell count."* Both were true when written and neither is now: `4a` §4's `_oof_null`
+        fits each fold's constant on the rows that fold did **not** hold out (audit 11, 12.08.2026,
+        and the cell carries the reasoning), and `_per_drug_train_mean` calls
+        `cv.per_drug_line_mean` — per **cell line**, not per cell. Verified by reading both against
+        the code, not by spot-check.
   - [x] **DECIDED 12.08.2026 (Selin) — what may a fit see. Handed over from item 3 (10.08.2026):
         three fits, one question.** Decided together, as the item required, so the three answers are
         consistent. The shared grounds: all three are **unsupervised** — no fit sees a response label.
@@ -613,18 +642,26 @@ every one of them was a step that looked settled and had never been checked.
         Record: [Corrections](./steps/corrections-and-dead-ends.md#the-two-uncentred-target-mechanics-ran-in-one-training-path-of-three).
         **Takes effect at R4.** Note the target itself was left uncentred: per-drug mean-centring is the
         more standard fix and was rejected here because it is a target change and pre-empts half of S1.
-    - [ ] 🔴 **THE FIX WENT TO THREE PATHS OF FOUR. Found 13.08.2026, NOT fixed — Selin's call.**
-          `notebooks/analysis/evaluation/dreval_benchmark.ipynb` cell 8's `run_oncomlp` **also** trains an
-          `OncoMLP`, and nobody enumerated it. It constructs the model and calls `train_model` with **no
-          `init_head_bias_` anywhere**, while `cv.py:375` calls
-          `init_head_bias_(model, per_drug_line_mean(...))`. So the consequence this item names is still
-          live in the benchmark: `auc_cc` centres near 0.9, a zero-initialized head starts every drug an
-          offset from the base rate, and early epochs are spent travelling there. **The pipeline stopped
-          doing this on 12.08; the benchmark has been doing it ever since**, which biases the benchmark
-          *against* our model — the same direction as the 25-vs-50 epoch defect, in the same cell, found
-          the same way. Not fixed unilaterally because it changes what the benchmark measures, and that is
-          the same class of decision as the epoch count. The benchmark's numbers are already void on three
-          other grounds, so there is no urgency to get this wrong quickly.
+    - [x] ✅ **CLOSED 13.08.2026 (Gate 1 sweep) — the fourth path was fixed, hours after this was
+          written, and the box stayed red.** `dreval_benchmark.ipynb` cell 8 now calls
+          `init_head_bias_(model, per_drug_line_mean(_y_lines, _obs_lines))` at line 56, landed in
+          `8b6a678` — a commit whose subject is literally *"the head-bias fix reached three training
+          paths of four -- this is the fourth"*. **The sub-item (i) below is NOT closed by this**; the
+          missing `DataLoader` generator is a separate defect in the same cell and is still live.
+          ⚠️ Worth keeping as a process finding rather than only a code one: this box was marked 🔴,
+          dated the same day, and read *"NOT fixed — Selin's call"* while the fix was already in the
+          working tree. A red flag that outlives its defect costs the same attention as a real one.
+          What it said, in the past tense: cell 8's `run_oncomlp` **also** trained an `OncoMLP` and
+          nobody had enumerated it — it constructed the model and called `train_model` with **no
+          `init_head_bias_` anywhere**, while `cv.py:375` called
+          `init_head_bias_(model, per_drug_line_mean(...))`. The consequence it named was real for the
+          window it describes: `auc_cc` centres near 0.9, a zero-initialized head starts every drug an
+          offset from the base rate, and early epochs are spent travelling there — so between 12.08 and
+          the fix the benchmark was biased *against* our model, the same direction as the 25-vs-50 epoch
+          defect, in the same cell, found the same way. It was not fixed unilaterally at the time because
+          it changes what the benchmark measures, which is the same class of decision as the epoch count.
+          **Both were then decided and applied together.** No number is affected: the benchmark has not
+          been re-run, and its existing numbers were already void on three other grounds.
           Found by enumerating cell 8 against `cv.oof_predictions` rather than spot-checking — spot-checking
           is what missed it the first time.
       - Two lesser differences from the same enumeration, recorded so they are not re-found.
@@ -657,8 +694,15 @@ every one of them was a step that looked settled and had never been checked.
         the honest ordering may be ridge above it. **Scope agreed (Selin, 12.08.2026): the minimal
         re-run** — trunk `(128,64)` vs a bare linear head, both representations, against `RidgeCV` on the
         same folds and the rebuilt panel; not the four-knob sweep. Scheduled at R4.
-  - [ ] **Found on the way, routed elsewhere.** `--epochs` defaults to 50 in the CLI, 25 in `TrainConfig`
-        and `4a_percell_training`, and `4a_percell_training` §B sets 50 → **item 10**. `dreval_benchmark.ipynb` builds
+  - [ ] **Found on the way, routed elsewhere — NARROWED 13.08.2026 (Gate 1 sweep).** It read
+        *"`--epochs` defaults to 50 in the CLI, 25 in `TrainConfig` **and `4a_percell_training`**, and
+        `4a_percell_training` §B sets 50"*. The notebook half is no longer true: `4a` sets
+        `TrainConfig(epochs=50, seed=SEED)` once, for **both** sections. ⚠️ **What remains is
+        sharper than the original, not softer:** `TrainConfig.epochs` is still **25** and **every
+        caller in the project now passes 50** — the CLI default, `4a` §A and §B, `dreval_benchmark`
+        cell 8, and `4b_mil_training`. A default that no caller uses is not a default, it is a trap
+        for the next one written, and `scripts/training/mil.py` inherits it the moment `4b` stops
+        passing `epochs` explicitly. → **item 10**. `dreval_benchmark.ipynb` builds
         `OncoMLP` by hand and so has neither mechanic from A → **item 11**, which owns that notebook.
         `ScGPTDrugDataset` has no consumers — the `train_baseline.py` / `train_scGPT.py` its docstring
         names were deleted in `090f957` — and the `norm="batch"` / `"none"` branches are never exercised
@@ -797,8 +841,14 @@ every one of them was a step that looked settled and had never been checked.
         so the claim is the loop's, not the chain's. Certifying the chain needs real data and waits for
         R2. **This also discharges audit 12's outstanding clause** — the 28.07.2026 no-action decision
         required measuring the non-determinism where it matters, and it is now measured.
-  - [ ] **Adam → AdamW (Selin, 12.08.2026).** Weight decay is currently added as L2 to the gradient
-        under `optim.Adam` rather than decoupled. Loshchilov & Hutter, *Decoupled Weight Decay
+  - [x] **Adam → AdamW — DONE, and this box was stale (closed 13.08.2026, Gate 1 sweep).**
+        `training_utils.py` builds `optim.AdamW` on both branches; the migration landed 12.08.2026
+        together with `weight_decay = 0.0`. ⚠️ **Its first sentence was false about the code from
+        that day onward** and is preserved here in the past tense, because it is what a reader
+        would have acted on: *"Weight decay **is currently** added as L2 to the gradient under
+        `optim.Adam` rather than decoupled."* The item's own closing parenthetical below already
+        said the finding "closes here" — the box and its opening claim were simply never updated,
+        which is how a done item keeps asking to be done. The argument for the switch stands: Loshchilov & Hutter, *Decoupled Weight Decay
         Regularization*, ICLR 2019, showed the two are not equivalent under Adam and that the decoupled
         form is the one that behaves as intended. It interacts directly with the grouping audit 08
         changed — *which* parameters are decayed and *how* decay is applied are one decision — so the
@@ -830,9 +880,11 @@ every one of them was a step that looked settled and had never been checked.
         *(Item 10's optimizer finding closes here — decoupled decay is what Loshchilov & Hutter argue
         for and it is now in use. What replaces it is the open regularization question above, not
         nothing.)*
-  - [ ] **`dreval_benchmark` trains for 25 epochs where everything else runs 50 → set it to 50
-        explicitly (Selin, 12.08.2026).** It is the only caller that passes no `epochs` and so falls to
-        `TrainConfig`'s default, which every other caller overrides. **This is not a change to the
+  - [x] **DONE — `dreval_benchmark` now sets `epochs=50` explicitly** (closed 13.08.2026, Gate 1
+        sweep; the change itself is dated 12.08.2026 in the cell). Cell 8 builds
+        `TrainConfig(epochs=50, seed=42, log_every=1000)`. What the box said, kept because the
+        reasoning is the reason the fix was right: it was the only caller that passed no `epochs`
+        and so fell to `TrainConfig`'s default, which every other caller overrides. **This is not a change to the
         benchmark — it is the benchmark silently running half the training the pipeline uses**, so the
         notebook answering "how strong is this by the field's standard" has been scoring a weaker model
         than the field would see. Nobody chose 25 for it. R5-side.
@@ -1528,17 +1580,31 @@ comparison are written up in [Step 03](./steps/03-model-and-training-design.md) 
 - [ ] **Train-only selection** — run the drug-selection criterion *inside each CV fold* (train lines only)
       and re-measure. If the effect survives, it is real. **Still the blocking item** for any headline
       number, on any panel.
-- [ ] **Externalize the spread requirement** — re-derive the panel with the spread condition measured on
+> ⚠️ **The three boxes below were written for a panel that no longer exists (13.08.2026, Gate 1
+> sweep).** They target the **5-drug learnability subset**, whose selection criterion was
+> [retracted](./steps/corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability)
+> — it measured potency, not rankability — and the 8-drug panel that replaced it is void. The live
+> panel is the **rebuilt 11-drug literature panel** (item 6, 12.08.2026), selected on published
+> evidence rather than on our own response values, which dissolves the label-dependency each of these
+> was designed to remove. **They are kept rather than deleted because two of them describe procedures
+> that would still be worth having on the current panel** — externalizing the spread condition, and
+> asking where the signal dies as the criterion loosens — but neither is scoped to it, and neither
+> should be run as written. **Re-scope or retire: Selin's call, and it is not a rerun blocker.**
+>
+> **`Train-only selection` above is deliberately NOT in this group** — it says "on any panel", so it
+> generalises past the artifact it was written for and remains the blocking item it claims to be.
+
+- [ ] ⬜ **Externalize the spread requirement** *(needs re-scoping — see the note above)* — re-derive the panel with the spread condition measured on
       **GDSC2** (`data/GDSC2_fitted_dose_response_27Oct23.xlsx`) or PRISM instead of on the CTRP labels we
       train on. Cheaper than fold-internal selection and would make the panel genuinely label-blind.
-- [ ] **Loosen to ~20–50 drugs** — a handful is a diagnostic, not a model. Where does the signal die as
+- [ ] ⬜ **Loosen to ~20–50 drugs** *(needs re-scoping — see the note above)* — a handful is a diagnostic, not a model. Where does the signal die as
       the criterion relaxes? (`outputs/archive/learnability/ctrp_drug_learnability_auc.csv` is already ranked for
       this, though it is ranked on the [discredited gate](./steps/corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability).)
-- [ ] **Re-run the full 8-run matrix + CV on the current target** for a like-for-like against the
+- [ ] ⬜ **Re-run the full 8-run matrix + CV on the current target** *(needs re-scoping — see the note above; and `4a` §B is already scheduled at R4, so check this is not a duplicate)* — for a like-for-like against the
       `mean_pv` Steps 04–05 numbers. **Expect this to overturn them, not refresh them**
       ([why](./steps/corrections-and-dead-ends.md#the-8-run-matrix-conclusions)).
       ⚠️ *This item originally said `--score auc_z`, which is retired — use the current default.*
-- [ ] **More seeds + a wider drug set** before scGPT > PCA becomes a headline claim. Pair it with
+- [ ] ⬜ **More seeds + a wider drug set** *(the seed half is already R4's; the "wider drug set" half needs re-scoping — see the note above)* before scGPT > PCA becomes a headline claim. Pair it with
       train-only selection.
 
 ## Model-side tuning is closed (13.07.2026)
@@ -1568,8 +1634,13 @@ and [Corrections](./steps/corrections-and-dead-ends.md#the-model-is-over-regular
       on beating ridge.)* What stays open here is narrower: if line-level ρ is all that is ever
       reported, the per-cell framing needs a justification that does not depend on Q2 succeeding.
 - [ ] **Add ridge (line-level) to `4a_percell_training` §B's comparison tables** so every future claim is scored against it.
-- [ ] *(Optional)* **z-score train-only.** The per-drug mean/std currently use all 180 lines, val/test
-      included — mild leakage. Fixing it means computing splits before the targets step.
+- [x] ⛔ **VOID — there is no z-scoring left to fix** (13.08.2026, Gate 1 sweep). It read:
+      *"z-score train-only. The per-drug mean/std currently use all 180 lines, val/test included —
+      mild leakage."* That leak was real while the target was `auc_z`, which was **retired
+      27.07.2026**; `layout.CTRP_SCORES` is now `('auc_cc', 'ln_ic50_cc')` and no per-drug mean or
+      standard deviation is estimated anywhere in the target path. The concern did not go away by
+      being fixed — the target that carried it was withdrawn, which is a different thing and worth
+      distinguishing: if a standardized target ever returns, this leak returns with it.
 - [ ] *(Stretch)* cluster cell lines by response and **stratify train/val/test** (high/med/low) for
       lower-variance evaluation.
 
