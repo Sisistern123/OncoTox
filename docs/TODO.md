@@ -705,7 +705,7 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 - [x] **R1 · DECIDED 12.08.2026 (Selin): re-embed `hvg5000` + `all_genes`.** Not all five, not
       `hvg5000` alone. This covers every number the report currently quotes, at the middle cost —
       scGPT embedding is the expensive step, which is why the scope had to be set before R2.
-      Five variants exist on disk (`hvg1000/2000/3000/5000`, `all_genes` — `layout.py:31`,
+      Five variants exist on disk (`hvg1000/2000/3000/5000`, `all_genes` — `layout.py`,
       `VARIANT_N_TOP_GENES`); the three that are not re-embedded keep their current artifacts.
       ⚠️ **What this costs, recorded so it is not rediscovered:** [Step 05](./steps/05-multitask-results.md)'s
       gene-set sweep spans `hvg1000/2000/3000/5000`, so after R2 it **mixes re-embedded `hvg5000` with
