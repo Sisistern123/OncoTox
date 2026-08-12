@@ -205,7 +205,8 @@ or its criterion was retracted — nothing regenerates those.
 
 | Path (under `notebooks/outputs/`) | Owns the discussion |
 |---|---|
-| `data/target_distribution.png`, `data/drug_coverage.png` | [Step 05](./steps/05-multitask-results.md) — re-run at R5, the line count moves 180 → 181 |
+| `data/target_distribution.png` | [Step 05](./steps/05-multitask-results.md) — re-run at R5, the line count moves 180 → 181 |
+| `archive/drug_coverage.png` | [Step 05](./steps/05-multitask-results.md) — model output on a retired target; its cells were dropped from `drug_coverage` 13.08.2026, so nothing regenerates it |
 | `embeddings/umap_cancertype_pca_vs_scgpt.png`, `umap_sweep_cancertype.png`, `variants.png` | [Step 02](./steps/02-preprocessing-and-embeddings.md#latent-space-validation-umap-fig-3--fig-4) |
 | `dreval/dreval_lco*.{png,csv}`, `dreval/dreval_normalized*.csv` | [Step 05](./steps/05-multitask-results.md) — `dreval_benchmark` is blocked on review item 11, then R5 |
 | `diagnostics/*` | [Step 05](./steps/05-multitask-results.md), [Corrections](./steps/corrections-and-dead-ends.md) — re-runs at R5 |

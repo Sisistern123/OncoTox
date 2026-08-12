@@ -77,7 +77,7 @@ Nothing here is on the pipeline path; each answers a question about it.
 | Notebook | Question it answers |
 |---|---|
 | `cell_line_join_verification.ipynb` | **Does the name join pair the right two lines?** Resolves SCP542's names against the pinned Cellosaurus release and checks them against the accessions DrEval ship, with an independent tissue cross-check. Runs `scripts/sources/cellosaurus.py`, so the rules it documents are the rules the pipeline uses |
-| `drug_coverage.ipynb` | Per-drug coverage and response spread; the label distribution behind "why the task is hard". ⚠️ Its *learnability* section was built on `mean_pv` and is superseded; the target-distribution figures still stand |
+| `drug_coverage.ipynb` | Per-drug coverage and response spread; the label distribution behind "why the task is hard" (`data/target_distribution.png`). **Trimmed 23 → 10 cells on 13.08.2026 (Selin):** the model-vs-baseline section and both learnability rankings are gone — the first read a run on a retired target, the second's criterion is [retracted](../docs/steps/corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability). What remains reads no model output at all |
 | `drug_catalog.ipynb` | Cross-database compound harmonization (CTRP / GDSC / PRISM / DrugBank). ⛔ **Needs a rewrite, not a re-run:** it hardcodes absolute `/Users/...` paths, never uses `PipelinePaths`, reads CTRPv2's retired `v20.*` tables, and its `../data/*` inputs are not in the repository |
 
 ### `analysis/evaluation/` — is the number real?

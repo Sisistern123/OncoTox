@@ -318,9 +318,11 @@ covers all 180 lines** — max 179, median 171 — **382 drugs clear 90 %** cove
 > and its tables sit in `outputs/archive/`, which is by definition what a standard run cannot recreate.
 >
 > The coverage figures above are **unaffected** — they come from §2–§3, which read no model output. They
-> move 180 → 181 lines at R5. The parenthetical formerly credited `outputs/data/drug_coverage.png` with
-> these numbers; that figure contains none of them (both its panels are model output), so the
-> attribution has been corrected to the notebook sections that print them.
+> move 180 → 181 lines at R5. The parenthetical formerly credited the drug-coverage figure with these
+> numbers; that figure contains none of them (both its panels are model output), so the attribution has
+> been corrected to the notebook sections that print them. The figure itself now sits at
+> `outputs/archive/drug_coverage.png`, having been under `data/` until its producing cells were dropped
+> on the same day.
 
 **The result (`learnable_subset_training`).** Both reps trained on those 5 heads (matched trunk, on the then-current `auc_z`); the honest
 metric is per-drug Spearman on **cross-validated out-of-fold predictions** — 5-fold GroupKFold over the
