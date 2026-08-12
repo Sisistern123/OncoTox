@@ -371,12 +371,29 @@ every one of them was a step that looked settled and had never been checked.
         cannot be read against the other. Also `_per_drug_train_mean` averages over cells, so lines
         weigh by their cell count, where `density_weighting.line_level` is per line. Routed to
         **item 11 (Evaluation)**, which owns the baselines.
-  - [ ] **Handed over from item 3 (10.08.2026): three fits, one question — what may a fit see?** All
-        three are established facts, none is decided, and they should be decided together rather than
-        separately, or they will get three inconsistent answers. All are unsupervised (no fit sees a
-        response label), which is why standard pipelines tolerate them; and all bias **toward** the PCA
-        control, since scGPT's per-cell binning draws on no other cell, so any scGPT-over-PCA margin
-        measured today is conservative. Detail:
+  - [x] **DECIDED 12.08.2026 (Selin) — what may a fit see. Handed over from item 3 (10.08.2026):
+        three fits, one question.** Decided together, as the item required, so the three answers are
+        consistent. The shared grounds: all three are **unsupervised** — no fit sees a response label —
+        and all bias **toward** the PCA control, since scGPT's per-cell binning draws on no other cell,
+        so any scGPT-over-PCA margin measured under them is a lower bound rather than an inflated one.
+        **1 — HVG stays all-cells.** Keeping one gene set keeps folds, arms and Step 05's gene-set sweep
+        comparable; a train-only HVG set would be fold-dependent, so "the 5,000 HVGs" would stop being a
+        single object. **2 — the cross-validated PCA is fitted per fold, at training time**, on that
+        fold's training lines. This is the one fit that changes, because every CV number carried it and
+        the CV numbers are the headline. It needs no preprocessing change: `X_pca` is still written and
+        remains correct for UMAPs and other descriptive use; CV stops reading it. Implementation is a
+        change to how training resolves the representation (`model/dataset.py::resolve_rep`, which today
+        falls through to `X_pca` whenever `split_col is None`), **not** to `add_pca.py`. Storing five
+        fold-keyed matrices was considered and rejected as unnecessary coupling — folds are deterministic
+        given the seed and the eligible line set, so a per-fold fit reproduces without being stored.
+        **3 — the never-training cells stay in.** Decision 2 already removes them from the PCA the model
+        reads, because a fold's training lines are eligible (labelled) by construction; what remained was
+        only whether they should help choose the HVG set, and they should — no label exists to leak, more
+        cells estimate gene variance better, and both arms share the result so neither is advantaged.
+        ⚠️ **Consequence for the record:** the leak in `resolve_rep` is closed for CV rather than
+        documented, so Step 02's "still leaky, and documented as such" and the matching docstring stop
+        being true at R4 and must be rewritten there, not before — the code changes at R4, not now.
+        Detail on what each fit sees:
         [Step 02](./steps/02-preprocessing-and-embeddings.md#what-transform-pca-sees--corrected-05082026).
         1. **HVG selection is all-cells**, for both arms — the one fit the two representations share.
         2. **The cross-validated PCA is all-cells.** The fixed splits were fixed 05.08.2026
@@ -546,12 +563,19 @@ first and agreed before it is executed.
 cache and would not have survived the session. Nothing here may start before the review above is
 finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 
-- [ ] **R1 · Decide the re-embedding scope — which variants get regenerated.** **Selin's decision, and
-      it sizes everything below**, because scGPT embedding is the expensive step. Five variants exist on
-      disk (`hvg1000/2000/3000/5000`, `all_genes` — `layout.py:31`, `VARIANT_N_TOP_GENES`). What each
-      option implies: **all five** keeps [Step 05](./steps/05-multitask-results.md)'s gene-set sweep
-      like-for-like; **`hvg5000` + `all_genes`** covers every number the report currently quotes but
-      leaves the sweep mixing old and new embeddings; **`hvg5000` only** is cheapest and voids the sweep.
+- [x] **R1 · DECIDED 12.08.2026 (Selin): re-embed `hvg5000` + `all_genes`.** Not all five, not
+      `hvg5000` alone. This covers every number the report currently quotes, at the middle cost —
+      scGPT embedding is the expensive step, which is why the scope had to be set before R2.
+      Five variants exist on disk (`hvg1000/2000/3000/5000`, `all_genes` — `layout.py:31`,
+      `VARIANT_N_TOP_GENES`); the three that are not re-embedded keep their current artifacts.
+      ⚠️ **What this costs, recorded so it is not rediscovered:** [Step 05](./steps/05-multitask-results.md)'s
+      gene-set sweep spans `hvg1000/2000/3000/5000`, so after R2 it **mixes re-embedded `hvg5000` with
+      three variants embedded by the older code** — before the gene-symbol repair, the seeding and the
+      `ddof=1` harmonization. The sweep is therefore not like-for-like and any conclusion drawn across
+      its points needs that stated, or the three remaining variants re-embedded later as a top-up.
+      Rejected alternatives and why: **all five** keeps the sweep like-for-like but is the longest run;
+      **`hvg5000` only** is cheapest but voids the sweep entirely and leaves every `all_genes` number in
+      the report stale.
 - [ ] **R2 · Re-run preprocessing end to end.** Driver: the notebooks —
       `notebooks/1_data.ipynb` (`fetch`, `convert`) then `notebooks/3_representations.ipynb`
       (`scgpt`, `targets`, `splits`, `pca`), both calling `scripts/preprocessing/pipeline.py`. Needs
