@@ -53,6 +53,28 @@ and the train/val/test grouping.
   over a shared trunk — there are no separate per-drug sub-networks. The default catalog is
   **K = 545** CTRPv2 drugs.
 
+### The drug panel is a training-time choice, not a property of the target file (12.08.2026)
+
+`ctrp_to_h5ad` *can* restrict the target matrix to a named compound list — `target_drugs`, exposed as
+`--drugs` — so which drugs reach the h5ad is a real choice rather than a default.
+
+**Decision (Selin, 12.08.2026): it is not used. The panel is applied at training and nowhere earlier.**
+The reason is that the panel's entire effect is on the model: it sets `output_dim`, that is, how many
+heads share one trunk. It is a statement about what the network is asked to predict, not about what the
+data contains. So `Y_ctrp` / `M_ctrp` keep the full screened catalog, and the panel is a column selection
+made by `MultiDrugDataset(drugs=…)` when a run is configured.
+
+Two consequences worth having written down:
+
+- **Changing the panel requires no preprocessing re-run.** One targets h5ad serves any panel, which is
+  why `literature_panel.ipynb` can rebuild the panel under the freeze while the h5ads cannot be rebuilt.
+- **Filtering upstream would have moved the splits.** A cell line is eligible for splitting if any of its
+  cells carries at least one observed label — `has_any_label = M.any(axis=1)`, `create_splits.py:164`.
+  That test is taken over the *width* of `M`, so narrowing `M` from ~545 columns to 11 would re-evaluate
+  eligibility against the panel and could drop lines that are screened but not against a panel compound,
+  silently redrawing `split_ctrp`. Found by the code-quality session and verified here against
+  `create_splits.py`; it is a consequence of the decision, not its motivation.
+
 ---
 
 ## Target `y` — the response score, and at what resolution it is defined

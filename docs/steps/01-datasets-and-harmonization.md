@@ -568,6 +568,11 @@ Produced end to end by `notebooks/drug_selection/literature_panel.ipynb` →
 `notebooks/outputs/panel/panel.csv`. It reads no pipeline artifact, only the response CSV, so it runs
 before the sweep and does not go stale when the h5ads do.
 
+**The panel does not enter the target build.** `Y_ctrp` / `M_ctrp` keep the full screened catalog and the
+panel is applied at training time, because what it determines is the number of heads rather than what the
+data contains (Selin, 12.08.2026):
+[Step 03](03-model-and-training-design.md#the-drug-panel-is-a-training-time-choice-not-a-property-of-the-target-file-12082026).
+
 **The criterion, in three conditions.**
 
 1. **FDA-approved for a cancer indication**, from Sun, J., Wei, Q., Zhou, Y., Wang, J., Liu, Q. & Xu, H.
