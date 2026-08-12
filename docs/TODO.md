@@ -583,8 +583,18 @@ every one of them was a step that looked settled and had never been checked.
       at K=11 (1.0 %), 35,425 of 109,729 at K=545 (32.3 %). So the capacity the heads compete *for* is
       fixed no matter how many of them there are, which is what makes "capacity competition between
       heads" the right description of the K=545 collapse and a bigger panel no cheaper in trunk than a
-      smaller one. Against ~153 independent labels. Counts from `arch_facts.py` (audit 08, synthetic
-      input, nothing trained).
+      smaller one. Against ~153 independent labels.
+      ⚠️ **Provenance repaired 13.08.2026 — the four counts are correct, the citation was dead.**
+      `arch_facts.py` was **never committed anywhere** — not on `main`, not on any branch, not in any
+      commit in this repository's history; it existed only in a session scratch directory. All four
+      counts were re-derived against the real `scripts/model/OncoMLP.py` with `DEFAULT_HIDDEN_DIMS` and
+      `input_dim` 512, and **every one matches** (trunk 74,304 at every K; 65 parameters per head;
+      715 / 75,019 at K=11; 35,425 / 109,729 at K=545). Stated this way deliberately: after two
+      dead-provenance findings on the same day the reflex is to distrust the numbers, and here the
+      numbers are fine. The computation is pure architecture — no data, no training — so it is cheap to
+      re-derive; **whether it earns a gated cell in `4a` beside the weight-decay one is open.** The
+      weight-decay cell cleared that bar because it *decided* something; this one only *describes*
+      something, which may be the distinction worth keeping.
       **The per-cell framing stands until MIL replaces it, and what MIL has to replace is the dataset and
       the loss, not `OncoMLP`** — the encoder carries over unchanged as the instance model. Q2's design,
       its controls and the open decision on what counts as a positive result stay in *Agreed plan,
@@ -603,6 +613,29 @@ every one of them was a step that looked settled and had never been checked.
         Record: [Corrections](./steps/corrections-and-dead-ends.md#the-two-uncentred-target-mechanics-ran-in-one-training-path-of-three).
         **Takes effect at R4.** Note the target itself was left uncentred: per-drug mean-centring is the
         more standard fix and was rejected here because it is a target change and pre-empts half of S1.
+    - [ ] 🔴 **THE FIX WENT TO THREE PATHS OF FOUR. Found 13.08.2026, NOT fixed — Selin's call.**
+          `notebooks/analysis/evaluation/dreval_benchmark.ipynb` cell 8's `run_oncomlp` **also** trains an
+          `OncoMLP`, and nobody enumerated it. It constructs the model and calls `train_model` with **no
+          `init_head_bias_` anywhere**, while `cv.py:375` calls
+          `init_head_bias_(model, per_drug_line_mean(...))`. So the consequence this item names is still
+          live in the benchmark: `auc_cc` centres near 0.9, a zero-initialized head starts every drug an
+          offset from the base rate, and early epochs are spent travelling there. **The pipeline stopped
+          doing this on 12.08; the benchmark has been doing it ever since**, which biases the benchmark
+          *against* our model — the same direction as the 25-vs-50 epoch defect, in the same cell, found
+          the same way. Not fixed unilaterally because it changes what the benchmark measures, and that is
+          the same class of decision as the epoch count. The benchmark's numbers are already void on three
+          other grounds, so there is no urgency to get this wrong quickly.
+          Found by enumerating cell 8 against `cv.oof_predictions` rather than spot-checking — spot-checking
+          is what missed it the first time.
+      - Two lesser differences from the same enumeration, recorded so they are not re-found.
+        **(i) No `DataLoader` generator** — `dreval`'s train loader is `shuffle=True` with no `generator`,
+        which is precisely the ordering dependency `cv.py:378-386` carries a comment about having removed.
+        **Benign today**, because `train_model` calls `set_seed(config.seed)` before the loader is first
+        iterated, so the shuffle is in fact seeded — fragile rather than broken, and fragile in the exact
+        way the project already decided against. **(ii) Validation `batch_size` 256 vs the pipeline's 128**
+        — numerically nothing: dropout is off at eval and `LayerNorm` is per-sample.
+        Everything else matches: dropout 0.5, input dropout 0.1, norm layer, train batch 128, lr 1e-3,
+        weight decay 0.0, loss `mse`, `no_decay_bias_and_norm` on, epochs 50, seed 42.
     - [ ] **Open, not decided: the bias init does not start the model at the null predictor.** It fixes
           the level only approximately — the randomly initialized head weight rows already scatter
           predictions with sd ≈0.31 at initialization, against a true across-line spread of order 0.17,
@@ -699,6 +732,41 @@ every one of them was a step that looked settled and had never been checked.
         (Spearman), order at the top (NDCG@K against a random null), values (RMSE in AUC units) and
         spread (calibration slope) — get a section each in `notebooks/5_evaluation.ipynb`, which is
         written but not yet built. Item 11 owns the metric set and records it.
+  - [x] **How `order` is computed — decided by Selin, 13.08.2026.** Four sub-choices, all settled
+        before any of the six arms is run, because the last comparison failed by choosing after seeing
+        the numbers. **Spearman**, **per drug then averaged**, **unweighted mean across the 11 drugs**,
+        **pooled across the five folds**.
+    - **Spearman, not Pearson** — so that `order` and the calibration slope stay independent. Under
+      Pearson a single defect (predictions compressed toward the mean) moves the primary *and* its
+      spread guard together, and the guard stops being a check. Source: the primary-plus-guards rule
+      itself (Selin, 12.08.2026, this file); comparability with `4a`'s own markdown, which calls
+      within-drug Spearman "the quantity the whole project is judged on".
+    - **Per drug, not pooled over all (line × drug) pairs** — pooling is the potency artifact the
+      DrEval work is written about. Source in this repository, not the paper:
+      `scripts/evaluation/dreval_normalize.py`'s docstring records a synthetic predictor with **zero**
+      drug-specific signal scoring normalized Spearman **0.98** under this split design. Arm-vs-arm
+      would survive pooling; the headline number would not be defensible on its own.
+    - **Unweighted mean across drugs** — every drug counts equally. Chosen for continuity: it is what
+      `4a` already computes and what every recorded number used. ⚠️ **Stated cost, not hidden:** panel
+      coverage is *not* equal, so a thinly covered drug moves the headline as much as a well covered
+      one. The count-weighted mean is the more defensible statistic and was rejected only because no
+      earlier number would be comparable to it.
+    - **Pooled across folds** — every held-out line appears exactly once across the five folds, which
+      is what the out-of-fold table is for. Note that `analysis/qc/diagnostics.ipynb`'s
+      `sd_across_folds` is the *other* combination (per fold, then averaged) and gives a different
+      number; **that spread is not the seed band and must not be used as one.**
+    - ⚠️ **Why the aggregation mattered more than it looks, and why it was fixed in advance.**
+      `SEED_BAND` is now measured from the run's own ≥3 seeds, and the band is the seed-to-seed spread
+      *of this aggregate*. A median across drugs is more stable than a mean, so it would have produced
+      a **narrower band — an easier bar for an arm to clear.** The aggregation choice therefore sets
+      the sensitivity of the whole loss comparison before any data exists. Surfaced by the item-11
+      session rather than defaulted, which is the reason it is on the record at all.
+  - [x] **Guard margins are named parameters, defaulting to each guard's own measured band —
+        13.08.2026.** ±0.04 lives on Spearman's scale and does **not** transfer: `values` is in the
+        target's own units and the calibration slope is centred on 1.0. This follows from the
+        `SEED_BAND` decision (measure it from the run) rather than being a new choice; it is recorded
+        because the alternative — one margin reused across three scales — is the kind of thing that
+        reads as principled once it is in a table.
 - [x] **10 · Training — walked 12.08.2026. Nothing here gates R2.** Optimizer, weight-decay groups,
       epochs, early stopping and the `mps` nondeterminism, read against the code.
   - [x] **The `mps` nondeterminism does not reproduce under current code.** Measured on the real
