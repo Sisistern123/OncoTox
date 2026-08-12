@@ -1,0 +1,33 @@
+% ============================================================================
+% loss_objective.tex -- the training objective, as LaTeX macros.
+% ============================================================================
+%
+% GENERATED FILE -- DO NOT EDIT.
+%   Written by docs/make_figures.py :: build_loss_formula_tex() from LOSS_TEX_MACROS,
+%   which is also what docs/figures/loss_01_objective.png renders. One source, both
+%   destinations, so the equation in the report and the equation in the figure cannot
+%   drift apart. To change a formula, edit LOSS_TEX_MACROS and re-run the generator.
+%
+% HOW THEY ARE USED
+%   main.tex does \input{loss_objective} in the preamble; a section then writes e.g.
+%     \begin{equation}\LossObjective\end{equation}
+%   Definitions only -- the section chooses the environment.
+%
+% WHAT IS DELIBERATELY SYMBOLIC
+%   \ell, \alpha and \beta are left as symbols: the loss comparison (docs/TODO.md item
+%   9A) sweeps MSE / MAE / Huber against alpha in {off, 0.5, 1.0}, and Huber's beta must
+%   be derived from the residual scale (item 9C) rather than inherited. A concrete value
+%   here would pre-empt a decision the R4 run exists to make.
+%
+% NOTATION
+%   n in N    cells -- the loss is summed over cells, training being per cell.
+%   i in I_j  cell lines of the training fold observed for drug j -- where the density is
+%             fitted. Kept a separate index on purpose: fitting on cells would let a line
+%             with 1,990 sequenced cells bend the density and one with 56 barely register.
+%   j         drug, 1..K.        c   the weight cap (fixed; arbitrary, and documented so).
+
+\newcommand{\LossObjective}{\mathcal{L}\;=\;\frac{\sum_{n \in \mathcal{N}} \sum_{j=1}^{K} W_{nj}\,\ell\!\left(\hat{y}_{nj},\, y_{nj}\right)}{\sum_{n \in \mathcal{N}} \sum_{j=1}^{K} W_{nj}}}
+\newcommand{\LossWeightMatrix}{W_{nj}\;=\;M_{nj}\;w_j\!\left(y_{nj}\right)}
+\newcommand{\LossWeightFn}{w_j(y)\;\propto\;\hat{p}_j(y)^{-\alpha},\qquad w_j \in \left[\tfrac{1}{c},\, c\right],\qquad \frac{1}{\lvert \mathcal{I}_j \rvert}\sum_{i \in \mathcal{I}_j} w_j\!\left(y_{ij}\right)\;=\;1}
+\newcommand{\LossDensity}{\hat{p}_j\;=\;\text{Gaussian KDE fitted on }\left\{\, y_{ij} \;:\; i \in \mathcal{I}_j \,\right\}}
+\newcommand{\LossArms}{\ell \in \{\text{squared},\, \text{absolute},\, \text{Huber}_\beta\},\qquad \alpha \in \{\text{off},\, \tfrac{1}{2},\, 1\}}

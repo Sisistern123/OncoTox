@@ -695,6 +695,106 @@ def build_pipeline_flow():
 
 
 # ============================================================ 4) the loss, in three figures
+
+#: Where the generated formula macros land. `report/main.tex` picks them up with `\input`, the same
+#: way it already picks up `results_numbers.tex` -- but unlike that file, this one is generated and
+#: must never be hand-edited. It is committed so a clean checkout still compiles the report, and a
+#: pre-merge check regenerates it and fails on any difference (owned by the gate session, not here).
+LOSS_TEX = ROOT / "report" / "loss_objective.tex"
+
+#: The objective, as LaTeX macro bodies -- **the single source for both destinations**. The figure
+#: renders these same strings through mathtext, so the equation in `docs/figures/` and the equation
+#: in `main.pdf` cannot disagree: there is one place to change and both follow.
+#:
+#: Notation, and why each symbol is the one it is (settled by Selin 12.08.2026, see the module
+#: docstring of `scripts/training/density_weighting.py` for the mechanism):
+#:   n in N   -- CELLS. The loss is summed over cells, because training is per cell.
+#:   i in I_j -- CELL LINES of the training fold observed for drug j. The density is fitted here,
+#:               *not* over cells: a line with 1,990 sequenced cells would otherwise bend the density
+#:               toward its own response while a line with 56 barely registered. The two index sets
+#:               are shown separately because that asymmetry IS the design decision -- an equation
+#:               summing only over cells would be equally true of the naive variant this rejects.
+#:   j        -- drug, 1..K.  c -- the weight cap (held fixed, documented as arbitrary).
+#:
+#: Everything the loss comparison (item 9A) varies is left SYMBOLIC: the pointwise loss `l`, the
+#: density exponent `alpha`, Huber's `beta`. Rendering a concrete value here would pre-empt a
+#: decision that is Selin's and that the R4 run exists to make.
+#:
+#: The normalizer is stated as a CONSTRAINT rather than as a constant. `Z_j` is the solution of a
+#: fixed point (`fit_weight_fn`, max_iter=50, tol=1e-9) because the clip and the mean-1 condition
+#: interact -- writing `/Z_j` would assert a closed form that does not exist, which makes showing it
+#: less accurate than omitting it. The `1e-12` density floor is a numerical guard and is deliberately
+#: absent; it belongs in the docstring *provided it never binds*, which is measurable on `auc_cc`
+#: once R2 produces real values and is not yet established.
+LOSS_TEX_MACROS: dict[str, str] = {
+    "LossObjective": (
+        r"\mathcal{L}\;=\;"
+        r"\frac{\sum_{n \in \mathcal{N}} \sum_{j=1}^{K} W_{nj}\,"
+        r"\ell\!\left(\hat{y}_{nj},\, y_{nj}\right)}"
+        r"{\sum_{n \in \mathcal{N}} \sum_{j=1}^{K} W_{nj}}"
+    ),
+    "LossWeightMatrix": r"W_{nj}\;=\;M_{nj}\;w_j\!\left(y_{nj}\right)",
+    "LossWeightFn": (
+        r"w_j(y)\;\propto\;\hat{p}_j(y)^{-\alpha},"
+        r"\qquad w_j \in \left[\tfrac{1}{c},\, c\right],"
+        r"\qquad \frac{1}{\lvert \mathcal{I}_j \rvert}"
+        r"\sum_{i \in \mathcal{I}_j} w_j\!\left(y_{ij}\right)\;=\;1"
+    ),
+    "LossDensity": (
+        r"\hat{p}_j\;=\;\text{Gaussian KDE fitted on }"
+        r"\left\{\, y_{ij} \;:\; i \in \mathcal{I}_j \,\right\}"
+    ),
+    "LossArms": (
+        r"\ell \in \{\text{squared},\, \text{absolute},\, \text{Huber}_\beta\},"
+        r"\qquad \alpha \in \{\text{off},\, \tfrac{1}{2},\, 1\}"
+    ),
+}
+
+
+def build_loss_formula_tex():
+    """Write the objective's macros to ``report/loss_objective.tex`` for the report to ``\\input``.
+
+    Emits definitions only -- no display environment, no numbering. The section file decides whether
+    a macro lands in ``equation``, ``align`` or inline, so the generator never dictates typesetting
+    it cannot see the context for.
+    """
+    lines = [
+        "% " + "=" * 76,
+        "% loss_objective.tex -- the training objective, as LaTeX macros.",
+        "% " + "=" * 76,
+        "%",
+        "% GENERATED FILE -- DO NOT EDIT.",
+        "%   Written by docs/make_figures.py :: build_loss_formula_tex() from LOSS_TEX_MACROS,",
+        "%   which is also what docs/figures/loss_01_objective.png renders. One source, both",
+        "%   destinations, so the equation in the report and the equation in the figure cannot",
+        "%   drift apart. To change a formula, edit LOSS_TEX_MACROS and re-run the generator.",
+        "%",
+        "% HOW THEY ARE USED",
+        "%   main.tex does \\input{loss_objective} in the preamble; a section then writes e.g.",
+        "%     \\begin{equation}\\LossObjective\\end{equation}",
+        "%   Definitions only -- the section chooses the environment.",
+        "%",
+        "% WHAT IS DELIBERATELY SYMBOLIC",
+        "%   \\ell, \\alpha and \\beta are left as symbols: the loss comparison (docs/TODO.md item",
+        "%   9A) sweeps MSE / MAE / Huber against alpha in {off, 0.5, 1.0}, and Huber's beta must",
+        "%   be derived from the residual scale (item 9C) rather than inherited. A concrete value",
+        "%   here would pre-empt a decision the R4 run exists to make.",
+        "%",
+        "% NOTATION",
+        "%   n in N    cells -- the loss is summed over cells, training being per cell.",
+        "%   i in I_j  cell lines of the training fold observed for drug j -- where the density is",
+        "%             fitted. Kept a separate index on purpose: fitting on cells would let a line",
+        "%             with 1,990 sequenced cells bend the density and one with 56 barely register.",
+        "%   j         drug, 1..K.        c   the weight cap (fixed; arbitrary, and documented so).",
+        "",
+    ]
+    lines += [f"\\newcommand{{\\{name}}}{{{body}}}" for name, body in LOSS_TEX_MACROS.items()]
+    lines.append("")
+
+    LOSS_TEX.write_text("\n".join(lines), encoding="utf-8")
+    print(f"wrote {LOSS_TEX}")
+
+
 def draw_loss_objective(ax, *, compact: bool = False):
     """Draw the objective into ``ax`` — same drawing for the standalone figure and for stage 6."""
     ax.set_xlim(0, 100); ax.set_ylim(0, 100); ax.axis("off")
