@@ -1,0 +1,6 @@
+This directory is 4b_mil_training's output tree. It is tracked while empty so that
+scripts/check_resolved_paths.py can resolve `OUT / '<file>.csv'` before the notebook
+has ever run -- an untracked parent makes every one of those eleven paths report as
+unresolvable, which is indistinguishable from a real path defect.
+
+Written 13.08.2026. Delete this file once the directory holds committed output.
