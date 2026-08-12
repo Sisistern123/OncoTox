@@ -158,12 +158,17 @@ def targets(
     against at least ``min_cell_lines`` SCP542-overlapping cell lines; ``0`` keeps every drug with
     any overlap at all. The measure is whichever ``paths.score`` names.
 
-    **Deliberately panel-independent (Selin, 12.08.2026).** The drug panel from stage 2 is applied
-    at *training* time, not here, so this file does not have to be rebuilt when the panel changes.
-    The stronger reason is that :func:`splits` derives eligibility from "this line has at least one
-    observed label": restricting the target matrix to the panel would recompute that set over 11
-    drugs instead of ~545, and any line thereby dropped would silently re-freeze the split,
-    retiring every result scored on the old partition.
+    **Deliberately panel-independent (Selin, 12.08.2026).** The drug panel from stage 2 is applied at
+    *training* time, not here. The reason is that the panel's whole effect is on the model -- it sets
+    ``output_dim``, how many heads share one trunk -- so it is a statement about what the network is
+    asked to predict, not about what the data contains. ``Y_ctrp`` / ``M_ctrp`` therefore keep the
+    full screened catalog and the panel becomes a column selection in ``MultiDrugDataset(drugs=...)``.
+    Recorded in ``docs/steps/03``.
+
+    A consequence worth knowing rather than the motivation: :func:`splits` derives eligibility from
+    "this line has at least one observed label", a test taken over the *width* of ``M``. Narrowing
+    ``M`` to the panel would re-evaluate it over 11 columns instead of ~545 and could drop screened
+    lines, silently redrawing ``split_ctrp``.
 
     Writes **no** ``viability_<drug>`` / ``train_mask_<drug>`` columns -- that chain was dropped on
     12.08.2026 together with ``ScGPTDrugDataset``, its only consumer (see :func:`splits`).

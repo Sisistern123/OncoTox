@@ -9,24 +9,39 @@ Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition**.
 
 ---
 
-## The orchestrator runs everything (`run_preprocessing.py`)
+## The steps, and who runs them (`pipeline.py`)
 
-One entry point builds a complete, trainable h5ad from raw files:
-`scripts/preprocessing/run_preprocessing.py`. It derives all paths once from
-`(--data-root, --variant, --score)` via `layout.py`, then runs **five steps in a fixed order** —
-`STEP_ORDER = [fetch → convert → scgpt → targets → splits → pca]` — writing only under
+**Six steps in a fixed order** — `fetch → convert → scgpt → targets → splits → pca` — building a
+complete, trainable h5ad from raw files. Everything is written under
 `processed/scRNAseq_SCP542/<variant>/`, except `fetch`, which caches third-party data under
-`metadata/`. You normally never call the individual scripts by hand:
-the gene-set variant is chosen with `--variant {hvg5000,all_genes}`, the **response measure** with
-`--score {auc_cc,ln_ic50_cc}` ([Step 03](03-model-and-training-design.md)), the drug scope with
-`--all-drugs` / `--min-cell-lines`, `--start-at <step>` resumes mid-pipeline, `--skip-scgpt` reuses
-existing embeddings, and `--overwrite` is required to replace the guarded `convert`/`scgpt` outputs
-(everything is seeded via `--seed`, default 42).
+`metadata/`. All paths derive once from `(data_root, variant, score)` via `layout.py`, and everything
+is seeded at 42.
 
-`--variant` and `--score` are the **two axes of the output layout**: the variant picks the folder,
-the score picks the targets filename. Every script that touches a targets file takes both flags
-(`layout.add_data_args`), so an `auc_cc` run and an `ln_ic50_cc` run can coexist and be compared
-without rebuilding the expensive `convert`/`scgpt` outputs, which they **share**.
+Each step is one function in `scripts/preprocessing/pipeline.py`, and each owns the guard and the
+preconditions belonging to it — `convert` and `scgpt` refuse to overwrite their outputs without
+`overwrite=True`, `targets` refuses to run without the embedding and the response table, `pca`
+refuses without `split_ctrp`. So a step cannot run out of order regardless of who calls it.
+
+**The order itself is not in the code.** It is the numbering of the notebooks:
+[`1_data`](../../notebooks/1_data.ipynb) runs `fetch` and `convert`;
+[`3_representations`](../../notebooks/3_representations.ipynb) runs the other four, with
+[`2_drug_selection`](../../notebooks/2_drug_selection.ipynb) between them because it needs the roster
+and the response table and nothing else.
+
+> ⚠️ **Rewritten 12.08.2026.** This section previously described `scripts/preprocessing/run_preprocessing.py`,
+> a CLI holding the same six steps behind `STEP_ORDER` and `--start-at`, and said *"you normally never
+> call the individual scripts by hand"*. That script was
+> [archived](../../scripts/archive/README.md) when the notebooks were renumbered into five end-to-end
+> stages: the ordering half became theirs, and a second copy of the order in a CLI is a second thing to
+> keep in step with them. **There is no CLI replacement**, and the flags this section used to document
+> — `--start-at`, `--skip-scgpt`, `--all-drugs`, `--overwrite` — no longer exist. Anything selective is
+> now a direct call to the step you want, which is what one-function-per-step buys; see
+> [Reproduce](#reproduce). *(It also said "five steps" while listing six.)*
+
+`variant` and `score` are the **two axes of the output layout**: the variant picks the folder, the
+score picks the targets filename. Both are carried on `PipelinePaths`, and the scripts that still have
+CLIs take them as flags (`layout.add_data_args`), so an `auc_cc` run and an `ln_ic50_cc` run coexist
+and can be compared without rebuilding the expensive `convert` / `scgpt` outputs, which they **share**.
 
 Since 11.08.2026 the measure names carry a `_cc` suffix, for CurveCurator. That is deliberate rather
 than cosmetic: the previous `auc` was a *different quantity* computed from CTRP's own distribution and

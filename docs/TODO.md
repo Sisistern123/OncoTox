@@ -350,10 +350,13 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       option implies: **all five** keeps [Step 05](./steps/05-multitask-results.md)'s gene-set sweep
       like-for-like; **`hvg5000` + `all_genes`** covers every number the report currently quotes but
       leaves the sweep mixing old and new embeddings; **`hvg5000` only** is cheapest and voids the sweep.
-- [ ] **R2 · Re-run preprocessing end to end.** Driver `scripts/preprocessing/run_preprocessing.py`,
-      `STEP_ORDER = convert, scgpt, targets, splits, pca`; needs `--overwrite` and the separate
-      `--scgpt-python` venv. Every artifact under `data/processed/scRNAseq_SCP542/<variant>/` predates
-      the code that now produces it:
+- [ ] **R2 · Re-run preprocessing end to end.** Driver: the notebooks —
+      `notebooks/1_data.ipynb` (`fetch`, `convert`) then `notebooks/3_representations.ipynb`
+      (`scgpt`, `targets`, `splits`, `pca`), both calling `scripts/preprocessing/pipeline.py`. Needs
+      `overwrite=True` on the guarded steps and the separate scGPT venv as `SCGPT_PYTHON`.
+      ⚠️ **`run_preprocessing.py` was archived 12.08.2026** and this item used to name it as the
+      driver; there is no CLI replacement. Every artifact under
+      `data/processed/scRNAseq_SCP542/<variant>/` predates the code that now produces it:
   - `scp542_conversion.py` annotates `var["hgnc_symbol"]` (`gene_symbols.py`, 05.08.2026) → `SCP542_CCLE.h5ad`
   - `gen_embeds.py` seeds with 42, runs on MPS, resolves through `resolve_gene_names` → embeddings and
     the OOV table; **4,576 → 4,704** genes (`hvg5000`), **20,570 → 21,332** (`all_genes`)

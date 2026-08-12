@@ -669,34 +669,12 @@ selecting on it would rebuild the discredited gate. The `auc_cc`-versus-`ln_ic50
 restricted at **evaluation** instead, on whatever subset of the panel has enough IC50s, with per-drug
 counts reported alongside. Within the panel those run from cisplatin's 14 to crizotinib's 174.
 
-#### The panel does not enter the target build (decided 12.08.2026, Selin)
-
-`panel.csv` is produced by [`notebooks/2_drug_selection.ipynb`](../../notebooks/2_drug_selection.ipynb),
-which runs **before** `ctrp_to_h5ad` in the notebook ordering, so it *could* be passed to it as
-`--drugs` and the stored `Y_ctrp` could carry exactly the eleven panel columns. **It is not.** The
-panel is applied as a column selection at training time
-([`4_training`](../../notebooks/4_training.ipynb)), and the target matrix keeps every drug that clears
-`--min-cell-lines`.
-
-Two reasons, and the second is the one that decided it:
-
-1. The targets h5ad then does not change when the panel does, so revising the panel costs no rebuild
-   of anything upstream of training — which matters for a panel that has already been rebuilt twice.
-2. **It would put the frozen split at the panel's mercy.** `create_splits.run_multi` decides which
-   cell lines are eligible from `M_ctrp.any(axis=1)` — *"this line has at least one observed label"*.
-   Evaluated over the ~545 drugs that clear the coverage filter, that is one set of lines. Evaluated
-   over eleven, it is potentially a smaller one, and any line dropped from eligibility changes the
-   input to `frozen_split`, which treats an uncovered line as an error and a redraw as a re-freeze.
-   A panel revision would then silently retire every result scored on the old partition. **A choice
-   about which compounds to study must not be able to move which cell lines are held out.**
-
-**The line loss was not measured**, because the decision does not depend on its size: even zero lost
-lines would leave the coupling in place for the next panel revision. Panel coverage runs 91.2–98.3 %
-of the available lines, so the loss is probably small — "probably small" being exactly the basis this
-avoids relying on.
-
-Recorded in the code at `scripts/preprocessing/pipeline.py::targets` and in
-[`3_representations`](../../notebooks/3_representations.ipynb) §B, next to the call it governs.
+*(A second write-up of the panel/target-build decision stood here from 12.08.2026 until the same day.
+It gave split eligibility as the deciding reason, which is not the ruling: the panel stays out of the
+target build because it determines how many heads the model has. Removed rather than corrected in
+place, because the decision is already recorded once, in
+[Step 03](03-model-and-training-design.md#the-drug-panel-is-a-training-time-choice-not-a-property-of-the-target-file-12082026),
+and this file points at it above.)*
 
 ### Replicate experiments were double-counted (10.08.2026)
 

@@ -94,5 +94,5 @@ metric that reads held-out labels is only one of the options.
 **Already broken when it went**, independently of all of the above: it built `PipelinePaths(..., "auc")`,
 and `auc` stopped being a valid score on 11.08.2026, so it raised on construction. Its committed outputs
 under `notebooks/outputs/dreval/` were computed on the retired target and the voided 8-drug panel, and
-are void with them. `notebooks/result_evaluation/dreval_benchmark.ipynb` imports the removed module and
+are void with them. `notebooks/analysis/evaluation/dreval_benchmark.ipynb` imports the removed module and
 also hardcodes `'auc'`; it is untouched pending audit 11.
