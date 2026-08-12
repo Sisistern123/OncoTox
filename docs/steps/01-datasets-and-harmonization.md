@@ -46,6 +46,21 @@ cells as weak supervision ([Step 03](03-model-and-training-design.md)).
 
 ✅ On-plan: SCP542 + CTRPv2 are the designated primary pair; PRISM/GDSC reserved for later.
 
+### Post-treatment single-cell data — what would be needed for Q2 (b), and what exists
+
+`4b_mil_training` establishes that a model's per-cell predictions vary within a line, reproducibly and
+not as an artifact. It cannot establish that the variation is real **drug-response** heterogeneity: no
+per-cell response was ever measured — every CTRPv2 label is one number per (cell line, drug) — and none
+of the four primary sources carries post-treatment single-cell data. A gap in the measurements, so only
+a different dataset closes it. **None of the below is scoped**; recorded 13.08.2026 so they are not
+rediscovered as shortcuts.
+
+| Candidate | Could establish | Cannot |
+|---|---|---|
+| **MIX-seq** — McFarland et al., *Nat Commun* 2020: multiplexed scRNA-seq of ~100 cell lines after drug treatment, same Broad ecosystem as SCP542 (McFarland co-authored the Kinker paper our input comes from, so line identifiers plausibly join). ⚠️ **Unverified — the record has not been opened; nothing may rest on it until it is.** | Subpopulation-level evidence: does the surviving population shift toward the cells the model predicted resistant? | Per-cell truth, ever — sequencing destroys the cell, so no cell is trackable through treatment. |
+| `data/scDrugAtlas/ea472fa4aec64cabaef5194af0ba5ba0.h5ad`, already on disk — palbociclib treated-vs-control with binary response labels. | Nothing usable. **Ruled out**: its study of origin cannot be recovered (below), so it is uncitable. | — |
+| **Lineage barcoding** — e.g. Oren et al., *Nature* 2021, tracking lineages through treatment. | Per-cell truth genuinely, on one cell line. | Validation of a 500-line model; it validates a method. |
+
 ### Provenance — what was retrieved, from where, when
 
 *Moved here 30.07.2026 from the dated log, which is where it had been decaying. This is the record
