@@ -95,6 +95,7 @@ any module is in [CLAUDE.md](../CLAUDE.md) under *Where things live*.
 
 | Notebook | Why it is here |
 |---|---|
+| `1_preprocessing.ipynb` | **Ground 1**, archived 12.08.2026. The old stage 1: §A recomputed the 512-d PCA for both built variants, §B built the HVG-sweep variants. Superseded by [`1_data`](../1_data.ipynb) + [`3_representations`](../3_representations.ipynb), which split preprocessing at the point [`2_drug_selection`](../2_drug_selection.ipynb) needs. It drove `run_preprocessing.py`, archived the same day, so it cannot run as written. Its §B is the source for `analysis/qc/hvg_sweep_build.ipynb` |
 | `scdrugatlas_exploration.ipynb` | Explores **scDrugAtlas**, a data source that was evaluated and [rejected](../docs/steps/corrections-and-dead-ends.md#scdrugatlas-and-clintox-as-data-sources). Kept as the record of that decision. *(Long mislabelled in the docs as SCP542 exploration — "scDA" is scDrugAtlas.)* |
 | `learnability_filter.ipynb` | The kill/spare gate that took 545 drugs to 10. Archived 12.08.2026: the criterion [measured potency, not rankability](../docs/steps/corrections-and-dead-ends.md#the-learnability-gate-measured-potency-not-rankability), and the [rebuilt panel](../docs/steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026) uses no statistic of our labels at all |
 | `learnable_subset_training.ipynb` | PCA vs scGPT on that subset — a best-case diagnostic, never a generalization number. Archived 12.08.2026 with the gate that produced the subset |
