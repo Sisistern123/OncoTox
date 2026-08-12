@@ -154,6 +154,33 @@
 >   moves 180 → 181 and every split size with it, and that **`add_pca.TRAIN_SPLIT_COLS` no longer writes
 >   `X_pca_train_paclitaxel`** (verified: `TRAIN_SPLIT_COLS = ("split_ctrp",)`).
 >
+> ### ⛔ Frozen until R4 — four sentences that are TRUE TODAY and become false when the code changes
+>
+> **Filed here rather than in R4 deliberately** (agreed 12.08.2026): R4 is plan-of-record and read-only,
+> and a list that needs permission to be written is a list that gets lost. This is the **audit-11 class**
+> — code changed, docs did not — which cost us two stale claims within a day of it happening.
+>
+> **The rule these come from, worth stating once:** a sentence is safe to edit when a decision is taken
+> if it describes **a decision**; it is frozen until the code changes if it describes **what the code
+> does**. Item 7's decision on the three fits closes the cross-validation leak, but it closes it *at R4*,
+> when training changes — so every sentence below is **accurate right now** and rewriting it early would
+> describe code that does not exist. **Do not sweep these when the decision lands. Sweep them when R4
+> runs.**
+>
+> | Where | The sentence | Why it is not editable yet |
+> |---|---|---|
+> | `docs/steps/02` §"Still not fixed: cross-validation" | *"`resolve_rep` leaves them on the all-cells `X_pca` … every CV number still carries it"* | True until training resolves the representation differently |
+> | `scripts/model/dataset.py:26` (`resolve_rep` docstring) | *"still leaky, and documented as such"* | Same, and it is the code's own description of itself |
+> | `docs/steps/02`, the `X_pca` table row | *"used for: UMAPs and latent-space validation — **and every CV run**"* | ⚠️ A **table cell**, not prose: a sweep for "leaky" or "not fixed" will not find it |
+> | `report/sections/06_limitations_and_outlook.tex:81` | *"those remain on the all-cells decomposition, **and gene selection remains an all-cells step for both arms**"* | ⚠️ **Half-true at R4**, the nastiest of the four — the second clause stays true *permanently* under decision 1, while the first changes. Editing it as one unit will break the half that is right |
+>
+> ⏸️ **The mechanism is not final, and the flag holds either way.** Decision 2 — *how* the CV PCA is
+> fitted — was reopened on cost the same day it was taken: a per-fold fit at training time needs
+> `paths.raw_h5ad` (~2.15 GB), which the training path has never opened, because the targets `.X` has the
+> scGPT OOV genes dropped and would give a different gene set; and that cost compounds across R4's loss
+> grid. It may be re-taken, or become a precomputed-at-R2 change instead. **The leak closes either way**,
+> so all four sentences stop being true either way — only the date and the replacement wording move.
+>
 > ### Re-based onto `58fadd7`, and two of the clearings above were overtaken by it
 >
 > This audit was cut against `f6cbef4`; Selin committed **`58fadd7`** while it was running, splitting
