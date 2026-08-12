@@ -51,11 +51,14 @@ second copy of it in a CLI was a second thing to keep in step.
 > differs — §A needs predictions, §B needs per-fold metrics such as `gap`, which `oof_predictions` does
 > not return. Outputs go to `outputs/legacy/training_545_mean_pv/`, not §A's `outputs/panel/`.
 >
+> §B's outputs staying under `legacy/` is accepted, not a loose end (Selin, 12.08.2026).
+>
 > *(Corrected 12.08.2026: this read `outputs/matrix/`, a directory that has never existed. `OUT_MATRIX`
-> was `outputs`/`matrix` while every call site appends `legacy`/`training_545_mean_pv`, so paths resolved
-> one level too deep into a missing directory and the CV guard silently recomputed instead of loading the
-> committed folds — fixed in `f6cbef4`; this sentence was the documentation that still described the
-> broken value.)*
+> named `outputs`/`matrix` while the call sites supplied `legacy`/`training_545_mean_pv` themselves, so
+> anything reading it resolved into a directory that was not there — which is why the CV guard fell
+> through and recomputed while reporting that it had loaded the committed folds. Fixed in `f6cbef4`,
+> then consolidated so the variable means the directory it is named for; this sentence was the
+> documentation that still described the broken value.)*
 
 ## Analysis
 

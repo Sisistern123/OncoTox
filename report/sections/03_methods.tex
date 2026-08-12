@@ -405,9 +405,14 @@ macro, \code{NIndep}, defined as ``independent examples after held-out splits'' 
 150 --- which was the line count of a ridge control, a different quantity, and one this report no longer
 reports. Since one name stood for two numbers it was retired, for \code{NLinesCV} (\NLinesCV, the lines
 inside the cross-validation, test held out) and \code{NLinesFit} (\NLinesFit, the fixed training split
-alone). The three places that cite the effective sample size now use the former, on the reading that each
-contrasts a line count with the cell count under the protocol this section describes. \textbf{If any of
-them meant the training lines alone, that is \NLinesFit{} and a one-macro change.}}
+alone). Every site citing the effective sample size takes the former. The paragraph above pins it: it
+names the \NLinesCV{} training and validation lines, and the sentence after cites the effective sample
+size for the same protocol, so the two cannot differ. That also matches what the quantity is for --- each
+use of it says that uncertainty is governed by cell lines rather than by cells, and the metric reported
+is a correlation across the lines the cross-validation predicts exactly once. The fixed training split is
+a training-set size, and no uncertainty reported here is taken over it. The plural in ``held-out splits''
+was loose: under this protocol there is no standing validation holdout at all, since the early-stopping
+slice is drawn from each fold's own training lines.}
 
 For external comparison, the model is additionally evaluated with the DrEval package \cite{dreval}
 (version 1.5.1), using its leave-cell-line-out splits, its baselines and its evaluation routine without

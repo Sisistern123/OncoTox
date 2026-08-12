@@ -134,13 +134,17 @@
 >   defined as *"independent examples after held-out splits"* but carried the value **150**, which was a
 >   ridge control's line count — a different quantity, and one the report no longer reports. Replaced by
 >   two macros named for what each counts: **`\NLinesCV` = 153** (lines inside the cross-validation, test
->   held out) and **`\NLinesFit` = 126** (the fixed training split alone). All three prose sites cite the
->   former, **on the reading that each contrasts a line count with the cell count under the protocol
->   §Evaluation describes** — marked as a reading, in `03_methods.tex`. ⚠️ **If any of them meant the
->   training lines alone, that is `\NLinesFit` and a one-macro change** — Selin's call, and cheap either
->   way. 153 is not invented here: it is stated in `03_methods.tex` §Evaluation,
->   [Step 03](./steps/03-model-and-training-design.md) (*"covers 153 of the 180 labelled lines"*) and
->   [Step 05](./steps/05-multitask-results.md).
+>   held out) and **`\NLinesFit` = 126** (the fixed training split alone). **Every site citing the
+>   effective sample size takes `\NLinesCV` — confirmed by Selin 12.08.2026, so it is a decision and not
+>   a reading.** What settles it is two sentences of `03_methods.tex` §Evaluation: it names *"the 153
+>   training and validation lines"*, then cites the effective sample size for that same protocol, so the
+>   two cannot differ, and one macro then serves all four sites. It also matches the quantity's role —
+>   every use of it says uncertainty is governed by lines rather than cells, and the metric reported is a
+>   correlation across the lines CV predicts exactly once. **126 is a training-set size and no reported
+>   uncertainty is taken over it.** The *"held-out split**s**"* plural was loose: under this protocol
+>   there is no standing validation holdout at all, since `inner_holdout` draws its slice from each
+>   fold's own training lines. ⚠️ **The choice of quantity is settled; the value is not** — both macros
+>   are derived from `\NLines`, so 153 becomes ~154 at the sweep. Re-read at R6, never hand-adjusted.
 > - **The two false statements about `dreval_benchmark` are corrected** — item 6's sub-bullet and R5,
 >   with the R5 hold lifted by Selin for exactly this and nothing else. `dreval_normalize.py` is live at
 >   `scripts/evaluation/`; `e804f07` fixed the `'auc'` literal; the real blocker is that three imported
@@ -638,6 +642,30 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       `03_methods.tex` §Drug panel selection (150 / 120 / 57 / 44 / 11, the 90 % cut, 91.2–98.3 %
       coverage, 102 and 15 unmatched compounds, 13 parent-CID matches) — via item 12's extraction
       script, since adding them by hand is the defect that item exists to remove.
+  - [ ] **Re-read every number *derived* from the cell-line count — not just `\NLines` itself**
+        (added 12.08.2026 by the docs audit, on Selin's ruling). R6's list above is **instance-based**:
+        it names `\NLines`, the ⚠️ 181 markers and the `project_progress.md` note, i.e. the places
+        180 appears *as itself*. A second class moves with it and is named nowhere — numbers **computed
+        against** the line count, which are wrong the moment it changes even though they never print it.
+        **The rule, because the list below is not the whole of it: any number derived from the cell-line
+        count is provisional until R2–R5 regenerate, and R6 re-reads it from the artifact rather than
+        adjusting it by hand.** Hand-adjustment is exactly the defect item 12 exists to remove, and a
+        derived number is the easiest place for it to hide — nothing in the text looks stale.
+        Known instances, to start from and not to stop at:
+    - [ ] `\NLinesCV` (**153**) and `\NLinesFit` (**126**) in `report/results_numbers.tex` — both are
+          70+15 % and 70 % of `\NLines`, so both move; 153 becomes ~154. They are cited in
+          `02_introduction`, `03_methods` (§Data and §Evaluation) and `05_discussion`.
+    - [ ] Prose of the shape *"X of the 180 …"*, where the 180 is load-bearing rather than decorative —
+          [Step 03](./steps/03-model-and-training-design.md) has *"covers 153 of the 180 labelled
+          lines"*; sweep [Step 05](./steps/05-multitask-results.md) and `project_progress.md` for the
+          same shape, and the split-distribution tables (126 / 27 / 27 lines, and their cell counts)
+          with them.
+    - [ ] The 18 unassigned lines / 6,286 cells, which is `198 − \NLines` and therefore moves to 17.
+    - [ ] ⚠️ **Not in this class, and must not be swept into it:** the drug-panel funnel and coverage
+          figures in `03_methods.tex` §Drug panel selection. `2_drug_selection` reads the response CSV
+          rather than a pipeline artifact, so those were **already computed on 181** — they are the one
+          place where the corrected count is live today. Whether that is left as is or reconciled is
+          Selin's own open item; this sub-item does not touch it.
       [Step 01](./steps/01-datasets-and-harmonization.md) the ⚠️ 181 marker;
       [Step 02](./steps/02-preprocessing-and-embeddings.md) the ⛔/⚠️ blocks on truncated, unseeded,
       symbol-limited embeddings; [Step 05](./steps/05-multitask-results.md) the ⚠️ 181 marker and every
