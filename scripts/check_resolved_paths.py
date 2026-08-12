@@ -40,6 +40,20 @@ TWO BLIND SPOTS. Read them before treating a clean run as proof.
      read as live code. Without this the checker fires on its own explanatory comments and on every
      correction anyone documents -- penalising the habit of recording what changed.
 
+EXPLICITLY OUT OF SCOPE: STALE COMMENTS. A comment that misdescribes the code around it -- "the
+call sites append that suffix" after they stopped, or "that question is open" after it was decided --
+is a real defect and this checker will never catch one. Do not widen it to try. The reason is that
+there is no bad path to find: every path named in such a comment usually resolves perfectly, and the
+falsehood is a claim about the code's *structure* or a status, not about a location. Parsing comments
+would instead produce false positives on deliberate historical references, which this repository uses
+by convention -- `cf3ad3f:notebooks/2_training.ipynb cell 1` is *meant* not to resolve against the
+working tree, and the archived-notebook citations are the same. A checker that cries wolf on
+legitimate history gets ignored, and the real findings go with it.
+
+The durable fix for that class is a convention, not a parser: **a change that supersedes a comment
+retires that comment in the same commit.** Stated here so the next person does not automate it and
+conclude the checker is broken when it cannot.
+
 WHY IT PRINTS ITS DENOMINATOR. Each check reports how many candidates it examined, not only how
 many failed, because "0 failed" and "0 examined" are otherwise indistinguishable -- and a checker
 that silently parses nothing reports a clean pass. That is the same silent-success failure this
