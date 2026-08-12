@@ -63,7 +63,7 @@ from drevalpy.evaluation import evaluate
 from drevalpy.models import MODEL_FACTORY
 
 #: The drug panel, rebuilt 12.08.2026 on FDA approval and published determinants
-#: (``notebooks/drug_selection/literature_panel.ipynb``). Until then this pointed at
+#: (``notebooks/2_drug_selection.ipynb``). Until then this pointed at
 #: ``outputs/learnability/ctrp_drug_learnability_auc.csv``, the artifact of the discredited kill/spare
 #: gate -- so the default panel was one whose selection criterion had been retracted.
 DEFAULT_PANEL_CSV = Path("notebooks/outputs/panel/panel.csv")
@@ -87,7 +87,7 @@ def load_panel(panel_csv: Path = DEFAULT_PANEL_CSV) -> list[str]:
     if "drug_key" not in panel.columns:
         raise ValueError(
             f"{panel_csv} has no 'drug_key' column. Expected the output of "
-            f"notebooks/drug_selection/literature_panel.ipynb -- pass --drugs explicitly instead."
+            f"notebooks/2_drug_selection.ipynb -- pass --drugs explicitly instead."
         )
     return panel["drug_key"].tolist()
 

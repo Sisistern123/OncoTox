@@ -564,7 +564,7 @@ which filtered on absolute potency and so discarded every cytostatic compound, a
 whose candidate list was ranked on our AUCs before any citation was consulted. The rebuild therefore
 takes the criterion **entirely outside our labels**.
 
-Produced end to end by `notebooks/drug_selection/literature_panel.ipynb` →
+Produced end to end by `notebooks/2_drug_selection.ipynb` →
 `notebooks/outputs/panel/panel.csv`. It reads no pipeline artifact, only the response CSV, so it runs
 before the sweep and does not go stale when the h5ads do.
 

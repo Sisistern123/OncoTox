@@ -6,7 +6,7 @@ them in. Figures and tables go to [`outputs/`](outputs/); model artifacts to `ru
 indexed by `runs/runs_index.csv`.
 
 > ⛔ **The drug panel is void and a pipeline review is in progress** ([`docs/TODO.md`](../docs/TODO.md)).
-> Nothing computed on that panel is quotable until it is rebuilt — which affects `3_panel_training` and
+> Nothing computed on that panel is quotable until it is rebuilt — which affects `4_training` and
 > everything under `drug_selection/`.
 
 ## The pipeline
@@ -15,7 +15,7 @@ indexed by `runs/runs_index.csv`.
 |---|---|---|---|
 | **1** | `1_preprocessing.ipynb` | Builds the trainable data: recomputes the 512-d PCA baseline for both variants (§A) and builds the HVG-sweep variants including the scGPT re-embed (§B) | `scripts/preprocessing/run_preprocessing.py` |
 | **2** | `2_training.ipynb` | The PCA-vs-scGPT harness: 8-run matrix (load-or-train), 5-fold GroupKFold CV with test held out, per-drug correlation | `train_multitask.train_rep`, `cv_evaluate` |
-| **3** | `3_panel_training.ipynb` | The current training run: `auc_cc`, per-fold density weighting, out-of-fold scoring against the ridge control. ⚠️ Its stored outputs are cleared and its panel is the void 8-drug one; it re-runs on `outputs/panel/panel.csv` at R4 of the sweep | `scripts/training/cv.py`, `density_weighting.py` |
+| **3** | `4_training.ipynb` | The current training run: `auc_cc`, per-fold density weighting, out-of-fold scoring against the ridge control. ⚠️ Its stored outputs are cleared and its panel is the void 8-drug one; it re-runs on `outputs/panel/panel.csv` at R4 of the sweep | `scripts/training/cv.py`, `density_weighting.py` |
 
 `1_` and `2_` call the **same entry points the CLI uses**, so the notebooks and the command line cannot
 drift — they are documentation *and* a re-run, not a fork.
@@ -49,7 +49,7 @@ drift — they are documentation *and* a re-run, not a fork.
 
 | Notebook | Question it answers |
 |---|---|
-| `literature_panel.ipynb` | **Which drugs does the model predict, and on whose authority?** Builds the panel end to end: the FDA-approved list → the compounds CTRPv2 screened → coverage over our 181 cell lines → the 11 with a verified published claim. Writes `outputs/panel/panel.csv` |
+| `2_drug_selection.ipynb` | **Which drugs does the model predict, and on whose authority?** Builds the panel end to end: the FDA-approved list → the compounds CTRPv2 screened → coverage over our 181 cell lines → the 11 with a verified published claim. Writes `outputs/panel/panel.csv` |
 
 Rebuilt 12.08.2026 ([Step 01](../docs/steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026)).
 The three notebooks that used to live here selected on **our own response values** and are archived;

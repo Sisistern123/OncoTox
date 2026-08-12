@@ -141,7 +141,7 @@ log-concentration scale instead of clustering near 0.9. That has to be checked b
 trained, not assumed.
 
 **Until 12.08.2026 only one of the three training paths did either of these** — `cv.oof_predictions`,
-which `3_panel_training` drives. `train_multitask.cv_evaluate` (the CV behind the 8-run matrix) and
+which `4_training` drives. `train_multitask.cv_evaluate` (the CV behind the 8-run matrix) and
 `train_multitask.train_rep` (the fixed-split path) initialized no head bias and ran with
 `exclude_output_from_decay` at its `False` default, so on an uncentred target the matrix trained against
 an offset the panel run did not, and the two were never the same experiment. Both now take
@@ -351,7 +351,7 @@ labels define the baseline they are scored against. `scripts/evaluation/dreval_n
 requires the column and refuses to run without it.
 
 ⚠️ The committed `panel_oof_predictions.csv` predates this and has no `fold` column, so that script
-correctly raises on it. It becomes runnable when `3_panel_training.ipynb` re-runs at R4 of the sweep.
+correctly raises on it. It becomes runnable when `4_training.ipynb` re-runs at R4 of the sweep.
 
 ---
 

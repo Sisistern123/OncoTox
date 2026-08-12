@@ -304,7 +304,7 @@ The eight compounds remain defensible *as compounds*; what was silently pre-filt
 were drawn from**. The honest description of the panel as executed: literature-anchored,
 spread-verified, and **drawn from a kill-filtered pool**.
 
-**What it affected.** The Step 1 training run (`notebooks/3_panel_training.ipynb`), the distribution
+**What it affected.** The Step 1 training run (`notebooks/4_training.ipynb`), the distribution
 and weighting design (`notebooks/archive/panel_distributions.ipynb`), the dispersion figures
 (`notebooks/result_evaluation/diagnostics.ipynb` §5), the panel rows in [Step 05](05-multitask-results.md), and the
 corresponding numbers in `report/`. The *methodological* findings from that run survive — the collapse
@@ -370,7 +370,7 @@ stands even though the panel does not.
 
 ### The Step 1 training run on the voided panel
 
-**Run** 27.07.2026, `notebooks/3_panel_training.ipynb`. The first execution of the retired-`auc_z`
+**Run** 27.07.2026, `notebooks/4_training.ipynb`. The first execution of the retired-`auc_z`
 setup: target raw `auc` winsorized at 1.1, the 8-drug literature panel, per-sample inverse-density
 weights fitted per fold on training lines only, output layer excluded from weight decay, head biases
 initialized to the train-fold per-drug means. Architecture, splits, optimizer and batching unchanged, so
@@ -514,7 +514,7 @@ at the time the single largest improvement the project had made.
 Both are within-drug monotone transforms, so neither was ever visible to the metric — **`auc_z` was a
 loss-weighting scheme in disguise**. And the collapse it was introduced to fix turned out to be a
 **head-count** effect rather than a target property: the same raw `auc` scores −0.069 at K=545 and
-**+0.377** at K=8 (`notebooks/3_panel_training.ipynb`). Removing the cause works at least as well as
+**+0.377** at K=8 (`notebooks/4_training.ipynb`). Removing the cause works at least as well as
 compensating for it, without amplifying noise-dominated drugs.
 
 It also carried a standing leak: `center` and `scale` were computed once over all 180 overlapping lines,
@@ -984,7 +984,7 @@ the regression analogue of class weighting — should reduce the shrinkage and i
 in `scripts/training/density_weighting.py`, fitted per fold on training lines only via
 `scripts/training/cv.py`.
 
-**Refuted** 27.07.2026 (`notebooks/3_panel_training.ipynb`): **−0.006 (PCA) / −0.008 (scGPT)** mean
+**Refuted** 27.07.2026 (`notebooks/4_training.ipynb`): **−0.006 (PCA) / −0.008 (scGPT)** mean
 Spearman. Per drug a wash — `selumetinib` +0.09 / +0.06, `tanespimycin` −0.06 / −0.06. The
 pre-registered expectation ("MSE worse, Spearman better") also failed; both stayed flat, which is what a
 null intervention looks like.
