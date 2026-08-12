@@ -1056,12 +1056,39 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 > | notebook | what it reads | earliest the reads allow |
 > |---|---|---|
 > | `analysis/qc/hvg_sweep_build` | — it **writes** `hvg1000/2000/3000`, driving all six steps itself | after `1_data` |
-> | `analysis/qc/gene_symbol_rescue` | `SCP542_CCLE.h5ad`, the scGPT OOV tables | after `3_representations` |
-> | `analysis/qc/verify_variants` | five variants' targets, raw h5ad | after `hvg_sweep_build` |
+> | `analysis/qc/gene_symbol_rescue` | `SCP542_CCLE.h5ad`, the scGPT OOV tables, **the HGNC table and scGPT's vocabulary JSON** | after `3_representations` |
+> | `analysis/qc/verify_variants` | five variants' targets, raw h5ad, **and two of its own cached outputs** | after `hvg_sweep_build` |
 > | `analysis/harmonization/drug_coverage` | `hvg5000` and `all_genes` targets | after `3_representations` |
 > | `analysis/harmonization/cell_line_join_verification` | targets h5ad, DrEval CTRPv2 tables | after `3_representations` |
-> | `analysis/evaluation/diagnostics` | `outputs/panel/panel_oof_predictions.csv` | after `4a` |
-> | `analysis/evaluation/dreval_benchmark` | `outputs/panel/panel.csv`, `panel_oof_predictions.csv` | after `4a` |
+> | `analysis/evaluation/diagnostics` | `outputs/panel/panel_oof_predictions.csv` **and a targets h5ad** | after `4a` |
+> | `analysis/evaluation/dreval_benchmark` | `outputs/panel/panel.csv`, `panel_oof_predictions.csv` **and `paths.targets_h5ad`** | after `4a` |
+>
+> ### ✅ Gate 2 — the enumeration read against the notebooks (13.08.2026)
+>
+> **The bold additions above are what the table was missing.** Every entry was checked by extracting
+> the actual read calls from each notebook rather than by trusting the column. **No position moved** —
+> the understated inputs are all artifacts that exist by the stated point anyway — so the *sequence*
+> survived the check and only the *inputs* were wrong. The order itself is still Gate 4's to confirm.
+>
+> **Two silent-replay defects, both found here and both fixed.** A cache guard defaulting to "reuse"
+> turns a rerun into a replay and announces it with a reassuring `Loaded …` line:
+> `verify_variants`'s `RECOMPUTE_COUNTS` would have reloaded per-cell counts computed **before the
+> gene-symbol repair** (`e3ce70a`), and `4a` §B's `RECOMPUTE_CV` would have reloaded CV results from
+> the **retired `mean_pv` target at K=545** (`d72dfb2`, Selin: *"void cache is worse than the cost"*).
+> `4a`'s sibling `RETRAIN_MATRIX` is deliberately left `False` and the reason is written into the
+> cell: its cache is the gitignored `runs/`, so it can only ever reuse output of the code in the tree.
+>
+> **Counting the third instance (`f6cbef4`'s CV guard), reuse-by-default is this project's recurring
+> silent-failure mode**, and it is not a coding slip — each one was a deliberate convenience whose
+> default outlived the state it was written for.
+>
+> **`2_drug_selection` reads three things, and two documents each named a different wrong pair.**
+> `outputs/README` said *"only the response CSV, so it runs under the freeze"* — it also reads the
+> cell-line roster from `paths.raw_h5ad`, an **R2 artifact**, so the sentence understated a dependency
+> on the very rerun it argued independence from. `notebooks/README` said *"exactly two things"*,
+> omitting Sun et al. 2017's drug list. Both corrected. The panel is stable across R2 in practice —
+> the cell set comes from `CPM_data.txt` and `Metadata.txt`, which R2 does not change — but that is a
+> different argument from the one that was written down.
 >
 > The last column is what the file reads permit, **not a schedule**. Running the whole group after the
 > chain is what makes it independent of the chain — the property that matters operationally: these

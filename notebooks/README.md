@@ -31,8 +31,9 @@ end-to-end pipeline rather than a partial one with the first build done by hand.
 > corrected rather than quietly replaced: "raises on its first cell" sends the next reader to repair
 > code that is already correct.
 
-**Why drug selection is stage 2 and not an analysis notebook.** It reads exactly two things — the
-cell-line roster stage 1 writes and the response table stage 1 fetches — and it writes `panel.csv`,
+**Why drug selection is stage 2 and not an analysis notebook.** It reads three things — the
+cell-line roster stage 1 writes, the response table stage 1 fetches, and Sun et al. 2017's drug
+list (cached under `reference/`; *"exactly two"* until 13.08.2026, which omitted the third) — and it writes `panel.csv`,
 which stage 4 consumes. It is a step in the chain, and it sits before the representations because it
 needs none of them.
 
