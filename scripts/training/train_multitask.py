@@ -463,8 +463,12 @@ def cv_evaluate(
 
     Only cells whose `split_ctrp` is in ``eligible_splits`` are used. The default
     ``("train", "val")`` **holds the fixed test set out entirely** (CV resamples
-    only the 153 train+val lines); pass ``("train", "val", "test")`` to pool all
-    180 measured lines. The h5ad is read once and sliced per fold via ``cell_mask``.
+    only the train+val lines); pass ``("train", "val", "test")`` to pool every
+    measured line. The h5ad is read once and sliced per fold via ``cell_mask``.
+    (The two counts that stood here -- 153 and 180 -- were removed 13.08.2026: they
+    are properties of whatever h5ad is loaded, not of this function, and both move
+    at the sweep. The live values are the NLinesCV / NLines macros in the report, and
+    the run itself prints ``n_train_lines`` / ``n_val_lines`` per fold below.)
 
     Within a fold, 15 % of the training lines are withheld for early stopping
     (``cv.inner_holdout``) so the scored fold decides nothing about the model that
