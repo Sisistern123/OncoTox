@@ -380,12 +380,30 @@ every one of them was a step that looked settled and had never been checked.
         comparable; a train-only HVG set would be fold-dependent, so "the 5,000 HVGs" would stop being a
         single object. **2 — the cross-validated PCA is fitted per fold, at training time**, on that
         fold's training lines. This is the one fit that changes, because every CV number carried it and
-        the CV numbers are the headline. It needs no preprocessing change: `X_pca` is still written and
-        remains correct for UMAPs and other descriptive use; CV stops reading it. Implementation is a
-        change to how training resolves the representation (`model/dataset.py::resolve_rep`, which today
-        falls through to `X_pca` whenever `split_col is None`), **not** to `add_pca.py`. Storing five
-        fold-keyed matrices was considered and rejected as unnecessary coupling — folds are deterministic
-        given the seed and the eligible line set, so a per-fold fit reproduces without being stored.
+        the CV numbers are the headline. `X_pca` is still written and remains correct for UMAPs and
+        other descriptive use; CV stops reading it. Implementation is in the training path
+        (`model/dataset.py::resolve_rep` today falls through to `X_pca` whenever `split_col is None`),
+        with **one helper called by both `cv.oof_predictions` and `train_multitask.cv_evaluate`** — never
+        two, since the §A/§B asymmetry has already produced a real defect twice.
+        ⚠️ **Re-confirmed 12.08.2026 after the cost was corrected.** This was first recorded as needing
+        no preprocessing change, which was wrong: `4a` opens the targets h5ad *backed* and copies only
+        `obs`/`obsm`, so the CV path holds no expression matrix, and the matrix it needs is not that file
+        — `add_pca` fits on `counts_h5ad` (`paths.raw_h5ad`, **2.15 GB**), because the targets `.X` has
+        the scGPT OOV genes dropped and would give a different gene set, so per-fold fits taken from it
+        would not be comparable with the stored `X_pca`. **True cost:** the training path opens a file it
+        has never touched, carries ~1 GB alongside the embeddings, and does five 512-component fits per
+        CV run for the PCA arm — repeated across R4's grid (MSE/MAE/Huber × α ∈ {off, 0.5, 1.0}, plus
+        item 8C), which is why the fits are **cached per run, keyed by the fold assignment** (Selin,
+        12.08.2026). Folds are deterministic given the seed and the eligible line set, so the cache is
+        sound and the projections need not be stored.
+        **Rejected: precomputing and storing five fold-keyed matrices at R2.** It would make the fold
+        PCAs inspectable artifacts, consistent with `uns["pca_fits"]` (audit 04b) — but it adds ~548 MB
+        per variant (512 comps × 53,513 cells × 5 folds), ~1.1 GB across `hvg5000` + `all_genes`, and it
+        pushes CV configuration (`n_splits`, seed, `group_col`, `eligible_splits`) into preprocessing, so
+        changing a *training* parameter would force a *preprocessing* re-run. The artifact argument is
+        also weaker here than in 04b: that stored a **fit** — loadings and variance ratios, answering
+        questions nothing else could — where this would store **projections**, recomputable from a
+        deterministic fold assignment.
         **3 — the never-training cells stay in.** Decision 2 already removes them from the PCA the model
         reads, because a fold's training lines are eligible (labelled) by construction; what remained was
         only whether they should help choose the HVG set, and they should — no label exists to leak, more
