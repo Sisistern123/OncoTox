@@ -18,16 +18,29 @@ between lines. And the density must be fitted on line-level values: the label is
 line, so fitting on cells would let a line with 1,990 sequenced cells bend the density toward its own
 value while a line with 56 barely registers.
 
-**Parameter values and why they are not the textbook ones.** ⚠️ **The evidence for them is no longer
-live.** It was recorded in ``panel_distributions.ipynb``, archived 12.08.2026 with the void 8-drug panel
-it was computed on (``notebooks/archive/``); the path this docstring used to give,
-``notebooks/13_panel_distributions.ipynb``, had not existed since the notebooks were renamed. **Audit 09
-must re-derive these on the rebuilt panel or drop the weighting**, which is a
-`refuted hypothesis <../../docs/steps/corrections-and-dead-ends.md>`_ in any case. The reasoning was: at ``alpha=1`` (full inverse density) with a loose cap the weight curve
-saturates the cap across wide stretches of the response range, so the cap -- an arbitrary safety limit
--- sets the weights rather than the density does. ``alpha=0.5`` compresses the range so the density
-still orders the samples without dictating the magnitude, and ``cap=3`` keeps a handful of extreme
-lines from driving a fit over ~170 points.
+**Parameter values — settled by audit 09 (Selin, 12.08.2026): ``alpha`` becomes an arm of the loss
+comparison rather than a constant needing a prior justification.** The evidence for ``alpha=0.5`` had
+stopped being live: it was recorded in ``panel_distributions.ipynb``, archived 12.08.2026 with the void
+8-drug panel it was computed on. Re-deriving it would have meant justifying a number in advance in order
+to test a hypothesis the same run was about to test anyway, so instead the loss comparison sweeps
+``alpha`` over **{off, 0.5, 1.0}** and the comparison *is* the justification. Nothing here has to be
+argued before it runs; what wins is reported with the setting that won.
+
+The original reasoning is kept because it explains what the sweep's endpoints mean: at ``alpha=1`` (full
+inverse density) with a loose cap the weight curve saturates the cap across wide stretches of the
+response range, so the cap -- an arbitrary safety limit -- sets the weights rather than the density
+does. ``alpha=0.5`` compresses the range so the density still orders the samples without dictating the
+magnitude.
+
+``cap=3`` is **held fixed and is arbitrary**, documented as such rather than derived. It exists to stop
+a handful of extreme lines driving a fit over ~150 points, and it is a safety limit, not a modelling
+choice. Sweeping it as well would confound the alpha result, since alpha and cap trade against each
+other by construction.
+
+⚠️ Note that inverse-density weighting remains a
+`refuted hypothesis <../../docs/steps/corrections-and-dead-ends.md#inverse-density-loss-weighting-improves-ranking>`_
+on the void panel and the retired target. It is re-tested rather than assumed, and it is re-tested
+because the explanation given for that null rested on a winsorization the pipeline no longer applies.
 
 Note that clipping and renormalizing interact: renormalizing after a clip can push values back over
 the cap (an earlier version reported a maximum of 13.1 under a cap of 10). The normalizing constant is

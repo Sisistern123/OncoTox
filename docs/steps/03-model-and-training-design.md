@@ -223,6 +223,10 @@ of **82**. Equal shares would be 0.56 % each; the top 10 lines carry **18.3 %** 
 is the cell count — a sequencing artifact carrying no information about the label. (The z-scoring code was
 careful about exactly this — "statistics are computed per cell line, not per cell" — the loss was not.)
 
+**Confirmed as standing until MIL (Selin, audit 09, 12.08.2026)** rather than fixed in the loss now —
+MIL dissolves it structurally, one bag is one line is one example, so a line-balanced weighting would be
+machinery built to be discarded.
+
 **Reweighting the existing objective does not fix it:** line-balanced reweighting was tested and is empty
 ([Corrections](corrections-and-dead-ends.md#line-balanced-reweighting-will-help)), which in hindsight is
 forced, since the ridge-on-line-means control *is* the fully line-balanced limit and it ties the PCA MLP.
@@ -253,6 +257,35 @@ Only the **macro per-drug** numbers feed the **per-drug-mean baseline** comparis
 the constant train-set mean score over that drug's observed cells. "**Heads beating baseline**"
 then counts drugs whose model per-drug val MSE beats that constant (scGPT 142/545, PCA 97/545 —
 [Step 05](05-multitask-results.md)).
+
+### The loss is plain masked MSE, and stays that way until MIL (audit 09, 12.08.2026)
+
+**Decided by Selin, 12.08.2026.** Three things were on the table — a spread term, a ranking term, and
+tuning their weights — and none enters the objective:
+
+- **Ranking cannot go in this loss.** Spearman is piecewise constant in the predictions, so its gradient
+  is zero almost everywhere. A differentiable surrogate exists and is standard (RankNet; LambdaRank,
+  Burges et al.), but it needs *one score per ranked item*, and under per-cell training a batch is
+  cells, so it would rank cells against each other on broadcast labels — the wrong object. It becomes
+  well-posed only under MIL, where one bag is one cell line, and it is deferred to there
+  (`notebooks/4b_mil_training.ipynb`).
+- **Spread does not need the loss.** Predictions are shrunk because an MSE-optimal predictor must
+  shrink in proportion to how little it knows (`pred_std ≈ ρ × true_std`); that is correct behaviour,
+  not a defect. Where calibrated *values* are reported, a per-drug linear recalibration fitted on the
+  training folds fixes it exactly, costs nothing, and leaves every ranking untouched because it is
+  monotone. Putting a spread penalty in the objective would buy the same thing approximately, with a
+  hyperparameter.
+- **Tuning three loss weights** on ~153 independent labels is selection on very little data, and it
+  would land at the same time as MIL, making neither attributable.
+
+What replaces them is **measurement**: order, order-at-the-top, values and spread are four things to
+*look at*, computed in `notebooks/5_evaluation.ipynb`, not four terms to optimize
+([Step 05](05-multitask-results.md)).
+
+**Which losses get compared, and when.** MSE / MAE / Huber, each with the density weighting off or on,
+on the per-cell architecture; ranking losses only under MIL. Two conditions carry over from the last
+comparison, which failed because it lacked them: the decision rule is fixed *before* the run, and
+≥3 seeds are needed for any difference to be readable against the ±0.04 seed band.
 
 **Beating that baseline, not the raw MSE, is the honest metric**, and on `auc_cc` the raw number is
 actively misleading: the labels cluster near 0.9 with a small spread, so an absolute MSE around 0.01

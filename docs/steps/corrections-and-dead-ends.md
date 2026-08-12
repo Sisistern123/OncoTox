@@ -1009,6 +1009,25 @@ for more cell lines, and against further objective engineering.
 
 **Decision: do not carry the weighting into Step 2.**
 
+> ⚠️ **Reopened, not overturned — audit 09, 12.08.2026.** The *result* above stands as a measurement.
+> The *explanation* offered for it does not describe the current pipeline: it turns on winsorizing at
+> `auc` 1.1, which was [retired 11.08.2026](#the-auc-target-was-divided-by-the-wrong-quantity), and on
+> the `auc` target, since replaced by `auc_cc` — whose upper tail is smaller anyway, because much of the
+> old one was the divisor artifact. Per-drug skew on `auc_cc` has never been measured. So "there was
+> nothing left to correct" is currently asserted on the strength of a step the pipeline no longer
+> performs.
+>
+> **The weighting is therefore re-tested rather than retired**, as one arm of the loss comparison in
+> [Step 03](03-model-and-training-design.md#the-loss-is-plain-masked-mse-and-stays-that-way-until-mil-audit-09-12082026)
+> — and `alpha` is swept over {off, 0.5, 1.0} instead of being justified in advance, which also settles
+> the standing problem that `alpha=0.5` lost its source when `panel_distributions.ipynb` was archived.
+> `cap=3` is held fixed and documented as arbitrary.
+>
+> One thing to carry into reading the re-test: the null was measured against **Spearman and MSE only**,
+> and the weighting changes *spread* rather than *order*. Both of those metrics are structurally blind
+> to spread, so "flat on both" could not distinguish no effect from an effect they cannot see. The
+> calibration slope added in `5_evaluation` is what makes the re-test able to tell those apart.
+
 > ⚠️ **Do not read the sign of these deltas.** The PCA unweighted arm is not bit-reproducible on `mps`:
 > four identical runs gave 0.313 / 0.315 / 0.317 / 0.320, while every other arm reproduced exactly. The
 > cause is that PCA peaks at epoch 1 (best epoch per fold `[1,1,3,1,1]` vs scGPT `[10,11,2,21,4]`), so

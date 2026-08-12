@@ -53,6 +53,16 @@ class TrainConfig:
     log_every: int = 5
     seed: int = 42
     loss: str = "mse"  # "mse" or "huber"
+    # ⚠️ Unsourced, and mis-scaled for the current target (found 12.08.2026, audit 09). Introduced
+    # with the original multi-task commit (ed8897c) and never revisited across three target changes.
+    # `smooth_l1_loss` is quadratic only below `beta` and linear above it, and 0.05 sits well under
+    # the typical residual on `auc_cc` -- the panel run's RMSE was ~0.163, which puts roughly three
+    # quarters of residuals in the LINEAR region. So `--loss huber` behaves closer to L1 than to the
+    # "quadratic near 0, robust in the tail" that docs/steps/03 describes. Nothing uses it today
+    # (`loss` defaults to "mse"), so it is left as-is rather than silently rescaled: `beta` is a
+    # threshold on the residual scale and picking one is an analysis decision. If the loss
+    # comparison in review item 9 includes Huber, `beta` is derived there from the residual scale
+    # rather than inherited from here.
     huber_beta: float = 0.05
     # Decay the weight matrices, exempt the biases and the normalization parameters. This is the
     # standard grouping -- HuggingFace transformers' `Trainer.create_optimizer`
@@ -180,8 +190,15 @@ def _format_per_drug_block(
     order = np.argsort(np.where(finite, per_drug_mse, np.inf))
     best = order[: min(topk, finite.sum())]
     worst = order[::-1][: min(topk, finite.sum())]
+    # `per_drug_n` is the column sum of the mask, which is a count only while the mask is 0/1.
+    # Under density weighting the mask carries weights, so it is the weight sum -- printing it as
+    # `n=` read as a sample size (found 12.08.2026, audit 09). Labelled `w=` when it is not an
+    # integer count. The MSE beside it is likewise the weighted per-drug MSE in that case, which is
+    # the objective being optimized but is not comparable to an unweighted run.
     def fmt(idx):
-        return f"{drug_names[idx]}:{per_drug_mse[idx]:.3f}(n={int(per_drug_n[idx])})"
+        n = per_drug_n[idx]
+        amount = f"n={int(n)}" if float(n).is_integer() else f"w={n:.1f}"
+        return f"{drug_names[idx]}:{per_drug_mse[idx]:.3f}({amount})"
     return (
         "  best : " + ", ".join(fmt(i) for i in best) + "\n"
         "  worst: " + ", ".join(fmt(i) for i in worst)

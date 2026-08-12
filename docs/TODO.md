@@ -313,8 +313,35 @@ every one of them was a step that looked settled and had never been checked.
         `Linear`'s bias (78× moves the output by 0.074 against a spread of 0.377; zeroing that bias drops
         it to 8e-6), so **4A's premise needs restating before 4A is run** — the naive "different
         effective step size" argument does not go through under LayerNorm plus Adam.
-- [ ] **9 · Loss** — masking, per-sample weighting (the density weighting was a null — drop or keep?),
-      per-line weighting (the 82× artifact), and what the objective actually rewards.
+- [x] **9 · Loss — walked 12.08.2026.** Confirmed sound: the masked loss is `Σ(sq·M)/ΣM` over observed
+      (cell, drug) entries, so unscreened pairs contribute nothing to loss, gradient or metric; sample
+      weights ride in the mask, turning it into `Σ(w·sq)/Σw` exactly with no change to the training
+      loop; the density is fitted per fold on the fitting lines only. **The objective stays plain masked
+      MSE until MIL (Selin):** no spread term, no ranking term, no tuned weights — the reasoning, and
+      what replaces each, is in
+      [Step 03](./steps/03-model-and-training-design.md#the-loss-is-plain-masked-mse-and-stays-that-way-until-mil-audit-09-12082026).
+  - [x] **A · The density weighting is re-tested, not retired, and `alpha` is swept instead of
+        justified (Selin, 12.08.2026).** Its parameters had lost their source when
+        `panel_distributions.ipynb` was archived, and the *explanation* for its null turned on a
+        winsorization retired 11.08.2026 and a target since replaced. Rather than derive a number in
+        advance to test a hypothesis the same run tests anyway, `alpha` becomes an arm of the loss
+        comparison over **{off, 0.5, 1.0}**; `cap=3` is held fixed and **documented as arbitrary**.
+        [Corrections](./steps/corrections-and-dead-ends.md#inverse-density-loss-weighting-improves-ranking).
+  - [x] **B · The 82× per-line imbalance stands until MIL.** Line-balanced reweighting was already
+        tested and is empty, and MIL removes the defect structurally — one bag is one line is one
+        example — so a weighting built now is machinery built to be discarded.
+  - [x] **C · Two defects found and fixed in code.** In weighted runs the per-drug log printed `Σw` as
+        `n=`, i.e. a weight sum labelled as a sample size — now printed as `w=` when it is not an
+        integer count. And `TrainConfig.huber_beta = 0.05` is unsourced and **mis-scaled for `auc_cc`**:
+        `smooth_l1` is linear above `beta`, and 0.05 sits well below the typical residual (~0.163 RMSE),
+        putting roughly three quarters of residuals in the linear region — so `--loss huber` behaves
+        closer to L1 than to what the docs describe. Left at its value rather than silently rescaled,
+        because `beta` is a threshold on the residual scale and choosing one is an analysis decision;
+        it is derived in the loss comparison if Huber is included.
+  - [ ] **Left for item 11:** the four quantities the loss is *not* asked to optimize — order
+        (Spearman), order at the top (NDCG@K against a random null), values (RMSE in AUC units) and
+        spread (calibration slope) — get a section each in `notebooks/5_evaluation.ipynb`, which is
+        written but not yet built. Item 11 owns the metric set and records it.
 - [ ] **10 · Training** — optimizer, weight decay groups, epochs, early stopping, and the `mps`
       nondeterminism that moves the PCA arm across identical runs.
 - [ ] **11 · Evaluation** — metric, cell→line aggregation, baselines (ridge, `NaiveMeanEffects`),
@@ -385,6 +412,15 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       refresh them; `4a_percell_training.ipynb` on the rebuilt panel; ridge / `NaiveMeanEffects` on the same
       folds; `verify_variants.ipynb` §9; and 4A below. Blockers already recorded: **≥ 3 seeds** before any
       scGPT − PCA margin is quoted, and train-only drug selection inside each fold.
+  - [ ] **The loss comparison** (item 9A, 12.08.2026): MSE / MAE / Huber × density weighting
+        `alpha` ∈ {off, 0.5, 1.0}, on the per-cell architecture only — ranking losses wait for MIL,
+        where one bag is one cell line and they are well-posed. Two conditions, both from the failure
+        of the last comparison: **the decision rule is fixed before the run**, and **≥3 seeds**, since
+        the seed band on Spearman is ±0.04 and larger than most differences seen so far. If Huber is
+        included, derive its `beta` from the residual scale rather than inheriting `TrainConfig`'s
+        0.05, which is unsourced and mis-scaled for `auc_cc` (item 9C). Scored on all four quantities
+        in `5_evaluation`, which is what lets a spread effect be seen at all — the previous null was
+        measured on Spearman and MSE, both blind to it.
   - [ ] **The minimal capacity re-derivation** (item 8C, 12.08.2026): trunk `(128,64)` vs a bare linear
         head (`hidden_dims=()`), both representations, against `RidgeCV` on the *same* folds via
         `cv.grouped_folds`, on the rebuilt panel. ~20 fits. It re-establishes the one claim that carries
