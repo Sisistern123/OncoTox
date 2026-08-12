@@ -301,6 +301,48 @@ being embedded, so nothing about it is fitted on this data.
 \end{revisionblock}
 
 \begin{revisionblock}
+\textbf{What a fit is allowed to see --- decided 12.08.2026.} Three quantities in the pipeline are
+estimated from data before any model is trained: the selection of variable genes, the per-gene
+standardization, and the principal component rotation. None of them sees a response label, which is why
+conventional pipelines accept them without comment, and it is also why they were settled together rather
+than one at a time: they are the same question asked three times, and separate answers would have been
+inconsistent. \textbf{This paragraph records the decisions, not the state of the code}: one of the three
+changes what the pipeline does and takes effect when the representations are regenerated, so the
+description immediately above --- in which the cross-validated results use the all-cells decomposition
+--- remains accurate until then, and is deliberately left standing rather than rewritten in advance.
+
+\textbf{Gene selection continues to use every cell.} The alternative --- choosing variable genes within
+each fold's training lines --- makes the gene set fold-dependent, so that at five folds there would be
+five gene sets and the phrase ``the five thousand most variable genes'' would no longer name a single
+object. Comparisons across folds, between the two representations, and across the gene-set sweep would
+then differ in which genes they contain as well as in which cells, and the sweep in particular is defined
+by holding the gene count fixed. Comparability is judged worth more than removing an unsupervised fit.
+The cells belonging to lines that carry no response measurement, about a ninth of the atlas, are retained
+in that selection for the same reason: they cannot leak a label they do not have, more cells estimate a
+gene's variance across cells more precisely, and both representations receive the identical set, so
+neither is advantaged.
+
+\textbf{The rotation used by the cross-validated results will be fitted per fold}, on that fold's
+training lines, at training time --- the one decision of the three that changes the pipeline, and the
+one that matters most, because every cross-validated figure carried the all-cells rotation and the
+cross-validated figures are the headline. Storing five fold-specific matrices was considered and rejected: it would cost
+roughly a gigabyte across the two gene-set variants and, more importantly, would push the
+cross-validation's configuration into the preprocessing stage, so that changing how folds are drawn would
+require rebuilding the stored representations. The fits are instead cached per run and keyed by the fold
+assignment, which is reproducible from the seed and the eligible lines. The all-cells decomposition is
+still written and remains correct for descriptive use such as the latent-space figures.
+
+\textbf{Two of these fits favour the baseline, and are kept anyway --- which is what makes any margin
+reported here a lower bound.} The principal-component representation is estimated from our own cells,
+while the scGPT embedding is not fitted on this data at all: its weights are pretrained and frozen, and
+its per-cell binning draws on quantiles of the cell's own values, so no other cell enters. A fit
+estimated on more cells therefore helps the baseline and cannot help the embedding. Any advantage
+measured for the embedding under these conditions is understated rather than inflated, and the
+conservatism is deliberate: the alternative would have been to weaken the control in order to flatter the
+comparison this work exists to make.
+\end{revisionblock}
+
+\begin{revisionblock}
 \textbf{Early stopping is nested inside the training lines (added 12.08.2026).} Training runs for a
 fixed maximum number of epochs and the checkpoint with the lowest validation error is restored, so the
 stopping epoch is a quantity chosen from data. Until 12.08.2026 the cross-validation harness measured
