@@ -5,6 +5,107 @@
   pipeline_overview.png    status of the whole project against the plan (steps 01-08)
   loss_01_objective.png    what the objective is made of
 
+FIGURE CONVENTIONS — READ BEFORE WRITING ANY TITLE, CAPTION OR ANNOTATION
+=========================================================================
+
+Set by Selin 12.08.2026: *"stop making LLM like figures and titles. this is a scientific report."*
+Recorded here rather than in a message so it does not have to be restated to whoever comes next.
+Three rules, and every one of them was broken somewhere in this file when they were written.
+
+1. **A title names what is plotted. It never states what the result means.**
+   Not ``"The weighting fired — and the ranking did not move"``.
+   But  ``"Prediction spread and per-drug Spearman across density-weighting levels"``.
+   The test is not "is it true" — a conclusion-shaped title is the wrong register even when it is
+   correct, and a title that would still hold after the rerun is still wrong. A title that *cannot*
+   survive a rerun is worse: it is a claim in a PNG, where it cannot be qualified, cited or
+   retracted. See ``loss_01_objective.png``, which asserted a squared loss for weeks and could not
+   fail because it reads no data.
+
+2. **Annotations label; they do not interpret.**
+   ``"high AUC = resistant"`` is a legend and belongs. ``"above the line: the model hedges less"``
+   is an interpretation and does not — interpretation goes in the report text, where it can be
+   argued, sourced and disagreed with. The same applies to an argument set as a caption: if a
+   sentence would need a citation in prose, it needs one here too, and therefore belongs there.
+
+3. **Every mark earns its place.** Axes, data, and the minimum labelling needed to read them.
+   Circles, arrows, heat strips, rounded colour-filled callout boxes, italic grey asides and
+   explanatory sub-captions are infographic register, not scientific figures. If a mark's job is to
+   look explanatory rather than to carry information the reader needs, it goes.
+
+A fourth, from an unrelated defect class found the same day: **never hardcode a count in a label.**
+Derive it — ``len(PANEL)``, a row count, a config value. ``"the 8 heads"`` was already wrong when it
+was found (the rebuilt panel has 11), and ``180 trainable`` becomes 181 at the sweep. A number typed
+into a string cannot be checked by anything.
+
+AUDIT AGAINST THOSE RULES — 12.08.2026, not yet applied
+-------------------------------------------------------
+Every title, caption, annotation and axis label in this file, judged twice: *does it assert a
+result?* and *is it a scientific caption or a headline?* **Nothing below has been rewritten.** The
+figures are held until R4, and the ⛔ entries cannot be rewritten before then anyway — a title naming
+what the run showed has to wait for the run. A checklist, so the pass is not a rediscovery.
+
+**Keyed by function and by the opening words of the string — never by line number.** The first
+version of this audit was keyed by line, and the commit that recorded it is the commit that broke
+it: inserting this docstring pushed every cited site down by about 76 lines. Line numbers into a
+file under active edit decay silently, and a checklist that sends the reader to the wrong place is
+worse than none, because it will be trusted. ``grep -n`` on the quoted words finds each site in any
+ref.
+
+⛔ **Asserts a result — rewrite from what the run shows, not before:**
+  ``build_pipeline_flow``   "one seed — only scGPT clears the ridge control"
+        A finding from the void 8-drug run used as the **stage-8 label of the pipeline diagram**, so
+        the drawing of the pipeline presents an outcome as though it were one of its steps.
+  ``build_loss_effect``     "The weighting fired — and the ranking did not move"
+        The 27.07 conclusion, on the figure drawn from the run that re-tests that very claim.
+  ``build_loss_effect``     "above the line: the model hedges less" · "on the line: no gain, no loss"
+
+⛔ **Asserts a swept arm as a fact:**
+  ``draw_architecture``     "per-cell MLP · trained with the density-weighted masked MSE"
+        States both that weighting is on and that the loss is squared error. Under item 9A ``alpha``
+        is in {0.0, 0.5, 1.0} and the loss is MSE / MAE — both are arms.
+  ``build_pipeline_flow``   "unscreened pairs dropped, rare response values weighted up"
+        Same class: true only for ``alpha > 0``.
+
+⚠️ **Headline register — true, but the wrong form:**
+  ``draw_architecture``     "Model architecture — one cell in, one AUC per panel drug out"
+        The clause after the dash is a strapline; "Model architecture" is the caption.
+  ``draw_loss_objective``   "The objective — a weighted, masked mean error"     (written 12.08, mine)
+  ``draw_loss_objective``   "per-drug scaling belongs here, in the loss, rather than in the labels"
+  ``draw_architecture``     "The target is uncentred: the head bias is initialized to …"
+        Four lines of reasoning set as a caption. Accurate, and belongs in Methods where it can be
+        cited. A *different passage* from the PLOTTED/CURRENT disclaimer below, in the same function
+        — the two sit ten lines apart and have been confused once already.
+
+⚠️ **Infographic register (rule 3).** ``draw_loss_objective``'s three rounded colour-filled callout
+  boxes and grey italic asides; ``draw_architecture``'s circles, arrows and heat strips. Both mine
+  to redraw at R4.
+
+⚠️ **Hardcoded counts (rule 4).**
+  ``draw_architecture``     "the 8 heads are the 8 rows of one Linear(64 → 8)"  — **already wrong**:
+        it describes the architecture, inside the architecture diagram, and the rebuilt panel has 11.
+  ``build_pipeline``        "CTRPv2 545 drugs" · "overlap 190* lines · 180 trainable" ·
+                            "K=545 · out-of-fold over 153 lines" · "out-of-fold CV over 153 lines" ·
+                            "* 190 = name-matches …"          — ``180`` becomes 181 at the sweep.
+  ``build_pipeline_flow``   "one cell line = 56–1,990 cells" · "545 drugs  →" · "8  the panel"
+
+✅ **Correct as written; do not sweep in:**
+  ``draw_architecture``     "PLOTTED: the superseded run … CURRENT PIPELINE: auc_cc, …"
+        Deliberately contrasts what is plotted against the current pipeline; that disclaimer is what
+        makes the figure readable at all.
+  ``draw_architecture``     "high AUC = resistant" and its sensitive counterpart — legends.
+  ``build_pipeline``        "Results withdrawn" — a plan-status key.
+
+**And one artifact that is not a figure**, written to ``report/`` rather than ``docs/figures/``:
+
+  report/loss_objective.tex   the objective's equations, as LaTeX macros the report ``\\input``s
+
+It is generated from ``LOSS_TEX_MACROS`` — the same strings ``loss_01_objective.png`` renders — so
+the maths in the report and the maths in the figure have one source and cannot drift apart. Decided
+by Selin 12.08.2026 over rendering the formula into the PNG (raster, fonts would not match the
+report body, not referenceable by LaTeX) and over a PGF/vector figure (fonts match, but it puts a
+LaTeX installation in the figure build path). It is committed so a clean checkout still compiles
+the report; a regenerate-and-diff pre-merge check that fails on drift is owned by the gate session.
+
 **Derived from data — currently SKIPPED, and archived (12.08.2026):**
 
   pipeline.png             the pipeline as a picture, stage by stage
@@ -695,44 +796,189 @@ def build_pipeline_flow():
 
 
 # ============================================================ 4) the loss, in three figures
+
+#: Where the generated formula macros land. `report/main.tex` picks them up with `\input`, the same
+#: way it already picks up `results_numbers.tex` -- but unlike that file, this one is generated and
+#: must never be hand-edited. It is committed so a clean checkout still compiles the report, and a
+#: pre-merge check regenerates it and fails on any difference (owned by the gate session, not here).
+LOSS_TEX = ROOT / "report" / "loss_objective.tex"
+
+#: The objective, as LaTeX macro bodies -- **the single source for both destinations**. The figure
+#: renders these same strings through mathtext, so the equation in `docs/figures/` and the equation
+#: in `main.pdf` cannot disagree: there is one place to change and both follow.
+#:
+#: Notation, and why each symbol is the one it is (settled by Selin 12.08.2026, see the module
+#: docstring of `scripts/training/density_weighting.py` for the mechanism):
+#:   n in N   -- CELLS. The loss is summed over cells, because training is per cell.
+#:   i in I_j -- CELL LINES of the training fold observed for drug j. The density is fitted here,
+#:               *not* over cells: a line with 1,990 sequenced cells would otherwise bend the density
+#:               toward its own response while a line with 56 barely registered. The two index sets
+#:               are shown separately because that asymmetry IS the design decision -- an equation
+#:               summing only over cells would be equally true of the naive variant this rejects.
+#:   j        -- drug, 1..K.  c -- the weight cap (held fixed, documented as arbitrary).
+#:
+#: Everything the loss comparison (item 9A) varies is left SYMBOLIC: the pointwise loss `l`, the
+#: density exponent `alpha`. Rendering a concrete value here would pre-empt a decision that is
+#: Selin's and that the R4 run exists to make.
+#:
+#: **Huber was dropped from the comparison on 12.08.2026** (`8bda87a`): at `beta=0.05` it sits close
+#: to MAE, so the grid would carry two near-duplicate columns, and a principled `beta` would import a
+#: new unsourced constant into the very comparison meant to supply the justification. MSE and MAE
+#: bracket the axis. `beta` is therefore gone from these macros -- it parameterised only Huber -- and
+#: item 9C's `huber_beta` question is retired with it. The code still exposes `--loss huber`; whether
+#: the option leaves the code is the model session's call, not this file's.
+#:
+#: The normalizer is stated as a CONSTRAINT rather than as a constant. `Z_j` is the solution of a
+#: fixed point (`fit_weight_fn`, max_iter=50, tol=1e-9) because the clip and the mean-1 condition
+#: interact -- writing `/Z_j` would assert a closed form that does not exist, which makes showing it
+#: less accurate than omitting it. The `1e-12` density floor is a numerical guard and is deliberately
+#: absent; it belongs in the docstring *provided it never binds*, which is measurable on `auc_cc`
+#: once R2 produces real values and is not yet established.
+#:
+#: ⚠️ These strings must parse under BOTH LaTeX and matplotlib's mathtext, which is a subset. Two
+#: constructs are therefore avoided, and both were verified failing rather than assumed:
+#:   `\tfrac`            -> use `\frac`  (mathtext: "Unknown symbol: \tfrac")
+#:   `\lvert` / `\rvert` -> use `\left|` / `\right|`  (mathtext: "Unknown symbol: \lvert")
+#: `\text{...}` is supported and is fine. Substituting either back would still compile the report and
+#: would break only the figure -- the asymmetry is the reason this warning is here rather than left
+#: to be rediscovered.
+#:
+#: For the same reason there is no `\!` after a *subscripted* symbol (`w_j\left(`, not `w_j\!\left(`).
+#: LaTeX tightens the gap; mathtext pulls the parenthesis back over the subscript, so `w_j(y)` renders
+#: as an unreadable `w/y`. `\ell\!\left(` is kept -- `\ell` carries no subscript to collide with.
+LOSS_TEX_MACROS: dict[str, str] = {
+    # The `\;` between the two sums is load-bearing for the figure, not typographic fussiness:
+    # mathtext sets both limits *below* their sigma, so without it "n \in \mathcal{N}" and "j = 1"
+    # abut and read as one nonsense subscript. In LaTeX it is an ordinary thin space.
+    "LossObjective": (
+        r"\mathcal{L}\;=\;"
+        r"\frac{\sum_{n \in \mathcal{N}}\;\sum_{j=1}^{K} W_{nj}\,"
+        r"\ell\!\left(\hat{y}_{nj},\, y_{nj}\right)}"
+        r"{\sum_{n \in \mathcal{N}}\;\sum_{j=1}^{K} W_{nj}}"
+    ),
+    "LossWeightMatrix": r"W_{nj}\;=\;M_{nj}\;w_j\left(y_{nj}\right)",
+    "LossWeightFn": (
+        r"w_j(y)\;\propto\;\hat{p}_j(y)^{-\alpha},"
+        r"\qquad w_j \in \left[\frac{1}{c},\, c\right],"
+        r"\qquad \frac{1}{\left| \mathcal{I}_j \right|}"
+        r"\sum_{i \in \mathcal{I}_j} w_j\left(y_{ij}\right)\;=\;1"
+    ),
+    "LossDensity": (
+        r"\hat{p}_j\;=\;\text{Gaussian KDE fitted on }"
+        r"\left\{\, y_{ij} \;:\; i \in \mathcal{I}_j \,\right\}"
+    ),
+    "LossArms": (
+        r"\ell \in \{\text{squared},\, \text{absolute}\},"
+        r"\qquad \alpha \in \{\text{off},\, \frac{1}{2},\, 1\}"
+    ),
+}
+
+
+def build_loss_formula_tex():
+    """Write the objective's macros to ``report/loss_objective.tex`` for the report to ``\\input``.
+
+    Emits definitions only -- no display environment, no numbering. The section file decides whether
+    a macro lands in ``equation``, ``align`` or inline, so the generator never dictates typesetting
+    it cannot see the context for.
+    """
+    lines = [
+        "% " + "=" * 76,
+        "% loss_objective.tex -- the training objective, as LaTeX macros.",
+        "% " + "=" * 76,
+        "%",
+        "% GENERATED FILE -- DO NOT EDIT.",
+        "%   Written by docs/make_figures.py :: build_loss_formula_tex() from LOSS_TEX_MACROS,",
+        "%   which is also what docs/figures/loss_01_objective.png renders. One source, both",
+        "%   destinations, so the equation in the report and the equation in the figure cannot",
+        "%   drift apart. To change a formula, edit LOSS_TEX_MACROS and re-run the generator.",
+        "%",
+        "% HOW THEY ARE USED",
+        "%   main.tex does \\input{loss_objective} in the preamble; a section then writes e.g.",
+        "%     \\begin{equation}\\LossObjective\\end{equation}",
+        "%   Definitions only -- the section chooses the environment.",
+        "%",
+        "% WHAT IS DELIBERATELY SYMBOLIC",
+        "%   \\ell and \\alpha are left as symbols: the loss comparison (docs/TODO.md item 9A)",
+        "%   sweeps MSE / MAE against alpha in {off, 0.5, 1.0} -- six arms. A concrete value here",
+        "%   would pre-empt a decision the R4 run exists to make. Huber was dropped from the",
+        "%   comparison on 12.08.2026, and \\beta went with it: it parameterised only Huber.",
+        "%",
+        "% NOTATION",
+        "%   n in N    cells -- the loss is summed over cells, training being per cell.",
+        "%   i in I_j  cell lines of the training fold observed for drug j -- where the density is",
+        "%             fitted. Kept a separate index on purpose: fitting on cells would let a line",
+        "%             with 1,990 sequenced cells bend the density and one with 56 barely register.",
+        "%   j         drug, 1..K.        c   the weight cap (fixed; arbitrary, and documented so).",
+        "",
+    ]
+    lines += [f"\\newcommand{{\\{name}}}{{{body}}}" for name, body in LOSS_TEX_MACROS.items()]
+    lines.append("")
+
+    LOSS_TEX.write_text("\n".join(lines), encoding="utf-8")
+    print(f"wrote {LOSS_TEX}")
+
+
 def draw_loss_objective(ax, *, compact: bool = False):
-    """Draw the objective into ``ax`` — same drawing for the standalone figure and for stage 6."""
+    """Draw the objective into ``ax`` — same drawing for the standalone figure and for stage 6.
+
+    Every equation here is rendered from :data:`LOSS_TEX_MACROS`, the same strings
+    :func:`build_loss_formula_tex` writes into the report. Nothing is retyped, so the figure and
+    ``main.pdf`` cannot disagree about what is being minimised.
+
+    Until 12.08.2026 they *did* disagree, and only the figure was wrong. It hardcoded its own
+    ``(\\hat{y}-y)^2``, titled the objective "a weighted, masked mean squared error", and labelled a
+    single index as ``i = cell`` — asserting a fixed squared loss when the loss comparison
+    (``docs/TODO.md`` item 9A) sweeps MSE / MAE, and hiding the cell/cell-line split that is
+    the whole design of the weighting. It went stale silently: it reads no data, so it rendered
+    happily every run with nothing to fail.
+    """
     ax.set_xlim(0, 100); ax.set_ylim(0, 100); ax.axis("off")
+    tex = LOSS_TEX_MACROS
 
     if not compact:
-        ax.text(1, 99, "The objective — a weighted, masked mean squared error",
+        ax.text(1, 99, "The objective — a weighted, masked mean error",
                 ha="left", va="top", fontsize=14, fontweight="bold", color=INK)
-        ax.text(1, 91, "target = auc_cc, the curve-fit AUC  ·  per-drug scaling belongs here, in the "
+        ax.text(1, 92, "target = auc_cc, the curve-fit AUC  ·  per-drug scaling belongs here, in the "
                        "loss, rather than in the labels",
                 ha="left", va="top", fontsize=9, color=GREY)
+        # The three swept quantities are named as swept, so the figure cannot be read as claiming a
+        # loss the run has not chosen yet.
+        ax.text(1, 86, r"$\ell$ and $\alpha$ are what the loss comparison sweeps "
+                       "(item 9A) — the figure fixes neither",
+                ha="left", va="top", fontsize=9, color=GREY)
 
-    ax.text(50, 76 if not compact else 92, r"$\mathcal{L}\;=\;\frac{\sum_{i,k}\;"
-                    r"\mathbf{m}_{ik}\;\cdot\;\mathbf{w}_k(y_{ik})\;\cdot\;"
-                    r"(\hat{y}_{ik}-y_{ik})^2}"
-                    r"{\sum_{i,k}\;\mathbf{m}_{ik}\;\cdot\;\mathbf{w}_k(y_{ik})}$",
-            ha="center", va="top", fontsize=23 if not compact else 15, color=INK)
+    ax.text(50, 80 if not compact else 92, f"${tex['LossObjective']}$",
+            ha="center", va="top", fontsize=20 if not compact else 15, color=INK)
     if compact:
         return
 
+    # The weight definition is not decoration: the objective above sums over cells (n), while the
+    # density is fitted on the training fold's cell LINES (i). Dropping these two lines would leave
+    # an equation equally true of the naive per-cell variant this deliberately rejects.
+    ax.text(50, 47, f"${tex['LossWeightMatrix']}$",
+            ha="center", va="top", fontsize=13, color=INK)
+    ax.text(50, 39, f"${tex['LossWeightFn']}$",
+            ha="center", va="top", fontsize=13, color=INK)
+
     for x, edge, fill, head, body in [
-        (1.5, GREY, GREY_FILL, r"$m_{ik}$   mask",
-         "1 if the line was screened\nagainst drug $k$, else 0"),
-        (35.0, BLUE, BLUE_FILL, r"$w_k(y_{ik})$   sample weight",
-         "inverse label density,\nper drug, mean 1"),
-        (68.5, RED, RED_FILL, r"$(\hat{y}_{ik}-y_{ik})^2$   error",
-         "squared, in raw AUC units\n$i$ = cell,  $k$ = drug"),
+        (1.5, GREY, GREY_FILL, r"$M_{nj}$   mask",
+         "1 if the line was screened\nagainst drug $j$, else 0"),
+        (35.0, BLUE, BLUE_FILL, r"$w_j(y_{nj})$   sample weight",
+         "inverse label density — fitted\non cell lines, mean 1"),
+        (68.5, RED, RED_FILL, r"$\ell(\hat{y}_{nj},\,y_{nj})$   error",
+         "squared or absolute\n$n$ = cell,   $i$ = cell line,   $j$ = drug"),
     ]:
-        ax.add_patch(FancyBboxPatch((x, 2), 30, 26, boxstyle="round,pad=0.5,rounding_size=2.0",
+        ax.add_patch(FancyBboxPatch((x, 1), 30, 23, boxstyle="round,pad=0.5,rounding_size=2.0",
                      linewidth=1.8, edgecolor=edge, facecolor=fill, zorder=2))
-        ax.text(x + 15, 24.5, head, ha="center", va="top", fontsize=11.5,
+        ax.text(x + 15, 21.0, head, ha="center", va="top", fontsize=11.5,
                 fontweight="bold", color=edge, zorder=3)
-        ax.text(x + 15, 15.0, body, ha="center", va="top", fontsize=9, color=INK,
+        ax.text(x + 15, 13.0, body, ha="center", va="top", fontsize=8.5, color=INK,
                 zorder=3, linespacing=1.5)
 
 
 def build_loss_objective():
     """What the objective is made of — the formula and the three factors, nothing else."""
-    fig, ax = plt.subplots(figsize=(12.0, 4.6))
+    fig, ax = plt.subplots(figsize=(12.0, 5.6))
     draw_loss_objective(ax)
     out = FIG / "loss_01_objective.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
@@ -840,7 +1086,78 @@ def build_loss_weights():
 
 
 def build_loss_effect():
-    """What the weighting did: the spread it was designed to raise, and the ranking it did not move."""
+    """What the weighting did: the spread it was designed to raise, and the ranking it did not move.
+
+    ⚠️ **The drawing below is superseded and must not be rebuilt as it stands.** It is a paired
+    scatter — unweighted on x, density-weighted on y, one point per drug, with a diagonal — and that
+    form encodes an assumption that has stopped holding: that the comparison has exactly **two**
+    arms. From R4 the density-weighting arm is three levels, ``alpha`` in {0.0, 0.5, 1.0}, replacing
+    the boolean ``weighted``. There is no single delta to put on two axes.
+
+    **DESIGN DECIDED 12.08.2026 by the visualization agent** — figure decisions were delegated by
+    Selin on that date; she keeps the analysis decisions. Recorded here rather than in a message so
+    it cannot drift from the code it governs. *Not implemented*: the figure is skipped until R4 (its
+    input is a training output), and this project does not commit a drawing nobody has rendered and
+    looked at. Implement it when the R4 outputs exist, then render it and read it.
+
+    **Replace the paired scatter with a response curve over the sweep — put ``alpha`` on the x-axis.**
+
+      * A **2x2 grid**: rows are the two quantities, spread of the predictions (``pred_std``) and
+        per-drug Spearman; columns are the two representations, scGPT and PCA. Faceting the
+        representation rather than colouring it is what buys room for the seed band below without
+        four series colliding in one panel.
+      * Rows are the two quantities and not one, because that pairing *is* audit 09's finding — the
+        weighting acts on spread, and the previous null was read off rank correlation and error,
+        both structurally blind to it. Keeping both is what lets the re-test distinguish "no effect"
+        from "an effect the metrics cannot see".
+      * x = ``alpha`` as ordered ticks; y = the quantity.
+      * One faint line per drug across the ticks, at that drug's median over seeds, so *within-drug*
+        movement stays visible — the evaluation metric is within-drug, and a mean over drugs would
+        hide a reversal.
+      * One bold line: the median across drugs. **Around it, a band spanning the seeds.**
+      * A horizontal reference line for the ridge baseline, which has no ``alpha``.
+
+    **The seed band is not decoration and must not be dropped for tidiness.** The decision rule's
+    margin is *defined* as the spread across seeds (>=3, item 9A), so a figure without it invites
+    exactly the reading the rule exists to prevent: an alpha-to-alpha difference smaller than the
+    noise, read off the plot as an effect. Whatever else is cut, this stays.
+
+    ``loss`` (the MSE / MAE arm of item 9A) is **held fixed** here and named in the caption. This
+    figure answers "what does ``alpha`` do"; crossing it with the loss arm as well would put four
+    dimensions in one drawing to answer a one-dimensional question. Which loss it is fixed at is an
+    analysis decision and therefore Selin's, not a display choice.
+
+    **Why this form and not the alternatives.**
+
+      * *0.5 and 1.0 each against 0.0*, or *best-alpha against 0.0*, keep the scatter but need a new
+        panel per pair and grow as O(N) panels — and "best-alpha" hides the axis whose legibility is
+        the entire reason the sweep exists.
+      * A curve **scales to any number of arms**: adding a level adds a tick, not a panel. The arm
+        list is explicitly provisional and expected to grow, so a design that only works for exactly
+        three points would need redoing on the next change.
+      * It **puts the ridge baseline where it belongs**. Selin resolved the schema question on
+        12.08.2026: a separate ``model`` column in {mlp, ridge, and mil when 4b lands}, with
+        ``alpha`` numeric and meaningful for ``model='mlp'`` rows only. Ridge therefore has no
+        ``alpha`` and is drawn as a horizontal reference line — not a workaround for a sentinel, but
+        the honest picture of a baseline that does not vary along this axis. The design was chosen
+        before that decision landed and needed no change when it did.
+      * It **degenerates gracefully**: at two ticks it is a slopegraph, so this is a generalisation
+        of the current figure rather than a different figure.
+
+    What is lost, stated plainly: the diagonal, and with it the "above the line: the model hedges
+    less" annotation. Both only work for exactly two arms. The replacement reading is that a **flat**
+    line means ``alpha`` does nothing, and a **rising** line in the spread panel means the weighting
+    reduced the shrinkage it was designed to reduce.
+
+    The same decision settles ``4a``'s summary rows: one row per level (``MLP alpha=0.0`` /
+    ``0.5`` / ``1.0``) instead of ``MLP weighted`` / ``MLP unweighted``, with ridge as its own row
+    rather than a value in the column.
+
+    ⚠️ **The title is a conclusion and must be rewritten after the run, not before.** "The weighting
+    fired — and the ranking did not move" is the 27.07 result, on the void panel and the retired
+    target, and it is exactly the claim R4 re-tests. Carrying it into a figure drawn on new outputs
+    would assert the answer the run exists to find.
+    """
     corr = panel_corr()
 
     # This figure is the one thing here that cannot follow the panel. Its input is a TRAINING
@@ -899,5 +1216,8 @@ if __name__ == "__main__":
     build_pipeline_flow()
     build_architecture()
     build_loss_objective()
+    # Written from the same macros build_loss_objective() just rendered, and immediately after it, so
+    # the report's equations and the figure's cannot be regenerated apart.
+    build_loss_formula_tex()
     build_loss_weights()
     build_loss_effect()
