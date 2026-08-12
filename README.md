@@ -51,14 +51,21 @@ docs/                    # TODO.md, project_progress.md (index) + steps/ (01-06,
 
 ## Quickstart
 
-```bash
-# Preprocess (HVG-5000 variant, all CTRPv2 drugs; skips the external scGPT step if embeddings exist).
-# --score picks the CTRPv2 response target: auc_cc (default, DrEval's CurveCurator AUC) or ln_ic50_cc.
-# Each score writes its own targets h5ad.
-uv run scripts/preprocessing/run_preprocessing.py --variant hvg5000 \
-    --start-at targets --skip-scgpt --all-drugs
+**The notebooks are the pipeline.** Stages 1–5 under [`notebooks/`](notebooks/README.md) run it end to
+end; each drives `scripts/preprocessing/pipeline.py`, one function per step. There is no CLI
+orchestrator — `run_preprocessing.py` was [archived](scripts/archive/README.md) on 12.08.2026, because
+the step order is the notebook numbering and a second copy of it in a CLI is a second thing to keep in
+step. To run headless:
 
-# Train multi-task (all 545 CTRPv2 drugs).
+```bash
+# Preprocessing: stage 1 fetches the pinned CTRPv2 response table and converts SCP542;
+# stage 3 runs the scGPT embedding, targets, splits and PCA. Set SCGPT_PYTHON in stage 3's
+# bootstrap cell first — the scGPT step needs its own virtualenv and raises without it.
+# The target is auc_cc by default; ln_ic50_cc writes its own targets h5ad.
+uv run jupyter nbconvert --execute --inplace notebooks/1_data.ipynb
+uv run jupyter nbconvert --execute --inplace notebooks/3_representations.ipynb
+
+# Training still has a CLI (all 545 CTRPv2 drugs; the panel is applied as a column selection).
 uv run scripts/training/train_multitask.py --use-rep X_scGPT   # scGPT embeddings
 uv run scripts/training/train_multitask.py --use-rep X_pca     # PCA baseline
 ```

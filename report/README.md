@@ -62,7 +62,7 @@ The figures are copies from the notebook outputs — refresh them with:
 
 ```sh
 cp ../notebooks/outputs/embeddings/umap_cancertype_pca_vs_scgpt.png figures/fig_umap.png
-cp ../notebooks/outputs/ablations/rescue_k545.png                   figures/fig_rescue.png
+cp ../notebooks/outputs/legacy/ablations/rescue_k545.png                   figures/fig_rescue.png
 cp ../notebooks/outputs/dreval/dreval_lco.png                       figures/fig_dreval.png
 ```
 
