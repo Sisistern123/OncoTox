@@ -275,11 +275,16 @@ def draw_architecture(ax, *, compact: bool = False):
                             "◆ = the measured CTRPv2 value (never seen in training)",
             ha="left", va="top", fontsize=7.6, color=GREY)
 
+    # Two corrections, 12.08.2026. The retired auc_z target is no longer named -- the point stands
+    # on its own, and Methods no longer describes that target at all. And "the output layer is
+    # excluded from weight decay" described exclude_output_from_decay, which exempted the whole
+    # output Linear including its weight matrix while still decaying LayerNorm; it was replaced by
+    # no_decay_bias_and_norm the same day.
     ax.text(0, 16.0,
-            "Raw AUC, not the old per-drug z-score:  the head bias is initialized to the fold's per-drug "
-            "mean AUC and the output layer is excluded from weight decay,\nbecause on an uncentred target "
-            "the bias must sit near 0.7 and decay would pull it to 0.  The per-drug scaling that auc_z "
-            "used to apply now lives in the loss.",
+            "The target is uncentred:  the head bias is initialized to the fold's per-drug mean AUC, "
+            "and biases and LayerNorm are excluded from weight decay,\nbecause the bias must sit near "
+            "the drug's mean (~0.7) and decay would pull it to 0.  Any per-drug scaling belongs in the "
+            "loss, not in the target.",
             ha="left", va="top", fontsize=8.2, color=INK)
 
 
@@ -613,8 +618,8 @@ def draw_loss_objective(ax, *, compact: bool = False):
     if not compact:
         ax.text(1, 99, "The objective — a weighted, masked mean squared error",
                 ha="left", va="top", fontsize=14, fontweight="bold", color=INK)
-        ax.text(1, 91, "target = raw AUC  ·  the per-drug scaling the retired auc_z applied to the "
-                       "labels now sits here instead",
+        ax.text(1, 91, "target = auc_cc, the curve-fit AUC  ·  per-drug scaling belongs here, in the "
+                       "loss, rather than in the labels",
                 ha="left", va="top", fontsize=9, color=GREY)
 
     ax.text(50, 76 if not compact else 92, r"$\mathcal{L}\;=\;\frac{\sum_{i,k}\;"
