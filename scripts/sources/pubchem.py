@@ -5,7 +5,7 @@ spellings. Three kinds of difference occur here, and only the third has a chemic
 
 * **development code vs INN** -- ``plx-4032`` is ``Vemurafenib``, ``abt-199`` is ``Venetoclax``;
 * **preferred-name drift** between two curations of the same source, handled for CTRPv2 by joining on
-  ``master_cpd_id`` (:mod:`scripts.preprocessing.drug_annotation`);
+  ``master_cpd_id`` (:mod:`scripts.annotation.drug_annotation`);
 * **salt form vs free base** -- a regulatory list names ``Imatinib mesylate`` because that is what the
   FDA approved, a screen names ``imatinib`` because that is what it dissolved. These are different
   molecules with different PubChem records, so matching on the compound identifier alone still misses

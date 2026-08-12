@@ -5,8 +5,8 @@ import pandas as pd
 import scanpy as sc
 
 from scripts.preprocessing.expression import kinker_transform
-from scripts.preprocessing.gene_symbols import annotate_hgnc_symbols
-from scripts.preprocessing.layout import (
+from scripts.annotation.gene_symbols import annotate_hgnc_symbols
+from scripts.layout import (
     PipelinePaths,
     VARIANT_N_TOP_GENES,
     add_data_args,

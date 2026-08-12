@@ -302,7 +302,7 @@ def figure_data() -> dict:
     import anndata as ad
     from sklearn.model_selection import GroupKFold
 
-    from scripts.preprocessing.layout import PipelinePaths
+    from scripts.layout import PipelinePaths
     from scripts.training.density_weighting import DEFAULT_WINSOR
 
     src = ad.read_h5ad(PipelinePaths.build(None, "hvg5000", "auc").targets_h5ad, backed="r")

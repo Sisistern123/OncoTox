@@ -119,7 +119,7 @@ the genes it can embed.
 > vocabulary coverage. Full write-up, scale and direction of the bias:
 > [Corrections](corrections-and-dead-ends.md#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols).
 >
-> **Repair applied to the code 05.08.2026 — `scripts/preprocessing/gene_symbols.py`.**
+> **Repair applied to the code 05.08.2026 — `scripts/annotation/gene_symbols.py`.**
 > `scp542_conversion.py` adds a **`var['hgnc_symbol']`** column carrying the current HGNC symbol —
 > `var_names` keeps SCP542's identifiers exactly as distributed — and
 > `gen_embeds.py::resolve_gene_names` resolves the vocabulary through it, **consulting it only where a
@@ -272,9 +272,20 @@ all and are dropped from every split by `create_splits.py::has_any_label`. That 
 touched. But the representation is partly shaped by data the model never sees, which is a separate
 question from the leak above and is decided with it under review item 7.
 
-**Splits are frozen to a file (05.08.2026).** The train/val/test partition is no longer redrawn from the
-data on each run: `create_splits.py::frozen_split` reads `splits/split_ctrp.csv` (versioned in the repo,
-not under the gitignored data root) and only redraws under `--regenerate-split`. The reason is that
+**Splits are frozen to a file (05.08.2026) — but the file does not exist yet (found 12.08.2026).**
+`create_splits.py::frozen_split` reads `splits/split_ctrp.csv` (repo-versioned by design, not under the
+gitignored data root) and only redraws under `--regenerate-split`. ⛔ **That file was never committed and
+is not on disk** (`git log --all -- splits/` is empty; `splits/` is not gitignored), so `frozen_split`
+has taken its redraw branch on every run and the guard has never once been in force. This paragraph
+previously stated the file was versioned in the repo, which was untrue when written.
+
+The consequence is bounded and was accepted rather than patched (Selin, 12.08.2026): the assignment on
+disk is reproducible from the targets h5ad at seed 42, and it is in any case recoverable from a
+committed artifact — `outputs/panel/panel_oof_predictions.csv` names all **153** train+val lines, so the
+test set is the labelled lines it omits. Nothing is lost by letting the sweep redraw, and every number
+scored on the current split is void on target and panel grounds anyway. **`frozen_split` writes the file
+itself when it is missing, so R2 creates it; it is committed then**, which is the point at which the
+guard starts protecting anything. The reason is that
 eligibility is *not* stable — a line qualifies if it carries at least one CTRP label, so changing the
 drug panel or `ctrp_to_h5ad`'s filters silently moves lines between train, val and test, and runs from
 either side of the change look comparable when they are not. A line present in the data but missing from

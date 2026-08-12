@@ -9,7 +9,9 @@ not), which is exactly how two runs stop being comparable.
 
 The protocol is the project standard and does not vary between callers: K-fold ``GroupKFold`` over
 cell lines, restricted to the ``split_ctrp`` train+val lines so the fixed test set is never touched,
-and every held-out line predicted by a model that has not seen it. Per-cell predictions are averaged
+and every held-out line predicted by a model that has not seen it -- neither in training nor in
+early stopping, which watches a slice of the training lines instead (:func:`inner_holdout`, 12.08.2026;
+before that it watched the scored fold). Per-cell predictions are averaged
 back to one value per line by :func:`line_level_predictions`, because the label is per line and
 scoring per cell would score pseudo-replicates.
 """
@@ -19,7 +21,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.model_selection import GroupKFold
+from sklearn.model_selection import GroupKFold, GroupShuffleSplit
 from torch.utils.data import DataLoader
 
 from scripts.model.dataset import MultiDrugDataset
@@ -53,6 +55,54 @@ def grouped_folds(
     return idx, list(GroupKFold(n_splits=n_splits).split(idx, groups=groups[idx]))
 
 
+INNER_VAL_FRACTION = 0.15
+INNER_SPLIT_SEED = 42
+
+
+def inner_holdout(
+    groups: np.ndarray,
+    train_cells: np.ndarray,
+    *,
+    frac: float = INNER_VAL_FRACTION,
+    seed: int = INNER_SPLIT_SEED,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Split one fold's training cells into a fitting set and an early-stopping set.
+
+    Until 12.08.2026 a fold's held-out lines served as the early-stopping set **and** as the
+    scored set, so every out-of-fold prediction came from the checkpoint that best fit the lines
+    it was about to be scored on. The same defect was found in the DrEval benchmark on
+    14.07.2026 and fixed there (``ee07b00``) without being fixed here
+    ([corrections](../../docs/steps/corrections-and-dead-ends.md)). Nesting the early-stopping
+    set inside the training lines is the fix (Selin, 12.08.2026).
+
+    ``frac`` is a proportion of the fold's training **lines**, not of its cells --
+    ``GroupShuffleSplit`` splits groups -- so no line contributes to both sides. **0.15 is
+    arbitrary:** it is the conventional size of a validation slice and nothing in this data sets
+    it; it was chosen over reusing a whole neighbouring fold (20 %) to spend fewer training
+    lines.
+
+    :returns: ``(fit_cells, stop_cells)`` -- boolean arrays over all cells, disjoint, and
+        together equal to ``train_cells``.
+    :raises ValueError: if either side comes out empty, which means the fold is too small for
+        this fraction rather than that the split is merely unlucky.
+    """
+    pos = np.flatnonzero(train_cells)
+    splitter = GroupShuffleSplit(n_splits=1, test_size=frac, random_state=seed)
+    fit_i, stop_i = next(splitter.split(pos, groups=groups[pos]))
+    if fit_i.size == 0 or stop_i.size == 0:
+        raise ValueError(
+            f"inner split of {np.unique(groups[pos]).size} training lines at frac={frac} left "
+            f"{np.unique(groups[pos[fit_i]]).size} fitting and "
+            f"{np.unique(groups[pos[stop_i]]).size} early-stopping lines."
+        )
+
+    fit_cells = np.zeros_like(train_cells, dtype=bool)
+    stop_cells = np.zeros_like(train_cells, dtype=bool)
+    fit_cells[pos[fit_i]] = True
+    stop_cells[pos[stop_i]] = True
+    return fit_cells, stop_cells
+
+
 def oof_predictions(
     adata,
     rep: str,
@@ -74,13 +124,18 @@ def oof_predictions(
 ) -> tuple[np.ndarray, list[dict]]:
     """Fit ``n_splits`` cell-line-grouped folds and return out-of-fold per-cell predictions.
 
+    Each fold trains on its training lines minus a 15 % early-stopping slice
+    (:func:`inner_holdout`), so the checkpoint that predicts a held-out line was chosen without
+    looking at it. Everything fitted per fold -- the density weighting, the head bias -- is fitted on
+    the fitting lines alone.
+
     :param density_weighting: weight each observation by inverse label density
         (:mod:`scripts.training.density_weighting`). The density is fitted **inside each fold, on the
-        training lines only** -- it is a function of the labels, so fitting it once over all lines
+        fitting lines only** -- it is a function of the labels, so fitting it once over all lines
         would let held-out labels inform training. The weights are carried in the mask tensor, which
         turns the masked mean into a weighted one without touching the loss code.
-    :param init_head_bias: initialize each head's bias to that drug's mean over the fold's training
-        *lines*, so the model starts at the null predictor. Necessary on an uncentred target such as
+    :param init_head_bias: initialize each head's bias to that drug's mean over the fold's *fitting*
+        lines, so the model starts at the null predictor. Necessary on an uncentred target such as
         raw AUC, where the bias must reach ~0.7 from a default near 0; harmless on a centred one.
     :returns: ``(pred, folds)`` -- ``pred`` is (n_cells, len(drugs)) with NaN where a cell was never
         held out, ``folds`` is a per-fold log.
@@ -106,20 +161,27 @@ def oof_predictions(
         vac = np.zeros(adata.n_obs, dtype=bool)
         vac[idx[va]] = True
 
-        tr_ds = MultiDrugDataset(adata=adata, use_rep=rep, cell_mask=trc, drugs=drugs)
-        va_ds = MultiDrugDataset(adata=adata, use_rep=rep, cell_mask=vac, drugs=drugs)
+        # The fold's training lines split once more: the model is fitted on `fitc` and early
+        # stopping watches `stopc`. The scored fold `vac` enters neither, so the checkpoint that
+        # predicts it was not chosen by it -- see inner_holdout above.
+        fitc, stopc = inner_holdout(groups, trc)
 
-        # per-drug statistics from this fold's training LINES (never cells, never held-out lines)
-        tr_lines = np.unique(groups[trc])
-        y_lines, obs_lines = line_level(Y, M, groups, tr_lines)
+        fit_ds = MultiDrugDataset(adata=adata, use_rep=rep, cell_mask=fitc, drugs=drugs)
+        stop_ds = MultiDrugDataset(adata=adata, use_rep=rep, cell_mask=stopc, drugs=drugs)
+
+        # per-drug statistics from the FITTING lines only (never cells, never held-out lines, and
+        # not the early-stopping lines either: a set that decides when to stop must not also have
+        # shaped what it is judging).
+        fit_lines = np.unique(groups[fitc])
+        y_lines, obs_lines = line_level(Y, M, groups, fit_lines)
 
         if density_weighting:
             fns = fit_weight_fns(y_lines, obs_lines, alpha=alpha, cap=cap)
-            tr_ds.mask = torch.from_numpy(weight_matrix(fns, Y[trc], M[trc]))
-            va_ds.mask = torch.from_numpy(weight_matrix(fns, Y[vac], M[vac]))
+            fit_ds.mask = torch.from_numpy(weight_matrix(fns, Y[fitc], M[fitc]))
+            stop_ds.mask = torch.from_numpy(weight_matrix(fns, Y[stopc], M[stopc]))
 
         model = OncoMLP(
-            input_dim=tr_ds.X.shape[1],
+            input_dim=fit_ds.X.shape[1],
             hidden_dims=hidden_dims,
             dropout_rate=dropout,
             input_dropout=input_dropout,
@@ -140,12 +202,12 @@ def oof_predictions(
         best, hist = train_model(
             model,
             DataLoader(
-                tr_ds,
+                fit_ds,
                 batch_size=batch_size,
                 shuffle=True,
                 generator=torch.Generator().manual_seed(config.seed),
             ),
-            DataLoader(va_ds, batch_size=batch_size, shuffle=False),
+            DataLoader(stop_ds, batch_size=batch_size, shuffle=False),
             config=config,
             tag=f"{tag}_f{fold}",
             drug_names=drugs,
@@ -157,7 +219,11 @@ def oof_predictions(
 
         val_lines = np.unique(groups[vac])
         folds.append({
-            "fold": fold, "rep": rep, "n_train_lines": int(len(tr_lines)),
+            "fold": fold, "rep": rep, "n_train_lines": int(np.unique(groups[trc]).size),
+            # n_train_lines is the fold's training side as a whole; the model only ever saw
+            # n_fit_lines of it, the rest being on loan to early stopping.
+            "n_fit_lines": int(fit_lines.size),
+            "n_stop_lines": int(np.unique(groups[stopc]).size),
             "n_val_lines": int(val_lines.size),
             # Which lines this fold held out, not just how many. The split is grouped by cell line, so
             # a line belongs to exactly one fold and this assignment is total and unambiguous. It is
@@ -165,6 +231,9 @@ def oof_predictions(
             # normalization above all (scripts/evaluation/dreval_normalize.py) -- and re-deriving it
             # downstream would mean a second copy of the fold rule that can drift from this one.
             "val_lines": val_lines.tolist(),
+            # best_val_obj is measured on the early-stopping slice, not on the scored fold: it is the
+            # quantity that chose the checkpoint, and it is not a generalization estimate. The
+            # out-of-fold predictions are.
             "best_epoch": hist.best_epoch, "best_val_obj": float(hist.best_val_mse),
         })
     return pred, folds

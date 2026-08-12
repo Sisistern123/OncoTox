@@ -43,7 +43,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from scripts.preprocessing.pubchem import resolve_names_to_cids
+from scripts.sources.pubchem import resolve_names_to_cids
 
 #: PubMed Central identifier of Sun et al. 2017. The article is the citation; this is how it is
 #: retrieved.
@@ -167,6 +167,6 @@ def fetch_sun2017_drugs(reference_dir: str | Path, *, force: bool = False) -> Pa
         },
         "verified_against": {"total": EXPECTED_TOTAL, "by_class": EXPECTED_BY_CLASS},
         "coverage_cutoff": "1949-2014; nothing approved after 2014 is listed",
-        "fetched_by": "scripts/preprocessing/fetch_sun2017_drugs.py",
+        "fetched_by": "scripts/sources/fetch_sun2017_drugs.py",
     }, indent=2) + "\n")
     return csv_path

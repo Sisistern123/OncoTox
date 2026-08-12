@@ -124,7 +124,7 @@ every one of them was a step that looked settled and had never been checked.
       Establishing that closes item 3; **deciding what to do about it is item 7**, where it sits with
       the other two open fits.
   - [x] ~~**A · Apply the gene-symbol repair — BEFORE the clean sweep.**~~ **Done in code 05.08.2026**
-        (`scripts/preprocessing/gene_symbols.py`; `scp542_conversion.py` annotates,
+        (`scripts/annotation/gene_symbols.py`; `scp542_conversion.py` annotates,
         `gen_embeds.py::resolve_gene_names` resolves, own symbol first so nothing embedded today is
         lost). Takes effect at the sweep: **4,576 → 4,704** genes for `hvg5000` and
         **20,570 → 21,332** for `all_genes`. Three decisions and what each rejects:
@@ -203,8 +203,42 @@ every one of them was a step that looked settled and had never been checked.
         `dreval_normalize.py` and hardcodes the removed `'auc'` score, so it is broken twice over;
         untouched pending **item 11 (Evaluation)**, which also decides whether the fragility diagnostic
         returns ([why it was archived](../scripts/archive/README.md)).
-- [ ] **7 · Splits** — grouped by cell line, test held out, folds shared between model and baselines.
-      Confirm nothing leaks through statistics computed outside the fold.
+- [ ] **7 · Splits — walked 12.08.2026.** Confirmed sound: grouping is by cell line everywhere, the
+      fixed `test` set is outside CV by construction (`eligible_splits=("train","val")`) and **has never
+      been used by anything**, the MLP and the ridge control share one partition through
+      `cv.grouped_folds` rather than two that agree by seed, the per-fold statistics are fitted inside
+      the fold, and `X_pca_train_ctrp` sees only `split_ctrp=="train"` cells. What was *not* standard is
+      written up in [Step 03](./steps/03-model-and-training-design.md#what-is-and-is-not-standard-about-the-cross-validation).
+  - [x] **A · Early stopping ran on the fold being scored — FIXED IN CODE 12.08.2026.** `train_model`
+        restores the lowest-validation-MSE checkpoint, and both `cv.oof_predictions` and
+        `train_multitask.cv_evaluate` handed it the scored fold, so every out-of-fold prediction and CV
+        metric was a minimum over epochs on its own evaluation data. **The identical defect was found
+        and fixed in the DrEval benchmark on 14.07.2026 (`ee07b00`) and never carried into the code
+        that produces the headline numbers.** Not uniform across the arms — selected epochs `[1,1,3,1,1]`
+        (PCA) vs `[10,11,2,21,4]` (scGPT) — so it biased the comparison, not only the level; and the
+        ridge control has no early stopping at all, so the MLP-vs-ridge gap was flattered too.
+        Fixed by `cv.py::inner_holdout`: 15 % of each fold's training lines, grouped, become the
+        early-stopping set (Selin, 12.08.2026 — 15 % chosen over reusing a neighbouring fold at 20 %;
+        the fraction is arbitrary and documented as such, the inner seed is deliberately separate from
+        `TrainConfig.seed`). Design: [Step 03](./steps/03-model-and-training-design.md#the-early-stopping-set-is-nested-inside-the-training-lines-12082026);
+        record: [Corrections](./steps/corrections-and-dead-ends.md#the-same-val-split-leak-in-the-code-that-produced-everything-else).
+        **Takes effect at R4.**
+  - [x] **B · `splits/split_ctrp.csv` does not exist — accepted, not patched (Selin, 12.08.2026).**
+        Never committed (`git log --all -- splits/` is empty), not on disk, not gitignored, while
+        [Step 02](./steps/02-preprocessing-and-embeddings.md) and `report/sections/03_methods.tex` both
+        stated it *was* versioned. So `frozen_split` has taken its redraw branch on every run and the
+        guard has never been in force. **Both claims corrected.** Freezing the current assignment was
+        considered and rejected: it is recoverable anyway — `outputs/panel/panel_oof_predictions.csv`
+        names all 153 train+val lines, so the test set is the labelled lines it omits — and every number
+        scored on it is void on target and panel grounds. R2 creates the file itself; committing it
+        there is where the guard starts to protect something (added to R2).
+  - [ ] **C · The per-drug-mean null is computed two different ways.** `cv_evaluate` fits its constant
+        on the fold's fitting lines (honest); `3_panel_training.ipynb` §4 computes `null_mse` from the
+        variance of the **held-out** truth, an oracle constant fitted on the rows it is scored against.
+        Conservative — it makes the model look worse — but they are not the same bar and one figure
+        cannot be read against the other. Also `_per_drug_train_mean` averages over cells, so lines
+        weigh by their cell count, where `density_weighting.line_level` is per line. Routed to
+        **item 11 (Evaluation)**, which owns the baselines.
   - [ ] **Handed over from item 3 (10.08.2026): three fits, one question — what may a fit see?** All
         three are established facts, none is decided, and they should be decided together rather than
         separately, or they will get three inconsistent answers. All are unsupervised (no fit sees a
@@ -276,6 +310,11 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
     ranking scale, and `uns["pca_fits"]` (item 4B)
   - `ctrp_to_h5ad.py` (audit 02): deduplicated experiment table + the `H292` alias → **180 → 181** lines,
     213 cells and 454 labels gained, 460 of `NCIH1299`'s targets changed
+  - [ ] **Commit `splits/split_ctrp.csv` once this run writes it** (item 7B). The file has never existed,
+        so `frozen_split` has redrawn on every run; `create_splits` writes it when it is missing, and
+        committing it is what makes the guard real from then on. The 181st line means this draw shares
+        nothing with the current assignment — expected, and the reason the file is committed *after* R2
+        rather than before.
 - [ ] **R3 · Refresh the committed read-only artifacts.** Held back only because they overwrite tracked
       files. `gene_symbol_rescue.ipynb` → `gene_symbol_rescue.csv` (773 vs 775 — no effect at quoted
       precision; on re-run it should import `load_rename_map` from `gene_symbols.py` rather than rebuild
@@ -292,6 +331,11 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       refresh them; `3_panel_training.ipynb` on the rebuilt panel; ridge / `NaiveMeanEffects` on the same
       folds; `verify_variants.ipynb` §9; and 4A below. Blockers already recorded: **≥ 3 seeds** before any
       scGPT − PCA margin is quoted, and train-only drug selection inside each fold.
+  - [ ] **Expect every CV number to move down, for two reasons at once** (item 7, 12.08.2026): the
+        optimistic epoch selection is gone, and each fold now fits on ~104 lines instead of 122. A drop
+        is the change working, not a regression. The two causes cannot be separated after the fact, so
+        if the size of the drop matters, it needs `INNER_VAL_FRACTION` varied deliberately — not
+        inferred from the difference to the old numbers, which also change target and panel.
   - [ ] **Lift the 28.07 panel-void banner here** (decided 12.08.2026, Selin). Item 6 rebuilt the panel,
         but the banner's live consequence is that *numbers* computed on the old one are void, and that
         stays true until a run exists on `outputs/panel/panel.csv`. Lifting it when the panel changed

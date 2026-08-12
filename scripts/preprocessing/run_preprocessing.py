@@ -39,10 +39,10 @@ from scripts.preprocessing import (  # noqa: E402
     add_pca,
     create_splits,
     ctrp_to_h5ad,
-    fetch_ctrp_response,
     scp542_conversion,
 )
-from scripts.preprocessing.layout import (  # noqa: E402
+from scripts.sources import fetch_ctrp_response  # noqa: E402
+from scripts.layout import (  # noqa: E402
     DEFAULT_SCGPT_MODEL_DIR,
     DEFAULT_SCGPT_SCRIPT,
     PipelinePaths,

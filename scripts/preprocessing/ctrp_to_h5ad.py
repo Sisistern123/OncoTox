@@ -68,7 +68,7 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 
-from scripts.preprocessing.layout import (
+from scripts.layout import (
     CTRP_SCORES,
     DEFAULT_CTRP_SCORE,
     PipelinePaths,
@@ -135,7 +135,7 @@ def _load_drevalpy_long(response_csv: Path, score: str) -> pd.DataFrame:
 
     Rows with no value for the requested measure are dropped here rather than silently becoming
     unobserved entries. That matters for ``ln_ic50_cc``, which is absent for ~40 % of curves by
-    construction -- see :data:`scripts.preprocessing.layout.CTRP_SCORES`.
+    construction -- see :data:`scripts.layout.CTRP_SCORES`.
     """
     column = SCORE_COLUMNS[score]
     df = pd.read_csv(
@@ -272,7 +272,7 @@ def run(
         ``fetch_ctrp_response`` from a pinned Zenodo record.
     score:
         Which response measure to use as the target: ``auc_cc`` (default) or ``ln_ic50_cc``.
-        See :data:`scripts.preprocessing.layout.CTRP_SCORES`.
+        See :data:`scripts.layout.CTRP_SCORES`.
     target_drugs:
         If provided, restrict the multi-drug matrix to these drug names (after
         lower-casing). When ``None`` (default), include every CTRPv2 drug that

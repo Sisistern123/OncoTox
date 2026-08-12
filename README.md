@@ -12,10 +12,12 @@ All project documentation lives in [`docs/`](docs/):
   (pipeline overview, full project arc, current-status scorecard, doc conventions) linking to
   thematic step files under [`docs/steps/`](docs/steps/) that hold the complete record of every
   step, number, parameter, and result, with alignment notes against the project plan. Start here.
-- **[docs/steps/](docs/steps/)** — the eight self-contained step files (01–05 done, 06–08
-  planned placeholders) covering the whole project structure end-to-end.
-- **[docs/project_notes.md](docs/project_notes.md)** — dated thought/decision log
-  (reasoning, advisor updates, ideas, open questions).
+- **[docs/steps/](docs/steps/)** — the step files covering the project end-to-end: `01`–`05` are the
+  scientific record of what currently holds, [`06-planned-work.md`](docs/steps/06-planned-work.md)
+  holds the three unstarted stages, and
+  [`corrections-and-dead-ends.md`](docs/steps/corrections-and-dead-ends.md) holds everything
+  superseded, retracted or abandoned — nothing in it is a live result.
+- **[docs/TODO.md](docs/TODO.md)** — what is next and what blocks it. Read its banner first.
 
 ### The pipeline
 
@@ -31,12 +33,16 @@ All figures live in [docs/figures/](docs/figures/) and are regenerated together 
 ## Layout
 
 ```
+scripts/layout.py        # path contract: data roots, variants, derived filenames (used by every stage)
+scripts/sources/         # retrieval from external services: CTRPv2, Sun 2017 table, PubChem, Cellosaurus
+scripts/annotation/      # identifier resolution: compound join (drug_annotation), HGNC symbols
 scripts/preprocessing/   # SCP542 conversion, CTRP target mapping, splits, PCA, orchestrator
 scripts/model/           # OncoMLP + datasets
 scripts/training/        # train_multitask.py + shared training utils / run versioning
+scripts/evaluation/      # DrEval normalization (paper protocol only)
 notebooks/               # overlap audit (compare_GDSC_CTRP), variant checks & UMAPs (verify_variants), drug coverage (drug_coverage)
 runs/                    # per-run artifacts + runs_index.csv (gitignored)
-docs/                    # project_progress.md (index) + steps/ (01-08), project_notes.md, figures
+docs/                    # TODO.md, project_progress.md (index) + steps/ (01-06, corrections), figures
 ```
 
 ## Quickstart

@@ -260,7 +260,7 @@ reported. The selection is implemented in
 \code{notebooks/drug\_selection/literature\_panel.ipynb}, which reads only the response table and writes
 the panel with its citations to \code{notebooks/outputs/panel/panel.csv}; the compound identifier
 resolution is in \code{scripts/preprocessing/drug\_annotation.py} and
-\code{scripts/preprocessing/pubchem.py}.
+\code{scripts/sources/pubchem.py}.
 
 \subsection{Representation and model}
 
@@ -274,12 +274,17 @@ defined in \code{scripts/model/OncoMLP.py} and \code{scripts/training/train\_mul
 \begin{revisionblock}
 \textbf{Splits, and where each representation is fitted (added 05.08.2026).} Train, validation and test
 are a 70/15/15 partition of cell lines, so every cell of a line falls on the same side and no line is
-split across parts. The assignment is now \emph{frozen to a versioned file}
+split across parts. The assignment is \emph{frozen to a versioned file}
 (\code{splits/split\_ctrp.csv}) instead of being redrawn from the data on each run. It has to be:
 eligibility depends on which compounds survive the label filters, so a change to the drug panel would
 otherwise move lines between train, validation and test unannounced, and results from either side of
 that change would look comparable while being scored on different held-out lines. Redrawing requires an
 explicit flag, and a line that the frozen file does not cover is an error rather than a fresh draw.
+\revision{\emph{Correction, 12.08.2026.} The mechanism is as described, but the file itself had never
+been written to the repository, so on every run to date the assignment was in fact redrawn and the guard
+never applied. It is created when the pipeline is next run and versioned from that point. No result is
+affected: the partition is reproducible from the stored data, and the set of lines it placed in training
+and validation is recorded in the committed out-of-fold predictions.}
 
 The principal components used as model input are fitted on the training lines of that split alone ---
 per-gene standardization and the rotation both --- and then applied to the held-out lines
@@ -289,6 +294,20 @@ results are the exception: its folds are drawn at training time rather than stor
 train-only projection exists for them and they still use the all-cells decomposition. scGPT needs no
 such distinction --- its weights are pretrained and frozen, and its per-cell binning uses only the cell
 being embedded, so nothing about it is fitted on this data.
+\end{revisionblock}
+
+\begin{revisionblock}
+\textbf{Early stopping is nested inside the training lines (added 12.08.2026).} Training runs for a
+fixed maximum number of epochs and the checkpoint with the lowest validation error is restored, so the
+stopping epoch is a quantity chosen from data. Until 12.08.2026 the cross-validation harness measured
+that error on the fold it was about to score, which makes every reported figure a minimum over up to
+twenty-five epochs on its own evaluation data. Each fold now withholds fifteen per cent of its training
+cell lines, grouped as everywhere else, as the early-stopping set
+(\code{scripts/training/cv.py::inner\_holdout}), so the scored fold decides nothing about the model that
+predicts it; the per-drug-mean baseline and the head initialisation are fitted on the remaining fitting
+lines for the same reason. This is the arrangement the DrEval benchmark itself uses, whose per-fold
+splits are three-way. The fifteen per cent is arbitrary --- it was preferred to reusing a whole
+neighbouring fold, which would have cost twenty per cent of the training lines.
 \end{revisionblock}
 
 \subsection{Response target and per-drug standardization}

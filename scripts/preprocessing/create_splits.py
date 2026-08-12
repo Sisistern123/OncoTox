@@ -22,7 +22,7 @@ import pandas as pd
 import scanpy as sc
 from sklearn.model_selection import train_test_split
 
-from scripts.preprocessing.layout import PipelinePaths, add_data_args
+from scripts.layout import PipelinePaths, add_data_args
 
 DEFAULT_DRUG = "paclitaxel"
 DEFAULT_MULTI_SPLIT_COL = "split_ctrp"

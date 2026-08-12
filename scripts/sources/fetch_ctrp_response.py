@@ -15,7 +15,7 @@ version cannot be named is not a citable source, so this script pins a concrete 
 verifies the bytes against the checksums that record publishes.
 
 **Why the record also carries Cellosaurus.** ``meta.zip`` ships a Cellosaurus release, which
-:mod:`scripts.preprocessing.cellosaurus` uses to give every cell line a persistent accession.
+:mod:`scripts.sources.cellosaurus` uses to give every cell line a persistent accession.
 Cellosaurus publishes no stable per-release download URL of its own, so pinning it by this record is
 what makes that resolution reproducible.
 """
@@ -31,7 +31,7 @@ from pathlib import Path
 
 import requests
 
-from scripts.preprocessing.layout import FETCH_CACHE_DIRNAME, ZENODO_RESPONSE_RECORD
+from scripts.layout import FETCH_CACHE_DIRNAME, ZENODO_RESPONSE_RECORD
 
 #: Which record, and where it lands, are configuration and live in ``layout``; the checksums are a
 #: property of that record and live here, next to the code that verifies them.
@@ -112,7 +112,7 @@ def fetch_ctrp_response(metadata_dir: str | Path, *, force: bool = False) -> Pat
         "publication_date": published,
         "retrieved": date.today().isoformat(),
         "files": {name: {"md5": expected} for name, expected in FILES.items()},
-        "fetched_by": "scripts/preprocessing/fetch_ctrp_response.py",
+        "fetched_by": "scripts/sources/fetch_ctrp_response.py",
     }, indent=2) + "\n")
     print(f"Cached at {dest}")
     return dest

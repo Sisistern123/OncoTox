@@ -8,7 +8,7 @@ from scipy import sparse
 from sklearn.decomposition import PCA
 
 from scripts.preprocessing.expression import kinker_transform
-from scripts.preprocessing.layout import PipelinePaths, add_data_args
+from scripts.layout import PipelinePaths, add_data_args
 
 
 DEFAULT_N_COMPS = 512

@@ -10,7 +10,10 @@ from pathlib import Path
 DEFAULT_DATA_ROOT = Path("/Users/selin/Desktop/OncoTox/data")
 # Vendored next to this file (03.08.2026); it still needs the separate scGPT venv, which
 # run_preprocessing.py reaches via --scgpt-python.
-DEFAULT_SCGPT_SCRIPT = Path(__file__).resolve().with_name("gen_embeds.py")
+# layout.py sits at scripts/ (it is the path contract for training and evaluation too, not only for
+# preprocessing), so the embedding script is one directory down rather than a sibling. Moved
+# 12.08.2026; `with_name` here silently pointed at a non-existent scripts/gen_embeds.py.
+DEFAULT_SCGPT_SCRIPT = Path(__file__).resolve().parent / "preprocessing" / "gen_embeds.py"
 DEFAULT_SCGPT_MODEL_DIR = Path("/Users/selin/Desktop/OncoTox/scGPT/scGPT_human")
 
 VARIANTS = ("hvg1000", "hvg2000", "hvg3000", "hvg5000", "all_genes")

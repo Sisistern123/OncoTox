@@ -58,7 +58,7 @@ two genes onto one name), `status`, `ensembl_gene_id`.
 ## `sun2017_fda_anticancer_drugs.csv`
 
 The FDA-approved anticancer drug list the [drug panel](../docs/steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026)
-is selected on. Retrieved and parsed by `scripts/preprocessing/fetch_sun2017_drugs.py`; used in
+is selected on. Retrieved and parsed by `scripts/sources/fetch_sun2017_drugs.py`; used in
 `notebooks/drug_selection/literature_panel.ipynb` §1.
 
 ### Exact source
@@ -96,7 +96,7 @@ rediscovered: `selumetinib` (approved 2020) cannot be a panel candidate under th
 
 PubChem compound identifiers mapped to their **parent** compound — the neutral form carrying the active
 moiety — for every CID either the drug list or CTRPv2 uses. 566 rows, written by
-`scripts/preprocessing/pubchem.py::parent_cids`.
+`scripts/sources/pubchem.py::parent_cids`.
 
 **Why it exists.** An approval list names `Imatinib mesylate` because that is what the FDA approved; a
 screen names `imatinib` because that is what it dissolved. These are different molecules with different

@@ -239,6 +239,66 @@ which is what makes a fold label well defined at the line level at all.
 stamps a `fold` column onto every row of `outputs/panel/panel_oof_predictions.csv`. It raises if a line
 appears in two folds, or if a predicted line is claimed by none.
 
+### The early-stopping set is nested inside the training lines (12.08.2026)
+
+⛔ **Until 12.08.2026 the fold's held-out lines were the early-stopping set as well as the scored set.**
+`train_model` restores the checkpoint with the lowest validation MSE, and `oof_predictions` passed it
+the held-out fold and then predicted that same fold — so every out-of-fold prediction came from the
+epoch that best fit the lines it was about to be scored on, and `cv_evaluate`'s `best_val_mse` is a
+minimum over epochs on its own scored fold. Both are optimistically biased. **This is the same defect
+found in the DrEval benchmark on 14.07.2026 and fixed there** (`ee07b00`, by switching to DrEval's own
+`sp['validation']`) — the fix was never carried into the code that produces the headline numbers.
+Recorded in [Corrections](corrections-and-dead-ends.md).
+
+The bias is not uniform across the two arms, which is what makes it more than cosmetic here. In the
+last run on record the selected epoch was `[1,1,3,1,1]` for PCA against `[10,11,2,21,4]` for scGPT: the
+PCA arm's scored checkpoint was picked, on the scored lines, from among near-tied epoch-1 states, while
+scGPT's came from a real trajectory. The PCA-vs-scGPT margin therefore compared two differently-selected
+quantities. (Those epochs are from the void 8-drug panel and are cited as evidence about the mechanism,
+not as a result.)
+
+**The fix (Selin, 12.08.2026):** `scripts/training/cv.py::inner_holdout` withholds **15 % of each
+fold's training lines** as the early-stopping set, drawn by `GroupShuffleSplit(n_splits=1,
+test_size=0.15)` — whose `test_size` is a proportion of *groups*, so it is 15 % of lines and the cell
+counts fall where they fall. The scored fold is then never seen by the checkpoint that predicts it.
+It costs training data: ~104 fitting lines per fold where there were 122.
+
+- **0.15 is arbitrary** and is documented as such. It is the conventional size of a validation slice;
+  nothing in this data sets it. The alternative considered and rejected was reusing a whole
+  neighbouring `GroupKFold` fold as the early-stopping set — no new fraction and no new seed, but 20 %
+  out instead of 15 %, on a panel where the label side is already the binding constraint.
+- **The inner split has its own seed** (`INNER_SPLIT_SEED = 42`), deliberately *not* `TrainConfig.seed`.
+  Repeat runs at different training seeds then early-stop on the same lines, so the four-identical-runs
+  check that established the `mps` nondeterminism keeps measuring one thing
+  ([Corrections](corrections-and-dead-ends.md)); tying it to the run seed would mix kernel
+  nondeterminism with inner-split variability, and would also stop the two representations from being
+  compared on identical inner splits unless both were run at the same seed.
+
+**Takes effect at the sweep.** Every number on record predates it, and all of them will move down: the
+optimistic selection is removed and the training set shrinks at the same time.
+
+### What is and is not standard about the cross-validation
+
+After the fix, the *model* fit is a textbook grouped 5-fold CV — every line held out exactly once, the
+checkpoint chosen on lines the scored fold does not contain. Four things around it are not, and are
+stated here so no reader has to infer them:
+
+1. **It covers 153 of the 180 labelled lines.** The 27 fixed `test` lines are outside CV entirely
+   (`eligible_splits=("train","val")`), and the 18 lines with no CTRPv2 label are outside everything.
+2. **The folds are unshuffled and unseeded.** `GroupKFold` assigns whole lines greedily to balance
+   *cell* counts, so the folds hold out 29/31/31/31/31 lines rather than equal numbers
+   (`outputs/panel/panel_training_folds.csv`). Deterministic, but not the shuffled `KFold` the phrase
+   usually implies.
+3. **It is one partition, not repeated CV.** The fold-to-fold spread quoted in `diagnostics.ipynb`
+   comes from a single draw.
+4. **The representation is fitted outside the loop.** HVG selection and the PCA rotation are computed
+   once over all 53,513 cells, before any fold exists; a fully nested CV would refit both per fold.
+   Open under review item 7 — [Step 02](02-preprocessing-and-embeddings.md#what-transform-pca-sees--corrected-05082026).
+
+A fifth, which is not a property of the CV but bears on how independent it is: the trunk width, dropout
+and epoch budget were settled on the fixed `val` lines ([Step 05](05-multitask-results.md)), and CV then
+pools train+val. Lines that informed the architecture are inside the folds it is scored on.
+
 **Why the column exists.** Any baseline fitted *after* the fact — DrEval's mean-effects predictor above
 all — has to be fitted on the folds a prediction did **not** come from. Without the fold label the only
 option is to fit it on the same out-of-fold rows it will then be subtracted from, which lets held-out
@@ -270,7 +330,9 @@ Defaults encode specific choices for this regime:
 Training (`training_utils.train_model`, all in `TrainConfig`) is seeded (42) and uses **Adam**
 (lr 1e-3), **ReduceLROnPlateau** (factor 0.5, patience 3) on the val MSE, **gradient clipping**
 (max-norm 1.0), and **early stopping** (patience 10); the **best-val-MSE checkpoint is restored** at
-the end rather than the last-epoch weights. The single entrypoint `train_multitask.py` exposes these
+the end rather than the last-epoch weights. Which lines that validation set is drawn from is the
+subject of *The early-stopping set is nested inside the training lines* above — under cross-validation
+it is no longer the scored fold. The single entrypoint `train_multitask.py` exposes these
 as flags (`--use-rep`, `--drugs`, `--batch-size 128`, `--epochs 50`, `--lr`, `--weight-decay`,
 `--dropout`, `--input-dropout`, `--loss {mse,huber}`, `--hidden-dims`, `--seed`); run artifacts are
 written by `create_run_dir`/`save_run` ([Step 05](05-multitask-results.md)).

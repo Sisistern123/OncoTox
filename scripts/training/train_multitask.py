@@ -49,7 +49,7 @@ from scripts.training.training_utils import (
     utc_now_iso,
 )
 
-from scripts.preprocessing.layout import PipelinePaths, add_data_args
+from scripts.layout import PipelinePaths, add_data_args
 
 # DEFAULT_HIDDEN_DIMS now lives in scripts/model/OncoMLP.py (it is a property of the architecture, and
 # putting it there lets scripts.training.cv read it without an import cycle). Re-exported so the many
@@ -400,9 +400,15 @@ def cv_evaluate(
     only the 153 train+val lines); pass ``("train", "val", "test")`` to pool all
     180 measured lines. The h5ad is read once and sliced per fold via ``cell_mask``.
 
+    Within a fold, 15 % of the training lines are withheld for early stopping
+    (``cv.inner_holdout``) so the scored fold decides nothing about the model that
+    predicts it. The per-drug-mean baseline is fitted on the fitting lines for the
+    same reason.
+
     Returns a list of per-fold dicts: best_val_mse, train_mse_at_best, gap
-    (val−train at best epoch), n_beats / n_total (heads beating the per-drug-mean
-    baseline), model_mean_mse, baseline_mean_mse, and fold line counts.
+    (early-stopping − fitting MSE at the best epoch), n_beats / n_total (heads
+    beating the per-drug-mean baseline **on the scored fold**), model_mean_mse,
+    baseline_mean_mse, and fold line counts.
     """
     if hidden_dims is None:
         hidden_dims = DEFAULT_HIDDEN_DIMS[use_rep]
@@ -420,7 +426,7 @@ def cv_evaluate(
     # Same partition helper as scripts.training.cv.oof_predictions, so metrics computed here and
     # predictions produced there refer to identical folds. Imported inside the function because cv
     # imports this module for nothing else -- see DEFAULT_HIDDEN_DIMS above.
-    from scripts.training.cv import grouped_folds
+    from scripts.training.cv import grouped_folds, inner_holdout
 
     idx, fold_split = grouped_folds(
         adata, n_splits=n_splits, group_col=group_col, eligible_splits=eligible_splits
@@ -432,31 +438,39 @@ def cv_evaluate(
         train_cells[idx[tr]] = True
         val_cells[idx[va]] = True
 
-        train_ds = MultiDrugDataset(adata=adata, use_rep=use_rep, cell_mask=train_cells, drugs=drugs)
+        # The training lines split once more: the model is fitted on `fit_cells`, early stopping
+        # watches `stop_cells`, and the fold `val_cells` is only ever scored. Until 12.08.2026 the
+        # scored fold was also the early-stopping set, so every metric below was a minimum over
+        # epochs on its own scored data (docs/steps/03, "The early-stopping set is nested").
+        fit_cells, stop_cells = inner_holdout(groups_all, train_cells)
+
+        fit_ds = MultiDrugDataset(adata=adata, use_rep=use_rep, cell_mask=fit_cells, drugs=drugs)
+        stop_ds = MultiDrugDataset(adata=adata, use_rep=use_rep, cell_mask=stop_cells, drugs=drugs)
         val_ds = MultiDrugDataset(adata=adata, use_rep=use_rep, cell_mask=val_cells, drugs=drugs)
-        train_loader = DataLoader(
-            train_ds,
+        fit_loader = DataLoader(
+            fit_ds,
             batch_size=batch_size,
             shuffle=True,
             generator=torch.Generator().manual_seed(config.seed),
         )
+        stop_loader = DataLoader(stop_ds, batch_size=batch_size, shuffle=False)
         val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
 
-        baseline_const = _per_drug_train_mean(train_ds)
+        baseline_const = _per_drug_train_mean(fit_ds)
         baseline_mse, _ = _per_drug_constant_mse(baseline_const, val_ds)
 
         model = OncoMLP(
-            input_dim=train_ds.X.shape[1],
+            input_dim=fit_ds.X.shape[1],
             hidden_dims=hidden_dims,
             dropout_rate=dropout,
             input_dropout=input_dropout,
             norm="layer",
-            output_dim=len(train_ds.drug_names),
+            output_dim=len(fit_ds.drug_names),
         )
         tag = f"cv{fold}/{n_splits}_{use_rep}"
         best_model, history = train_model(
-            model, train_loader, val_loader, config=config, tag=tag,
-            drug_names=train_ds.drug_names,
+            model, fit_loader, stop_loader, config=config, tag=tag,
+            drug_names=fit_ds.drug_names,
         )
         model_mse, _ = _evaluate_model_per_drug_mse(best_model, val_loader, device)
 
@@ -469,7 +483,13 @@ def cv_evaluate(
             "fold": fold,
             "rep": use_rep,
             "n_train_lines": int(np.unique(groups_all[idx][tr]).size),
+            "n_fit_lines": int(np.unique(groups_all[fit_cells]).size),
+            "n_stop_lines": int(np.unique(groups_all[stop_cells]).size),
             "n_val_lines": int(np.unique(groups_all[idx][va]).size),
+            # best_val_mse, train_mse_at_best and gap all come from the training curve, so they are
+            # measured on the fitting and early-stopping slices -- NOT on the scored fold. The
+            # numbers that describe the fold are model_mean_mse / baseline_mean_mse and the
+            # heads-beating counts below, which are evaluated on val_ds.
             "best_val_mse": float(history.best_val_mse),
             "train_mse_at_best": float(history.train_mse[be - 1]),
             "gap": float(history.val_mse[be - 1] - history.train_mse[be - 1]),

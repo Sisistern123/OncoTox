@@ -30,7 +30,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from scripts.preprocessing.pubchem import with_parents
+from scripts.sources.pubchem import with_parents
 
 #: A CTRPv2 combination is named for its two agents and their molar ratio -- ``"alisertib-navitoclax
 #: (2-1 mol-mol)"`` in DrEval's spelling, ``"alisertib:navitoclax (2:1 mol/mol)"`` in CTRP's. The two
@@ -161,7 +161,7 @@ def match_external_list(
       This is the weakest of the four and the one to inspect first if a match looks wrong.
 
     ``cids_col`` names a semicolon-joined CID column on ``external``; ``parent_cache`` is the CSV
-    :func:`scripts.preprocessing.pubchem.with_parents` caches lookups in.
+    :func:`scripts.sources.pubchem.with_parents` caches lookups in.
 
     :raises ValueError: if a row matches two different compounds, which would make the panel depend on
         the order the keys were tried rather than on the data.

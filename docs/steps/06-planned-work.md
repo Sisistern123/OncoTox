@@ -42,7 +42,7 @@ source. It validates the masked-loss machinery on intra-CTRPv2 sparsity and noth
    `scripts/preprocessing/ctrp_to_h5ad.py` emitting additional `Y_*` / `M_*` blocks (or extending
    `Y_ctrp`/`M_ctrp` into a unified matrix), joined via the harmonized drug catalog in `data/drug/`
    (name + BRD-ID + DrugBank — [Step 01](01-datasets-and-harmonization.md)) to map PRISM compounds onto
-   existing CTRPv2 heads and add PRISM-only heads. `scripts/preprocessing/layout.py` gains the new
+   existing CTRPv2 heads and add PRISM-only heads. `scripts/layout.py` gains the new
    source files.
 2. **Then GDSC** (`LN_IC50` / AUC) — a *different metric type*, so this is where heads stop being
    homogeneous and the model becomes genuinely multi-metric.

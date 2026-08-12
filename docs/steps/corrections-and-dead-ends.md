@@ -158,7 +158,7 @@ remaining gene*.
 scGPT-vs-PCA margin is therefore **conservative** with respect to this defect — it can only have
 understated scGPT, never inflated it.
 
-**Repair decided 05.08.2026 (Selin); applied to the code the same day, `scripts/preprocessing/gene_symbols.py`
+**Repair decided 05.08.2026 (Selin); applied to the code the same day, `scripts/annotation/gene_symbols.py`
 plus the two callers below. Nothing is re-run** — see *Standing* at the end of this entry. Three choices
 had to be settled; all were taken so that **no expression value anywhere changes**, which keeps the
 eventual re-embed attributable to the recovered genes alone.
@@ -706,6 +706,32 @@ only — the DrEval baselines were never affected. Fixed in **`ee07b00`** by usi
 0.340 / 0.086, their `SingleDrugRF` (scgpt) 0.339, `NaiveMeanEffects` 0.000. Still above the naive bar
 that half the published field fails, but only faintly above PCA and their RF, and below the paper's best
 LCO model (~19 % normalized R²). Use these.
+
+### The same val-split leak, in the code that produced everything else
+
+**Established** as fixed 14.07.2026 — for the DrEval benchmark only. The entry above ends "Fixed in
+`ee07b00`", and it was, *in that notebook*.
+
+**Overturned 12.08.2026 (review item 7).** The identical defect sat untouched in
+`scripts/training/cv.py::oof_predictions`, which produces every out-of-fold prediction this project
+has, and in `train_multitask.cv_evaluate`, which produces every CV metric. `train_model` restores the
+lowest-validation-MSE checkpoint; both passed it the held-out fold and then scored that same fold. So
+the reported figure is a minimum over up to 25 epochs on the data being reported. Optimistically
+biased, in both arms and in the ridge control's absence — the ridge baseline has no early stopping, so
+it alone was never selected this way, which flatters the MLP against it.
+
+**Not uniform across the arms, which is why it affects the comparison and not only the level.** Selected
+epochs in the last committed fold log (`outputs/panel/panel_training_folds.csv`, void 8-drug panel —
+cited for the mechanism, not as a result): PCA `[1,1,3,1,1]`, scGPT `[10,11,2,21,4]`. The PCA arm's
+scored checkpoint was chosen from among near-tied epoch-1 states on the lines it was scored against;
+scGPT's came from a real trajectory. The same fact was already on record as the cause of the PCA arm's
+`mps` non-reproducibility, without the selection-bias reading being drawn from it.
+
+**Replaced by** `scripts/training/cv.py::inner_holdout` (12.08.2026): 15 % of each fold's training lines,
+grouped, become the early-stopping set and the fold is scored clean. Design, the arbitrariness of 0.15
+and the separate inner seed: [Step 03](03-model-and-training-design.md#the-early-stopping-set-is-nested-inside-the-training-lines-12082026).
+**No number has been re-run under it** — every result on record still carries the bias, and they all move
+down at the sweep, from the removed selection and from ~104 training lines per fold where there were 122.
 
 ### The Steps 04–05 numbers as a comparable baseline
 

@@ -36,7 +36,7 @@ drift — they are documentation *and* a re-run, not a fork.
 | `drug_catalog.ipynb` | Cross-database compound harmonization (CTRP / GDSC / PRISM / DrugBank) → writes `data/drug/*`. The **only** analysis notebook whose outputs another step consumes |
 | `drug_coverage.ipynb` | Per-drug coverage and response spread; the label distribution behind "why the task is hard". ⚠️ Its *learnability* section was built on `mean_pv` and is superseded; the target-distribution figures still stand |
 | `verify_variants.ipynb` | QC of `hvg5000` vs `all_genes`, the PCA-vs-scGPT UMAP latent validation, and (§9) the gene-set sweep — heads-beating vs gene count under CV, moved here from `2_training` §4 on 03.08.2026 and re-targeted to `auc` |
-| `cell_line_join_verification.ipynb` | **Does the name join pair the right two lines?** Resolves SCP542's names against the pinned Cellosaurus release and checks them against the accessions DrEval ship, with an independent tissue cross-check; §3 records what the target build produces for each measure. Runs `scripts/preprocessing/cellosaurus.py`, so the rules it documents are the rules the pipeline uses |
+| `cell_line_join_verification.ipynb` | **Does the name join pair the right two lines?** Resolves SCP542's names against the pinned Cellosaurus release and checks them against the accessions DrEval ship, with an independent tissue cross-check; §3 records what the target build produces for each measure. Runs `scripts/sources/cellosaurus.py`, so the rules it documents are the rules the pipeline uses |
 
 ### `result_evaluation/` — is the number real?
 
@@ -67,6 +67,13 @@ the response CSV — so it runs under the freeze and its output does not go stal
    11.08.2026). A notebook can land here under this ground *while still being cited*, since archiving
    does not retract the numbers it produced. Where that happens, the citing step file must say the
    notebook is archived and why, so a reader who follows the path is not left thinking it is runnable.
+
+**Their imports were deliberately not updated (12.08.2026).** `scripts/` was reorganized that day —
+`layout`, the fetchers, `pubchem`, `cellosaurus`, `drug_annotation` and `gene_symbols` left
+`scripts/preprocessing/` — and every live notebook, script and document was repointed. Six notebooks
+here still import the old paths, and they keep them: an archived notebook is a record of a run, and
+rewriting its imports would make it look runnable when ground 2 says it is not. The current location of
+any module is in [CLAUDE.md](../CLAUDE.md) under *Where things live*.
 
 | Notebook | Why it is here |
 |---|---|

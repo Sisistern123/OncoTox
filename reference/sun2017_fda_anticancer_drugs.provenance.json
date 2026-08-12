@@ -21,5 +21,6 @@
     }
   },
   "coverage_cutoff": "1949-2014; nothing approved after 2014 is listed",
-  "fetched_by": "scripts/preprocessing/fetch_sun2017_drugs.py"
+  "fetched_by": "scripts/sources/fetch_sun2017_drugs.py",
+  "fetched_by_note": "Path updated 12.08.2026 when scripts/ was reorganized; the module is unchanged. At retrieval time it was scripts/preprocessing/fetch_sun2017_drugs.py."
 }
