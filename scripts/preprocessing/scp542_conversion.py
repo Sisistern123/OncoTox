@@ -4,6 +4,7 @@ import anndata as ad
 import pandas as pd
 import scanpy as sc
 
+from scripts.preprocessing import qc_covariates
 from scripts.preprocessing.expression import kinker_transform
 from scripts.annotation.gene_symbols import annotate_hgnc_symbols
 from scripts.layout import (
@@ -19,6 +20,8 @@ def run(
     input_meta: str,
     output_path: str,
     n_top_genes: int | None = None,
+    umi_txt: str | None = None,
+    umi_qc_csv: str | None = None,
 ):
     """Build the foundational SCP542_CCLE.h5ad object from raw CPM + metadata.
 
@@ -30,6 +33,18 @@ def run(
     ``var`` gains one column, ``hgnc_symbol`` -- SCP542's own identifiers stay in
     ``var_names`` and no expression value is touched, so the HVG set and ``X_pca`` are
     unaffected by it. Only ``gen_embeds.py`` reads it; see ``gene_symbols.py``.
+
+    ``obs`` gains two columns, ``total_counts`` and ``pct_counts_mt``, when ``umi_txt`` is given
+    (13.08.2026). They are read from SCP542's raw UMI matrix because ``input_expr`` is CPM, so the
+    library size is already divided out of it, and they are the two covariates the Q2 confound veto
+    is defined on that no processed file can supply -- see ``qc_covariates.py``. **No expression
+    value is touched and no gene is added or removed**, so the HVG set, ``X_pca`` and every
+    downstream number are unchanged by this; it is additive metadata.
+
+    :param umi_txt: SCP542's ``UMIcount_data.txt``. Omitting it produces an object on which the
+        confound veto cannot be evaluated, and says so loudly rather than failing.
+    :param umi_qc_csv: where the per-cell covariates are cached. One scan of 3.5 GB serves every
+        variant, because the covariates are computed over the full gene set.
     """
     print("Loading expression matrix... (this may take a few minutes and require high RAM)")
     df_expr = pd.read_csv(input_expr, sep="\t", index_col=0)
@@ -43,6 +58,22 @@ def run(
 
     print("Aligning metadata with expression data...")
     adata.obs = df_meta.loc[adata.obs_names]
+
+    # Sequencing depth and mitochondrial fraction, from the raw UMI matrix (13.08.2026). They enter
+    # here, with the rest of obs, and BEFORE the HVG filter below -- which is the point rather than a
+    # convenience. Both are defined over the full gene set: a total restricted to the highly variable
+    # genes is not depth but depth times the biological fraction of a cell's counts falling in that
+    # set, and only 4 of the 13 MT- genes survive HVG selection. Computed once and cached, because
+    # they are variant-independent for exactly that reason.
+    if umi_txt is not None:
+        qc = qc_covariates.load_or_compute(umi_txt, umi_qc_csv)
+        qc_covariates.attach(adata, qc)
+    else:
+        print(
+            "⚠️  No UMI matrix given: obs will carry NEITHER total_counts NOR pct_counts_mt, and the "
+            "Q2 confound veto (4b_mil_training §2.5) cannot be evaluated on the result. Pass "
+            "PipelinePaths.umi_file unless that is intended."
+        )
 
     # Runs before HVG selection deliberately: the collision check then sees the full
     # transcriptome, so a rename is never applied to a symbol whose current holder exists in
@@ -110,6 +141,8 @@ def _parse_args():
         str(paths.meta_file),
         str(paths.raw_h5ad),
         hvg,
+        umi_txt=str(paths.umi_file),
+        umi_qc_csv=str(paths.umi_qc_csv),
     )
 
 

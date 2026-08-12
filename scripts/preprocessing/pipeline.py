@@ -79,7 +79,12 @@ def convert(
     # that writes into it, so it owns the mkdir.
     paths.processed_dir.mkdir(parents=True, exist_ok=True)
     scp542_conversion.run(
-        str(paths.expr_file), str(paths.meta_file), str(paths.raw_h5ad), hvg
+        str(paths.expr_file), str(paths.meta_file), str(paths.raw_h5ad), hvg,
+        # Depth and mitochondrial fraction, from the raw UMI counts (13.08.2026). Passed here rather
+        # than added by a later step so that obs is complete before the HVG filter and every
+        # downstream file inherits the columns; the cache is shared across variants because the
+        # covariates are computed over the full gene set and cannot differ between them.
+        umi_txt=str(paths.umi_file), umi_qc_csv=str(paths.umi_qc_csv),
     )
     return paths.raw_h5ad
 

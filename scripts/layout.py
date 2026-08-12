@@ -103,6 +103,27 @@ class PipelinePaths:
         return self.data_root / "scRNAseq_SCP542" / "metadata" / "Metadata.txt"
 
     @property
+    def umi_file(self) -> Path:
+        """SCP542's raw UMI counts -- the only file here that has not been normalised.
+
+        Read by ``preprocessing/qc_covariates.py`` and by nothing else. It is the sole source of
+        sequencing depth and mitochondrial fraction: ``expr_file`` is CPM, so library size is
+        divided out before any processed matrix exists. Added 13.08.2026, when the Q2 confound veto
+        turned out to be defined on two covariates no processed file could supply.
+        """
+        return self.data_root / "scRNAseq_SCP542" / "other" / "UMIcount_data.txt"
+
+    @property
+    def umi_qc_csv(self) -> Path:
+        """Per-cell depth and mitochondrial fraction, cached beside the variant directories.
+
+        **Deliberately not under ``processed_dir``.** These are computed over the full gene set, so
+        every variant produces identical values; a per-variant cache would scan 3.5 GB once per
+        variant for one answer, and would invite the reading that the numbers are variant-specific.
+        """
+        return self.data_root / "processed" / "scRNAseq_SCP542" / "umi_qc_covariates.csv"
+
+    @property
     def metadata_dir(self) -> Path:
         """Where third-party reference data is cached, one directory per pinned release."""
         return self.data_root / "metadata"
