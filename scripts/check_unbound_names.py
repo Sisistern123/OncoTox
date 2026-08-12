@@ -137,6 +137,17 @@ def main(argv: list[str]) -> int:
     print(f"checked {len(targets)} file(s)")
     for f in findings:
         print(f"  UNBOUND  {f}")
+
+    # The floor, in the shape check_resolved_paths.py already uses. Printing the denominator tells a
+    # human; exiting non-zero tells the gate. THIS CHECKER SHIPPED WITHOUT IT FOR ONE COMMIT: run from
+    # outside the repository it printed "checked 0 file(s) / no unbound names" and exited 0 -- a pass
+    # on an empty denominator, which is precisely the defect class this file was written to catch. It
+    # was found by running it from the wrong directory, not by reading it.
+    if not targets:
+        print("WARNING: nothing was examined -- no files matched, which is itself a defect, not a "
+              "pass. Check the paths given, or that this is being run from the repository.")
+        return 1
+
     if findings:
         print(f"\n{len(findings)} unbound name(s). If this number is large, suspect this checker "
               f"before the code -- see the flooding note in the module docstring.")
