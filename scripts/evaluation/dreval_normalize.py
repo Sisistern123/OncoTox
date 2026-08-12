@@ -41,6 +41,19 @@ this output as though it were answered is the mistake to avoid. Answering it nee
 is therefore a diagnostic rather than a metric, not something to fold back into this file.
 **Audit 11** decides how to answer it.
 
+**Public change, 13.08.2026: ``load_oof`` filters on ``alpha``, not ``weighted``.** The out-of-fold
+tables now key an arm by ``(rep, model, alpha, loss, seed)``. ``weighted`` was a bool and the density
+weighting has three levels (``alpha`` in {0.0, 0.5, 1.0}, audit 09), so the old name could not carry
+the thing it named; ``alpha`` is what ``density_weighting`` calls the parameter. **Reading an older
+file: ``weighted=True`` is exactly ``alpha=0.5``**, because ``DEFAULT_ALPHA`` is 0.5. The ``model``
+column separates ``mlp`` / ``ridge`` / ``mil``, which previously shared the weighting column via a
+``'ridge'`` string sentinel.
+
+⚠️ **The committed ``outputs/legacy/panel_void_8drug/panel_oof_predictions.csv`` is now doubly
+incompatible** -- it has no ``fold`` column *and* its ``weighted`` is a bool of the retired kind. It is
+void on target and panel grounds anyway, so nothing is lost; it is stated here so the second
+incompatibility is read rather than discovered.
+
 **The fold column is required, and this is not pedantry.** The naive baseline must be fitted on the
 folds a prediction did *not* come from; fitting it on the same out-of-fold rows it will be subtracted
 from would let held-out labels define the baseline they are scored against. The writer emits it:
@@ -92,11 +105,12 @@ def load_panel(panel_csv: Path = DEFAULT_PANEL_CSV) -> list[str]:
     return panel["drug_key"].tolist()
 
 
-def load_oof(path: Path, *, rep: str, weighted: bool | None = None) -> pd.DataFrame:
+def load_oof(path: Path, *, rep: str, alpha: float | None = None) -> pd.DataFrame:
     """Read one arm of the out-of-fold predictions and check it can carry the normalization.
 
     :param rep: representation to keep, ``X_pca`` or ``X_scGPT``.
-    :param weighted: keep only rows with this ``weighted`` flag; ``None`` keeps all.
+    :param alpha: keep only rows at this density-weighting level; ``None`` keeps all. **Renamed from
+        ``weighted: bool`` on 13.08.2026** -- see the module note above.
     :raises ValueError: if the ``fold`` column is missing, which makes the baseline unfittable without
         leaking held-out labels into it (see the module docstring).
     """
@@ -109,10 +123,10 @@ def load_oof(path: Path, *, rep: str, weighted: bool | None = None) -> pd.DataFr
             f"prediction did not come from."
         )
     oof = oof[oof["rep"] == rep]
-    if weighted is not None:
-        oof = oof[oof["weighted"] == weighted]
+    if alpha is not None:
+        oof = oof[oof["alpha"] == alpha]
     if oof.empty:
-        raise ValueError(f"No rows in {path} for rep={rep!r}, weighted={weighted!r}.")
+        raise ValueError(f"No rows in {path} for rep={rep!r}, alpha={alpha!r}.")
     return oof.reset_index(drop=True)
 
 
@@ -204,8 +218,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--oof-csv", type=Path, required=True,
                         help="Out-of-fold predictions; needs drug, cell_line, fold, y_true, y_pred.")
     parser.add_argument("--rep", default="X_scGPT", choices=["X_pca", "X_scGPT"])
-    parser.add_argument("--weighted", type=lambda s: s.lower() == "true", default=None,
-                        help="Keep only rows with this weighted flag; omit to keep all.")
+    parser.add_argument("--alpha", type=float, default=None,
+                        help="Keep only rows at this density-weighting level (0.0/0.5/1.0); "
+                             "omit to keep all.")
     parser.add_argument("--panel-csv", type=Path, default=DEFAULT_PANEL_CSV)
     parser.add_argument("--drugs", nargs="+", default=None,
                         help=f"Drugs to score; default: the panel in --panel-csv.")
@@ -216,7 +231,7 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     args = _parse_args()
     drugs = args.drugs or load_panel(args.panel_csv)
-    oof = load_oof(args.oof_csv, rep=args.rep, weighted=args.weighted)
+    oof = load_oof(args.oof_csv, rep=args.rep, alpha=args.alpha)
 
     absent = sorted(set(drugs) - set(oof["drug"]))
     if absent:

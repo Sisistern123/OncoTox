@@ -45,25 +45,31 @@ class TrainConfig:
     # each fold now fits on ~104 lines rather than 122, so where training peaks can move.
     epochs: int = 25
     lr: float = 1e-3
-    weight_decay: float = 1e-3
+    # 0.0, and this is a decision rather than a default (Selin, 12.08.2026). **The model trains
+    # without weight decay**, with dropout 0.5 and input dropout 0.1 as the only regularizers.
+    #
+    # It follows from the AdamW switch below. Measured before deciding: AdamW at the inherited 1e-3
+    # gives a weight-matrix L2 norm of 8.971 against 8.975 with decay off -- 0.04 %, i.e. nothing --
+    # where Adam at the same nominal value gave 5.597, a 38 % shrinkage. Matching Adam under AdamW
+    # needs wd ~= 1.0, three orders of magnitude up. So 1e-3 could not be carried across: it would
+    # have read as a deliberate setting while doing nothing at all.
+    #
+    # The rejected alternative was wd ~= 1.0, which reverse-engineers a value to reproduce the
+    # shrinkage of runs that are themselves void on target and panel grounds.
+    #
+    # ⚠️ **Whether this model needs weight decay is OPEN, not settled.** Do not justify 0.0 by "the
+    # model is not regularization-limited": that refutation rested on the weight-decay axis of an
+    # ablation which is itself void, so the evidence for it is gone. The honest justification is
+    # narrower -- no sourced value exists for either optimizer, dropout is already substantial, and
+    # a decay nobody can justify is worse than none.
+    weight_decay: float = 0.0
     grad_clip: float | None = 1.0
     scheduler_patience: int = 3
     scheduler_factor: float = 0.5
     early_stop_patience: int = 10
     log_every: int = 5
     seed: int = 42
-    loss: str = "mse"  # "mse" or "huber"
-    # ⚠️ Unsourced, and mis-scaled for the current target (found 12.08.2026, audit 09). Introduced
-    # with the original multi-task commit (ed8897c) and never revisited across three target changes.
-    # `smooth_l1_loss` is quadratic only below `beta` and linear above it, and 0.05 sits well under
-    # the typical residual on `auc_cc` -- the panel run's RMSE was ~0.163, which puts roughly three
-    # quarters of residuals in the LINEAR region. So `--loss huber` behaves closer to L1 than to the
-    # "quadratic near 0, robust in the tail" that docs/steps/03 describes. Nothing uses it today
-    # (`loss` defaults to "mse"), so it is left as-is rather than silently rescaled: `beta` is a
-    # threshold on the residual scale and picking one is an analysis decision. If the loss
-    # comparison in review item 9 includes Huber, `beta` is derived there from the residual scale
-    # rather than inherited from here.
-    huber_beta: float = 0.05
+    loss: str = "mse"  # "mse" or "mae" -- the two arms of review item 9A
     # Decay the weight matrices, exempt the biases and the normalization parameters. This is the
     # standard grouping -- HuggingFace transformers' `Trainer.create_optimizer`
     # (`no_decay = ["bias", "LayerNorm.weight"]`), inherited from the BERT reference
@@ -128,19 +134,31 @@ def _masked_mean(per_elem: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
 def _make_loss_fn(config: TrainConfig, multitask: bool):
     """Return a callable ``loss_fn(preds, targets, mask=None) -> scalar tensor``.
 
-    Single-task callers can pass ``mask=None`` and get plain MSE / Huber.
+    Single-task callers can pass ``mask=None`` and get the plain loss.
     Multi-task callers must pass ``mask`` (same shape as ``targets``).
+
+    **Both losses go through the identical masked reduction**, ``sum(err * M) / sum(M)``, with
+    the density weights substituting for the 0/1 mask when weighting is on. That is what makes them
+    comparable as arms of one experiment: an MAE that bypassed the mask would be a different
+    estimator rather than a different loss, and the comparison in review item 9A would not mean what
+    it says. Only ``per_elem`` differs between them.
     """
     name = config.loss.lower()
-    if name not in {"mse", "huber"}:
-        raise ValueError(f"Unknown loss: {config.loss!r}")
+    if name not in {"mse", "mae"}:
+        raise ValueError(f"Unknown loss: {config.loss!r} (expected 'mse' or 'mae')")
 
     if name == "mse":
         per_elem = lambda preds, targets: (preds - targets) ** 2
     else:
-        per_elem = lambda preds, targets: nn.functional.smooth_l1_loss(
-            preds, targets, beta=config.huber_beta, reduction="none"
-        )
+        # Added 12.08.2026 (Selin) as the second arm of item 9A's loss comparison, and since
+        # 12.08.2026 the only alternative to MSE: Huber was removed rather than kept, because its
+        # position in the grid is set entirely by `beta` -- so keeping it meant deciding a parameter
+        # -- and at the 0.05 it carried it behaves close to MAE, so the grid would have run two
+        # near-duplicate columns. MAE carries no parameter at all, which is half its appeal.
+        # Less pulled by the sparse extremes than squared error, which is the same axis the
+        # density weighting acts on -- so the two are not independent and the grid is read as a
+        # grid, not as two separate one-dimensional sweeps.
+        per_elem = lambda preds, targets: (preds - targets).abs()
 
     if multitask:
         def loss_fn(preds, targets, mask):
@@ -219,7 +237,7 @@ def train_model(
     val MSE seen during training, not the final-epoch weights.
 
     Multi-task batches (3-tuples ``(x, y, mask)``) are detected automatically
-    from ``train_loader``. In that case the loss is masked-MSE / masked-Huber
+    from ``train_loader``. In that case the loss is masked-MSE / masked-MAE
     and the printed metric is the overall masked val MSE; the top-k best/worst
     per-drug val MSEs are also printed when ``drug_names`` is provided.
     """
@@ -235,14 +253,42 @@ def train_model(
         print(f"[{tag}] Multi-task mode detected (masked {config.loss.upper()}).")
 
     loss_fn = _make_loss_fn(config, multitask=multitask)
+    # AdamW (Selin, 12.08.2026, review item 10), and `weight_decay` set to 0.0 with it -- see the
+    # field's own comment for why those two are one decision rather than two.
+    #
+    # The argument for the switch: Loshchilov & Hutter, *Decoupled Weight Decay
+    # Regularization*, ICLR 2019, show that passing `weight_decay` to Adam adds an L2 term to the
+    # gradient which Adam's adaptive scaling then divides through, so decay strength is entangled
+    # with gradient history, and that the decoupled form is what "weight decay" normally means. That
+    # so the decoupled form is what "weight decay" normally means, and it is now what we use.
+    #
+    # The migration carried a price, measured before switching
+    # (8 epochs, real OncoMLP, real grouping, synthetic data at workload scale):
+    #
+    #     Adam   wd=1e-3 : weight-matrix L2 norm 5.597
+    #     AdamW  wd=1e-3 : weight-matrix L2 norm 8.971
+    #     AdamW  wd=0    : weight-matrix L2 norm 8.975   <- no-decay reference
+    #
+    # AdamW at the SAME nominal value is indistinguishable from no weight decay at all -- 0.04 % from
+    # the zero-decay run -- while Adam at 1e-3 shrinks the weight matrices by 38 %. AdamW's step is
+    # `theta -= lr*wd*theta`, a factor of 1 - 1e-6 per step at these settings; Adam's L2 enters the
+    # gradient and is amplified by 1/sqrt(v). Reproducing Adam's shrinkage under AdamW needs
+    # wd ~= 1.0, three orders of magnitude up.
+    #
+    # So migrating meant re-deriving `weight_decay`, and no sourced value exists for either
+    # optimizer. Rather than carry 1e-3 -- which under AdamW does nothing while looking deliberate --
+    # the decay is set to 0.0 and the model trains without it.
+    #
+    # Audit 08's grouping is untouched by any of this: *which* parameters are decayed was settled
+    # there, and only *how* decay is applied was ever in question.
     if config.no_decay_bias_and_norm:
         groups = _decay_param_groups(model, config.weight_decay)
         print(f"[{tag}] Weight decay {config.weight_decay:g} on "
               f"{sum(p.numel() for p in groups[0]['params'])} weight parameters; "
               f"{sum(p.numel() for p in groups[1]['params'])} bias/norm parameters exempt.")
-        optimizer = optim.Adam(groups, lr=config.lr)
+        optimizer = optim.AdamW(groups, lr=config.lr)
     else:
-        optimizer = optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
+        optimizer = optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         mode="min",

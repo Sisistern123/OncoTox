@@ -650,6 +650,35 @@ every one of them was a step that looked settled and had never been checked.
   - [x] **B · The 82× per-line imbalance stands until MIL.** Line-balanced reweighting was already
         tested and is empty, and MIL removes the defect structurally — one bag is one line is one
         example — so a weighting built now is machinery built to be discarded.
+  - [x] **D · The optimizer is AdamW, and the decay that rode on it is 0.0 (Selin, 12.08.2026).**
+        Loshchilov & Hutter, *Decoupled Weight Decay Regularization*, ICLR 2019: `weight_decay`
+        passed to Adam is an L2 term added to the gradient, which Adam's adaptive scaling divides
+        through, so decay strength is entangled with gradient history; AdamW applies it to the
+        weights directly. That argument is **unaddressed** — we are not using the standard form.
+        **AdamW was implemented and reverted the same day (Selin, 12.08.2026)**, because measuring
+        it first showed the migration carries an uncosted parameter decision (8 epochs, real
+        `OncoMLP` and grouping, synthetic data at workload scale):
+        | optimizer | `weight_decay` | weight-matrix L2 norm |
+        |---|---|---|
+        | Adam | 1e-3 | **5.597** |
+        | AdamW | 1e-3 | 8.971 |
+        | AdamW | 0 | 8.975 |
+        **AdamW at the same nominal value is indistinguishable from no weight decay** — 0.04 % from
+        the zero-decay run — where Adam at 1e-3 shrinks the weight matrices by 38 %. AdamW's step is
+        `θ -= lr·wd·θ`, a factor of `1 − 1e-6` here; Adam's L2 is amplified by `1/sqrt(v)`.
+        Reproducing Adam's shrinkage needs `wd ≈ 1.0`, three orders of magnitude up.
+        **So `weight_decay = 0.0`, chosen rather than defaulted.** Carrying 1e-3 across would have
+        stated a setting the optimizer ignores. The rejected alternative was `wd ≈ 1.0`, which
+        reverse-engineers a value to reproduce the shrinkage of runs that are themselves void.
+        Aligned in three places so the CLI, the dataclass and the sweep notebook cannot train
+        different models — the defect this item found with `--epochs`.
+    - [ ] **What opens in its place: does this model need weight decay at all?** Not settled.
+          It must **not** be justified by ["the model is over-regularized"](./steps/corrections-and-dead-ends.md#the-model-is-over-regularized-or-too-small)
+          being refuted — that refutation rested on the weight-decay axis of an ablation which is
+          itself void, so the evidence is gone. The honest justification for 0.0 is narrower: no
+          sourced value exists for either optimizer, dropout 0.5 and input dropout 0.1 are already
+          substantial, and a decay nobody can justify is worse than none. If regularization is ever
+          *claimed* as tuned, it has to be derived first.
   - [x] **C · Two defects found and fixed in code.** In weighted runs the per-drug log printed `Σw` as
         `n=`, i.e. a weight sum labelled as a sample size — now printed as `w=` when it is not an
         integer count. And `TrainConfig.huber_beta = 0.05` is unsourced and **mis-scaled for `auc_cc`**:
@@ -868,6 +897,37 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       stale again despite running under the audit exception. **§8b and §10b cover all five variants**, so
       if R1 regenerates only some they will mix new and old embeddings — check before rendering. §9 trains,
       so it goes to R4.
+> ### ⚠️ R4 carries six simultaneous changes, and that is deliberate — read this before attributing anything
+>
+> The standing rule is one change at a time, so an outcome can be attributed. R4 breaks it, carrying all
+> of: the **cross-validated PCA fitted per fold** on each fold's fitting set, **float32** in both PCA
+> fits, **MAE** added as a second loss arm, **Huber** removed, **AdamW** with **`weight_decay = 0.0`**,
+> and `dreval_benchmark`'s **epoch fix**.
+>
+> ⚠️ **R4's model differs from every recorded run in its regularization.** Those runs used Adam at
+> 1e-3, which shrank the weight matrices by ~38 %; R4 has no weight decay at all. That is not a side
+> effect of the optimizer switch — it is the decision taken with it (item 10D), and it is one more
+> reason R4 is a baseline rather than a delta.
+>
+> **The defence is that there is no "before" to attribute against.** Every prior result is void on two
+> independent grounds — the target was replaced on 11.08.2026 and the panel rebuilt on 12.08.2026 — so
+> R4 is not measuring a delta from a previous run, it is *establishing the baseline* that later runs
+> will be attributed against. Bundling changes is only dangerous when something is being compared to
+> what came before, and here nothing is: the comparison R4 supports is internal to itself (MSE vs MAE,
+> weighting off vs on, trunk vs linear head), and every arm of it carries all six changes equally.
+>
+> **What this costs, stated rather than hidden.** If R4's numbers disappoint, the six cannot be
+> separated after the fact — no one will be able to say which contributed. That is the price of one
+> clean baseline over six sequential runs, and it is acceptable only because none of the six is a
+> hypothesis under test. Each is a defect fixed or a decision recorded, with its own justification:
+> the per-fold PCA closes a leak, float32 preserves a property Selin established, MAE is an arm the
+> plan already specified, Huber went because its position was set entirely by an unsourced parameter,
+> AdamW is the standard form of a decay the code was already applying, and the epoch fix stops a
+> benchmark training for half as long as the pipeline it represents.
+>
+> Written down here rather than left in commit bodies because a reader finding six bundled changes with
+> no stated reason reaches for carelessness first, and would be right to.
+
 - [ ] **R4 · Retrain.** The `DataLoader`s now take an explicit generator and the inputs change under R2,
       so no run under `runs/` is reproducible from current code. Requires the target (item 5) and the
       panel (item 6) settled first, and **never both in one run**. Scope: the 8-run matrix + 5-fold CV
