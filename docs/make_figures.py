@@ -726,6 +726,14 @@ LOSS_TEX = ROOT / "report" / "loss_objective.tex"
 #: less accurate than omitting it. The `1e-12` density floor is a numerical guard and is deliberately
 #: absent; it belongs in the docstring *provided it never binds*, which is measurable on `auc_cc`
 #: once R2 produces real values and is not yet established.
+#:
+#: ⚠️ These strings must parse under BOTH LaTeX and matplotlib's mathtext, which is a subset. Two
+#: constructs are therefore avoided, and both were verified failing rather than assumed:
+#:   `\tfrac`            -> use `\frac`  (mathtext: "Unknown symbol: \tfrac")
+#:   `\lvert` / `\rvert` -> use `\left|` / `\right|`  (mathtext: "Unknown symbol: \lvert")
+#: `\text{...}` is supported and is fine. Substituting either back would still compile the report and
+#: would break only the figure -- the asymmetry is the reason this warning is here rather than left
+#: to be rediscovered.
 LOSS_TEX_MACROS: dict[str, str] = {
     "LossObjective": (
         r"\mathcal{L}\;=\;"
@@ -736,8 +744,8 @@ LOSS_TEX_MACROS: dict[str, str] = {
     "LossWeightMatrix": r"W_{nj}\;=\;M_{nj}\;w_j\!\left(y_{nj}\right)",
     "LossWeightFn": (
         r"w_j(y)\;\propto\;\hat{p}_j(y)^{-\alpha},"
-        r"\qquad w_j \in \left[\tfrac{1}{c},\, c\right],"
-        r"\qquad \frac{1}{\lvert \mathcal{I}_j \rvert}"
+        r"\qquad w_j \in \left[\frac{1}{c},\, c\right],"
+        r"\qquad \frac{1}{\left| \mathcal{I}_j \right|}"
         r"\sum_{i \in \mathcal{I}_j} w_j\!\left(y_{ij}\right)\;=\;1"
     ),
     "LossDensity": (
@@ -746,7 +754,7 @@ LOSS_TEX_MACROS: dict[str, str] = {
     ),
     "LossArms": (
         r"\ell \in \{\text{squared},\, \text{absolute},\, \text{Huber}_\beta\},"
-        r"\qquad \alpha \in \{\text{off},\, \tfrac{1}{2},\, 1\}"
+        r"\qquad \alpha \in \{\text{off},\, \frac{1}{2},\, 1\}"
     ),
 }
 
