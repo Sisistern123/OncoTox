@@ -60,9 +60,16 @@ source is recorded **in the same place**, not in a chat message that disappears:
 **If there is no source, say that.** An arbitrary threshold documented as arbitrary is honest; the same
 threshold stated without comment reads as principled, and that is the more damaging of the two.
 
-The pattern to copy: the `DETERMINANTS` table in `notebooks/drug_selection/panel_distributions.ipynb`
-keeps each compound, its published determinant and the reference in one structure next to the data, so the
-evidence cannot drift from the thing it justifies.
+The pattern to copy: the `PANEL_EVIDENCE` table in `notebooks/drug_selection/literature_panel.ipynb` §5
+maps each compound to its reference, *what that reference actually claims*, the setting the claim was made
+in, and how strong it is — one structure, next to the data, so the evidence cannot drift from the thing it
+justifies. The notebook then asserts that every entry lies inside the candidate set built in §3, and that
+every one of them clears the coverage cut — so a compound cannot enter the panel by being written into the
+evidence table. The evidence is checked by code, not by whoever is reading.
+
+*(Repointed 12.08.2026. This named the `DETERMINANTS` table in `panel_distributions.ipynb`, which was
+archived with the void 8-drug panel and holds a narrower structure — determinant and reference, without
+the claim, the setting or the strength.)*
 
 ## Work in small steps, together
 
