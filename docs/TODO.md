@@ -378,9 +378,27 @@ every one of them was a step that looked settled and had never been checked.
         so any scGPT-over-PCA margin measured under them is a lower bound rather than an inflated one.
         **1 — HVG stays all-cells.** Keeping one gene set keeps folds, arms and Step 05's gene-set sweep
         comparable; a train-only HVG set would be fold-dependent, so "the 5,000 HVGs" would stop being a
-        single object. **2 — the cross-validated PCA is fitted per fold, at training time**, on that
-        fold's training lines. This is the one fit that changes, because every CV number carried it and
-        the CV numbers are the headline. `X_pca` is still written and remains correct for UMAPs and
+        single object. **2 — the cross-validated PCA is fitted per fold, at training time**, on
+        **`fitc` — the cells the model's weights are actually fitted on**, i.e. the fold's training side
+        *minus* the 15 % early-stopping slice. This is the one fit that changes, because every CV number
+        carried it and the CV numbers are the headline.
+        ⚠️ **`fitc` rather than `trc` decided 12.08.2026 (Selin), on comparability.** "That fold's
+        training lines" became ambiguous once audit 07 nested the early-stopping set: `trc` is the whole
+        training side, `fitc` is `trc` minus the stopping slice, and every other per-fold statistic —
+        `fit_weight_fns`, the head-bias init — already uses `fitc`. The deciding argument is **what the
+        two arms see**, not the leak. PCA and scGPT already receive the same cells, the same per-cell
+        CPM and log transform, and the same all-cells HVG gene set (decision 1). The *only* place they
+        differ is that **PCA needs a fit — mean, std, rotation — and scGPT needs none**: its weights are
+        pretrained elsewhere and frozen, and its value binning digitizes each cell against its own
+        distribution, so nothing is estimated across cells. Since that fit is the single asymmetry,
+        keeping it as narrow as possible is what makes a measured difference attributable to the
+        *representation* rather than to how much the control's fit was allowed to see. `fitc` also
+        removes the exception: PCA is now fitted like every other per-fold statistic.
+        **Cost, stated rather than glossed:** ~15 % fewer cells for a 512-component fit, so if scGPT
+        wins, PCA can be asked whether it was undersold. The answer is that the fit still uses ~85 % of
+        the training cells, and the alternative hands the control an advantage scGPT structurally cannot
+        receive. Rejected: `trc`, better estimated but it widens the one place the arms are not alike.
+        `X_pca` is still written and remains correct for UMAPs and
         other descriptive use; CV stops reading it. Implementation is in the training path
         (`model/dataset.py::resolve_rep` today falls through to `X_pca` whenever `split_col is None`),
         with **one helper called by both `cv.oof_predictions` and `train_multitask.cv_evaluate`** — never
