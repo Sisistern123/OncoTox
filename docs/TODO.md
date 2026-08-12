@@ -497,6 +497,30 @@ every one of them was a step that looked settled and had never been checked.
         building `5_evaluation` a prerequisite for R4's loss comparison rather than a follow-up to it.
         The report passage that drew the strongest version of this inference is corrected in
         `report/sections/06_limitations_and_outlook.tex`.
+  - [ ] **⚠️ Where the ridge baseline lives — an open choice, raised 12.08.2026 (Selin).** `RidgeCV`
+        on cell-line mean embeddings is fitted *inside* `4a_percell_training` §A, which calls it "the
+        baseline that actually binds". Since `4b_mil_training` is to be scored by the same
+        `5_evaluation` over the shared line-level out-of-fold format both notebooks emit, that
+        placement decides whether the two architectures are measured against **one** ridge or against
+        two separate fits of it. The choice:
+        **(a) Move it into `5_evaluation`**, beside `NaiveMeanEffects`, computed once from the shared
+        line-level predictions. The comparison then holds by construction rather than by convention —
+        the same argument `4b` §2 makes for one scorer — and the baseline cannot drift between arms.
+        Cost: `4a` §A stops being a self-contained result, and the ridge fit needs the fold assignment
+        carried in the shared format rather than taken from the training notebook's own
+        `cv.grouped_folds` call.
+        **(b) Leave it in `4a` §A** and fit a second one in `4b`. Each notebook stays readable end to
+        end, at the cost of two fits that must be held identical by hand — the drift the shared-scorer
+        decision was taken to remove.
+        **What (a) rests on:** that `4a` and `4b` genuinely emit one common line-level format. If they
+        diverge, (a) is unavailable and the question is moot — so this is decidable only once `4b` is
+        past a stub.
+        **A reading, not a decision:** (a). This matters more than a tidying choice because ridge has
+        no early stopping and so was never flattered by the leak that flattered the MLP, and on PCA the
+        two were equal — the honest ordering may put ridge ahead (recorded with item 8C). A baseline
+        that may outrank the model is not a throwaway control and should not be computed twice.
+        Sequenced **after item 8C**, which re-derives the ridge comparison at R4 on the rebuilt panel,
+        and **after `5_evaluation` exists**, which item 11 already blocks.
 - [ ] **12 · Reproducibility** — seeds, determinism, what is derived in code versus typed by hand.
       Anything that exists only as a shell command is not a result. *Seeds are now fixed
       (`gen_embeds.py`, `add_pca.py`, the training `DataLoader`s) and determinism was decided
