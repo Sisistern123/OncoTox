@@ -14,8 +14,9 @@ silently recomputed a cross-validation while printing that it had loaded committ
 
 TWO CHECKS, AND NEITHER SUBSUMES THE OTHER. Do not "simplify" them into one:
 
-  (a) COMPOSITION   VAR / 'a' / 'b'      -> the parent directory must exist
-  (b) DEAD GLOB     VAR.glob('*.csv')    -> must match at least one file
+  (a) COMPOSITION   VAR / 'a' / 'b'          -> the parent directory must exist
+  (b) DEAD GLOB     VAR.glob('*.csv')        -> must match at least one file
+                    glob.glob('lit/*.csv')   -> same, for the module-level form
 
 The proof that both are needed is the defect that prompted this file. With
 ``OUT_MATRIX = notebooks/outputs``, check (a) PASSES -- that directory exists -- and the notebook
@@ -54,6 +55,12 @@ The durable fix for that class is a convention, not a parser: **a change that su
 retires that comment in the same commit.** Stated here so the next person does not automate it and
 conclude the checker is broken when it cannot.
 
+IT ALSO REPORTS WHAT IT SKIPPED. A candidate the parser found but could not resolve -- an unknown
+root, a non-literal component, an f-string -- is precisely where a defect hides, and a bare "checked"
+count cannot be told apart from "did not exist". So each check reports skipped alongside checked.
+This is the denominator principle one level down: knowing 2 were checked is only useful next to how
+many were passed over, and for what reason.
+
 WHY IT PRINTS ITS DENOMINATOR. Each check reports how many candidates it examined, not only how
 many failed, because "0 failed" and "0 examined" are otherwise indistinguishable -- and a checker
 that silently parses nothing reports a clean pass. That is the same silent-success failure this
@@ -91,6 +98,10 @@ _ASSIGN = re.compile(
     r"^\s*([A-Z][A-Z0-9_]*)\s*=\s*([A-Za-z_]\w*(?:\s*/\s*'[^']+')+)\s*(?:;|$)", re.M)
 _USE = re.compile(r"\b([A-Z][A-Z0-9_]*)((?:\s*/\s*'[^']+')+)")
 _GLOB = re.compile(r"\b([A-Z][A-Z0-9_]*)((?:\s*/\s*'[^']+')*)\s*\.glob\(\s*'([^']+)'\s*\)")
+#: The module-level form, ``glob.glob('lit')``. A different shape entirely from ``Path.glob``,
+#: and missed until 12.08.2026. Only a bare string literal is resolvable; an f-string or a
+#: variable is counted as skipped rather than silently ignored.
+_GLOB_MODULE = re.compile(r"\bglob\.glob\(\s*([^)]*?)\s*[,)]")
 
 
 def _literals(expr: str) -> list[str]:
@@ -152,9 +163,10 @@ def _sources() -> dict[str, str]:
     return out
 
 
-def check() -> tuple[list[str], dict[str, int]]:
+def check() -> tuple[list[str], dict[str, int], dict[str, int]]:
     findings: list[str] = []
     seen = {"composition": 0, "dead-glob": 0}
+    skipped = {"composition": 0, "dead-glob": 0}
     for f, text in _sources().items():
         table: dict[str, str] = {}
         for var, expr in _ASSIGN.findall(text):
@@ -164,43 +176,77 @@ def check() -> tuple[list[str], dict[str, int]]:
                 table[var] = os.path.normpath(os.path.join(root, *_literals(expr)))
 
         for var, chain in _USE.findall(text):
-            if var not in table:
+            # Fall back to KNOWN_ROOTS: a root like ROOT is assigned by a next(...) walk that
+            # _ASSIGN cannot parse, so it never enters `table`, and checking `table` alone
+            # silently passed over 17 real candidates. Found by reading the skipped count rather
+            # than the clean pass -- which is what that count is for.
+            base_dir = table.get(var, KNOWN_ROOTS.get(var))
+            if base_dir is None:
+                skipped["composition"] += 1   # unknown root: cannot resolve, so cannot judge
                 continue
             seen["composition"] += 1
-            target = os.path.normpath(os.path.join(table[var], *_literals(chain)))
+            target = os.path.normpath(os.path.join(base_dir, *_literals(chain)))
             parent = os.path.dirname(target)
             if parent and not _skip(parent) and not os.path.isdir(parent):
                 findings.append(
                     f"COMPOSITION  {f}\n"
-                    f"    {var} = {table[var]}\n"
+                    f"    {var} = {base_dir}\n"
                     f"    {var}{chain.strip()} -> {target}\n"
                     f"    parent directory does not exist: {parent}")
 
         for var, chain, pattern in _GLOB.findall(text):
-            if var not in table:
+            base_dir = table.get(var, KNOWN_ROOTS.get(var))
+            if base_dir is None:
+                skipped["dead-glob"] += 1
                 continue
-            d = os.path.normpath(os.path.join(table[var], *_literals(chain))) if chain else table[var]
+            d = os.path.normpath(os.path.join(base_dir, *_literals(chain))) if chain else base_dir
             if _skip(d):
                 continue
             seen["dead-glob"] += 1
             if not globmod.glob(os.path.join(d, pattern)):
                 findings.append(
                     f"DEAD GLOB    {f}\n"
-                    f"    {var} = {table[var]}\n"
+                    f"    {var} = {base_dir}\n"
                     f"    {var}{chain}.glob('{pattern}') matches nothing in {d}\n"
                     f"    (a reporting cell that finds nothing looks like a run with nothing to report)")
-    return findings, seen
+
+        for raw in _GLOB_MODULE.findall(text):
+            raw = raw.strip()
+            if not (len(raw) > 1 and raw[0] in "'\"" and raw[-1] == raw[0]):
+                skipped["dead-glob"] += 1     # f-string, variable or concatenation
+                continue
+            literal = raw[1:-1]
+            rel = literal
+            if os.path.isabs(literal):
+                try:
+                    rel = os.path.relpath(literal, REPO_ROOT)
+                except ValueError:
+                    skipped["dead-glob"] += 1
+                    continue
+            if rel.startswith("..") or _skip(rel):
+                continue                       # outside the repo, or a gitignored tree
+            seen["dead-glob"] += 1
+            if not globmod.glob(rel):
+                findings.append(
+                    f"DEAD GLOB    {f}\n"
+                    f"    glob.glob('{literal}') matches nothing\n"
+                    f"    (module-level form; a reporting cell that finds nothing looks like a run "
+                    f"with nothing to report)")
+
+    return findings, seen, skipped
 
 
 def main() -> int:
     os.chdir(REPO_ROOT)
-    findings, seen = check()
+    findings, seen, skipped = check()
     for x in findings:
         print(x)
     n_comp = sum(1 for f in findings if f.startswith("COMPOSITION"))
     n_glob = sum(1 for f in findings if f.startswith("DEAD GLOB"))
-    print(f"\ncomposition: {seen['composition']} expressions checked, {n_comp} failed")
-    print(f"dead-glob  : {seen['dead-glob']} globs checked, {n_glob} empty")
+    print(f"\ncomposition: {seen['composition']} expressions checked, {n_comp} failed, "
+          f"{skipped['composition']} skipped (unresolvable form)")
+    print(f"dead-glob  : {seen['dead-glob']} globs checked, {n_glob} empty, "
+          f"{skipped['dead-glob']} skipped (unresolvable form)")
     if not any(seen.values()):
         print("WARNING: nothing was examined -- the parser matched no candidates at all, which is "
               "itself a defect, not a pass.")
