@@ -129,16 +129,15 @@ voided panel, by a locally invented normalization that has since been deleted, a
 directory path that does not exist. The alignment remains the first item to try; how much it can recover
 is unmeasured.}
 Second, whether the single-cell resolution earns itself is an
-open question: a pooling model that predicts the line label from a bag of cells, for example through
-attention, is the natural test.
+open question: a model that predicts the line label from a bag of its cells is the natural test.
 \revision{\emph{Two claims were removed from that sentence (12.08.2026).} It asserted that averaging a
 line's cells ``loses nothing measurable'' --- the ridge-versus-network tie behind that phrase came from a
 comparison in which only the network arm chose its checkpoint on the fold it was scored on, so the tie is
 an upper bound on the network's side and the honest ordering is not known. And it required the pooling
 model to ``beat the ridge control to be worthwhile'', which scores an experiment about within-line
 heterogeneity on a line-level accuracy criterion; the project record reframed that on 11.08.2026, with
-the controls as a floor rather than the success criterion, and what a positive result would be is
-recorded as an open decision rather than answered here.}
+the controls as a floor rather than the success criterion. The sentence also offered attention as the
+example mechanism; the design settled on 12.08.2026 is instance-level instead, as described below.}
 \suggestion{This point deserves to be stated more sharply, because it bears directly on the second
 research question. The pharmacological label is constant within a cell line, and the masked objective
 therefore requires every cell of a line to regress onto the same scalar. Any difference the model
@@ -148,8 +147,8 @@ per-cell predictor is constant across a line, and heterogeneity can only appear 
 follows that the present setup does not test whether heterogeneity is learned implicitly \textemdash{} it
 is structurally unable to. Multiple-instance learning is not merely an incremental architecture to try
 but the minimal change that makes the question askable: predicting the line label from a bag of cells
-constrains only the aggregate, leaves the model free to assign different values and weights to different
-cells, and exposes the attention weights as a readout of which subpopulation drives the response. That
+constrains only the aggregate, leaves the model free to assign different values to different cells, and
+so exposes a per-cell prediction as a readout of which subpopulation drives the response. That
 readout is the quantity of clinical interest, since relapse is driven by rare surviving subpopulations
 rather than by the population mean, and it is the natural point at which to connect the model to the
 recurrent heterogeneity programs annotated for this dataset \cite{scp542}. Note also that the per-cell
@@ -168,18 +167,25 @@ The order of the next two steps is deliberate rather than a matter of convenienc
 learning} comes first because it is the minimal change that makes the second research question answerable
 at all: under the present objective every cell of a line is regressed onto the same scalar, so within-line
 variation is scored as error rather than as the quantity of interest. Predicting a line's response from a
-bag of its cells constrains only the aggregate, and the resulting attention weights identify which
-subpopulation drives the response, which is the readout the clinical motivation calls for. It requires no
-additional data.
+bag of its cells constrains only the aggregate, leaving the model free to differ between cells of one
+line. It requires no additional data.
 \revision{\emph{Two characterisations were removed here (12.08.2026), both retracted in the project
 record on 11.08.2026.} Multiple-instance learning was called ``the only untested capacity lever''; it is
 not a capacity lever at all, and no untested one remains, so that phrase both misdescribes the method and
 implies a reserve of unexplored performance that does not exist. And the falsifiability condition was
 given as exceeding the per-cell model and the ridge control, with failure establishing that single-cell
 resolution does not pay for itself --- which scores a heterogeneity experiment on a line-level accuracy
-criterion. The controls remain as a floor. What counts as a positive result is an open decision, to be
-fixed before the run rather than after seeing one, and it requires a control saying what \emph{no}
-heterogeneity signal looks like.}
+criterion. The controls remain as a floor.
+\emph{The readout was also restated (12.08.2026).} This paragraph identified \emph{attention weights} as
+what names the driving subpopulation. The design settled the same day takes the other standard option:
+\textbf{instance-level} multiple-instance learning, in which every cell carries its own predicted
+response rather than a weight over a pooled embedding --- readable at the level of the individual cell,
+at an expected cost in predictive accuracy, which is the trade taken because the question is one about
+readability. The success criterion is likewise no longer open: it is pre-registered as a synthetic
+positive control, a within-line spread condition, cross-seed reproducibility against a shuffled-cell
+control as the test, and a confound regression that can veto a pass. Only its recovery threshold is
+outstanding. Both are recorded in the project's stage-4b notebook and are stated here because a report
+that still promised attention maps would describe a model this project has decided not to build.}
 
 \textbf{Bulk pretraining in the manner of scDEAL} follows. The remaining levers are argued to be on the
 label side.

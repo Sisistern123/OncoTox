@@ -171,7 +171,7 @@ components.
 A property of the data governs every error estimate in this report. The label is defined per cell line and
 drug, not per cell, so all cells of a line share the same broadcast bulk value and act as
 pseudo-replicates. The effective sample size is therefore the number of cell lines, approximately
-\NIndep{} after the held-out splits are removed, not the \NCells{} cells. Treating cells as independent
+\NLinesCV{} once the fixed test split is held out, not the \NCells{} cells. Treating cells as independent
 would understate the uncertainty by roughly the square root of the number of cells per line.
 
 \subsection{Drug panel selection}
@@ -399,9 +399,15 @@ property of the sample size, not a measurement on these data.
 Spearman value within 0.02 throughout.} It is an empirical claim about runs on the retired target and the
 voided panel, and nothing has been re-run, so the agreement between the two coefficients is unmeasured on
 the current pipeline. Both are reported when they are re-measured; neither may stand in for the other
-until then. The line count in this paragraph was also removed: \NIndep{} is the number this report
-defines for the effective sample size, while the cross-validation described above resamples 153 lines,
-and quoting the first for the second made two different quantities look like one.}
+until then.
+\emph{A macro was also split on the same date.} The effective sample size was cited through a single
+macro, \code{NIndep}, defined as ``independent examples after held-out splits'' but carrying the value
+150 --- which was the line count of a ridge control, a different quantity, and one this report no longer
+reports. Since one name stood for two numbers it was retired, for \code{NLinesCV} (\NLinesCV, the lines
+inside the cross-validation, test held out) and \code{NLinesFit} (\NLinesFit, the fixed training split
+alone). The three places that cite the effective sample size now use the former, on the reading that each
+contrasts a line count with the cell count under the protocol this section describes. \textbf{If any of
+them meant the training lines alone, that is \NLinesFit{} and a one-macro change.}}
 
 For external comparison, the model is additionally evaluated with the DrEval package \cite{dreval}
 (version 1.5.1), using its leave-cell-line-out splits, its baselines and its evaluation routine without

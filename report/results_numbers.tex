@@ -32,7 +32,15 @@
 \newcommand{\NDrugs}{545}          % CTRPv2 compounds in the overlap
 \newcommand{\NCells}{53{,}513}     % single cells
 \newcommand{\NGenes}{22{,}722}     % genes in the distributed SCP542 matrix
-\newcommand{\NIndep}{150}          % ~independent examples after held-out splits
+% \NIndep was RETIRED 12.08.2026 -- it named two different quantities at once (see the
+% note at the foot of this file). Replaced by the two below, each named for what it counts.
+\newcommand{\NLinesCV}{153}        % cell lines inside the cross-validation: train+val, test
+                                   % held out. 70+15% of \NLines. Stated as fact in
+                                   % sections/03_methods.tex Evaluation, docs/steps/03
+                                   % ("covers 153 of the 180 labelled lines") and docs/steps/05.
+\newcommand{\NLinesFit}{126}       % cell lines in the fixed TRAIN split alone (70% of \NLines),
+                                   % i.e. what remains once BOTH val and test are removed.
+                                   % Defined here for precision; not currently cited in prose.
 \newcommand{\NHvg}{5{,}000}        % highly variable genes (hvg5000 variant)
 \newcommand{\NVocab}{4{,}576}      % of those, in scGPT's vocabulary
 % === gene-symbol defect (notebooks/outputs/embeddings/gene_symbol_rescue.csv, 05.08.2026)
@@ -79,12 +87,8 @@
 % 12.08.2026 by the docs-vs-code audit:
 %   * \NLines is 180 and becomes 181 at the sweep (the H292 alias recovers a
 %     screened cell line); it stays at 180 until an artifact supports 181.
-%     BUT NOTE: the drug-panel funnel typed inline in 03_methods.tex WAS
-%     computed on 181 -- 2_drug_selection.ipynb reads the response CSV directly,
-%     not a pipeline artifact, so it already uses the corrected join
-%     (doxorubicin: n_auc_cc 177 at coverage 0.9779 => 181). So the report
-%     currently states 180 in Data and 181-derived coverage in Drug panel,
-%     without saying so. Reconcile at R6; do not "fix" either half alone.
+%     The line count is Selin's own open item as of 12.08.2026 -- this audit
+%     changed no line-count number here or in the sections.
 %   * the replicate-disagreement macros were computed on CTRPv2's own 2015
 %     distribution, which is no longer the target source, so they are stale in
 %     the same way and are due for re-derivation.
@@ -92,13 +96,15 @@
 %     code by \NVocabRepaired (4,704); it is still quoted as the live figure in
 %     03_methods.tex Data, under an adjacent revision block that says so.
 %     \NVocabRepaired goes away and \NVocab takes the measured value at R6.
-%   * \NIndep (150) is used for TWO different quantities and matches neither
-%     exactly: the effective sample size after the held-out splits, which is
-%     153 lines (70+15 percent of 180), and the line count of the ridge control,
-%     which was 150 because that run's drugs were not labelled on every line.
-%     Its one misuse -- standing in for the 153 CV lines in 03_methods.tex
-%     Evaluation -- was removed 12.08.2026; the macro itself needs a decision on
-%     which quantity it names before R6 rewrites the sections that cite it.
+%   * \NIndep was RETIRED 12.08.2026 (Selin's ruling). It named two quantities
+%     at once: it was DEFINED as the effective sample size after the held-out
+%     splits, but its VALUE 150 came from the ridge control's line count -- a
+%     different quantity, and one this report no longer reports. Split into
+%     \NLinesCV (153) and \NLinesFit (126) above, each named for what it counts.
+%     All three prose sites now cite \NLinesCV, on the reading that each
+%     contrasts a line count with the cell count under the protocol described in
+%     03_methods.tex Evaluation. If any of them meant the training lines alone,
+%     that is \NLinesFit and a one-macro change -- flagged in docs/TODO.md.
 %
 % The drug-panel counts in Methods are typed inline rather than defined here,
 % pending the extraction script (review item 12) that should replace this file.

@@ -304,12 +304,12 @@ matched to scGPT, removing the dimensionality confound — [Step 05](./steps/05-
 *The governing rule: never change the target and the architecture in the same run. That is what made the
 June result take weeks to unpick, and it is why the 27.07 step moved only the target and the loss.*
 
-**1. MIL / attention pooling — next.** Not one more architecture to try, but the **minimal change that
-makes research question 2 askable at all**: today the constant-within-line label means the objective
-penalizes any difference the model predicts between two cells of one line. A bag constrains only the
-aggregate. It removes the line-weighting artifact structurally (one bag = one line = one example), and
-its attention weights are the clinically interesting readout — which subpopulation drives the response.
-It needs no new data.
+**1. MIL — next, and it is `4b_mil_training`.** Not one more architecture to try, but the **minimal
+change that makes research question 2 askable at all**: today the constant-within-line label means the
+objective penalizes any difference the model predicts between two cells of one line. A bag constrains
+only the aggregate. It removes the line-weighting artifact structurally (one bag = one line = one
+example), and it makes the per-cell prediction the clinically interesting readout — which subpopulation
+drives the response. It needs no new data.
 
 > ⛔ **Two claims were removed from the paragraph above (12.08.2026), both already retracted in
 > [TODO](./TODO.md) on 11.08.2026 and left standing here.** MIL was called *"the only untested capacity
@@ -317,10 +317,18 @@ It needs no new data.
 > the Q1 framing and implies a reserve of unexplored performance that does not exist. And the success
 > criterion was given as *"it has to beat the per-cell MLP and ridge on line means, and failing both is
 > itself a reportable result"*, which scores a Q2 experiment on a Q1 criterion. The controls are a
-> **floor, not the criterion**; what counts as a positive Q2 result is an **open decision for Selin**,
-> to be fixed before the run, and it needs a null showing what *no* heterogeneity signal looks like
-> ([TODO](./TODO.md), *Agreed plan, Step 2*). The 82× figure was also dropped from this sentence — it is
-> owned by [Step 03](./steps/03-model-and-training-design.md), and this page must not restate it.
+> **floor, not the criterion**. The 82× figure was also dropped from this sentence — it is owned by
+> [Step 03](./steps/03-model-and-training-design.md), and this page must not restate it.
+>
+> ⚠️ **This heading read *"MIL / attention pooling"*, and that is now the wrong branch (`58fadd7`).**
+> The design is **instance-level** MIL: every cell carries its own predicted response rather than an
+> attention weight over a pooled embedding — readable at the individual cell, at an expected cost in
+> predictive accuracy, taken deliberately because Q2 is a question about readability. **And the success
+> criterion is no longer open**, contrary to what this page said an hour earlier: it is pre-registered
+> in [`4b_mil_training.ipynb`](../notebooks/4b_mil_training.ipynb) §2 as a synthetic positive control
+> (precondition), within-line spread (necessary condition), cross-seed reproducibility against a
+> shuffled-cell control (**the test**) and confound regression (**veto**). One number is outstanding —
+> `Q2_CONTROL_THRESHOLD` — and it is the single blank keeping 4b a stub.
 
 **2. scDEAL-style bulk pretraining + more cell lines — after MIL.** The remaining levers are argued to
 be label-side. ⛔ **The three measurements behind that argument are void (12.08.2026)** — that model
