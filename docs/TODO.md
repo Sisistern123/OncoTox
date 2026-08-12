@@ -1007,6 +1007,62 @@ every one of them was a step that looked settled and had never been checked.
 decided silently. If a choice affects what enters the model or how a number is computed, it is proposed
 first and agreed before it is executed.
 
+## ✅ Gate 3 — what is still missing *after* the rerun (13.08.2026)
+
+Read forward rather than backward: assume R2–R6 complete perfectly, and ask what is still wrong,
+unwritten or undecided. Three findings.
+
+### 1 · Both freeze classes have drifted, in opposite directions
+
+**The Huber class is fully discharged and still says otherwise.** It instructs *"Do not pre-emptively
+rewrite them"* and states that *"`main`'s code offers `{mse, huber}`"*. It does not:
+`training_utils._make_loss_fn` accepts `{"mse", "mae"}`, `train_multitask`'s CLI is
+`choices=("mse", "mae")`, and all three `docs/steps/03` locations the table names were swept when
+`f16b3ec` merged. **Every row of that table now misdescribes both the docs and the code**, and the
+block tells a reader not to fix it. Same shape as Gate 1's 🔴: an instruction that outlived its trigger.
+
+**The R4 class is partly discharged and partly half-true, which is worse.**
+`scripts/model/dataset.py` no longer says *"still leaky, and documented as such"* — `resolve_rep`'s
+docstring records that CV stopped routing through it on 12.08.2026, so that entry is stale.
+But `docs/steps/02:317–319` still reads *"`resolve_rep` leaves them on the all-cells `X_pca` … every
+CV number still carries it"*, and those two clauses now have **different truth values**: the first is
+false (the code raises rather than falling back), the second is true (the numbers on disk are still
+the leaky ones) and stays true until R4. ⚠️ **It must not be swept as one unit** — the same hazard the
+freeze block already flags for its own table-cell entry, now present in a prose sentence nobody
+marked.
+
+### 2 · The report's Results section must be written from nothing
+
+`report/sections/04_results.tex` is 36 lines of withdrawal notice and **no result**, deliberately
+(12.08.2026). R6 does not "update" it; it writes it. Three further sections re-open with it: the
+abstract restores the numbers it currently withholds, the discussion regains the argument it was
+stripped down from, and limitations sheds the frozen sentences above.
+
+⚠️ **And nothing in the report anticipates Q2 at all outside Methods.** The MIL subsection describes
+the instrument and the criterion, but there is no Results scaffold for it, no figure list, and no
+statement of what a positive or negative Q2 outcome would look like *in the report's own voice*. The
+criterion was fixed before the model on purpose; the write-up of its outcome has not had the same
+treatment, and writing it after seeing the numbers is the failure the criterion exists to prevent.
+
+### 3 · The rerun produces numbers; it resolves almost none of the open decisions
+
+**Roughly thirteen decisions survive R6.** Four in `4b` (the three test aggregations and the veto
+magnitude), three in `5_evaluation` (second baseline, squared vs absolute error, folds vs seeds), the
+Gate 1 residue (`NaiveMeanEffects` as default baseline, where the ridge baseline lives, whether the
+model needs weight decay), the deferred bias-init change, and two that R2 *unblocks* rather than
+answers (PCA's 512 components, the `input_dropout` asymmetry).
+
+**One of them blocks a conclusion rather than a number.** `4b` stage 6's veto magnitude has **no
+default and no null that can supply one** — with hundreds of cells in a line, an adjusted R² far too
+small to matter is still significant. So a perfect run of the whole sweep still cannot state whether
+Q2 is positive, because the veto can neither fire nor clear. Every other item on this list degrades a
+result; this one withholds it.
+
+*(`5_evaluation`'s guard margins are deliberately **not** counted here: they default to each
+quantity's own seed band measured from the same ≥3 seeds, so they resolve themselves from the run.)*
+
+---
+
 ## The sweep — R1 to R6, in order (written down 11.08.2026)
 
 *This sequence existed only in the session task list until now, which meant it lived in a per-session
