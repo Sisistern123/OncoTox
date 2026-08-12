@@ -1005,16 +1005,30 @@ def build_loss_effect():
 
     **Replace the paired scatter with a response curve over the sweep — put ``alpha`` on the x-axis.**
 
-      * Two panels, measuring what they measure now: spread of the predictions (``pred_std``) and
-        per-drug Spearman. That pairing *is* audit 09's finding — the weighting acts on spread, and
-        the previous null was read off rank correlation and error, both structurally blind to it.
-        Keeping both panels is what lets the re-test distinguish "no effect" from "an effect the
-        metrics cannot see".
+      * A **2x2 grid**: rows are the two quantities, spread of the predictions (``pred_std``) and
+        per-drug Spearman; columns are the two representations, scGPT and PCA. Faceting the
+        representation rather than colouring it is what buys room for the seed band below without
+        four series colliding in one panel.
+      * Rows are the two quantities and not one, because that pairing *is* audit 09's finding — the
+        weighting acts on spread, and the previous null was read off rank correlation and error,
+        both structurally blind to it. Keeping both is what lets the re-test distinguish "no effect"
+        from "an effect the metrics cannot see".
       * x = ``alpha`` as ordered ticks; y = the quantity.
-      * One faint line per drug across the ticks, so *within-drug* movement is visible — the
-        evaluation metric is within-drug, and a mean over drugs would hide a reversal.
-      * One bold line per representation: the median across drugs. Colour by representation
-        (scGPT / PCA), unchanged.
+      * One faint line per drug across the ticks, at that drug's median over seeds, so *within-drug*
+        movement stays visible — the evaluation metric is within-drug, and a mean over drugs would
+        hide a reversal.
+      * One bold line: the median across drugs. **Around it, a band spanning the seeds.**
+      * A horizontal reference line for the ridge baseline, which has no ``alpha``.
+
+    **The seed band is not decoration and must not be dropped for tidiness.** The decision rule's
+    margin is *defined* as the spread across seeds (>=3, item 9A), so a figure without it invites
+    exactly the reading the rule exists to prevent: an alpha-to-alpha difference smaller than the
+    noise, read off the plot as an effect. Whatever else is cut, this stays.
+
+    ``loss`` (the MSE / MAE arm of item 9A) is **held fixed** here and named in the caption. This
+    figure answers "what does ``alpha`` do"; crossing it with the loss arm as well would put four
+    dimensions in one drawing to answer a one-dimensional question. Which loss it is fixed at is an
+    analysis decision and therefore Selin's, not a display choice.
 
     **Why this form and not the alternatives.**
 
@@ -1024,11 +1038,12 @@ def build_loss_effect():
       * A curve **scales to any number of arms**: adding a level adds a tick, not a panel. The arm
         list is explicitly provisional and expected to grow, so a design that only works for exactly
         three points would need redoing on the next change.
-      * It **survives either resolution of the ridge question**, which is Selin's and still open. If
-        the ridge baseline is not a value of ``alpha``, it is a horizontal reference line — correct,
-        since ridge has no ``alpha``. If it becomes one, it is another tick. Neither redraws the
-        figure. (``4a`` currently writes ``{'weighted': 'ridge'}``, a string sentinel in what is
-        becoming a numeric column; that is a schema question, not a display one.)
+      * It **puts the ridge baseline where it belongs**. Selin resolved the schema question on
+        12.08.2026: a separate ``model`` column in {mlp, ridge, and mil when 4b lands}, with
+        ``alpha`` numeric and meaningful for ``model='mlp'`` rows only. Ridge therefore has no
+        ``alpha`` and is drawn as a horizontal reference line — not a workaround for a sentinel, but
+        the honest picture of a baseline that does not vary along this axis. The design was chosen
+        before that decision landed and needed no change when it did.
       * It **degenerates gracefully**: at two ticks it is a slopegraph, so this is a generalisation
         of the current figure rather than a different figure.
 
