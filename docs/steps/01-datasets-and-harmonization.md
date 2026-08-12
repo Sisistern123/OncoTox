@@ -208,6 +208,58 @@ the statement under a heading that expressly asks for "a description of any rest
 availability" and lists none. The portal ToS is therefore the operative term, as recorded under
 [Licences](#licences-and-terms-of-use-of-the-source-data-checked-28072026).
 
+### Sequencing depth and mitochondrial fraction are recovered from the raw UMI matrix (13.08.2026)
+
+**The problem.** SCP542 reaches this project as **CPM**, so the library size a cell was sequenced to is
+divided out before any processed file exists — the row sums of `SCP542_CCLE.h5ad` vary only because HVG
+selection removes a different fraction of each cell, and are not depth. Of the 13 `MT-` genes, **4**
+survive selection of the 5,000 most variable (`ND1`, `ND3`, `ND6`, `CYB`); the nine dropped include
+`CO1`, `CO2`, `CO3`, `ATP6` and `ND4`, the high expressers. So neither of two covariates the Q2
+**confound veto** is defined on ([`4b_mil_training.ipynb`](../../notebooks/4b_mil_training.ipynb) §2.5)
+was obtainable from the data as the model sees it. Found 13.08.2026, *after* that criterion was closed.
+
+**Why it mattered.** Stages 1 and 2 of the criterion establish that per-cell predictions vary within a
+cell line and that independent seeds agree on *which* cells. Sequencing depth produces exactly that
+pattern — it varies within a line and reproduces across seeds perfectly, being a property of the cell
+rather than of the model. Without the veto, the strongest rival explanation for a positive Q2 result
+goes untested. `Genes_expressed` is partial cover only: detection saturates, so two cells at 3× different
+depth can carry similar gene counts.
+
+**The fix.** SCP542's own **`UMIcount_data.txt`** (3.5 GB, `data/scRNAseq_SCP542/other/`, from the same
+Broad portal download as the CPM matrix — [provenance](#provenance--what-was-retrieved-from-where-when))
+is un-normalised and carries all 13 mitochondrial genes.
+[`scripts/preprocessing/qc_covariates.py`](../../scripts/preprocessing/qc_covariates.py) reads it in one
+streaming pass and `scp542_conversion` writes `total_counts` and `pct_counts_mt` into `obs` beside the
+rest of the metadata, **before** the HVG filter. No expression value is touched and no gene is added or
+removed, so the HVG set, `X_pca`, the embeddings and every downstream number are unchanged: it is
+additive metadata. §2.5 therefore runs as written and the closed criterion needed **no amendment**.
+
+**Over the full gene set (Selin, 13.08.2026), and that is not a precision argument.** A total over the
+highly variable genes is not depth — it is depth × the fraction of a cell's counts falling in that set,
+and *that fraction is biological*, since a cell running HVG-heavy programs has a larger one by
+construction. **A confound regressor carrying the signal under test can veto a true positive**, which is
+a worse failure than a noisy one. The same holds for the mitochondrial fraction.
+
+**Measured, and it corroborates the source.** 30,314 genes × 56,982 cells scanned in 232 s; on the
+53,513 retained cells the mean depth is **19,685 UMIs** and the mean detected-gene count **3,757**,
+against Kinker et al.'s published **19,264** and **3,802** — within ~2 %, the gap being consistent with
+this file's larger gene universe (30,314 against the 22,722 quoted above). Median depth 16,733
+(range 4,144–126,433), median mitochondrial fraction **5.61 %** (range 0–26.2 %). Within a cell line —
+which is the only variation stage 6 regresses on — the median coefficient of variation of depth is
+**0.444** and the median spread of mitochondrial fraction **1.84 percentage points**, so both covariates
+carry real within-line variation and the veto is not vacuous.
+
+**The join is by barcode and is checked, not trusted.** The UMI matrix holds 56,982 cells against the
+processed object's 53,513 (preprocessing dropped 3,469) and its column order differs, so a positional
+join would misalign nearly every cell while raising nothing. `qc_covariates.attach` requires every cell
+to be found *and* the recovered gene count to track `obs['Genes_expressed']`, which came from the study's
+own metadata by an entirely different route — measured **r = 1.0000** on `hvg5000`. The check runs on
+every build and raises, so a future change to the cell axis fails loudly rather than joining wrongly.
+
+Cached at `data/processed/scRNAseq_SCP542/umi_qc_covariates.csv`, **beside** the variant directories
+rather than inside one: the covariates are computed over the full gene set, so every variant produces
+identical values and a per-variant cache would scan 3.5 GB twice for one answer.
+
 ### Design decisions taken with the advisor (27.03–03.04.2026)
 
 The project's framing was settled by asking, not assumed. The three questions put to Artem on 27.03 were:

@@ -595,17 +595,28 @@ model. A \emph{reproducibility} stage asks whether independent seeds assign high
 the same cells. A \emph{confound} stage regresses the predictions on total counts, genes detected,
 mitochondrial fraction and cell-cycle score, and can veto a pass that the preceding stages granted.
 
-\textbf{The confound veto cannot be evaluated on these data.} Two of its four covariates are not
-recoverable here, and this was established after the criterion was fixed rather than before it. The
-expression matrix reaches this project already normalised, so sequencing depth is gone: the row sums
-of the 5{,}000 highly variable genes vary only because gene selection removes a different fraction of
-each cell. And exactly four mitochondrial genes survive that selection, so a mitochondrial fraction
-computed from them is not the quality-control quantity the name denotes. Genes detected and the
-cell-cycle scores remain, and are computed and reported; the veto itself is neither passed nor failed,
-and any positive result from the preceding stages is stated as provisional on a check that could not
-be run. Narrowing the stage to the two available covariates would have converted a blocked check into
-a passed one, which is why it was not done. This is a limitation of the measurements as they reach
-this work, and the same in kind as the one that puts questions (b) and (c) out of reach.
+\textbf{Two of the veto's covariates are recovered from the raw counts.} The expression matrix reaches
+this project as counts per million, so the library size each cell was sequenced to has been divided
+out of every processed file, and only four of the thirteen mitochondrial genes survive selection of
+the five thousand most variable ones. Neither sequencing depth nor mitochondrial fraction is therefore
+recoverable from the data as the model sees them --- a fact established after the criterion had been
+fixed, which left the veto briefly unevaluable. Both are recovered instead from the study's own
+unnormalised UMI matrix, read once and joined to the cells by barcode, so the stage is evaluated as
+specified rather than narrowed to the covariates that happened to be available.
+
+Both are computed over the complete gene set, and the reason is not precision. A total restricted to
+the highly variable genes is not depth: it is depth multiplied by the share of a cell's counts falling
+in that set, and that share is itself biological, since a cell expressing the variable programs
+strongly has a larger one by construction. A confounder carrying the signal under test can veto a true
+positive, which is a worse failure than a noisy confounder. The same argument applies to the
+mitochondrial fraction, where restriction would leave a truncated numerator over a denominator missing
+most of the transcriptome. What the veto still requires, and what no null supplies, is the magnitude
+at which the confounders count as explaining the variation: with hundreds of cells in a line, a
+proportion of variance far too small to matter is nonetheless significant against a permutation null.
+That magnitude is reported rather than fixed in advance, and the proportion of variance explained is
+given both unadjusted and adjusted for the number of regressors, since cell lines here contribute
+between fifty-six and one thousand nine hundred and ninety cells and the upward bias of the
+unadjusted figure differs across exactly the axis a single threshold would be compared along.
 
 An earlier draft attached invented magnitudes to three of these. Each was removed by replacing the bar
 with a null or a comparison rather than by choosing a better number. The input stage now fails only on

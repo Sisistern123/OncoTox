@@ -985,8 +985,9 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 > 13.08.2026**: its criterion is implemented in §3 against `scripts/training/mil.py`, and it now runs
 > after `4a` rather than being outside the chain, because stage 1 reads `4a`'s within-line spread
 > table. `PCA_SEED` was settled at 42 on 13.08.2026; what remains is the ⬜ aggregation of the
-> per-pair tests, and stage 6, whose two missing covariates are recoverable from the raw
-> `UMIcount_data.txt` by a preprocessing pass. **Neither gates the rerun** — both are computed from
+> per-pair tests, and the magnitude at which stage 6's veto fires. Its two missing covariates were
+> recovered from the raw `UMIcount_data.txt` on 13.08.2026 and are now written by `convert`.
+> **Neither gates the rerun** — both are computed from
 > the saved per-cell prediction arrays and can be settled afterwards without retraining. See the
 > notebook's own §3.3, §3.5 and §3.8.
 > **Verified 13.08.2026: no
