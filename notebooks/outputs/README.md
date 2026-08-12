@@ -19,14 +19,19 @@ producing notebook lands. Those two are **blocked, not dead**, which is why they
 | **`dreval/`** | `analysis/evaluation/dreval_benchmark` | ⛔ **blocked** | External benchmark against **DrEval** (`drevalpy` 1.5.1): their LCO splits, baselines, metrics. The notebook imports a module deleted on 12.08.2026 and hardcodes the removed `'auc'`, so it raises on its first cell. Review item 11. |
 | **`diagnostics/`** | `analysis/evaluation/diagnostics` | ⛔ **blocked** | The drug-selection gate defect (`gate_per_drug.csv`, `gate_potency_vs_spread.png`), the proliferation test (`line_effect_vs_programs.csv`, `line_effect_vs_proliferation.png`), the input-scale asymmetry (`input_scale.csv`), and result dispersion (`result_dispersion.csv`). Hardcodes the removed `'auc'` and raises. Its §5 dispersion figures were computed on the void panel. |
 
-### The five figures that carry the current story
+### The figures that carry the argument
+
+⚠️ **Retitled 12.08.2026 — three of these four are now under `legacy/`.** This was headed *"the five
+figures that carry the current story"*, which stopped being true when the artifacts a standard run
+cannot recreate moved. They still carry the argument that got the project here; they are no longer
+current results, and only the last is at a live path.
 
 | Figure | What it shows |
 |---|---|
-| `target/loss_weighting_bug.png` | An unweighted MSE weights each drug by σ². The widest 10% of drugs carry **30%** of the loss — and the very widest (`ifosfamide`, `ciclopirox`) kill **zero** cell lines. |
-| `target/target_comparison.png` | `mean_pv` / `auc` / `auc_z` at K=5 and K=545, with bootstrap CIs. Both unstandardized targets collapse at K=545; `auc_z` holds. |
-| `ablations/rescue_k545.png` | Every June hypothesis applied to the **broken** setting. Only *task* reweighting fixes it (+0.43); removing regularization partially rescues (+0.23) — the symptom, not the cause. |
-| `dreval/dreval_lco.png` | OncoMLP vs the DrEval baselines under their LCO protocol — it clears `NaiveMeanEffects`, which half the published field does not. |
+| `legacy/target/loss_weighting_bug.png` | An unweighted MSE weights each drug by σ². The widest 10% of drugs carry **30%** of the loss — and the very widest (`ifosfamide`, `ciclopirox`) kill **zero** cell lines. |
+| `legacy/target/target_comparison.png` | `mean_pv` / `auc` / `auc_z` at K=5 and K=545, with bootstrap CIs. Both unstandardized targets collapse at K=545; `auc_z` holds. ⛔ All three targets have since been removed. |
+| `legacy/ablations/rescue_k545.png` | Every June hypothesis applied to the **broken** setting. Only *task* reweighting fixes it (+0.43); removing regularization partially rescues (+0.23) — the symptom, not the cause. |
+| `dreval/dreval_lco.png` | OncoMLP vs the DrEval baselines under their LCO protocol — it clears `NaiveMeanEffects`, which half the published field does not. Still at its original path: `dreval_benchmark` re-runs at R5. |
 
 ### Two DrEval tables that look alike but answer different questions
 

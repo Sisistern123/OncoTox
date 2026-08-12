@@ -199,16 +199,20 @@ Run artifacts and the ledger: [Step 05](./steps/05-multitask-results.md#run-vers
 
 Artifacts that current claims rest on, with the step that owns each number:
 
+Paths updated 12.08.2026: everything a standard pipeline run cannot recreate moved under
+`legacy/`, and the rows below follow it. A `legacy/` prefix means the producing notebook is archived
+or its criterion was retracted — nothing regenerates those.
+
 | Path (under `notebooks/outputs/`) | Owns the discussion |
 |---|---|
-| `data/target_distribution.png`, `data/drug_coverage.png`, `data/ctrp_drug_learnability.csv` | [Step 05](./steps/05-multitask-results.md) |
-| `data/gdsc_drug_learnability.csv` | [Step 01](./steps/01-datasets-and-harmonization.md) — not part of the modelling work |
+| `data/target_distribution.png`, `data/drug_coverage.png` | [Step 05](./steps/05-multitask-results.md) — re-run at R5, the line count moves 180 → 181 |
 | `embeddings/umap_cancertype_pca_vs_scgpt.png`, `umap_sweep_cancertype.png`, `variants.png` | [Step 02](./steps/02-preprocessing-and-embeddings.md#latent-space-validation-umap-fig-3--fig-4) |
-| `target/target_comparison.*`, `target/loss_weighting_bug.png`, `target/seed_stability.csv` | [Step 03](./steps/03-model-and-training-design.md), [Corrections](./steps/corrections-and-dead-ends.md) |
-| `ablations/rescue_k545.*`, `ablations/ablation_*` | [Step 03](./steps/03-model-and-training-design.md#these-hyperparameters-are-not-worth-tuning-ablated-13072026) |
-| `dreval/dreval_lco*.{png,csv}`, `dreval/dreval_normalized*.csv` | [Step 05](./steps/05-multitask-results.md) |
-| `learnability/*` | [Step 05](./steps/05-multitask-results.md) |
-| `diagnostics/*` | [Step 05](./steps/05-multitask-results.md), [Corrections](./steps/corrections-and-dead-ends.md) |
+| `dreval/dreval_lco*.{png,csv}`, `dreval/dreval_normalized*.csv` | [Step 05](./steps/05-multitask-results.md) — `dreval_benchmark` is blocked on review item 11, then R5 |
+| `diagnostics/*` | [Step 05](./steps/05-multitask-results.md), [Corrections](./steps/corrections-and-dead-ends.md) — re-runs at R5 |
+| `legacy/target/target_comparison.*`, `legacy/target/loss_weighting_bug.png`, `legacy/target/seed_stability.csv` | [Step 03](./steps/03-model-and-training-design.md), [Corrections](./steps/corrections-and-dead-ends.md) |
+| `legacy/ablations/rescue_k545.*`, `legacy/ablations/ablation_*` | [Step 03](./steps/03-model-and-training-design.md#these-hyperparameters-are-not-worth-tuning-ablated-13072026) |
+| `legacy/learnability/*` | [Step 05](./steps/05-multitask-results.md) — criterion retracted |
+| `legacy/ctrp_drug_learnability_mean_pv.csv`, `legacy/gdsc_drug_learnability.csv` | [Step 01](./steps/01-datasets-and-harmonization.md) — the GDSC list was never part of the modelling work |
 | `panel/panel.csv`, `panel/literature_panel_candidates.csv` | **current** — the [rebuilt 11-drug panel](./steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026) and its 57 candidates |
 | `panel/*` (everything else) | ⛔ computed on the [voided panel](./steps/corrections-and-dead-ends.md#the-8-drug-literature-panel-and-every-number-computed-on-it) |
 | `legacy/training_545_mean_pv/*` | superseded — the `mean_pv` 8-run matrix, CV, per-drug ρ and gene-set sweep; numbers in [Step 05](./steps/05-multitask-results.md), status in [Corrections](./steps/corrections-and-dead-ends.md#the-8-run-matrix-conclusions) |
