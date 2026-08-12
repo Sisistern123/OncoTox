@@ -122,16 +122,16 @@ def build_pipeline():
         ["reusable pan-cancer FM", "fine-tune on clinical (binary)",
          "overarching main goal"], RED, RED_FILL, title_color=RED, dashed=True)
 
-    # BAND_H raised from 13 on 12.08.2026: the band gained a third line when the retired auc_z
-    # target and the retracted learnability filter were relabelled rather than deleted.
-    BAND_Y, BAND_H = 4, 15
+    # The band listed the retired auc_z target and the retracted learnability filter among the
+    # additions. Both were removed on 12.08.2026 (Selin) rather than relabelled: this figure states
+    # what the project has, and a retired target is not an addition it still carries. The record of
+    # both is in docs/steps/corrections-and-dead-ends.md.
+    BAND_Y, BAND_H = 5, 13
     box(ax, XS[0], BAND_Y, 94, BAND_H, "Additions beyond the written plan",
         ["512-d PCA (matched to scGPT)  ·  out-of-fold CV over 153 lines  ·  per-drug correlation metric  ·  "
          "gene-set sweep  ·  cancer-type UMAPs  ·  cell-line-grouped split (leak fix)  ·  run versioning\n"
          "ridge line-level control  ·  external benchmark against DrEval (drevalpy)  ·  "
-         "nested early-stopping split\n"
-         "RETIRED: per-drug z-scored target (auc_z)  ·  RETRACTED: learnability filter (measured potency, "
-         "not rankability)"],
+         "nested early-stopping split"],
         AMBER, AMBER_FILL, title_color=AMBER)
 
     for i in range(3):
