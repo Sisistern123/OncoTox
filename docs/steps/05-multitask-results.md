@@ -129,15 +129,54 @@ ordering was fragile.
 *(Corrected 13.08.2026: an earlier summary gave the lower bound as +0.00002. The artifact's smallest
 positive value is +0.00017.)*
 
+### E · The lead is not a small-data effect — the margin grows with labels
+
+`4a` §E, `RUN_SECTION_E = True` → `notebooks/outputs/panel/panel_curve_summary.csv`.
+120 fits (four label budgets x two representations x three seeds x five folds), linear head,
+`alpha=0`, `loss=mse`, executed 13.08.2026 in 14 min 21 s.
+
+**Only the label supply moves.** The dropped lines' cells stay in the fold, in the batches and in the
+per-fold PCA, so both arms keep an identical input at every point on the curve.
+`scripts/training/cv.py::oof_predictions(n_label_lines=…)` does the thinning, and it reaches the loss
+mask, the density fit and the head-bias init together — leaving any of them on the full set would
+feed the dropped lines' labels back in through the side door.
+
+| labelled lines per fold | `X_pca` | `X_scGPT` | Q1 margin | against the wider band |
+|---|---|---|---|---|
+| 25 | 0.1374 | 0.1338 | **+0.0036** | ±0.0230 — **inside; the arms are indistinguishable** |
+| 50 | 0.1947 | 0.1857 | **+0.0090** | ±0.0096 — **inside; still indistinguishable** |
+| 75 | 0.2469 | 0.1964 | **+0.0505** | ±0.0181 — outside |
+| 103 (all) | 0.2608 | 0.2291 | **+0.0317** | ±0.0072 — outside |
+
+**The small-data reading is refuted.** It was the live alternative: that `X_scGPT` holds more but
+needs more supervision before a head can use it, and would overtake given enough labels. That
+predicts a margin which *shrinks* as labels are added. The margin instead runs **+0.0036 → +0.0317**,
+and at the two smallest budgets the two representations cannot be told apart at all. Nor is the
+margin *flat*, which would have placed the advantage purely on the input side — that `X_pca` is
+fitted on this atlas and `X_scGPT` is not.
+
+⚠️ **What this does not license.** Four points against bands this wide do not support a fitted slope,
+and the notebook computes no trend statistic on purpose. The margin is also not monotone — it peaks
+at 75 lines (+0.0505) and is smaller at the full 103 (+0.0317). Read the table as *"indistinguishable
+at 25–50, separated at 75–103"*, not as a growth rate.
+
+**Internal check.** §E's full-budget point (0.2608 / 0.2291) reproduces §C's linear arm to four
+decimals — the same design reached by a different code path.
+
+**Consequence.** The follow-up this curve was to motivate — **E2**, which shrinks the lines *and*
+refits the PCA on only those cells — is now the more interesting of the two, because the input-side
+explanation is the one still standing. So is a PCA fitted on a *foreign* dataset.
+
 ### What this settles about Q1
 
-The margin moves along three axes, all measured:
+The margin moves along four axes, all measured:
 
 | axis | from | to | source |
 |---|---|---|---|
 | **Objective** | +0.083 per-cell | bag-level — **not yet computed** | `panel_leaderboard.csv`, MLP `mse` `alpha=0.5` |
 | **Capacity** | +0.0383 trunk | +0.0317 linear | `panel_arch_summary.csv` |
 | **Scoring set** | +0.0479 on 11 drugs | +0.0231 linear / −0.0077 trunk on 534 | `panel_heads_summary.csv` |
+| **Label supply** | +0.0036 at 25 lines (a tie) | +0.0317 at 103 lines | `panel_curve_summary.csv` |
 
 ⚠️ **The bag-level end of the objective axis is not in any committed artifact.** The MIL predictions
 exist (`notebooks/outputs/mil/mil_oof_predictions.csv`, three seeds, `alpha=0.5`, `mse`), but no
