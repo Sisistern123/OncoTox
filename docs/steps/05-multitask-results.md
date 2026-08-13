@@ -173,16 +173,36 @@ The margin moves along four axes, all measured:
 
 | axis | from | to | source |
 |---|---|---|---|
-| **Objective** | +0.083 per-cell | bag-level — **not yet computed** | `panel_leaderboard.csv`, MLP `mse` `alpha=0.5` |
+| **Objective** | +0.0827 per-cell | **+0.0235 bag** | `panel_metrics.csv`, `alpha=0.5`, `mse` |
 | **Capacity** | +0.0383 trunk | +0.0317 linear | `panel_arch_summary.csv` |
 | **Scoring set** | +0.0479 on 11 drugs | +0.0231 linear / −0.0077 trunk on 534 | `panel_heads_summary.csv` |
 | **Label supply** | +0.0036 at 25 lines (a tie) | +0.0317 at 103 lines | `panel_curve_summary.csv` |
 
-⚠️ **The bag-level end of the objective axis is not in any committed artifact.** The MIL predictions
-exist (`notebooks/outputs/mil/mil_oof_predictions.csv`, three seeds, `alpha=0.5`, `mse`), but no
-committed file states the Q1 margin computed on them; `notebooks/outputs/mil/` holds Q2 instruments
-only. Until `5_evaluation` §1.8 writes `panel_metrics.csv`, any statement of the form "the objective
-carries most of the margin" **names a quantity that has not been computed here**.
+**The objective is the largest of the four axes.** `5_evaluation` §1.8 was executed for the first
+time on 13.08.2026 and wrote `notebooks/outputs/panel/panel_metrics.csv`, which scores the per-cell
+and MIL arms through one scorer. At `alpha=0.5`, `mse`, over three seeds:
+
+| objective | `X_pca` | `X_scGPT` | Q1 margin |
+|---|---|---|---|
+| per-cell (`mlp`) | 0.2754 | 0.1927 | **+0.0827** |
+| bag (`mil`) | 0.2412 | 0.2177 | **+0.0235** |
+
+**71.6 % of the per-cell margin does not survive the move to a bag objective** — `X_scGPT` gains
+(0.1927 → 0.2177) while `X_pca` loses (0.2754 → 0.2412). This is what makes *"PCA beats scGPT"*
+dependent on the objective: the statement is about a per-cell loss, not about the representations.
+
+### The item-9A rule, evaluated — no arm wins
+
+The rule (`5_evaluation` §1.3, Selin's: win on `order`, non-inferior on `top_of_order`, `values` and
+`spread_slope`, each margin the quantity's own seed band, half-range over three seeds) was applied
+for the first time in the same run. Against the `alpha=0` / `mse` / `X_pca` incumbent, **all thirteen
+challengers are blocked**, most on `order`, `values` and `spread_slope` together.
+
+⚠️ **The arm with the highest `order` of any in the sweep is among the blocked ones.**
+`alpha=0.5` / `mae` / `X_pca` scores **0.2824**, above the ridge control's 0.2767 — and fails on
+`values` and `spread_slope`. So the sweep does not select a winner: raising the density exponent
+buys ranking and pays for it in calibration and absolute error. That is the rule's answer, not a
+reading of it.
 
 ### Counter-evidence — the external benchmark does not separate the arms
 
