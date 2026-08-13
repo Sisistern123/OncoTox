@@ -167,6 +167,55 @@ decimals — the same design reached by a different code path.
 refits the PCA on only those cells — is now the more interesting of the two, because the input-side
 explanation is the one still standing. So is a PCA fitted on a *foreign* dataset.
 
+### The aggregation convention — Q1 survives it, the loss ranking does not
+
+The scoring convention was an open decision (`docs/OPEN_DECISIONS.md` §2): predictions can be scored
+**per cell or per cell line**, and folds **pooled into one correlation or averaged over folds**. Those
+are two independent binary choices, so four conventions. All four were computed on the **same**
+out-of-fold predictions, changing nothing else —
+`notebooks/outputs/panel/panel_aggregation_comparison.csv`, 36 arm-seeds, per-cell predictions from
+`runs/percell/` (gitignored, written by `4a` §A cell 14).
+
+**Q1 margin (`X_pca` − `X_scGPT`), mean over three seeds:**
+
+| arm | line/pooled | line/per-fold | cell/pooled | cell/per-fold |
+|---|---|---|---|---|
+| α=0 mae | 0.0214 | 0.0192 | 0.0371 | 0.0298 |
+| α=0 mse | 0.0464 | 0.0364 | 0.0536 | 0.0319 |
+| α=0.5 mae | 0.0428 | 0.0320 | 0.0608 | 0.0460 |
+| α=0.5 mse | 0.0827 | 0.0811 | 0.0939 | 0.0691 |
+| α=1 mae | 0.0550 | 0.0397 | 0.0772 | 0.0553 |
+| α=1 mse | 0.0648 | 0.0566 | 0.0859 | 0.0644 |
+
+✅ **`X_pca` is ahead in all 24 cells.** The Q1 ordering does not depend on the convention. Its
+*size* does — the same arm's margin varies by up to a factor of two across conventions (α=0/mae runs
+0.0192 to 0.0371) — so a margin may be quoted only with its convention named, but the **direction is
+not at risk**.
+
+⛔ **The loss-arm ranking is a different story: the best arm changes with the convention.**
+
+| convention | best arm on `X_pca` | full ranking |
+|---|---|---|
+| line / pooled | **α=0.5 mae** (0.2824) | 0.5/mae > 1/mae > 0.5/mse > 1/mse > 0/mae > 0/mse |
+| line / per-fold | **α=0.5 mse** (0.2985) | 0.5/mse > 0.5/mae > 1/mae > 1/mse > 0/mae > 0/mse |
+| cell / pooled | **α=0.5 mae** (0.2500) | 0.5/mae > 1/mae > 1/mse > 0.5/mse > 0/mae > 0/mse |
+| cell / per-fold | **α=1 mse** (0.2572) | 1/mse > 1/mae > 0.5/mae > 0.5/mse > 0/mae > 0/mse |
+
+Three different winners across four defensible conventions. Only one thing is stable: **α=0 is last
+under every convention**, on both losses.
+
+**Two systematic effects, worth knowing before any of these numbers is compared to another.**
+Per-fold scores are uniformly *higher* than pooled — each fold holds ~30 lines and a correlation over
+fewer points runs higher. Cell-level scores are uniformly *lower* than line-level — a line's cells
+share one label, so the within-line scatter is noise the correlation cannot use.
+
+**Taken with the re-execution instability below, the loss comparison is unresolved twice over:** it
+does not survive a re-run, and it does not survive a change of scoring convention. Q1 survives both.
+
+⚠️ The MIL arms are absent from this table. Their predictions live in
+`notebooks/outputs/mil/mil_oof_predictions.csv`, a separate file this comparison does not read, so
+the bag-objective axis is not re-scored under the four conventions.
+
 ### Reproducibility — re-running the same code with the same seeds does not give the same numbers
 
 `4a` was executed top to bottom in a fresh kernel on 13.08.2026 (1 h 23 min 44 s, 330 fits, clean

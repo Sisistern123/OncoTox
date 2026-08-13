@@ -43,8 +43,25 @@ has ~30 lines per fold to compute a correlation from.
 **The assumption underneath.** That the choice does not change the *ordering* of the arms, only the
 magnitude. That has not been tested — no run has scored the same predictions both ways.
 
-**No reading offered.** This is the choice CLAUDE.md names first, and I have no measurement that
-would inform it.
+**✅ MEASURED 14.08.2026 — the choice is now informed, and it splits in two.**
+All four conventions computed on the same predictions:
+`notebooks/outputs/panel/panel_aggregation_comparison.csv`, written up in
+[Step 05](./steps/05-multitask-results.md#the-aggregation-convention--q1-survives-it-the-loss-ranking-does-not).
+
+- **For Q1 the choice does not matter.** `X_pca` leads `X_scGPT` in all 24 cells (6 arms × 4
+  conventions). Only the size moves, by up to 2×.
+- **For the loss comparison it decides the answer.** The best arm is α=0.5/mae, α=0.5/mse,
+  α=0.5/mae or α=1/mse depending on which convention you pick. α=0 is last under all four.
+
+**So what is actually still yours** is narrower than the original entry suggested: not "which
+convention is right in general", but **which convention the loss comparison is judged under** — and
+whether that comparison should be made at all, given it also fails to survive a re-run (§3).
+
+**My reading, as a reading.** Line-level, pooled — the convention already in force. The label is per
+cell line, so a line is the natural unit and cell-level scoring spends resolution on within-line
+scatter that carries no label information; and pooling keeps one correlation over ~153 lines rather
+than six over ~30, where the per-fold inflation above comes from. But this is a preference between
+defensible options, and it is the one that decides the loss arm, so I have not acted on it.
 
 ---
 
