@@ -362,6 +362,36 @@ executions; folds 2–5 are byte-identical every time). Under this protocol the 
 > (`X_pca` 0.2025 → 0.2776, the only fold that moved), so the sentence is now wrong about its own
 > fold as well. Do not repeat it.
 
+### The DrEval baselines — a per-drug random forest matches the multi-task model
+
+Found by **looking at `notebooks/outputs/dreval/dreval_lco.png`**, not by reading the CSV: in the
+normalized panel, `SingleDrugRF (scgpt)` sits level with `OncoMLP (X_pca)`. Mean over the five
+leave-cell-line-out folds, `notebooks/outputs/dreval/dreval_lco_results.csv`:
+
+| algorithm | normalized Spearman | sd over folds |
+|---|---|---|
+| `OncoMLP (X_pca)` | **0.2776** | 0.0474 |
+| `SingleDrugRF (scgpt)` | **0.2773** | 0.0392 |
+| `OncoMLP (X_scGPT)` | 0.2720 | 0.0213 |
+| `SingleDrugEN (pca)` | 0.2534 | 0.0414 |
+| `SingleDrugRF (pca)` | 0.0279 | 0.0640 |
+| the four naive predictors, and `SingleDrugEN (scgpt)` | 0.0000–0.0022 | — |
+
+**A per-drug random forest on scGPT features matches our multi-task MLP to 0.0003**, with a smaller
+fold spread. That bounds what the multi-task architecture has been shown to buy on this protocol: on
+DrEval's own normalized metric, **nothing measurable over a per-drug RF**. It is the external analogue
+of the internal finding that `RidgeCV` on line-mean embeddings beats both per-cell PCA arms.
+
+⚠️ **Two things the same table says about the baseline suite rather than about us.**
+`SingleDrugEN (scgpt)` scores **exactly** what `NaiveDrugMeanPredictor` scores, raw and normalized —
+it collapsed to the per-drug mean, so it is not a live comparator. And `SingleDrugRF (pca)` at 0.0279
+± 0.0640 is indistinguishable from zero, so the RF's performance is representation-dependent in a way
+the EN's is not.
+
+⚠️ **The raw panel is the reason the normalized one exists.** Every non-degenerate model scores
+0.74–0.78 raw, clustered just above `NaiveMeanEffects` — pooled Spearman is dominated by drug potency
+and barely discriminates. Do not quote a raw DrEval number.
+
 **Ruled out by measurement, not by argument:** the metric, drug-level response spread, a misuse of
 scGPT (the call matches `Tutorial_Reference_Mapping` from the scGPT repo), and broken embeddings.
 CPM as scGPT's input is correct because its per-cell binning takes quantiles of the cell's own
