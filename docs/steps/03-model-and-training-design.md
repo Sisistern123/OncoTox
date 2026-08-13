@@ -359,6 +359,28 @@ Two conditions carry over from the last comparison, which failed because it lack
 rule is fixed *before* the run, and ≥3 seeds are needed for any difference to be readable against the
 ±0.04 seed band.
 
+> ⚠️ **MAE and MSE are not two points on a robustness axis here — they differ in how hard they charge
+> for within-line variation (13.08.2026).** The decomposition that makes `4a` and `4b` differ by
+> exactly `Var_c(p)` holds for **squared error only**. For absolute error there is just Jensen,
+> `(1/n) Σ_c |p_c − y| ≥ |p̄ − y|`, **with equality whenever all of a line's predictions fall on the
+> same side of its label** — `|·|` is linear on each half-line. Under MAE the spread is therefore free
+> except where it straddles the label.
+>
+> Measured, not inferred: `outputs/panel/panel_within_line_spread.csv` (written by §A, one row per
+> arm × drug × cell line) gives a median within-line spread **25 % higher under MAE than under MSE on
+> `X_scGPT`**, in each of the nine (alpha, seed) combinations separately, and **no difference on
+> `X_pca`**. Between-line spread is unchanged in both. MAE moves the term Q2 is about and leaves the
+> rest alone.
+>
+> **Two consequences.** First, MAE's advantage on `X_scGPT` cannot be read as robustness to outliers
+> alone — it is partly a relaxation of the penalty `4b` exists to remove, and the two effects are not
+> separated by this grid. Second, the amount of relaxation is **data-dependent and uncontrolled**: it
+> is set by how many of a line's cells cross its label, which no one chose and which moves during
+> training. Squared error is kept as the objective of record for the `4a`/`4b` pair for exactly that
+> reason — it is the one whose penalty can be stated. `4b` runs `LOSS = 'mse'` on the same grounds:
+> its stage 1 uses `4a`'s spread as the null, and that null is only informative if it survived a
+> **full** penalty.
+
 > ⚠️ **Huber was dropped from this grid (Selin, 12.08.2026).** It used to be the third loss here. Its
 > position on the robustness axis is set entirely by `beta`: at the current `huber_beta = 0.05` it is
 > linear above a residual far below the typical one, so it behaves close to MAE and the grid would carry

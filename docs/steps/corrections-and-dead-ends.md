@@ -1058,6 +1058,39 @@ for more cell lines, and against further objective engineering.
 > This is why `alpha` is an **arm** of audit 09's loss comparison rather than a setting carried forward
 > or dropped: the question is reopened, not re-answered.
 
+> ⏳ **The re-test ran — 13.08.2026 — and it does not restore this entry, nor does it refute it a second
+> time. It replaces the null with a representation-dependent effect.**
+> `notebooks/4a_percell_training.ipynb` §A, 36 arms (2 representations × 3 `alpha` × 2 losses × 3 seeds),
+> on `auc_cc` and the rebuilt 11-drug panel, with the early-stopping leak fixed — so all three voided
+> inputs above are addressed. Read from `outputs/panel/panel_per_drug_correlation.csv`, each margin
+> against that arm's own seed band:
+>
+> | `alpha = 0.5` against `alpha = 0` | margin | band | |
+> |---|---|---|---|
+> | `X_pca`, MAE | **+0.0206** | ±0.0093 | outside |
+> | `X_pca`, MSE | **+0.0213** | ±0.0135 | outside |
+> | `X_scGPT`, MAE | −0.0008 | ±0.0097 | inside — no information |
+> | `X_scGPT`, MSE | **−0.0082** | ±0.0079 | outside |
+>
+> **The weighting helps `X_pca` and does not help `X_scGPT`**, replicated across both losses on the
+> PCA side. The single best arm of the whole grid is `X_pca / MAE / alpha = 0.5`. ⚠️ **This contradicts
+> the 27.07 verdict above rather than confirming it** — that run measured −0.006 / −0.008, this one
+> measures +0.021 on one representation. The 27.07 numbers are void on three independent grounds, so
+> the disagreement is not a puzzle to reconcile; the earlier measurement simply does not stand.
+>
+> **`alpha = 1` is a different matter and is settled.** On `X_scGPT` it falls **below** the per-drug
+> constant (mean Δ against the out-of-fold null: −0.0002 on MAE, −0.0004 on MSE) — the model is worse
+> than predicting each drug's mean. That is the cap-saturation failure `density_weighting.py`'s own
+> docstring predicted in advance: at `alpha = 1` with a loose cap the weight curve saturates the cap
+> across wide stretches, so the cap — an arbitrary safety limit — sets the weights rather than the
+> density does.
+>
+> **What is NOT decided here.** Whether `alpha` closes as an axis, and at which level. On the guard
+> quantity (Δ against the null) `alpha = 0` is best in all six columns; on item 9A's own criterion
+> (mean per-drug Spearman) `alpha = 0.5` wins on `X_pca`. The two point different ways, and item 9A's
+> aggregation rule — criterion plus non-inferiority guards, each at its own seed band — is the thing
+> that resolves it. That rule is Selin's and is still ⬜ open in `docs/TODO.md`.
+
 > ⚠️ **Reopened, not overturned — audit 09, 12.08.2026.** ~~The *result* above stands as a
 > measurement.~~ *(Struck 12.08.2026 — see the block above: the result is a CV metric and carries the
 > early-stopping leak.)*
