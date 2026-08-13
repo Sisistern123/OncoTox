@@ -1,7 +1,10 @@
 ,spearman,spearman,mse,mse
 rep,X_pca,X_scGPT,X_pca,X_scGPT
 model,,,,
-MLP alpha=0,0.2226,0.1954,0.0172,0.0174
-MLP alpha=0.5,0.2658,0.1903,0.0174,0.0182
-MLP alpha=1,0.2539,0.1893,0.0179,0.019
-ridge (line means),0.2736,0.1914,0.0168,0.0167
+MLP mae alpha=0,0.2617,0.2403,0.017,0.0171
+MLP mae alpha=0.5,0.2824,0.2395,0.0173,0.0178
+MLP mae alpha=1,0.2765,0.2214,0.018,0.0189
+MLP mse alpha=0,0.2541,0.2009,0.0171,0.0175
+MLP mse alpha=0.5,0.2754,0.1927,0.0173,0.0183
+MLP mse alpha=1,0.2679,0.2031,0.0179,0.0191
+ridge (line means),0.2767,0.1914,0.0166,0.0167
