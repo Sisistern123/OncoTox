@@ -46,6 +46,13 @@ runs/
 
 # personal presentation material (speaker notes + evidence appendix)
 docs/progress_report_*.md
+docs/final_presentation*.md
+
+# The Gate 5 rerun log. Untracked on Selin's instruction (13.08.2026) -- it is a working
+# execution record of one run, not part of the scientific record: what it establishes belongs in
+# docs/steps/ at R6, and what it gets wrong should not be citable from the repository in the
+# meantime. It was tracked in 3d69332..5b3f2ec and is removed from the index, not from disk.
+docs/gate5-rerun-report.md
 
 # LaTeX build artifacts. main.pdf is one of them: it was tracked until 10.08.2026 and went
 # stale whenever a .tex changed without a rebuild. Build it with

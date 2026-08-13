@@ -22,5 +22,25 @@ dev = [
     "ipykernel>=7.2.0",
 ]
 
-[tool.setuptools]
-packages = ["scripts"]
+# Without a build system uv treats this as a *virtual* project: it resolves and installs the
+# dependencies but not `oncotox` itself. That is what `uv sync` did on 13.08.2026 when it reported
+# `- oncotox==0.1.0 (from file:///…/OncoTox)` among the uninstalls -- and with the project gone from
+# the environment, VS Code can no longer name it after the project and labels the kernel
+# `defaultInterpreterPath: 3.12.11.final.0` instead of `oncotox`. Added so the environment has the
+# project's name everywhere (Selin, 13.08.2026).
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# `namespaces = true` is required, not stylistic: `scripts/` contains no `__init__.py` anywhere, so
+# it is a PEP 420 namespace package and setuptools' default regular-package discovery finds nothing
+# in it. The previous `[tool.setuptools] packages = ["scripts"]` declared a regular package that does
+# not exist, which is why it never had an effect.
+#
+# ⚠️ The install is editable and points at the MAIN CHECKOUT. Every notebook still puts its own root
+# on `sys.path` first, so a worktree keeps importing its own `scripts/` -- but code that skips that
+# bootstrap now resolves `scripts` to the main checkout even when run from a worktree. Keep the
+# bootstrap.
+[tool.setuptools.packages.find]
+include = ["scripts*"]
+namespaces = true
