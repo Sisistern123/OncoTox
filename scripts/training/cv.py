@@ -291,6 +291,7 @@ def oof_predictions(
     init_head_bias: bool = True,
     counts_h5ad: str | Path | None = None,
     pca_seed: int | None = None,
+    n_label_lines: int | None = None,
     tag: str = "oof",
 ) -> tuple[np.ndarray, list[dict]]:
     """Fit ``n_splits`` cell-line-grouped folds and return out-of-fold per-cell predictions.
@@ -376,12 +377,38 @@ def oof_predictions(
         # not the early-stopping lines either: a set that decides when to stop must not also have
         # shaped what it is judging).
         fit_lines = np.unique(groups[fitc])
-        y_lines, obs_lines = line_level(Y, M, groups, fit_lines)
+
+        # `n_label_lines` thins the LABEL supply without touching the input (13.08.2026, for `4a`
+        # section E's learning curve). The cells of the dropped lines stay in the fold, stay in the
+        # batches and stay in the per-fold PCA -- only their labels go. That is what separates "how
+        # many labelled cell lines" from "how many cells the representation was fitted on": both
+        # arms keep the identical input at every point on the curve, so what moves along it is the
+        # label supply and nothing else.
+        #
+        # `label_lines` is a SEPARATE name on purpose. `fit_lines` is logged as `n_fit_lines` and
+        # means "lines in this fold's fitting set"; reassigning it would silently redefine an
+        # existing column to mean something else in some runs and not in others.
+        #
+        # The thinning reaches all THREE label-derived quantities below, not only the loss. Leaving
+        # the head-bias init or the density fit on the full set would hand the model the dropped
+        # lines' labels through the back door, and the curve would flatten for a reason that has
+        # nothing to do with the representations.
+        label_lines, unlabelled = fit_lines, None
+        if n_label_lines is not None and n_label_lines < fit_lines.size:
+            rng = np.random.default_rng(config.seed)
+            label_lines = np.sort(rng.choice(fit_lines, size=n_label_lines, replace=False))
+            unlabelled = ~np.isin(groups[fitc], label_lines)
+
+        y_lines, obs_lines = line_level(Y, M, groups, label_lines)
 
         if density_weighting:
             fns = fit_weight_fns(y_lines, obs_lines, alpha=alpha, cap=cap)
             fit_ds.mask = torch.from_numpy(weight_matrix(fns, Y[fitc], M[fitc]))
             stop_ds.mask = torch.from_numpy(weight_matrix(fns, Y[stopc], M[stopc]))
+
+        # After the density weighting, which rewrites the mask wholesale.
+        if unlabelled is not None:
+            fit_ds.mask[torch.from_numpy(unlabelled)] = 0
 
         model = OncoMLP(
             input_dim=fit_ds.X.shape[1],
@@ -423,6 +450,7 @@ def oof_predictions(
             # n_train_lines is the fold's training side as a whole; the model only ever saw
             # n_fit_lines of it, the rest being on loan to early stopping.
             "n_fit_lines": int(fit_lines.size),
+            "n_label_lines": int(label_lines.size),
             "n_stop_lines": int(np.unique(groups[stopc]).size),
             "n_val_lines": int(val_lines.size),
             # Which lines this fold held out, not just how many. The split is grouped by cell line, so
