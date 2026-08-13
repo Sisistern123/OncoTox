@@ -1,5 +1,5 @@
 rep,seed,n_pairs,frac_mil_exceeds,median_sd_mil,median_sd_4a,wilcoxon_p,passes
-X_pca,42,1683.0,1.0,0.09685,0.02828,0.0,True
+X_pca,42,1683.0,1.0,0.09857,0.02828,0.0,True
 X_pca,43,1683.0,1.0,0.11158,0.02918,0.0,True
 X_pca,44,1683.0,1.0,0.08703,0.02922,0.0,True
 X_scGPT,42,1683.0,0.81699,0.03336,0.0216,0.0,True

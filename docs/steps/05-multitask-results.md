@@ -421,15 +421,15 @@ seeds on both representations. Source: `notebooks/4b_mil_training.ipynb` →
 | 1 | does MIL predict **more** within-line spread than the per-cell model? | 100 % of (drug, line) pairs, all 3 seeds | 82.3 %, all 3 seeds |
 | 2 | does that structure **reproduce across seeds**? | median ρ 0.256, 83.0 % beat a shuffled-cell null | ρ 0.861, 99.2 % |
 | 6 | do **technical confounds** explain it? | R²adj 0.0533 — **82 % as much as the signal reproduces** | 0.2656 — 36 % |
-| 7 | can the instrument detect a **known** gap? | AUROC **0.521**, 46.0 % of pairs significant | **0.537**, 48.4 % |
+| 7 | can the instrument detect a **known** gap? | AUROC **0.518**, 45.6 % of pairs significant | **0.537**, 48.4 % |
 
 **The verdict, in the notebook's own words: `Q2(a) POSITIVE` for both representations** — but stated
-there with the qualifier that matters, *"at a measured instrument sensitivity of AUROC 0.521"*.
+there with the qualifier that matters, *"at a measured instrument sensitivity of AUROC 0.518"*.
 
 ### Why that positive is weak, and stage 7 is the reason
 
 Stage 7 is a **positive control**: it asks whether the instrument can see a difference it already
-knows is there. The answer is *barely* — 0.521 and 0.537 against a 0.5 null, with **under half** the
+knows is there. The answer is *barely* — 0.518 and 0.537 against a 0.5 null, with **under half** the
 pairs reaching significance. A positive from stages 1 and 2 read through an instrument that
 insensitive does not support a claim about biology.
 
