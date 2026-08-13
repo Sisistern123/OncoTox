@@ -1,5 +1,5 @@
 gene_set,rep,train_mse,val_mse,gap_val_minus_train,best_epoch
-hvg5000,X_pca,0.0114,0.0447,0.0333,2
-hvg5000,X_scGPT,0.0369,0.0409,0.004,2
-all_genes,X_pca,0.0415,0.0385,-0.003,1
-all_genes,X_scGPT,0.0317,0.0448,0.013,4
+hvg5000,X_pca,0.0335,0.0618,0.0283,1
+hvg5000,X_scGPT,0.0451,0.0509,0.0058,1
+all_genes,X_pca,0.0338,0.0581,0.0243,1
+all_genes,X_scGPT,0.0198,0.0518,0.032,22

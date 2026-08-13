@@ -71,26 +71,77 @@ Stages 7, 1 and 2 run as written (Benjamini–Hochberg at FDR 0.05; the paired f
 All three are computed from the **saved per-cell prediction arrays**, so they can be re-decided after
 the distributions are visible without retraining anything.
 
-### ⬜ D5 · `input_dropout` — deferred to the variance numbers (Selin)
+### D5 · `input_dropout` stays at 0.1 on both arms — decided against the measurement
 
-**Not yet decided, deliberately.** `input_dropout=0.1` removes 10 % of input variance in expectation
-from **both** arms, so it is matched in value. It is not matched in *distribution*: scGPT's 512
-dimensions are comparable in magnitude, so each draw removes about the same small amount, while
-PCA's are variance-ordered, so **one draw in ten deletes PC1 alone**.
+**Taken alone on 13.08.2026**, under Selin's instruction to decide rather than block, with the
+alternatives below so it can be overturned on the merits. She noted that retraining costs far less
+than `3_representations`, so this is cheap to revisit.
 
-`3_representations` writes `uns["pca_fits"]["variance_ratio"]`, which says exactly how much of the
-signal that is. The choice is made against that number rather than by judgement:
+**The measurement that decided it.** `3_representations` wrote `uns["pca_fits"]["variance_ratio"]`:
 
-* **(a) keep 0.1 on both arms** — status quo. ⚠️ It handicaps **PCA, the control**, so it flatters
-  the project's own hypothesis. One argument for it is already dead: *"comparability with previous
-  runs"* has no force, because every previous run is void on target and panel grounds.
-* **(b) set 0 on both arms** — removes the asymmetry outright; trunk dropout 0.5 remains.
-* **(c) scale per arm** to equalise the variance removed — matched in effect, but needs a constant
-  nobody has sourced.
+| | `X_pca` | `X_pca_train_ctrp` |
+|---|---|---|
+| PC1 | **2.50 %** of total variance | 2.52 % |
+| PC1–10 | 10.94 % | 11.19 % |
+| all 512 components | 42.09 % | 41.97 % |
+| PC1 ÷ mean component | **30×** | 31× |
 
-Selin's instruction, 13.08.2026: decide it once the number exists; if she is unavailable, take it
-alone and document the alternatives, since **retraining costs far less than `3_representations`** and
-the choice can be revisited.
+So PC1 is 30× the average component — the concentration is real — but it is **2.50 % of total
+variance, or 5.9 % of the variance the 512 components actually represent**. Dropping it one batch in
+ten removes about a twentieth of the input's signal in that batch, not a fifth.
+
+**⚠️ Two things I had said about this were wrong, and the measurement is what showed it.**
+
+1. I estimated PC1 at "~20 %" when arguing for change. It is 2.50 %.
+2. I wrote that the asymmetry *"handicaps PCA, the control, so a scGPT win is flattered."* **That
+   does not follow.** Dropout is a *regulariser*: zeroing PC1 sometimes gives the PCA arm stronger
+   effective regularisation, and whether that helps or hurts its generalisation is not known. The
+   honest description is an **uncontrolled asymmetry of unknown sign**, not a bias in a known
+   direction — which is a weaker reason to act than the one I gave.
+
+**Chosen: (a) keep 0.1 on both arms.** The asymmetry is modest and its direction is unknown, so
+removing it is not demonstrably an improvement; and this run already carries six simultaneous changes
+(target, panel, gene symbols, PCA fit, early stopping, head-bias init, optimizer, epochs). Adding a
+seventh whose effect nobody can sign makes attribution harder for no established gain.
+
+**Over:**
+* **(b) set 0 on both arms** — removes the asymmetry outright. Still available, and my prior reading;
+  it lost when the magnitude turned out to be 2.5 % rather than 20 %, and when the sign turned out to
+  be unknown. Costs one regulariser that has no sourced justification either way.
+* **(c) scale per arm** to equalise variance removed — matched in effect, but requires deriving a
+  constant nobody has sourced, to correct an asymmetry now measured as small.
+
+**What would overturn this, stated in advance so it is not decided after the fact:** if `4a` shows
+the PCA arm systematically *underfitting* relative to scGPT — training loss failing to descend, or
+best epochs consistently earlier — that is the signature of over-regularisation on the concentrated
+representation, and (b) becomes the right call. `4a` writes `panel_training_folds.csv` with
+`best_epoch` per fold per arm, so this is checkable rather than impressionistic.
+
+### D5 · postscript — the overturn condition fired, and I am not acting on it
+
+**It fired on its letter.** PCA's mean best epoch is **2.13** (max 4) against scGPT's **7.07**
+(max 16) — exactly the "systematically earlier best epochs" I registered in advance as the signature
+of over-regularisation on the concentrated representation.
+
+**I am not switching `input_dropout`, because the inference the condition stood proxy for is
+contradicted by the outcome it was meant to predict.** The condition existed to detect *the PCA arm
+being handicapped*. PCA **wins every arm** — 0.266 against scGPT's 0.190 at α=0.5, and its ridge
+control beats every MLP. An arm that is being crippled by its regulariser does not lead the
+comparison.
+
+**And the signature is confounded, which I should have seen when I wrote it.** *"PCA peaks at
+epoch 1"* is **already on record** in [TODO](TODO.md) as the cause of the PCA arm's
+non-reproducibility on `mps` — observed on the *old* pipeline, before `input_dropout` was ever
+questioned. So an early best epoch has at least two explanations, one of which predates the question
+entirely, and my condition could not tell them apart. A pre-registered check is only as good as its
+discriminating power, and this one had less than I thought.
+
+**What would actually discriminate:** re-run the PCA arm alone with `input_dropout=0` and see whether
+the best epoch moves. That is cheap and it is a direct test rather than an inference. **It is not
+done here** — the pipeline runs either way, so this is not a blocking decision, and it is Selin's
+call whether to spend the run.
+
+⬜ **Left open for her, with the evidence attached rather than resolved by me.**
 
 ---
 
@@ -101,9 +152,9 @@ the choice can be revisited.
 | 1 | `1_data` | ✅ **clean** | both variants rebuilt, 53,513 cells × 198 lines. UMI covariates attached, join check **r = 1.0000**. hvg5000 22,722→5,000 genes; 1,129 symbols renamed, 23 collisions withheld |
 | 2 | `analysis/harmonization/drug_catalog` | ✅ **clean** (2nd attempt) | **7,120 catalog rows** = 7,415 − 295 GDSC, exactly as predicted. PRISM 6,575 + CTRPv2 545. First attempt failed at §6 — see **B2**, and **M1** for why it looked like success |
 | 3 | `2_drug_selection` | ✅ **clean** | **panel unchanged: the same 11 drugs**, so removing GDSC did not touch selection — as predicted from `drug_annotation`'s `dataset == "CTRPv2"` filter. **181 overlapping cell lines** (the `H292` alias fix, 180 → 181). 57 of 150 FDA drugs screened by CTRPv2; coverage 91.2–98.3 % |
-| 4 | `3_representations` | ⏳ running | scGPT embedding × 2 variants, then targets → splits → pca. The longest non-training step |
-| 5 | `4a_percell_training` | — | |
-| 6 | `4b_mil_training` | — | |
+| 4 | `3_representations` | ✅ **clean** | Both variants embedded, targets/splits/pca written. **The `auc_cc` targets file now exists** — the artifact that blocked everything downstream. **534 drugs**, 21,506,818 observed (cell × drug) labels. Split **126 / 27 / 28 = 181 lines** + 17 unassigned = 198. scGPT vocabulary match hvg5000 **4,765 / 5,000** (4,632 direct + 133 via current HGNC) — the docs predicted 4,704, so that number moves. PCA retains **42.09 %** in 512 components on hvg5000, **20.1 %** on all_genes. `total_counts` / `pct_counts_mt` carried through, so 4b's stage 6 has all four covariates |
+| 5 | `4a_percell_training` | ✅ **clean** | 20/20 cells. **PCA beats scGPT on every arm** (0.266 vs 0.190 at α=0.5) and **the ridge control on line means beats every MLP** (0.274). Per-cell arrays + `panel_within_line_spread.csv` written, so 4b's stage 1 has its anchor. ⚠️ One seed |
+| 6 | `4b_mil_training` | ✅ **clean, first ever execution** | 12/12 cells, all 11 stage tables written. **Q2(a) POSITIVE for both representations**, veto does not fire. ⚠️ But stage 7's instrument sensitivity is **AUROC 0.518 / 0.537** — barely above chance — and for `X_pca` the confounds explain **83 %** as much as the signal reproduces. Ran three times: once before D3 existed, once on a patch that silently did not apply (**M2**), once correct |
 | 7 | `5_evaluation` §1 | — | |
 | 8 | `analysis/qc/hvg_sweep_build` | — | |
 | 9 | `analysis/qc/verify_variants` | — | |
@@ -153,3 +204,22 @@ pipe, so the exit code is `nbconvert`'s.
 ⚠️ **Consequence for reading this log:** a notebook's stored outputs are only evidence of *this* run
 if its execution actually succeeded. Stale outputs from an earlier execution survive a failed
 `--inplace` run untouched and look identical to fresh ones.
+
+### M2 · A second false-success in my own tooling
+
+The patch that was supposed to implement D3 in the verdict cell **asserted `hits == 2`, printed
+success, and changed nothing I intended.** Its `MD_OLD` pattern no longer existed — I had rewritten
+that block earlier for the adjusted-R² change — so the assertion was satisfied by two *other*
+matches, and the verdict cell was never touched. I then re-ran `4b` and reported D3 as applied; the
+stored output still said *"magnitude is still open"*, which is how it surfaced.
+
+**This is M1's shape again**: a check reporting success while checking something other than what it
+claimed. The fix is the same one this review has been applying to the project all day — the patch now
+edits **by cell index**, and **verifies by re-reading the file from disk** rather than trusting its
+own write:
+
+    cell 21: D3 written and verified from disk; parses clean
+    cell 18: §3.8 records D3; verified from disk
+
+Recorded because it is the third instance in one session of *something reporting success without
+having done the work*, twice by me, and the pattern is the finding.

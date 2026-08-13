@@ -1,0 +1,3 @@
+rep,n_dims,within_line_share,n_lines,n_collapsed_lines,min_line_var,median_line_var,collapse
+X_pca,512,0.415832844444152,153,0,329.92071533203125,606.0745239257812,False
+X_scGPT,512,0.4613386561930129,153,0,0.018901703879237175,0.027546901255846024,False
