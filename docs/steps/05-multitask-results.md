@@ -145,6 +145,32 @@ committed file states the Q1 margin computed on them; `notebooks/outputs/mil/` h
 only. Until `5_evaluation` §1.8 writes `panel_metrics.csv`, any statement of the form "the objective
 carries most of the margin" **names a quantity that has not been computed here**.
 
+### Counter-evidence — the external benchmark does not separate the arms
+
+`notebooks/analysis/evaluation/dreval_benchmark.ipynb` →
+`notebooks/outputs/dreval/dreval_lco_results.csv`, five leave-cell-line-out folds. Normalised
+Spearman for the two OncoMLP arms:
+
+| fold | `X_pca` | `X_scGPT` | ahead |
+|---|---|---|---|
+| 1 | 0.2025 | 0.2439 | scGPT |
+| 2 | 0.2764 | 0.2903 | scGPT |
+| 3 | **0.3576** | 0.2657 | PCA |
+| 4 | 0.2625 | 0.2638 | tie |
+| 5 | 0.2581 | 0.2962 | scGPT |
+
+scGPT leads in three folds, PCA in one, one is a tie, and the **fold-to-fold spread on `X_pca` alone
+(0.2025–0.3576) is larger than any between-arm gap in the table**. Under this protocol the two
+representations are not distinguished.
+
+> ⛔ **Correction 13.08.2026 — a fold-1 value was reported as the result.** The Gate 5 execution log
+> recorded *"scGPT edges PCA (0.747 vs 0.738 raw; 0.244 vs 0.203 normalised)"*. Those figures are
+> **fold 1 only**, taken from a 50-row file of five folds × ten algorithms. The direction they assert
+> does not survive the other four folds. No conclusion should be drawn from that sentence.
+>
+> ⚠️ This benchmark has not been re-run since `4a` was regenerated with three seeds
+> (`02f0fe6`), so these five folds describe the previous, one-seed `4a`.
+
 **Ruled out by measurement, not by argument:** the metric, drug-level response spread, a misuse of
 scGPT (the call matches `Tutorial_Reference_Mapping` from the scGPT repo), and broken embeddings.
 CPM as scGPT's input is correct because its per-cell binning takes quantiles of the cell's own
