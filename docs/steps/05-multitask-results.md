@@ -362,6 +362,41 @@ executions; folds 2–5 are byte-identical every time). Under this protocol the 
 > (`X_pca` 0.2025 → 0.2776, the only fold that moved), so the sentence is now wrong about its own
 > fold as well. Do not repeat it.
 
+### The gene-set sweep, on live numbers — and it puts scGPT ahead at every gene-set size
+
+`analysis/qc/verify_variants.ipynb` §9 → `notebooks/outputs/embeddings/hvg_sweep_auc.csv`, and the
+curve `hvg_sweep_auc_curve.png`. **All five variants were re-embedded on 13.08.2026**, so this sweep
+is like-for-like for the first time — the warning that it mixed re-embedded `hvg5000` with three
+variants from the older code no longer applies.
+
+Heads beating the per-drug-mean baseline, out of 534, 5-fold CV, `auc_cc`:
+
+| gene set | `X_pca` | `X_scGPT` |
+|---|---|---|
+| 1,000 | 278.2 | **300.2** |
+| 2,000 | 280.8 | **301.8** |
+| 3,000 | 278.8 | **288.2** |
+| 5,000 | 284.0 | **293.6** |
+| all (~23,000) | 278.4 | **303.8** |
+
+**1 · Gene-set size does not matter — and this claim is live again.** `X_pca` moves **5.8 heads**
+across the whole range from 1,000 genes to all ~23,000, against a typical fold sd of **27.2**. The
+curve is flat within error for both arms. The 12.08.2026 clearing removed *"the gene-set size is not
+critical"* because the sweep had no live numbers behind it, leaving **HVG-5000 resting on reasons 2
+and 3 alone**; it now has them, on freshly re-embedded variants, and reason 1 is restored.
+
+**2 · ⚠️ scGPT is ahead of PCA at every one of the five gene-set sizes — 5/5.** Per point the error
+bars overlap heavily, so no single point separates them; five out of five in the same direction is
+the evidence. **This is the sweep-versus-panel disagreement, drawn.** On this metric — heads beating
+a per-drug null over 534 drugs — `X_scGPT` wins. On mean per-drug Spearman over the 11 panel drugs,
+`X_pca` wins (§C, §D). Same models, same data, opposite orderings, because the two are scored on
+different drug sets with different statistics.
+
+**3 · ⚠️ But `delta_mean` is negative in all ten rows.** Both arms, every gene set, average out
+*below* the per-drug constant even while beating it on ~280–300 of 534 individual heads. So "scGPT
+wins the sweep" means it wins a comparison in which **both arms lose to the null on average** — the
+same noise floor §D reports, in the sweep's own units.
+
 ### The DrEval baselines — a per-drug random forest matches the multi-task model
 
 Found by **looking at `notebooks/outputs/dreval/dreval_lco.png`**, not by reading the CSV: in the
