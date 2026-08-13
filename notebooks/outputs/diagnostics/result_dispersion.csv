@@ -1,5 +1,7 @@
-rep,weighted,pooled_mean,sd_across_drugs,drug_min,drug_max,foldwise_mean,sd_across_folds
-X_pca,False,0.315,0.111,0.188,0.533,0.341,0.028
-X_pca,True,0.308,0.122,0.119,0.517,0.325,0.044
-X_scGPT,False,0.377,0.091,0.296,0.546,0.387,0.043
-X_scGPT,True,0.369,0.1,0.25,0.531,0.377,0.039
+rep,alpha,pooled_mean,sd_across_drugs,drug_min,drug_max,foldwise_mean,sd_across_folds
+X_pca,0.0,0.223,0.196,-0.044,0.514,0.273,0.039
+X_pca,0.5,0.266,0.141,0.081,0.509,0.286,0.029
+X_pca,1.0,0.254,0.147,0.062,0.502,0.284,0.053
+X_scGPT,0.0,0.195,0.18,-0.052,0.494,0.238,0.057
+X_scGPT,0.5,0.19,0.195,-0.14,0.5,0.211,0.03
+X_scGPT,1.0,0.189,0.172,-0.069,0.484,0.228,0.024
