@@ -358,6 +358,68 @@ the sign reversed, and near the per-drug noise floor throughout.
 
 ---
 
+## Q2 on the rebuilt panel — does a per-cell model learn heterogeneity implicitly? (14.08.2026)
+
+> ✅ **Not covered by the page banner above.** Measured after the pipeline review, on the rebuilt
+> 11-drug panel and the `auc_cc` target. **This is the first entry Q2 has had in the scientific
+> record** — until 14.08.2026 its results existed only in `notebooks/4b_mil_training.ipynb` and
+> `notebooks/outputs/mil/`, with nothing in `docs/steps/` or the report.
+
+**What is being asked, and why it is hard.** There are no per-cell labels: one bulk response value
+per (cell line × drug) is broadcast onto ~300 cells. So any within-line structure in the predictions
+is something the model **imposed**, not something it was shown. `4b` therefore does not ask "is the
+model right about individual cells" — it cannot — but "does the model produce within-line structure
+that is more than noise, and is that structure anything other than technical artefact".
+
+**The instrument.** Seven staged tests, each a null, a comparison or a collapse test, run over three
+seeds on both representations. Source: `notebooks/4b_mil_training.ipynb` →
+`notebooks/outputs/mil/q2_verdict.csv` and `stage0`–`stage7`.
+
+| stage | question | `X_pca` | `X_scGPT` |
+|---|---|---|---|
+| 0 | does the **input** carry within-line variation at all? | 0.416 share, no collapse | 0.461, no collapse |
+| 1 | does MIL predict **more** within-line spread than the per-cell model? | 100 % of (drug, line) pairs, all 3 seeds | 82.3 %, all 3 seeds |
+| 2 | does that structure **reproduce across seeds**? | median ρ 0.256, 83.0 % beat a shuffled-cell null | ρ 0.861, 99.2 % |
+| 6 | do **technical confounds** explain it? | R²adj 0.0533 — **82 % as much as the signal reproduces** | 0.2656 — 36 % |
+| 7 | can the instrument detect a **known** gap? | AUROC **0.521**, 46.0 % of pairs significant | **0.537**, 48.4 % |
+
+**The verdict, in the notebook's own words: `Q2(a) POSITIVE` for both representations** — but stated
+there with the qualifier that matters, *"at a measured instrument sensitivity of AUROC 0.521"*.
+
+### Why that positive is weak, and stage 7 is the reason
+
+Stage 7 is a **positive control**: it asks whether the instrument can see a difference it already
+knows is there. The answer is *barely* — 0.521 and 0.537 against a 0.5 null, with **under half** the
+pairs reaching significance. A positive from stages 1 and 2 read through an instrument that
+insensitive does not support a claim about biology.
+
+For `X_pca` the confound result compounds it: sequencing depth, genes detected, mitochondrial
+fraction and cell-cycle scores together explain **82 % as much variance as the signal reproduces
+across seeds**. The structure is real in the sense that it is not noise; it is not established to be
+*biological*.
+
+⚠️ **Q2(b) and Q2(c) are not addressed and cannot be with these measurements** — that is `4b` §1's
+own scoping, not a caveat added here. Whether the within-line variation is real **drug-response**
+heterogeneity (b), and whether it predicts **which cells survive** (c), both need post-treatment
+single-cell data, which this project does not have
+([Step 01](01-datasets-and-harmonization.md#post-treatment-single-cell-data--what-would-be-needed-for-q2-b-and-what-exists)).
+
+### What is verified, and what is not
+
+**Verified 14.08.2026:** all eleven `outputs/mil/` artifacts match `HEAD` unmodified; `q2_verdict.csv`
+re-derives from its own stage tables under the notebook's aggregation (median across seeds, and the
+median of per-seed medians for stage 7); three seeds are present in every stage table; and stage 1's
+`median_sd_4a` matches the committed `panel_within_line_spread.csv` at α=0.5/mse exactly for all six
+representation × seed combinations.
+
+⚠️ **Not verified by execution.** `4b` has not been *run* since 13.08.2026 09:47. The above is a
+consistency check against current artifacts, not a fresh run.
+
+⛔ **Q2 has no figure.** `notebooks/outputs/mil/` holds eleven CSVs and no images. Every Q2 claim in
+this project is a table or a number.
+
+---
+
 ## Multi-task masked loss over all 545 CTRPv2 drugs (26.05.2026)
 
 The target artifacts (`obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, the legacy flat
