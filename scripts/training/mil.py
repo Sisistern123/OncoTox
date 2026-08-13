@@ -67,6 +67,7 @@ from scripts.training.training_utils import (
     TrainHistory,
     _decay_param_groups,
     _make_loss_fn,
+    _per_elem_error,
     pick_device,
     set_seed,
 )
@@ -258,7 +259,7 @@ def train_bag_model(
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.grad_clip)
             optimizer.step()
             with torch.no_grad():
-                sq = (pooled.detach() - y) ** 2
+                sq = _per_elem_error(config, pooled.detach(), y)
                 sq_sum += float((sq * w).sum())
                 w_sum += float(w.sum())
         train_mse = sq_sum / max(w_sum, 1.0)
@@ -267,7 +268,11 @@ def train_bag_model(
         with torch.no_grad():
             _, pooled = bag_predictions(model, stop_bags, device)
             w = stop_bags.w.to(device)
-            sq = (pooled - stop_bags.y.to(device)) ** 2
+            # Same per-element error as the training loss, for the reason training_utils gives:
+            # an arm optimised on one criterion and stopped on another does not measure what a loss
+            # comparison claims. 4b runs MSE today, so this changes nothing now -- it keeps 4a and
+            # 4b consistent if 4b ever runs another loss.
+            sq = _per_elem_error(config, pooled, stop_bags.y.to(device))
             val_mse = float((sq * w).sum() / w.sum().clamp_min(1.0))
             per_drug_w = w.sum(0)
             history.per_drug_val_mse.append(

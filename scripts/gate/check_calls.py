@@ -39,12 +39,17 @@ import re
 import sys
 from pathlib import Path
 
+# The globs below are built as `str(ROOT / 'dir') + '/**/*.ext'` rather than
+# `ROOT / 'dir/**/*.ext'`: `**` is a glob wildcard, and scripts/check_resolved_paths.py
+# reads a composed Path as a literal directory, so the second form makes that checker
+# report two failures against a file that is working. A gate that cries wolf costs the
+# attention of the gates that do not.
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-NOTEBOOKS = [f for f in sorted(glob.glob(str(ROOT / 'notebooks/**/*.ipynb'), recursive=True))
+NOTEBOOKS = [f for f in sorted(glob.glob(str(ROOT / 'notebooks') + '/**/*.ipynb', recursive=True))
              if '/archive/' not in f and '.ipynb_checkpoints' not in f]
-SCRIPTS = [f for f in sorted(glob.glob(str(ROOT / 'scripts/**/*.py'), recursive=True))
+SCRIPTS = [f for f in sorted(glob.glob(str(ROOT / 'scripts') + '/**/*.py', recursive=True))
            if '/archive/' not in f]
 
 

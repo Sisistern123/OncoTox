@@ -290,6 +290,7 @@ def oof_predictions(
     cap: float = DEFAULT_CAP,
     init_head_bias: bool = True,
     counts_h5ad: str | Path | None = None,
+    pca_seed: int | None = None,
     tag: str = "oof",
 ) -> tuple[np.ndarray, list[dict]]:
     """Fit ``n_splits`` cell-line-grouped folds and return out-of-fold per-cell predictions.
@@ -307,6 +308,17 @@ def oof_predictions(
     :param init_head_bias: initialize each head's bias to that drug's mean over the fold's *fitting*
         lines, so the model starts at the null predictor. Necessary on an uncentred target such as
         raw AUC, where the bias must reach ~0.7 from a default near 0; harmless on a centred one.
+    :param pca_seed: the seed for the per-fold PCA fit, held **separate from the model seed**. They
+        were the same value until 13.08.2026, which made "seed" mean two different things here and in
+        :func:`mil.bag_oof_predictions`: a run over three model seeds also refitted the PCA three
+        times, so the representation moved with the initialisation. That breaks the premise of `4b`'s
+        stage 1, which compares the two architectures **seed by seed** and claims the architecture is
+        the only thing differing between the columns. Defaults to ``config.seed``, the old behaviour,
+        so no existing caller changes silently.
+
+        It is also why an ``X_pca`` sweep was slow: the projection cache keys on this seed
+        (:func:`_fold_key`), so three model seeds meant three full 512-component fits per alpha
+        instead of one.
     :returns: ``(pred, folds)`` -- ``pred`` is (n_cells, len(drugs)) with NaN where a cell was never
         held out, ``folds`` is a per-fold log.
     """
@@ -336,7 +348,10 @@ def oof_predictions(
         fitc, stopc = inner_holdout(groups, trc)
         masks.append((trc, fitc, stopc, vac))
 
-    projections = fold_pca_projections_for(rep, counts_h5ad, [m[1] for m in masks], seed=config.seed)
+    projections = fold_pca_projections_for(
+        rep, counts_h5ad, [m[1] for m in masks],
+        seed=config.seed if pca_seed is None else pca_seed,
+    )
 
     pred = np.full((adata.n_obs, len(drugs)), np.nan, dtype=float)
     folds: list[dict] = []

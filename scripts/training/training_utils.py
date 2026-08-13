@@ -136,6 +136,21 @@ def _masked_mean(per_elem: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
     return (per_elem * mask).sum() / denom
 
 
+def _per_elem_error(config: TrainConfig, preds, targets):
+    """Per-element error under ``config.loss`` -- the quantity both the loss and the monitors use.
+
+    Factored out so the reported curves, the early-stopping criterion and the objective cannot drift
+    apart. They did: the loss honoured ``config.loss`` while both monitors were hard-coded to squared
+    error, so an MAE run trained on absolute error and stopped on squared error.
+    """
+    name = config.loss.lower()
+    if name == "mse":
+        return (preds - targets) ** 2
+    if name == "mae":
+        return (preds - targets).abs()
+    raise ValueError(f"Unknown loss: {config.loss!r} (expected 'mse' or 'mae')")
+
+
 def _make_loss_fn(config: TrainConfig, multitask: bool):
     """Return a callable ``loss_fn(preds, targets, mask=None) -> scalar tensor``.
 
@@ -331,7 +346,7 @@ def train_model(
             optimizer.step()
 
             with torch.no_grad():
-                sq = (preds.detach() - batch_y) ** 2
+                sq = _per_elem_error(config, preds.detach(), batch_y)
                 if multitask:
                     running_train_sq_sum += (sq * batch_mask).sum().item()
                     running_train_n += batch_mask.sum().item()
@@ -362,7 +377,13 @@ def train_model(
                     batch_mask = None
 
                 preds = model(batch_x)
-                sq = (preds - batch_y) ** 2
+                # The validation objective uses the SAME per-element error as the training loss
+                # (Selin, 13.08.2026). It was squared error unconditionally, so an MAE arm was
+                # optimised on one criterion and had its checkpoint chosen by another -- which makes
+                # a loss comparison measure something other than what it claims. Early stopping is
+                # part of the optimisation; the arms are compared afterwards on the common
+                # evaluation metric, not through the stopping rule.
+                sq = _per_elem_error(config, preds, batch_y)
                 if multitask:
                     masked_sq = sq * batch_mask
                     running_val_sq_sum += masked_sq.sum().item()
