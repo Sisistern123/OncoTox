@@ -110,9 +110,25 @@ the inverse-density entry).
 `panel_leaderboard.csv` reports one number per arm and carries no seed band, although the underlying
 `panel_oof_predictions.csv` has three seeds — so a band **could** be computed and has not been.
 
-**My reading, as a reading.** The axis is not closed. +0.021 on one representation with no band
-attached is not enough to close it. Computing the seed band from `panel_oof_predictions.csv` would
-settle it and is cheap, but it needs the aggregation rule (decision 2) first.
+**⚠️ UPDATED 13.08.2026, later the same evening — the rule has now been run.**
+`5_evaluation` §1.8 was executed for the first time and applied item 9A's rule
+(`notebooks/outputs/panel/panel_metrics.csv`, three seeds). Against the `alpha=0` / `mse` / `X_pca`
+incumbent, **all thirteen challengers are blocked**. `alpha=0.5` / `mae` / `X_pca` has the highest
+`order` of any arm in the sweep — **0.2824**, above the ridge control's 0.2767 — and still fails, on
+`values` and `spread_slope`. Raising the density exponent buys ranking and pays for it in calibration
+and absolute error.
+
+**What that leaves you to decide.** The rule returns "no challenger displaces the incumbent", which
+is an answer to item 9A. Whether that *closes* the axis is still yours, because it depends on
+something the rule cannot settle: **whether a guard failure should veto a real gain in the primary
+quantity, or merely be reported alongside it.** As written, the rule vetoes. If you would rather rank
+on `order` and report the guards, `alpha=0.5`/`mae` wins on `X_pca` and the answer reverses.
+
+**My reading, as a reading.** The veto is the right behaviour and I would not change it — a model
+that ranks better while calibrating worse and erring more is not obviously better, and the guards
+exist precisely to say so. So: the axis is answered, `alpha=0` stands, and the earlier "α=0 won"
+sentence turns out to reach the right conclusion by the wrong route. That coincidence is worth naming
+rather than quietly banking.
 
 ---
 
