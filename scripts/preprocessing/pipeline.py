@@ -18,7 +18,9 @@ without a browser, execute them headless (``jupyter nbconvert --execute``).
 
 from __future__ import annotations
 
+import os
 import subprocess
+import sys
 from pathlib import Path
 
 from scripts.layout import (
@@ -141,9 +143,37 @@ def scgpt(
         "--output", str(paths.embed_h5ad),
         "--model-dir", str(model_dir),
     ]
-    print("[scgpt] " + " ".join(cmd))
+    print("[scgpt] " + " ".join(cmd), flush=True)
     paths.embed_h5ad.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(cmd, check=True)
+
+    # The child's output is PIPED AND RELAYED rather than inherited (13.08.2026, Selin). It was
+    # `subprocess.run(cmd, check=True)`, which lets the child write to the parent's own file
+    # descriptors. From a terminal that is what you want. From a Jupyter kernel it is not: Jupyter
+    # captures output by replacing `sys.stdout` at the *Python* level, and a subprocess writes to
+    # the kernel's OS-level fd 1, which goes to the kernel log. Running the gene-set sweep from a
+    # notebook therefore showed an empty cell for ~90 minutes per variant, with no way to tell
+    # progress from a hang. Relaying through `sys.stdout` puts it in the cell -- and in the
+    # nbconvert log too, where it was equally absent.
+    #
+    # `PYTHONUNBUFFERED` is the half that makes it work: a Python child writing to a pipe rather
+    # than a terminal switches to block buffering, so without it the prints arrive in 8 KB batches
+    # and the relay is as silent as what it replaced.
+    #
+    # Raw `read1` chunks, not `for line in ...`: scGPT's embedding loop draws a tqdm bar, whose
+    # updates are separated by `\r` and never by `\n`. Line iteration holds all of them until the
+    # bar finishes -- the entire progress display would arrive at once, after the wait it was meant
+    # to cover. `read1` returns whatever is already there.
+    env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                          env=env) as proc:
+        for chunk in iter(lambda: proc.stdout.read1(4096), b""):
+            sys.stdout.write(chunk.decode("utf-8", "replace"))
+            sys.stdout.flush()
+        code = proc.wait()
+    if code != 0:
+        # Same failure as `check=True`, and the same exception, so callers that catch
+        # CalledProcessError keep working. The output is already above rather than in `e.output`.
+        raise subprocess.CalledProcessError(code, cmd)
 
     if not paths.embed_h5ad.exists():
         raise RuntimeError(
