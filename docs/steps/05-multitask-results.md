@@ -251,11 +251,26 @@ all fifteen (fold × seed) combinations across runs, and `best_val_obj` differs 
 fold 1, seed 42 — the arm's first fold, of the first seed, of the first arm trained. **That is the
 first fit executed in the process.** 179 of §A's 180 fits reproduce exactly; fit number 1 does not.
 
-**Hypothesis, not a finding.** Something is warm on the second fit that is cold on the first — lazy
-`mps` kernel compilation or autotuning, or an allocator/RNG warm-up consumed differently on first
-use. **This has not been tested.** The test that would settle it is one run of §A with the arm order
-reversed: if the instability follows the *first position* rather than the α=0/mse arm, the
-first-fit explanation is right and the fix is a throwaway warm-up fit before the grid.
+**Tested 14.08.2026 — and confirmed, with a complication.** §A was run once with `REPS` reversed, so
+`X_scGPT`/α=0/mse became the first fit instead of `X_pca`/α=0/mse:
+
+| arm | rep | normal order | reversed | moved? |
+|---|---|---|---|---|
+| MLP mse α=0 | `X_scGPT` | 0.2009 | **0.2024** | **yes** |
+| MLP mse α=0 | `X_pca` | 0.2473 | 0.2508 | yes |
+| the other ten | both | — | — | no |
+
+**`X_scGPT`/α=0/mse had read exactly 0.2009 in all five previous executions** while it sat at
+position ~19. Placed first, it moved. That is the confirmation, and it is clean: position causes
+instability.
+
+⚠️ **But it is not the only cause.** `X_pca`/α=0/mse moved as well, to 0.2508, **despite no longer
+being first** — a value still inside its five-run band. So there appear to be **two** first-use
+effects: the first fit of the process, and the first fit that exercises the **PCA path**, which
+computes per-fold projections and is always `X_pca`/α=0/mse whatever order `REPS` is in.
+
+A device warm-up addresses the first. Whether it addresses the second is what the verification runs
+below measure rather than assume.
 
 **What it costs, stated at its real size.** The instability is **0.0091 on one arm**, and it is not
 where the Q1 result lives — §C, §D, §E and the other eleven arms reproduce exactly. But that one arm

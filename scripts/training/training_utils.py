@@ -243,6 +243,49 @@ def _format_per_drug_block(
     )
 
 
+#: Set once the device has done real work in this process. The first fit of a run is
+#: otherwise the first work the backend does, and it is the only fit that does not
+#: reproduce -- see :func:`warm_up_device`.
+_DEVICE_WARMED: set[str] = set()
+
+
+def warm_up_device(device: torch.device) -> bool:
+    """Run one throwaway forward/backward so the first REAL fit is not the first work
+    the backend does. Returns True if it ran, False if this device was already warm.
+
+    **Why this exists (14.08.2026).** Of the 180 fits in ``4a`` section A, exactly one did
+    not reproduce across five executions with identical code, seeds and inputs: fit number
+    one. Eleven of twelve arms were identical to six decimals; within the twelfth,
+    ``best_epoch`` matched in all fifteen (fold x seed) combinations and ``best_val_obj``
+    differed in exactly one -- the first. The measured cost was 0.0091 on that arm's mean
+    per-drug Spearman, which was enough to flip item 9A's verdict, so it is not cosmetic.
+
+    **What it does NOT do: change any result.** ``train_model`` calls ``set_seed`` before
+    this point, so a warm-up here would consume RNG draws the real fit depends on and would
+    silently move every number. The caller therefore re-seeds immediately afterwards, which
+    restores the stream exactly. The throwaway model, its gradients and its optimizer never
+    leave this function.
+
+    The tensors are deliberately tiny and unrelated to any real input: what is being warmed
+    is kernel compilation and allocator state, not anything data-dependent.
+    """
+    key = str(device)
+    if key in _DEVICE_WARMED:
+        return False
+    scratch = nn.Sequential(nn.Linear(8, 8), nn.ReLU(), nn.Linear(8, 2)).to(device)
+    opt = torch.optim.AdamW(scratch.parameters(), lr=1e-3)
+    x = torch.zeros(4, 8, device=device)
+    y = torch.zeros(4, 2, device=device)
+    for _ in range(2):
+        opt.zero_grad()
+        ((scratch(x) - y) ** 2).mean().backward()
+        opt.step()
+    if device.type == "mps":
+        torch.mps.synchronize()
+    _DEVICE_WARMED.add(key)
+    return True
+
+
 def train_model(
     model: nn.Module,
     train_loader: DataLoader,
@@ -265,6 +308,11 @@ def train_model(
     set_seed(config.seed)
 
     device = pick_device()
+    # The warm-up consumes RNG, so the seed is set AGAIN afterwards -- without that this
+    # would move every number in the project rather than only the first fit's.
+    if warm_up_device(device):
+        set_seed(config.seed)
+        print(f"[{tag}] Device warmed (throwaway fit); RNG re-seeded to {config.seed}.")
     print(f"[{tag}] Training on device: {device}")
     model.to(device)
 
