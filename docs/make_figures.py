@@ -177,8 +177,33 @@ def _panel() -> list[str]:
     return pd.read_csv(PANEL_OUT / "panel.csv")["drug_key"].tolist()
 
 
+def _n_candidates() -> int:
+    """How many FDA-approved anticancer compounds CTRPv2 actually screened.
+
+    Read from ``outputs/panel/literature_panel_candidates.csv`` — the set the panel was drawn from,
+    written by ``2_drug_selection`` §3, which states the funnel itself: *"panel: 11 drugs from 57
+    candidates from 150 FDA-approved drugs"* (cell 11) and *"57 of 150 FDA-approved anticancer drugs
+    were screened by CTRPv2 (57 of 120 small molecules)"* (cell 7).
+
+    The tier was hardcoded ``173`` and labelled "FDA / clinical" until 13.08.2026. **173 is not a
+    count of compounds at all** — it is a value of ``n_auc_cc``, the number of *cell lines* with an
+    ``auc_cc`` measurement for one drug, visible in that notebook's cell 9 output. A per-drug
+    cell-line count had been placed in a funnel of drugs.
+
+    Derived rather than typed for the same reason as :func:`_panel`: ``n`` also sets the tier's drawn
+    width, so a stale literal made the funnel the wrong *shape*, not only the wrong number. Both
+    tiers now fail together if either moves.
+    """
+    import pandas as pd
+
+    return len(pd.read_csv(PANEL_OUT / "literature_panel_candidates.csv"))
+
+
 #: The drug panel — the order every figure uses. Read from panel.csv, not maintained here.
 PANEL = _panel()
+
+#: The middle tier of the drug funnel — see :func:`_n_candidates` for why it is not 173.
+N_CANDIDATES = _n_candidates()
 
 
 def box(ax, x, y, w, h, title, lines, edge, fill, title_color=None, dashed=False,
@@ -660,9 +685,15 @@ def build_pipeline_flow():
           "only compounds with a published\nsensitivity determinant", ROW1_CAP)
     ax = fig.add_axes([0.255, 0.615, 0.125, 0.225]); ax.set_xlim(0, 10); ax.set_ylim(0, 10)
     ax.axis("off")
+    # Both lower tiers are derived. They were hardcoded 173 and 8: the first is a per-drug cell-line
+    # count that was never a compound count, the second the void 8-drug panel against a rebuilt one
+    # of 11. `n` also sets the tier's drawn width, so each literal made the funnel the wrong *shape*
+    # as well as the wrong number.
     for i, (n, lab, col) in enumerate([(545, "545  CTRPv2 compounds", "#c3dcef"),
-                                       (173, "173  FDA / clinical", "#6ba7d6"),
-                                       (8, "8  the panel", BLUE)]):
+                                       (N_CANDIDATES,
+                                        f"{N_CANDIDATES}  FDA-approved, screened by CTRPv2",
+                                        "#6ba7d6"),
+                                       (len(PANEL), f"{len(PANEL)}  the panel", BLUE)]):
         half = 4.6 * (0.55 + 0.45 * (n / 545) ** 0.35)
         yb = 7.4 - i * 2.9
         ax.add_patch(mpatches.Polygon(
