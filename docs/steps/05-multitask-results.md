@@ -55,6 +55,107 @@ K=545) rows of the 8-run experiment matrix**
 
 ---
 
+## Q1 on the rebuilt panel — what carries the PCA lead (13.08.2026)
+
+> ✅ **This section is not covered by the page banner above.** It was measured after the pipeline
+> review, on the rebuilt 11-drug panel, the `auc_cc` target and the corrected early stopping — the
+> three grounds the banner names. Every figure below is read from a committed artifact and names it.
+
+**What was asked.** Section A of `notebooks/4a_percell_training.ipynb` put `X_pca` ahead of
+`X_scGPT`. Two explanations had to be excluded before that can be called a property of the
+representations: that the shared trunk was doing the work, and that the eleven-drug panel is a
+scoring set that happens to favour PCA. Sections C and D test one each, changing nothing else.
+
+### C · Capacity does not carry it
+
+`4a` §C, `RUN_SECTION_C = True` → `notebooks/outputs/panel/panel_arch_summary.csv`.
+Grid: two architectures x two representations x three seeds x five folds = 60 fits, at `alpha=0`,
+`loss=mse`. Bands are the seed half-range; "mean" is the mean per-drug out-of-fold Spearman over the
+eleven panel drugs.
+
+| arch | rep | mean | band | vs ridge |
+|---|---|---|---|---|
+| linear | `X_pca` | 0.2608 | ±0.0072 | **−0.0158** |
+| linear | `X_scGPT` | 0.2291 | ±0.0019 | +0.0378 |
+| trunk (128,64) | `X_pca` | 0.2429 | ±0.0173 | **−0.0337** |
+| trunk (128,64) | `X_scGPT` | 0.2047 | ±0.0011 | +0.0133 |
+
+**The Q1 margin survives the capacity change and moves little:** `X_pca` − `X_scGPT` is **+0.0317**
+with a linear head and **+0.0383** with the trunk, both outside the wider of the two seed bands. The
+ordering does not depend on the trunk.
+
+**The smaller head is the better one on both arms** — +0.0179 on `X_pca`, +0.0245 on `X_scGPT`.
+⚠️ On `X_pca` that gain is **1.03× the seed band** (+0.0179 against ±0.0173), i.e. it clears the band
+and no more; on `X_scGPT` it is 12.9× (+0.0245 against ±0.0019). So "the linear head is better" is
+load-bearing for scGPT and barely established for PCA.
+*(Corrected 13.08.2026: an earlier summary put this ratio at 1.6×. The artifact gives 1.03×, which
+makes the PCA-side claim weaker, not stronger.)*
+
+**The training regimes swap with capacity**, which is why "PCA cannot train here" was a statement
+about the trunk rather than the representation — median best epoch, from the same cell:
+
+| arch | `X_pca` | `X_scGPT` |
+|---|---|---|
+| linear | 12 | 2 |
+| trunk | 1 | 8 |
+
+**⚠️ Neither representation clears the ridge control on `X_pca`.** `RidgeCV` on line-mean embeddings
+scores 0.2767, above both PCA arms. A linear model on averaged embeddings beats the per-cell network
+on the representation that wins Q1 — recorded here because it bounds what the per-cell model has
+been shown to buy, and it is visible in `panel_alpha_response.png` as the dashed ridge line sitting
+above the PCA median at every `alpha`.
+
+### D · The evaluation set moves the answer, not the head count
+
+`4a` §D, `RUN_SECTION_D = True` → `notebooks/outputs/panel/panel_heads_summary.csv`. The same design
+with **534 heads** instead of 11, scored twice: on the eleven panel drugs, and on all 534.
+
+| scored on | arch | Q1 margin (`X_pca` − `X_scGPT`) | verdict against the band |
+|---|---|---|---|
+| 11 panel drugs | linear | **+0.0479** | outside |
+| 11 panel drugs | trunk | **+0.0252** | outside |
+| all 534 drugs | linear | **+0.0231** | outside |
+| all 534 drugs | trunk | **−0.0077** | **inside — a tie, and the sign flips** |
+
+The 534-head model still puts `X_pca` ahead on the same eleven drugs, so **head count does not flip
+the ordering**. The same model scored on all 534 halves the margin, and with a trunk tips it into a
+tie with the sign reversed. What the panel and the gene-set sweep disagree about is **which drugs
+are measured on**, not the model — and an earlier test excluded their response spread as the cause.
+
+**⚠️ The caveat that travels with §D wherever it is quoted.** Across all 534 drugs the model barely
+beats the per-drug null: the `vs_null` column runs **+0.00017 to +0.00043**, and for linear/`X_pca`
+it is **−0.00005** — worse than the constant. That is the noise floor, and it is why the sweep's
+ordering was fragile.
+*(Corrected 13.08.2026: an earlier summary gave the lower bound as +0.00002. The artifact's smallest
+positive value is +0.00017.)*
+
+### What this settles about Q1
+
+The margin moves along three axes, all measured:
+
+| axis | from | to | source |
+|---|---|---|---|
+| **Objective** | +0.083 per-cell | bag-level — **not yet computed** | `panel_leaderboard.csv`, MLP `mse` `alpha=0.5` |
+| **Capacity** | +0.0383 trunk | +0.0317 linear | `panel_arch_summary.csv` |
+| **Scoring set** | +0.0479 on 11 drugs | +0.0231 linear / −0.0077 trunk on 534 | `panel_heads_summary.csv` |
+
+⚠️ **The bag-level end of the objective axis is not in any committed artifact.** The MIL predictions
+exist (`notebooks/outputs/mil/mil_oof_predictions.csv`, three seeds, `alpha=0.5`, `mse`), but no
+committed file states the Q1 margin computed on them; `notebooks/outputs/mil/` holds Q2 instruments
+only. Until `5_evaluation` §1.8 writes `panel_metrics.csv`, any statement of the form "the objective
+carries most of the margin" **names a quantity that has not been computed here**.
+
+**Ruled out by measurement, not by argument:** the metric, drug-level response spread, a misuse of
+scGPT (the call matches `Tutorial_Reference_Mapping` from the scGPT repo), and broken embeddings.
+CPM as scGPT's input is correct because its per-cell binning takes quantiles of the cell's own
+non-zero values ([Step 02](02-preprocessing-and-embeddings.md), §*What scGPT is fed*).
+
+**Consequence for how Q1 is stated.** *"PCA beats scGPT"* is not defensible without naming the
+objective and the scoring set: on the full 534-drug catalogue with a trunk the margin is a tie with
+the sign reversed, and near the per-drug noise floor throughout.
+
+---
+
 ## Multi-task masked loss over all 545 CTRPv2 drugs (26.05.2026)
 
 The target artifacts (`obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, the legacy flat
