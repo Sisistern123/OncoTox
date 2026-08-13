@@ -304,7 +304,7 @@ The margin moves along four axes, all measured:
 
 | axis | from | to | source |
 |---|---|---|---|
-| **Objective** | +0.0827 per-cell | **+0.0236 bag** | `panel_metrics.csv`, `alpha=0.5`, `mse` |
+| **Objective** | +0.0827 per-cell | **+0.0265 bag** | `panel_metrics.csv`, `alpha=0.5`, `mse` |
 | **Capacity** | +0.0383 trunk | +0.0317 linear | `panel_arch_summary.csv` |
 | **Scoring set** | +0.0479 on 11 drugs | +0.0231 linear / −0.0077 trunk on 534 | `panel_heads_summary.csv` |
 | **Label supply** | +0.0036 at 25 lines (a tie) | +0.0317 at 103 lines | `panel_curve_summary.csv` |
@@ -316,10 +316,10 @@ and MIL arms through one scorer. At `alpha=0.5`, `mse`, over three seeds:
 | objective | `X_pca` | `X_scGPT` | Q1 margin |
 |---|---|---|---|
 | per-cell (`mlp`) | 0.2754 | 0.1927 | **+0.0827** |
-| bag (`mil`) | 0.2412 | 0.2177 | **+0.0236** |
+| bag (`mil`) | 0.2441 | 0.2177 | **+0.0265** |
 
-**71.5 % of the per-cell margin does not survive the move to a bag objective** — `X_scGPT` gains
-(0.1927 → 0.2177) while `X_pca` loses (0.2754 → 0.2412). This is what makes *"PCA beats scGPT"*
+**68.0 % of the per-cell margin does not survive the move to a bag objective** — `X_scGPT` gains
+(0.1927 → 0.2177) while `X_pca` loses (0.2754 → 0.2441). This is what makes *"PCA beats scGPT"*
 dependent on the objective: the statement is about a per-cell loss, not about the representations.
 
 ### The gene-set sweep, on live numbers — and it puts scGPT ahead at every gene-set size
