@@ -167,6 +167,30 @@ decimals — the same design reached by a different code path.
 refits the PCA on only those cells — is now the more interesting of the two, because the input-side
 explanation is the one still standing. So is a PCA fitted on a *foreign* dataset.
 
+### Reproducibility — re-running the same code with the same seeds does not give the same numbers
+
+`4a` was executed top to bottom in a fresh kernel on 13.08.2026 (1 h 23 min 44 s, 330 fits, clean
+exit) against the artifacts committed earlier the same day. Two independent instabilities showed up.
+
+**1 · One arm of twelve moved in `4a` §A.** `MLP mse alpha=0` on `X_pca` went **0.2541 → 0.2473**.
+The other eleven arms, the ridge control, and the whole of §C, §D and §E reproduced to four decimals
+— §C's and §E's summary tables are identical. So the instability is not general; it is one arm.
+
+**2 · One fold of five moves in the DrEval benchmark, every time it runs.** `OncoMLP (X_pca)` on
+fold 1, normalised Spearman, over three executions: **0.2025 → 0.2776 → 0.2331**. Folds 2–5 are
+byte-identical across all three. That is a spread of **0.075 on a single fold**, against between-arm
+gaps of about 0.03.
+
+**Why it matters more than its size suggests.** Both quantities are used to decide something. The
+first flips item 9A's verdict (above). The second is the external benchmark's only unstable fold, and
+the Gate 5 log had quoted precisely that fold as the benchmark's result. **Any comparison in this
+project whose margin is under ~0.01 is not resolvable by a single run**, and the honest reporting unit
+is a band across repeated executions, not across seeds alone.
+
+**Not diagnosed here.** The likely source is non-deterministic reduction order on the `mps` backend,
+which review item 10 recorded as *not* reproducing under current code. It does. Which operation, and
+whether a deterministic fallback fixes it, is not established and is not something this run tested.
+
 ### What this settles about Q1
 
 The margin moves along four axes, all measured:
@@ -195,14 +219,25 @@ dependent on the objective: the statement is about a per-cell loss, not about th
 
 The rule (`5_evaluation` §1.3, Selin's: win on `order`, non-inferior on `top_of_order`, `values` and
 `spread_slope`, each margin the quantity's own seed band, half-range over three seeds) was applied
-for the first time in the same run. Against the `alpha=0` / `mse` / `X_pca` incumbent, **all thirteen
-challengers are blocked**, most on `order`, `values` and `spread_slope` together.
+for the first time on 13.08.2026. **It was applied twice, four hours apart, and it gave two different
+answers.**
 
-⚠️ **The arm with the highest `order` of any in the sweep is among the blocked ones.**
-`alpha=0.5` / `mae` / `X_pca` scores **0.2824**, above the ridge control's 0.2767 — and fails on
-`values` and `spread_slope`. So the sweep does not select a winner: raising the density exponent
-buys ranking and pays for it in calibration and absolute error. That is the rule's answer, not a
-reading of it.
+| run | incumbent `order` | verdict |
+|---|---|---|
+| `4a` as committed at `02f0fe6` | 0.2541 | **no challenger wins** — all thirteen blocked |
+| `4a` re-executed top to bottom, 23:30 | **0.2473** | **`alpha=0` / `mae` / `X_pca` WINS** |
+
+Nothing changed between them but the run. Same code, same seeds, same inputs; the incumbent arm's
+`order` fell by **0.0068** and that was enough to let a challenger through. Every other arm in the
+leaderboard is identical to four decimals across the two runs.
+
+⛔ **What this means for item 9A, stated plainly: the sweep's answer is not stable, and the
+instability is the same size as the effect.** The gap it turns on (incumbent vs `mae` at
+`alpha=0`) is +0.0076 in one run and +0.0144 in the other. A decision rule cannot resolve a
+difference smaller than the run-to-run variation of its own inputs, and this one is not.
+
+⚠️ **This refutes review item 10's finding that "the `mps` nondeterminism does not reproduce under
+current code."** It reproduces. See §*Reproducibility* below.
 
 ### Counter-evidence — the external benchmark does not separate the arms
 
@@ -214,15 +249,16 @@ Re-executed 13.08.2026 against the current artifacts (1 min 57 s, clean):
 
 | fold | `X_pca` | `X_scGPT` | ahead |
 |---|---|---|---|
-| 1 | 0.2776 | 0.2439 | PCA |
+| 1 | **0.2331** ⚠️ unstable | 0.2439 | scGPT |
 | 2 | 0.2764 | 0.2903 | scGPT |
 | 3 | **0.3576** | 0.2657 | PCA |
-| 4 | 0.2625 | 0.2638 | tie |
+| 4 | 0.2625 | 0.2638 | scGPT, by 0.0013 |
 | 5 | 0.2581 | 0.2962 | scGPT |
 
-**Two folds each and one tie.** The fold-to-fold spread on `X_pca` alone (0.2581–0.3576) is larger
-than any between-arm gap in the table. Under this protocol the two representations are **not
-distinguished** — which is the finding, and it is a different one from either arm winning.
+The fold-to-fold spread on `X_pca` alone (0.2331–0.3576) is larger than any between-arm gap in the
+table, and **fold 1 is not stable across runs at all** (0.2025 → 0.2776 → 0.2331 over three
+executions; folds 2–5 are byte-identical every time). Under this protocol the two representations are
+**not distinguished**, and the fold that most affects the tally is the one that will not sit still.
 
 > ⛔ **Correction 13.08.2026 — a fold-1 value had been reported as the result.** The Gate 5 execution
 > log recorded *"scGPT edges PCA (0.747 vs 0.738 raw; 0.244 vs 0.203 normalised)"*. Those figures are

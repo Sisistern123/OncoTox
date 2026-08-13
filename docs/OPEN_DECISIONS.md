@@ -93,7 +93,7 @@ against the null model) as the item-9A criterion. On mean per-drug Spearman, fro
 
 | arm | X_pca | X_scGPT |
 |---|---|---|
-| MLP mse alpha=0 | 0.2541 | 0.2009 |
+| MLP mse alpha=0 | 0.2541 → 0.2473 ⚠️ unstable | 0.2009 |
 | MLP mse alpha=0.5 | **0.2754** | 0.1927 |
 | MLP mae alpha=0 | 0.2617 | 0.2403 |
 | MLP mae alpha=0.5 | **0.2824** | 0.2395 |
@@ -124,11 +124,28 @@ something the rule cannot settle: **whether a guard failure should veto a real g
 quantity, or merely be reported alongside it.** As written, the rule vetoes. If you would rather rank
 on `order` and report the guards, `alpha=0.5`/`mae` wins on `X_pca` and the answer reverses.
 
-**My reading, as a reading.** The veto is the right behaviour and I would not change it — a model
-that ranks better while calibrating worse and erring more is not obviously better, and the guards
-exist precisely to say so. So: the axis is answered, `alpha=0` stands, and the earlier "α=0 won"
-sentence turns out to reach the right conclusion by the wrong route. That coincidence is worth naming
-rather than quietly banking.
+**⛔ CORRECTED AGAIN, 23:35 the same evening — the rule gave a different answer on a re-run.**
+`4a` was then executed top to bottom in a fresh kernel. The incumbent arm's `order` fell from 0.2541
+to **0.2473** — same code, same seeds, same inputs — and on the re-evaluated rule **`alpha=0` / `mae`
+/ `X_pca` now WINS**, where four hours earlier all thirteen challengers were blocked.
+
+**So the axis is not answered, and the reason is worse than an open choice.** The gap the verdict
+turns on is +0.0076 in one run and +0.0144 in the other, and the run-to-run instability that moved it
+is of the same size as the effect. A decision rule cannot resolve a difference smaller than the
+variation in its own inputs.
+
+**What I would put to you, and it is not the α question any more.** Before α is decided, the
+comparison needs an error bar that includes **re-execution**, not only seeds. Everything in this
+project is currently reported with a seed band; `4a` §A now demonstrates that a fresh run of the same
+seeds moves one arm by more than a third of that band. Options: report a band over N repeated
+executions (costly — `4a` is 1 h 23 min a run); find and fix the non-determinism (review item 10
+recorded it as *not* reproducing under current code, which tonight refutes); or state the loss
+comparison as unresolved at this noise level and stop there.
+
+**My reading, as a reading.** State it as unresolved and say why. Both verdicts are defensible
+readings of the same design, which is exactly what "unresolved" means, and presenting either one as
+*the* answer would be presenting a coin-flip as a finding. The guard-veto question below is still
+real, but it is downstream of this.
 
 ---
 
