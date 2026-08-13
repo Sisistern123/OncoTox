@@ -239,14 +239,14 @@ must say so. That is R1's accepted cost surfacing exactly where it was predicted
 | 5 | `4a_percell_training` | ✅ **clean** | 20/20 cells. **PCA beats scGPT on every arm** (0.266 vs 0.190 at α=0.5) and **the ridge control on line means beats every MLP** (0.274). Per-cell arrays + `panel_within_line_spread.csv` written, so 4b's stage 1 has its anchor. ⚠️ One seed |
 | 6 | `4b_mil_training` | ✅ **clean, first ever execution** | 12/12 cells, all 11 stage tables written. **Q2(a) POSITIVE for both representations**, veto does not fire. ⚠️ But stage 7's instrument sensitivity is **AUROC 0.518 / 0.537** — barely above chance — and for `X_pca` the confounds explain **83 %** as much as the signal reproduces. Ran three times: once before D3 existed, once on a patch that silently did not apply (**M2**), once correct |
 | 7 | `5_evaluation` §1 | ⚠️ **runs, but is definitions-only** | 7/7 cells, no errors. It loads 4a's out-of-fold table (9,810 rows, 6 arms, 11 drugs, 153 CV lines) and **defines** all four scorers — but **no cell applies them**: `panel_metrics.csv` is never written and `mil_oof_predictions.csv` is never read, so MIL is not scored. See the note below |
-| 8 | `analysis/qc/hvg_sweep_build` | — | |
-| 9 | `analysis/qc/verify_variants` | — | |
-| 10 | `analysis/qc/gene_symbol_rescue` | — | |
-| 11 | `analysis/harmonization/drug_coverage` | — | |
-| 12 | `analysis/harmonization/cell_line_join_verification` | — | |
-| 13 | `analysis/evaluation/diagnostics` | — | |
-| 14 | `analysis/evaluation/dreval_benchmark` | — | |
-| 15 | `5_evaluation` §2/§3 | — | |
+| 8 | `analysis/qc/hvg_sweep_build` | ⏭️ **deliberately not run** | R1 settled the re-embedding scope at `hvg5000` + `all_genes`; rebuilding `hvg1000/2000/3000` would overturn it — see **D6** |
+| 9 | `analysis/qc/verify_variants` | ✅ **clean** (3rd attempt) | 17/18 cells (one is empty). Sweep retrained — `hvg_sweep_auc.csv` + curve written; counts npz regenerated rather than replayed. Failed twice first: **B4**, then **B5** |
+| 10 | `analysis/qc/gene_symbol_rescue` | ✅ **clean** | 5/5 |
+| 11 | `analysis/harmonization/drug_coverage` | ✅ **clean** | 5/5 |
+| 12 | `analysis/harmonization/cell_line_join_verification` | ✅ **clean** | 4/4 |
+| 13 | `analysis/evaluation/diagnostics` | ✅ **clean** (2nd attempt) | 9/9, 8 artifacts. First attempt failed on **B3** |
+| 14 | `analysis/evaluation/dreval_benchmark` | ✅ **clean** | 7/7. ⚠️ **scGPT edges PCA here** (0.747 vs 0.738 raw; 0.244 vs 0.203 normalised) — the opposite direction to the internal panel result. OncoMLP clears `NaiveMeanEffects` on both arms |
+| 15 | `5_evaluation` §2/§3 | ⏸️ **not yet written** | §2 and §3 absorb `diagnostics` and `dreval_benchmark`, which have now run. The absorption itself is unwritten code, not a failed run |
 
 ---
 
@@ -331,3 +331,19 @@ rule cannot be evaluated on this run: there is no seed band to measure a margin 
 six arms exist to settle — **is not settled by this run**, and cannot be until 4a is re-run over at
 least three seeds. The six arms are computed and their per-drug correlations are on disk; what is
 missing is the rule that turns them into a winner.
+| **B3** | `diagnostics` cell 15 | A bare `Path('outputs')` where every other path is `ROOT`-anchored. `nbconvert` runs a notebook from **its own directory**, so it resolved to `notebooks/analysis/evaluation/outputs/`. It only ever worked when launched by hand from `notebooks/`. | `ROOT`-anchored, matching `OUT` two cells above. Swept the other twelve notebooks: no others. |
+| **B4** | `verify_variants` cell 16 | `obs['viability_paclitaxel']` is a leftover of the **retired single-task paclitaxel progression** and **nothing in `scripts/` writes it any more**, so the rebuilt h5ads do not carry it. | Replaced with paclitaxel's `Y_ctrp` column — the same quantity on the current target — and the axis **relabelled** to `auc_cc`, because it is a different measure and must not sit under an unchanged label. |
+| **B5** | `verify_variants` cell 25 | **The missing `counts_h5ad` had a FOURTH call site.** Gate 1 found three in `4a` and I reported three; §9's sweep is the fourth and would have crashed R5 exactly as the others would have crashed R4. | Each variant passes **its own** counts file, since the gene sets differ across the sweep. |
+
+### On B5, which is the one worth keeping
+
+`scripts/gate/check_calls.py` **did** enumerate this precondition — `cv.py:246
+fold_pca_projections_for <- counts_h5ad` appeared in its output at Gate 4. I then traced **four**
+callers by hand, found them satisfied, and moved on. Its own docstring says it *"enumerates
+preconditions; it does not prove the callers satisfy them"* — I wrote that limitation and then
+relied on the check as though it did not exist.
+
+**The enumeration was correct; my use of it was not.** A list of 26 preconditions is only worth
+something if every caller of each is traced, and I traced the ones I expected to matter. That is the
+same shape as everything else this review has found: the check reported honestly, and the reader
+supplied the false confidence.
