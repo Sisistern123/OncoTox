@@ -1099,6 +1099,26 @@ quantity's own seed band measured from the same ≥3 seeds, so they resolve them
 cache and would not have survived the session. Nothing here may start before the review above is
 finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 
+> ### ✅ STATUS 13.08.2026 — R1 to R5 have run; the boxes below were never ticked
+>
+> The individual checkboxes in this section are **stale**: they were written before the sweep and not
+> updated as it executed. What actually happened, with the commit that carries it:
+>
+> | | state | evidence |
+> |---|---|---|
+> | **R1** | done, then **widened** — all five variants re-embedded, not the two decided | the five `SCP542_CCLE*.h5ad` sets; `a788bf9` set `hvg_sweep_build` to rebuild |
+> | **R2** | done — preprocessing re-run end to end | Gate 5 chain `3d69332` → `824eebe`; `3_representations` wrote targets, splits, PCA |
+> | **R3** | done — the committed read-only artifacts were refreshed | `02f0fe6` (UMAPs, `variants.png`, `hvg_sweep_auc.csv`, `gene_symbol_rescue.csv`) |
+> | **R4** | done — `4a` §A retrained on **three seeds** with the early-stopping fix, plus §C, §D and §E | `02f0fe6`, `84bb32f`, and section E on 13.08.2026 |
+> | **R5** | done — all six stale analysis notebooks re-executed against the three-seed `4a` | 13.08.2026, `5_evaluation` first; five of them in one pass |
+> | **R6** | **partial** — [Step 05](./steps/05-multitask-results.md) now carries §C, §D, §E, the bag-level margin and the item-9A verdict. The **report's Results section is still empty** (emptied 12.08.2026 and not rewritten) | this file, [Step 05](./steps/05-multitask-results.md) |
+>
+> **The `splits/split_ctrp.csv` sub-item under R2 is satisfied** — the file exists, is tracked, and
+> holds 181 lines, so `frozen_split` no longer redraws per run.
+>
+> Nothing below this banner has been re-verified box by box. Treat the ticks as the state on
+> 11.08.2026 and this table as the state now.
+
 > ### ⭐ Every unarchived notebook is re-run, in a dependency-respecting order (Selin, 13.08.2026)
 >
 > **This governs R2–R5 and takes precedence over their per-item notebook lists wherever the two
