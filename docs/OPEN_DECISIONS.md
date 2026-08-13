@@ -118,13 +118,25 @@ turns on is +0.0076 in one run and +0.0144 in the other, and the run-to-run inst
 is of the same size as the effect. A decision rule cannot resolve a difference smaller than the
 variation in its own inputs.
 
-**What I would put to you, and it is not the α question any more.** Before α is decided, the
-comparison needs an error bar that includes **re-execution**, not only seeds. Everything in this
-project is currently reported with a seed band; `4a` §A now demonstrates that a fresh run of the same
-seeds moves one arm by more than a third of that band. Options: report a band over N repeated
-executions (costly — `4a` is 1 h 23 min a run); find and fix the non-determinism (review item 10
-recorded it as *not* reproducing under current code, which tonight refutes); or state the loss
-comparison as unresolved at this noise level and stop there.
+**✅ The band was measured, 14.08.2026 — five executions.** The instability is far narrower than two
+runs suggested: **eleven of twelve arms are identical to six decimals across all five**, and within
+the twelfth it is a single fit — fold 1, seed 42, the **first fit executed in the process**. 179 of
+§A's 180 fits reproduce exactly. Full record in
+[Step 05 §Reproducibility](./steps/05-multitask-results.md#reproducibility--measured-over-five-executions-and-it-is-one-fit-not-the-pipeline).
+
+**That changes what is at stake here.** The pipeline is not unreliable; one fit is. But that fit is
+the α=0/mse `X_pca` arm, which is item 9A's **incumbent**, so its 0.0091 range still decides the
+verdict: at 0.2541 nothing clears the bar, at 0.2450–0.2490 `alpha=0`/`mae` does. Four of five runs
+fall below the flip point.
+
+**Three ways out, and the cheapest is now the most attractive.**
+
+1. **Fix the first-fit instability.** Predicted mechanism: something warm on the second fit is cold on
+   the first. The test is one §A run with the arm order reversed (~38 min) — if the wobble follows
+   the first *position*, a throwaway warm-up fit before the grid removes it and the comparison becomes
+   exactly reproducible. **Not run**, and the mechanism is a hypothesis.
+2. **Report a band over executions.** Now cheap for the honest version: only the one arm needs it.
+3. **State the loss comparison unresolved** and stop.
 
 **My reading, as a reading.** State it as unresolved and say why. Both verdicts are defensible
 readings of the same design, which is exactly what "unresolved" means, and presenting either one as
@@ -142,18 +154,24 @@ recorded where it applies — in the §C, §D and §E banners of
 
 ---
 
-## 5 · `5_evaluation` sections 2 and 3 do not exist
+## 5 · ~~`5_evaluation` sections 2 and 3~~ — SETTLED 14.08.2026
 
-**Blocks:** whether `5_evaluation` can be called complete.
+**Written and executed (Selin: promote everything each notebook computes).** §2 absorbs
+`analysis/evaluation/diagnostics` — all five CSVs, the three figures named rather than re-rendered.
+§3 absorbs `analysis/evaluation/dreval_benchmark` — the per-fold table, DrEval's own baseline
+leaderboard, and the normalized read on the pipeline's own predictions.
 
-**The choice.** Whether to write them before the meeting.
+Both **read**; neither recomputes. Every number keeps the single owner that wrote it, so nothing is
+stated in two places. Nothing was selected on your behalf: all artifacts each notebook produces are
+promoted, in the order those notebooks compute them.
 
-Gate 5's execution log, row 15, records them as *"not yet written"*: they are meant to absorb
-`analysis/evaluation/diagnostics` and `analysis/evaluation/dreval_benchmark`, both of which have run.
-Writing them is new code, and the absorption involves choosing which of each notebook's results are
-promoted into the evaluation chain — a selection, and therefore yours.
+Two things the absorption surfaced that were not visible before:
 
-**My reading, as a reading.** Do not write them tonight. Both notebooks stand on their own and their
-outputs are committed; folding them in is a structural improvement that changes no number, and it is
-the kind of work that goes wrong when done against a deadline without the person who owns the
-selection.
+- **DrEval does not separate the arms, and now says so numerically.** The spread *within* `X_pca`
+  across folds is **0.1245**; the largest gap *between* the arms in any fold is **0.0918**.
+- **Under DrEval's own normalization applied to our predictions, `X_pca` leads `X_scGPT` at every
+  α** (0.3247/0.3310/0.3169 against 0.2910/0.2743/0.2559). The external check does not contradict
+  Q1 — the earlier reading that it "pointed the other way" rested on one fold of one run.
+
+---
+
