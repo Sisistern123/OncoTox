@@ -12,45 +12,12 @@ Ranked by what it blocks for the 14.08.2026 lab meeting.
 
 ---
 
-## 1 · `worktree-docs-report-post-rerun` — merge, discard, or push
+## 1 · ~~`worktree-docs-report-post-rerun`~~ — SETTLED 14.08.2026
 
-**Blocks:** nothing tonight. It blocks the repository being in a final state.
-
-**The choice.** The branch holds two commits that are not on `main`:
-
-| commit | subject |
-|---|---|
-| `7077096` | docs: retire the two stop-the-world banners — the rerun happened and Q1 reversed |
-| `49611ef` | report: write the results from the rerun — both questions, with what each does not settle |
-
-They describe the **previous** re-run — the one-seed 4a that Gate 5 recorded
-(`docs/gate5-rerun-report.md`, execution log row 5, *"⚠️ One seed"*). The artifacts they were written
-against were replaced on 13.08.2026 at 17:41 by `02f0fe6`, which committed a three-seed 4a with a
-corrected early-stopping rule.
-
-**Options.**
-
-- **Merge** — pulls prose describing superseded numbers into `main`. The banner-retirement half of
-  `7077096` is work that still needs doing, but `49611ef`'s results section is written against
-  numbers that no longer hold.
-- **Discard** (`git branch -D worktree-docs-report-post-rerun`) — loses both, including the banner
-  wording, which would then be rewritten from scratch.
-- **Push the branch without merging** — preserves it on the remote without putting it on `main`.
-  Costs a remote branch you would later clean up, and puts superseded conclusions somewhere they can
-  be read as current.
-- **Leave it local, unmerged** — what is in force now. The commits survive in the shared `.git`
-  (branch refs are not stored in the worktree, so they outlive the worktree directory).
-
-**The assumption underneath.** That `49611ef`'s results section cannot be salvaged by editing. It
-would have to be checked paragraph by paragraph against the three-seed artifacts; whether that is
-cheaper than rewriting is a judgement about the prose, which has not been made.
-
-**My reading, as a reading.** Do not push and do not merge. Discard `49611ef` and rewrite the
-banner retirement directly on `main`, because the banners have to be corrected tonight anyway and a
-merge would conflict with that work. But the branch is costing nothing where it sits, so leaving it
-is equally defensible and is what I have done.
-
-**Not done by me:** nothing on this branch was merged, pushed, deleted, or edited.
+**Discarded (Selin).** The worktree was removed and the branch deleted. What it contained, why it was
+discarded rather than merged, and how to get it back live in
+[Corrections § Dead ends](./steps/corrections-and-dead-ends.md#worktree-docs-report-post-rerun--a-results-section-written-against-the-previous-run).
+Numbering is kept so earlier references still resolve.
 
 ---
 
@@ -149,25 +116,12 @@ real, but it is downstream of this.
 
 ---
 
-## 4 · `RUN_SECTION_C`, `RUN_SECTION_D`, `RUN_SECTION_E` are all committed as `True`
+## 4 · ~~The three section flags in `4a`~~ — SETTLED 14.08.2026
 
-**Blocks:** nothing scientific. It sets the cost of reproducing `4a`.
-
-**The choice.** Whether the three section flags in `notebooks/4a_percell_training.ipynb` stay `True`
-in the committed notebook. Each section's own banner says to set it back to `False` once the question
-is answered; all three are `True`, because that is what produced the stored outputs.
-
-**What each option implies.** Left at `True`, a top-to-bottom run of `4a` retrains
-**90 (A) + 60 (C) + 60 (D) + 120 (E) = 330 fits**, of which 240 answer questions already answered.
-Set to `False`, a top-to-bottom run reproduces section A only and the other three print their skip
-message — so the notebook stops regenerating the artifacts its own markdown discusses.
-
-**The assumption underneath.** That "reproducible" means a fresh clone regenerates the artifacts,
-rather than that the notebook is cheap to re-run.
-
-**My reading, as a reading.** Leave all three `True`. A notebook whose committed flags do not
-reproduce its committed outputs is the defect class this review has been finding all week; the cost
-is wall-clock, which is recoverable, and the alternative costs reproducibility, which is not.
+**All three stay `True` (Selin).** A full top-to-bottom run of `4a` is therefore 330 fits, about
+1 h 24 min, and it reproduces every artifact the notebook's own markdown discusses. The reasoning is
+recorded where it applies — in the §C, §D and §E banners of
+`notebooks/4a_percell_training.ipynb` — rather than here.
 
 ---
 

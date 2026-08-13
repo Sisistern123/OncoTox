@@ -1216,6 +1216,36 @@ this is not re-tested; it is recorded so the entry is not read as broader than i
 
 Directions that were investigated and abandoned. Kept so they are not re-opened without a reason.
 
+### `worktree-docs-report-post-rerun` — a Results section written against the previous run
+
+**Discarded 14.08.2026 (Selin).** Two commits, never merged:
+
+| commit | subject |
+|---|---|
+| `7077096` | docs: retire the two stop-the-world banners — the rerun happened and Q1 reversed |
+| `49611ef` | report: write the results from the rerun — both questions, with what each does not settle |
+
+**What it contained.** 284 insertions across six files, the substantial part being **186 lines into
+`report/sections/04_results.tex`** — a written Results section, where `main`'s has been deliberately
+empty since 12.08.2026. Also touched `01_abstract.tex`, `05_discussion.tex`,
+`06_limitations_and_outlook.tex`, `docs/TODO.md` and `docs/project_progress.md`.
+
+**Why it was discarded rather than merged.** Its numbers come from the **one-seed** `4a` that Gate 5
+recorded (execution log row 5, *"⚠️ One seed"*). That run was superseded twice over on 13.08.2026:
+first by the three-seed regeneration committed in `02f0fe6`, then by the full top-to-bottom
+re-execution in `9732b6f`. Merging it would have pulled prose describing a two-generations-old run
+into `main`, and would have conflicted with the banner corrections landed in `130bfce` — which
+retire the same two banners `7077096` was retiring, from the current state rather than that one.
+
+**It is recoverable.** The branch was exported before deletion:
+
+    /Users/selin/.claude/handoff/oncotox-discarded-branch-post-rerun.patch    (555 lines, 36,892 bytes)
+    reapply with:  git am < that file
+
+The commits also survive in the reflog until garbage collection. **The Results section is worth
+re-reading before it is rewritten** — its structure and its account of what each question does *not*
+settle are independent of the numbers that went stale.
+
 ### Migrating the cell-line join to persistent identifiers
 
 **Planned** since 28.07.2026 as review item 2B: replace the `ccl_name_norm` join key (lowercased,
