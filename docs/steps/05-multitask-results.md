@@ -229,57 +229,74 @@ does not survive a re-run, and it does not survive a change of scoring conventio
 `notebooks/outputs/mil/mil_oof_predictions.csv`, a separate file this comparison does not read, so
 the bag-objective axis is not re-scored under the four conventions.
 
-### Reproducibility — measured over five executions, and it is one fit, not the pipeline
+### Reproducibility — eight executions, and the instability is one *configuration*
 
-`4a` §A was executed **five independent times** with identical code, seeds and inputs: the run
-committed in `02f0fe6`, the full top-to-bottom re-run in `9732b6f`, and three more on 14.08.2026
-(~38 min each). Every arm's mean per-drug Spearman was captured each time —
+`4a` §A was executed **eight independent times**: five in normal order, one with `REPS` reversed, and
+two with a device warm-up active. Every arm captured each time —
 `notebooks/outputs/panel/panel_execution_band.csv`, built by
-`scripts/evaluation/aggregation_comparison.py`'s sibling procedure and reproducible from the
-committed notebook.
+`scripts/evaluation/build_execution_band.py`.
 
-| arm | rep | exec 1 | exec 2 | exec 3 | exec 4 | exec 5 | range |
-|---|---|---|---|---|---|---|---|
-| MLP mse α=0 | `X_pca` | 0.2541 | 0.2473 | 0.2459 | 0.2490 | 0.2450 | **0.0091** |
-| *the other eleven arms* | both | — | — | — | — | — | **0.0000** |
+| arm | rep | range over 8 runs |
+|---|---|---|
+| MLP mse α=0 | `X_pca` | **0.0091** |
+| MLP mse α=0 | `X_scGPT` | **0.0015** |
+| the other twelve rows, incl. the ridge control | both | **0.0000** |
 
-**Eleven of twelve arms are identical to six decimal places across all five runs.** The pipeline is
-deterministic. Exactly one arm is not.
+**Twelve of fourteen rows are identical to six decimal places across all eight runs.** Every `mae`
+arm, both `alpha=0.5` and `alpha=1` `mse` arms, and `RidgeCV`. **The pipeline is deterministic; one
+configuration is not.**
 
-**And it is one *fit*, not one arm.** Within that arm, the fold log's `best_epoch` is identical in
-all fifteen (fold × seed) combinations across runs, and `best_val_obj` differs in exactly **one**:
-fold 1, seed 42 — the arm's first fold, of the first seed, of the first arm trained. **That is the
-first fit executed in the process.** 179 of §A's 180 fits reproduce exactly; fit number 1 does not.
+**The eight runs separate two causes that five could not.**
 
-**Tested 14.08.2026 — and confirmed, with a complication.** §A was run once with `REPS` reversed, so
-`X_scGPT`/α=0/mse became the first fit instead of `X_pca`/α=0/mse:
+- **A first-fit effect, real but small.** `X_scGPT`/α=0/mse read **0.2009 in all seven normal-order
+  runs** and **0.2024** in the one where `REPS` was reversed and it became the first fit of the
+  process. That is a controlled demonstration: same arm, same code, same seeds, only its position
+  changed.
+- **An arm-level fragility, larger and position-independent.** `X_pca`/α=0/mse moves in *every*
+  condition — first or nineteenth, warm or cold — spanning 0.0091. It is the arm with the **earliest
+  median `best_epoch` of all twelve (1.0**, against 9.0 for the highest), with **8 of its 15 fits
+  stopping at epoch 1** against 44 of 180 overall. It barely trains, so its score sits near the
+  head-bias initialisation, which is precisely where numeric jitter shows.
 
-| arm | rep | normal order | reversed | moved? |
-|---|---|---|---|---|
-| MLP mse α=0 | `X_scGPT` | 0.2009 | **0.2024** | **yes** |
-| MLP mse α=0 | `X_pca` | 0.2473 | 0.2508 | yes |
-| the other ten | both | — | — | no |
+⛔ **A device warm-up was tried and does not fix it.** A throwaway fit before the grid (provably
+result-neutral: the RNG stream is restored by re-seeding, verified) gave **0.2525** and **0.2480** on
+two runs — different from each other, both inside the pre-fix range. The change was reverted
+(`e6c087d`); the commit that adds it (`664f3e8`) can be reapplied unchanged if the first-fit effect
+is ever worth chasing on its own.
 
-**`X_scGPT`/α=0/mse had read exactly 0.2009 in all five previous executions** while it sat at
-position ~19. Placed first, it moved. That is the confirmation, and it is clean: position causes
-instability.
+⚠️ **Review item 10's "the `mps` nondeterminism does not reproduce under current code" is wrong**, but
+narrowly: it reproduces in one configuration of six, which is why a smaller check missed it.
 
-⚠️ **But it is not the only cause.** `X_pca`/α=0/mse moved as well, to 0.2508, **despite no longer
-being first** — a value still inside its five-run band. So there appear to be **two** first-use
-effects: the first fit of the process, and the first fit that exercises the **PCA path**, which
-computes per-fold projections and is always `X_pca`/α=0/mse whatever order `REPS` is in.
+### Item 9A — settled 14.08.2026: the rule cannot select a winner, and why
 
-A device warm-up addresses the first. Whether it addresses the second is what the verification runs
-below measure rather than assume.
+The rule (`5_evaluation` §1.3: win on `order`, non-inferior on `top_of_order`, `values` and
+`spread_slope`, each margin the quantity's own seed band, judged under the line-level pooled
+convention decided above) was applied twice and returned two different answers:
 
-**What it costs, stated at its real size.** The instability is **0.0091 on one arm**, and it is not
-where the Q1 result lives — §C, §D, §E and the other eleven arms reproduce exactly. But that one arm
-is the item-9A **incumbent**, so a 0.0091 wobble decides the loss comparison's verdict
-(see below). Any margin under ~0.01 that involves the α=0/mse `X_pca` arm is not resolvable by a
-single run; every other comparison in this section is.
+| incumbent (`α=0`/`mse`/`X_pca`) `order` | verdict |
+|---|---|
+| 0.2541 | no challenger wins — all thirteen blocked |
+| 0.2473 | **`α=0` / `mae` / `X_pca` wins** |
 
-⚠️ **Review item 10's finding that "the `mps` nondeterminism does not reproduce under current code"
-is wrong, but only just** — it reproduces in one fit of 180, which is why a smaller check missed it.
+**The verdict flips inside the incumbent's own measured band (0.2450–0.2541).** So the rule as
+specified cannot settle item 9A — not because the rule is wrong, but because **its reference point is
+the single unstable configuration in the sweep**.
+
+**Two independent reasons that reference point is a poor one**, both measured rather than argued:
+
+1. It is the **only** arm whose value depends on the run (above).
+2. It is **last under every scoring convention** — line/pooled, line/per-fold, cell/pooled and
+   cell/per-fold all rank `α=0` bottom on both losses
+   (§*The aggregation convention*).
+
+**What is therefore settled.** The six-arm loss comparison **does not select a winner under the rule
+as specified**, and the blocker is identified: an incumbent that neither trains nor reproduces.
+**What is not settled, and is Selin's:** which arm should be the incumbent instead. Any of the twelve
+stable rows would make the rule evaluable; choosing among them is a decision about what the
+comparison is anchored to, not a measurement. Recorded in `docs/OPEN_DECISIONS.md`.
+
+⚠️ **Do not report "α=0 wins" or "MAE wins".** Both are readings of the same design at different
+points of one arm's noise, and neither is a result.
 
 ### What this settles about Q1
 
@@ -304,63 +321,6 @@ and MIL arms through one scorer. At `alpha=0.5`, `mse`, over three seeds:
 **71.5 % of the per-cell margin does not survive the move to a bag objective** — `X_scGPT` gains
 (0.1927 → 0.2177) while `X_pca` loses (0.2754 → 0.2412). This is what makes *"PCA beats scGPT"*
 dependent on the objective: the statement is about a per-cell loss, not about the representations.
-
-### The item-9A rule, evaluated — no arm wins
-
-The rule (`5_evaluation` §1.3, Selin's: win on `order`, non-inferior on `top_of_order`, `values` and
-`spread_slope`, each margin the quantity's own seed band, half-range over three seeds) was applied
-for the first time on 13.08.2026. **It was applied twice, four hours apart, and it gave two different
-answers.**
-
-| run | incumbent `order` | verdict |
-|---|---|---|
-| `4a` as committed at `02f0fe6` | 0.2541 | **no challenger wins** — all thirteen blocked |
-| `4a` re-executed top to bottom, 23:30 | **0.2473** | **`alpha=0` / `mae` / `X_pca` WINS** |
-
-Nothing changed between them but the run. Same code, same seeds, same inputs; the incumbent arm's
-`order` fell by **0.0068** and that was enough to let a challenger through. Every other arm in the
-leaderboard is identical across both.
-
-**Five executions later, the incumbent's range is 0.2450–0.2541** (§*Reproducibility*), so the
-verdict depends on which run you ask: at 0.2541 no challenger clears the bar, and at 0.2450–0.2490
-`alpha=0` / `mae` does. Four of the five runs put it below the flip point, but "four of five" is not
-a basis on which to declare a winner.
-
-⛔ **What this means for item 9A, stated plainly: the sweep's answer is not stable, and the
-instability is the same size as the effect.** The gap it turns on (incumbent vs `mae` at
-`alpha=0`) is +0.0076 in one run and +0.0144 in the other. A decision rule cannot resolve a
-difference smaller than the run-to-run variation of its own inputs, and this one is not.
-
-⚠️ **This refutes review item 10's finding that "the `mps` nondeterminism does not reproduce under
-current code."** It reproduces. See §*Reproducibility* below.
-
-### Counter-evidence — the external benchmark does not separate the arms
-
-`notebooks/analysis/evaluation/dreval_benchmark.ipynb` →
-`notebooks/outputs/dreval/dreval_lco_results.csv`, five leave-cell-line-out folds. Normalised
-Spearman for the two OncoMLP arms:
-
-Re-executed 13.08.2026 against the current artifacts (1 min 57 s, clean):
-
-| fold | `X_pca` | `X_scGPT` | ahead |
-|---|---|---|---|
-| 1 | **0.2331** ⚠️ unstable | 0.2439 | scGPT |
-| 2 | 0.2764 | 0.2903 | scGPT |
-| 3 | **0.3576** | 0.2657 | PCA |
-| 4 | 0.2625 | 0.2638 | scGPT, by 0.0013 |
-| 5 | 0.2581 | 0.2962 | scGPT |
-
-The fold-to-fold spread on `X_pca` alone (0.2331–0.3576) is larger than any between-arm gap in the
-table, and **fold 1 is not stable across runs at all** (0.2025 → 0.2776 → 0.2331 over three
-executions; folds 2–5 are byte-identical every time). Under this protocol the two representations are
-**not distinguished**, and the fold that most affects the tally is the one that will not sit still.
-
-> ⛔ **Correction 13.08.2026 — a fold-1 value had been reported as the result.** The Gate 5 execution
-> log recorded *"scGPT edges PCA (0.747 vs 0.738 raw; 0.244 vs 0.203 normalised)"*. Those figures are
-> **fold 1 only**, taken from a 50-row file of five folds × ten algorithms, and the direction they
-> assert did not survive the other four folds even then. On the re-run, fold 1 itself reverses
-> (`X_pca` 0.2025 → 0.2776, the only fold that moved), so the sentence is now wrong about its own
-> fold as well. Do not repeat it.
 
 ### The gene-set sweep, on live numbers — and it puts scGPT ahead at every gene-set size
 

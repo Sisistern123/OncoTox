@@ -50,83 +50,40 @@ Full table: [Step 05](./steps/05-multitask-results.md#the-aggregation-convention
 
 ---
 
-## 3 · The alpha axis — the decision is not booked as taken
+## 3 · ~~The alpha axis / item 9A~~ — SETTLED 14.08.2026, with one narrower question left
 
-**Blocks:** whether the density-weighting sweep can be described as closed.
+**The rule cannot select a winner, and the blocker is identified.** Full record in
+[Step 05 §Item 9A](./steps/05-multitask-results.md#item-9a--settled-14082026-the-rule-cannot-select-a-winner-and-why).
 
-**The choice.** Whether the axis (`alpha` in {0, 0.5, 1}) is closed, and at which level.
+Applied under the line-level pooled convention (§2), the rule returned **two different answers** on
+two runs — "no challenger wins" at an incumbent `order` of 0.2541, and "`α=0`/`mae` wins" at 0.2473.
+**The verdict flips inside the incumbent's own measured band**, 0.2450–0.2541 over eight executions.
 
-**Why it is open.** The earlier report that *"alpha=0 won"* was wrong: it read the guard column (delta
-against the null model) as the item-9A criterion. On mean per-drug Spearman, from
-`notebooks/outputs/panel/panel_leaderboard.csv`:
+The reference point is the problem, and it is a poor one on two measured grounds:
 
-| arm | X_pca | X_scGPT |
-|---|---|---|
-| MLP mse alpha=0 | 0.2541 → 0.2473 ⚠️ unstable | 0.2009 |
-| MLP mse alpha=0.5 | **0.2754** | 0.1927 |
-| MLP mae alpha=0 | 0.2617 | 0.2403 |
-| MLP mae alpha=0.5 | **0.2824** | 0.2395 |
+1. `α=0`/`mse`/`X_pca` is the **only** unstable configuration in the sweep — twelve of fourteen
+   arm × rep rows are identical to six decimals across all eight runs, including the ridge control.
+2. It is **last under every scoring convention** — all four rank `α=0` bottom on both losses.
 
-alpha=0.5 beats alpha=0 on `X_pca` by **+0.0213** (mse) and **+0.0207** (mae) — in both losses. On
-`X_scGPT` it does nothing or slight harm. The closure decision rested on the wrong summary and is
-**not recorded as taken**.
+It is also the arm with the earliest median `best_epoch` of all twelve (**1.0**; 8 of its 15 fits stop
+at epoch 1). It barely trains, so its score sits near the head-bias initialisation.
 
-**What is settled and does not need re-deciding:** alpha=1 puts `X_scGPT` below the per-drug
-constant, so that level is out (`4a` cell 38's comment; `docs/steps/corrections-and-dead-ends.md`,
-the inverse-density entry).
+**A device warm-up was tried and does not fix it** — two runs gave 0.2525 and 0.2480. Reverted
+(`e6c087d`); reapplicable from `664f3e8` if the separate, smaller first-fit effect is ever worth
+chasing.
 
-**The assumption underneath.** That the leaderboard's point estimates are comparable without a band.
-`panel_leaderboard.csv` reports one number per arm and carries no seed band, although the underlying
-`panel_oof_predictions.csv` has three seeds — so a band **could** be computed and has not been.
+### The one question left, and it is yours
 
-**⚠️ UPDATED 13.08.2026, later the same evening — the rule has now been run.**
-`5_evaluation` §1.8 was executed for the first time and applied item 9A's rule
-(`notebooks/outputs/panel/panel_metrics.csv`, three seeds). Against the `alpha=0` / `mse` / `X_pca`
-incumbent, **all thirteen challengers are blocked**. `alpha=0.5` / `mae` / `X_pca` has the highest
-`order` of any arm in the sweep — **0.2824**, above the ridge control's 0.2767 — and still fails, on
-`values` and `spread_slope`. Raising the density exponent buys ranking and pays for it in calibration
-and absolute error.
+**Which arm should the rule be anchored to instead?** Any of the twelve stable rows makes it
+evaluable. That is a decision about what the comparison is anchored to, not a measurement, so it has
+not been taken.
 
-**What that leaves you to decide.** The rule returns "no challenger displaces the incumbent", which
-is an answer to item 9A. Whether that *closes* the axis is still yours, because it depends on
-something the rule cannot settle: **whether a guard failure should veto a real gain in the primary
-quantity, or merely be reported alongside it.** As written, the rule vetoes. If you would rather rank
-on `order` and report the guards, `alpha=0.5`/`mae` wins on `X_pca` and the answer reverses.
+**My reading, as a reading.** Anchor on `α=0`/`mae`/`X_pca` — it is the same α level, so the axis
+still reads as "does weighting help", but on the stable loss; and `mae` was already measured to be
+the better-behaved objective on this data. But note this changes what the rule *asks*, so it is not a
+free substitution.
 
-**⛔ CORRECTED AGAIN, 23:35 the same evening — the rule gave a different answer on a re-run.**
-`4a` was then executed top to bottom in a fresh kernel. The incumbent arm's `order` fell from 0.2541
-to **0.2473** — same code, same seeds, same inputs — and on the re-evaluated rule **`alpha=0` / `mae`
-/ `X_pca` now WINS**, where four hours earlier all thirteen challengers were blocked.
-
-**So the axis is not answered, and the reason is worse than an open choice.** The gap the verdict
-turns on is +0.0076 in one run and +0.0144 in the other, and the run-to-run instability that moved it
-is of the same size as the effect. A decision rule cannot resolve a difference smaller than the
-variation in its own inputs.
-
-**✅ The band was measured, 14.08.2026 — five executions.** The instability is far narrower than two
-runs suggested: **eleven of twelve arms are identical to six decimals across all five**, and within
-the twelfth it is a single fit — fold 1, seed 42, the **first fit executed in the process**. 179 of
-§A's 180 fits reproduce exactly. Full record in
-[Step 05 §Reproducibility](./steps/05-multitask-results.md#reproducibility--measured-over-five-executions-and-it-is-one-fit-not-the-pipeline).
-
-**That changes what is at stake here.** The pipeline is not unreliable; one fit is. But that fit is
-the α=0/mse `X_pca` arm, which is item 9A's **incumbent**, so its 0.0091 range still decides the
-verdict: at 0.2541 nothing clears the bar, at 0.2450–0.2490 `alpha=0`/`mae` does. Four of five runs
-fall below the flip point.
-
-**Three ways out, and the cheapest is now the most attractive.**
-
-1. **Fix the first-fit instability.** Predicted mechanism: something warm on the second fit is cold on
-   the first. The test is one §A run with the arm order reversed (~38 min) — if the wobble follows
-   the first *position*, a throwaway warm-up fit before the grid removes it and the comparison becomes
-   exactly reproducible. **Not run**, and the mechanism is a hypothesis.
-2. **Report a band over executions.** Now cheap for the honest version: only the one arm needs it.
-3. **State the loss comparison unresolved** and stop.
-
-**My reading, as a reading.** State it as unresolved and say why. Both verdicts are defensible
-readings of the same design, which is exactly what "unresolved" means, and presenting either one as
-*the* answer would be presenting a coin-flip as a finding. The guard-veto question below is still
-real, but it is downstream of this.
+⚠️ **Until then, do not report "α=0 wins" or "MAE wins".** Both are readings of one arm's noise.
 
 ---
 
