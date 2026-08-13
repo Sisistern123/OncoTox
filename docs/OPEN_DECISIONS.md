@@ -21,47 +21,32 @@ Numbering is kept so earlier references still resolve.
 
 ---
 
-## 2 · The aggregation rule
+## 2 · ~~The aggregation convention~~ — SETTLED 14.08.2026
 
-**Blocks:** the interpretation of every Spearman in the deck.
+**Line-level, pooled (Selin).** Predictions are averaged to the cell line, then one Spearman per drug
+across all held-out lines, then the mean over drugs.
 
-**The choice.** How predictions are aggregated before scoring: **per cell or per cell line**, and
-**pooled across folds or computed per fold and averaged**. Recorded as open and yours in
-`docs/TODO.md` items 9A and 11.
+**Why, recorded because the alternatives were measured and are defensible.** The label is per
+(cell line, drug), so one point per line is one point per label — cell-level scoring adds ~300 points
+per label that carry no independent information, costs resolution to the within-line scatter, and
+weights lines by cell count over a 36× range (56–1,990). Pooling estimates from all ~153 held-out
+lines at once rather than averaging five correlations of ~30, where Spearman's small-sample upward
+bias is visible in the data: **every arm scores higher under per-fold**, both representations, all six
+arms.
 
-**What is in force in the code today**, so the gap between the open decision and the running code is
-visible: `scripts/training/cv.py::line_level` aggregates to the **cell line**, and `4a`'s §C/§D score
-**per drug, pooled over the out-of-fold predictions**, then take the mean over drugs. That is what
-produced `panel_arch_summary.csv` and `panel_heads_summary.csv`, and therefore every §C/§D number.
+**What it costs: nothing.** `5_evaluation` §1.8's `order` was already computed this way — verified
+arm by arm against `panel_aggregation_comparison.csv`, identical to four decimals for all twelve.
+No number moves and no code changes.
 
-**What each option implies.** Per-cell scoring weights cell lines by how many cells they contribute
-(56–1,990 cells per line, an ~35x range), so large lines dominate. Per-line scoring gives each of the
-~153 held-out lines one vote, which matches the fact that the label is per line. Pooling across folds
-mixes folds of different difficulty into one correlation; per-fold-then-average separates them but
-has ~30 lines per fold to compute a correlation from.
+**What it does and does not settle.** It fixes which arm has the highest `order` on `X_pca`
+(**α=0.5/mae, 0.2824**). It does **not** settle item 9A, which *blocks* that arm on `values` and
+`spread_slope` — raising the density exponent buys ranking and pays for it in calibration and
+absolute error. Convention and decision rule are separate questions.
 
-**The assumption underneath.** That the choice does not change the *ordering* of the arms, only the
-magnitude. That has not been tested — no run has scored the same predictions both ways.
+**And it does not touch Q1**, which leads under all four conventions in all 24 cells — the whole
+point of having measured them.
 
-**✅ MEASURED 14.08.2026 — the choice is now informed, and it splits in two.**
-All four conventions computed on the same predictions:
-`notebooks/outputs/panel/panel_aggregation_comparison.csv`, written up in
-[Step 05](./steps/05-multitask-results.md#the-aggregation-convention--q1-survives-it-the-loss-ranking-does-not).
-
-- **For Q1 the choice does not matter.** `X_pca` leads `X_scGPT` in all 24 cells (6 arms × 4
-  conventions). Only the size moves, by up to 2×.
-- **For the loss comparison it decides the answer.** The best arm is α=0.5/mae, α=0.5/mse,
-  α=0.5/mae or α=1/mse depending on which convention you pick. α=0 is last under all four.
-
-**So what is actually still yours** is narrower than the original entry suggested: not "which
-convention is right in general", but **which convention the loss comparison is judged under** — and
-whether that comparison should be made at all, given it also fails to survive a re-run (§3).
-
-**My reading, as a reading.** Line-level, pooled — the convention already in force. The label is per
-cell line, so a line is the natural unit and cell-level scoring spends resolution on within-line
-scatter that carries no label information; and pooling keeps one correlation over ~153 lines rather
-than six over ~30, where the per-fold inflation above comes from. But this is a preference between
-defensible options, and it is the one that decides the loss arm, so I have not acted on it.
+Full table: [Step 05](./steps/05-multitask-results.md#the-aggregation-convention--q1-survives-it-the-loss-ranking-does-not).
 
 ---
 

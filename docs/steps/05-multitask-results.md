@@ -209,8 +209,21 @@ Per-fold scores are uniformly *higher* than pooled — each fold holds ~30 lines
 fewer points runs higher. Cell-level scores are uniformly *lower* than line-level — a line's cells
 share one label, so the within-line scatter is noise the correlation cannot use.
 
+> ### ✅ DECIDED 14.08.2026 (Selin) — line-level, pooled
+>
+> The convention in force is the one already used: aggregate to the cell line, pool the folds. The
+> label is per (line, drug), so one point per line is one point per label; cell-level scoring adds
+> points with no independent content and weights lines by cell count over a 36× range, and per-fold
+> averaging runs on ~30 lines where Spearman is upward-biased — visible above as *every* arm scoring
+> higher in that column. **`5_evaluation` §1.8's `order` was already computed this way**, verified arm
+> by arm against `panel_aggregation_comparison.csv`, so no number moves.
+>
+> It fixes the highest-`order` arm (α=0.5/mae). It does **not** settle item 9A, which blocks that arm
+> on its guards, and it does not touch Q1.
+
 **Taken with the re-execution instability below, the loss comparison is unresolved twice over:** it
 does not survive a re-run, and it does not survive a change of scoring convention. Q1 survives both.
+⚠️ The convention half of that is now closed by decision; the re-execution half is being fixed.
 
 ⚠️ The MIL arms are absent from this table. Their predictions live in
 `notebooks/outputs/mil/mil_oof_predictions.csv`, a separate file this comparison does not read, so
