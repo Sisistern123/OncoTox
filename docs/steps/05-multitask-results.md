@@ -216,29 +216,42 @@ does not survive a re-run, and it does not survive a change of scoring conventio
 `notebooks/outputs/mil/mil_oof_predictions.csv`, a separate file this comparison does not read, so
 the bag-objective axis is not re-scored under the four conventions.
 
-### Reproducibility — re-running the same code with the same seeds does not give the same numbers
+### Reproducibility — measured over five executions, and it is one fit, not the pipeline
 
-`4a` was executed top to bottom in a fresh kernel on 13.08.2026 (1 h 23 min 44 s, 330 fits, clean
-exit) against the artifacts committed earlier the same day. Two independent instabilities showed up.
+`4a` §A was executed **five independent times** with identical code, seeds and inputs: the run
+committed in `02f0fe6`, the full top-to-bottom re-run in `9732b6f`, and three more on 14.08.2026
+(~38 min each). Every arm's mean per-drug Spearman was captured each time —
+`notebooks/outputs/panel/panel_execution_band.csv`, built by
+`scripts/evaluation/aggregation_comparison.py`'s sibling procedure and reproducible from the
+committed notebook.
 
-**1 · One arm of twelve moved in `4a` §A.** `MLP mse alpha=0` on `X_pca` went **0.2541 → 0.2473**.
-The other eleven arms, the ridge control, and the whole of §C, §D and §E reproduced to four decimals
-— §C's and §E's summary tables are identical. So the instability is not general; it is one arm.
+| arm | rep | exec 1 | exec 2 | exec 3 | exec 4 | exec 5 | range |
+|---|---|---|---|---|---|---|---|
+| MLP mse α=0 | `X_pca` | 0.2541 | 0.2473 | 0.2459 | 0.2490 | 0.2450 | **0.0091** |
+| *the other eleven arms* | both | — | — | — | — | — | **0.0000** |
 
-**2 · One fold of five moves in the DrEval benchmark, every time it runs.** `OncoMLP (X_pca)` on
-fold 1, normalised Spearman, over three executions: **0.2025 → 0.2776 → 0.2331**. Folds 2–5 are
-byte-identical across all three. That is a spread of **0.075 on a single fold**, against between-arm
-gaps of about 0.03.
+**Eleven of twelve arms are identical to six decimal places across all five runs.** The pipeline is
+deterministic. Exactly one arm is not.
 
-**Why it matters more than its size suggests.** Both quantities are used to decide something. The
-first flips item 9A's verdict (above). The second is the external benchmark's only unstable fold, and
-the Gate 5 log had quoted precisely that fold as the benchmark's result. **Any comparison in this
-project whose margin is under ~0.01 is not resolvable by a single run**, and the honest reporting unit
-is a band across repeated executions, not across seeds alone.
+**And it is one *fit*, not one arm.** Within that arm, the fold log's `best_epoch` is identical in
+all fifteen (fold × seed) combinations across runs, and `best_val_obj` differs in exactly **one**:
+fold 1, seed 42 — the arm's first fold, of the first seed, of the first arm trained. **That is the
+first fit executed in the process.** 179 of §A's 180 fits reproduce exactly; fit number 1 does not.
 
-**Not diagnosed here.** The likely source is non-deterministic reduction order on the `mps` backend,
-which review item 10 recorded as *not* reproducing under current code. It does. Which operation, and
-whether a deterministic fallback fixes it, is not established and is not something this run tested.
+**Hypothesis, not a finding.** Something is warm on the second fit that is cold on the first — lazy
+`mps` kernel compilation or autotuning, or an allocator/RNG warm-up consumed differently on first
+use. **This has not been tested.** The test that would settle it is one run of §A with the arm order
+reversed: if the instability follows the *first position* rather than the α=0/mse arm, the
+first-fit explanation is right and the fix is a throwaway warm-up fit before the grid.
+
+**What it costs, stated at its real size.** The instability is **0.0091 on one arm**, and it is not
+where the Q1 result lives — §C, §D, §E and the other eleven arms reproduce exactly. But that one arm
+is the item-9A **incumbent**, so a 0.0091 wobble decides the loss comparison's verdict
+(see below). Any margin under ~0.01 that involves the α=0/mse `X_pca` arm is not resolvable by a
+single run; every other comparison in this section is.
+
+⚠️ **Review item 10's finding that "the `mps` nondeterminism does not reproduce under current code"
+is wrong, but only just** — it reproduces in one fit of 180, which is why a smaller check missed it.
 
 ### What this settles about Q1
 
@@ -278,7 +291,12 @@ answers.**
 
 Nothing changed between them but the run. Same code, same seeds, same inputs; the incumbent arm's
 `order` fell by **0.0068** and that was enough to let a challenger through. Every other arm in the
-leaderboard is identical to four decimals across the two runs.
+leaderboard is identical across both.
+
+**Five executions later, the incumbent's range is 0.2450–0.2541** (§*Reproducibility*), so the
+verdict depends on which run you ask: at 0.2541 no challenger clears the bar, and at 0.2450–0.2490
+`alpha=0` / `mae` does. Four of the five runs put it below the flip point, but "four of five" is not
+a basis on which to declare a winner.
 
 ⛔ **What this means for item 9A, stated plainly: the sweep's answer is not stable, and the
 instability is the same size as the effect.** The gap it turns on (incumbent vs `mae` at
