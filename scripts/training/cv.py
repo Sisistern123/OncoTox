@@ -323,7 +323,12 @@ def oof_predictions(
         held out, ``folds`` is a per-fold log.
     """
     config = config or TrainConfig()
-    hidden_dims = tuple(hidden_dims or DEFAULT_HIDDEN_DIMS[rep])
+    # `is None`, NOT `or` (13.08.2026). `()` is a legitimate value -- it means "no hidden layer",
+    # which `OncoMLP` resolves to a bare `Linear(input_dim, K)` and which the capacity control in
+    # `4a` section C passes. Under `or` it is falsy, so that call would have silently received
+    # DEFAULT_HIDDEN_DIMS and compared the trunk against itself, reporting a capacity comparison
+    # between two identical networks.
+    hidden_dims = tuple(DEFAULT_HIDDEN_DIMS[rep] if hidden_dims is None else hidden_dims)
 
     groups = adata.obs[group_col].astype(str).to_numpy()
     idx, fold_split = grouped_folds(
