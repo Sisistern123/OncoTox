@@ -173,7 +173,7 @@ The margin moves along four axes, all measured:
 
 | axis | from | to | source |
 |---|---|---|---|
-| **Objective** | +0.0827 per-cell | **+0.0235 bag** | `panel_metrics.csv`, `alpha=0.5`, `mse` |
+| **Objective** | +0.0827 per-cell | **+0.0236 bag** | `panel_metrics.csv`, `alpha=0.5`, `mse` |
 | **Capacity** | +0.0383 trunk | +0.0317 linear | `panel_arch_summary.csv` |
 | **Scoring set** | +0.0479 on 11 drugs | +0.0231 linear / −0.0077 trunk on 534 | `panel_heads_summary.csv` |
 | **Label supply** | +0.0036 at 25 lines (a tie) | +0.0317 at 103 lines | `panel_curve_summary.csv` |
@@ -185,9 +185,9 @@ and MIL arms through one scorer. At `alpha=0.5`, `mse`, over three seeds:
 | objective | `X_pca` | `X_scGPT` | Q1 margin |
 |---|---|---|---|
 | per-cell (`mlp`) | 0.2754 | 0.1927 | **+0.0827** |
-| bag (`mil`) | 0.2412 | 0.2177 | **+0.0235** |
+| bag (`mil`) | 0.2412 | 0.2177 | **+0.0236** |
 
-**71.6 % of the per-cell margin does not survive the move to a bag objective** — `X_scGPT` gains
+**71.5 % of the per-cell margin does not survive the move to a bag objective** — `X_scGPT` gains
 (0.1927 → 0.2177) while `X_pca` loses (0.2754 → 0.2412). This is what makes *"PCA beats scGPT"*
 dependent on the objective: the statement is about a per-cell loss, not about the representations.
 
@@ -210,25 +210,26 @@ reading of it.
 `notebooks/outputs/dreval/dreval_lco_results.csv`, five leave-cell-line-out folds. Normalised
 Spearman for the two OncoMLP arms:
 
+Re-executed 13.08.2026 against the current artifacts (1 min 57 s, clean):
+
 | fold | `X_pca` | `X_scGPT` | ahead |
 |---|---|---|---|
-| 1 | 0.2025 | 0.2439 | scGPT |
+| 1 | 0.2776 | 0.2439 | PCA |
 | 2 | 0.2764 | 0.2903 | scGPT |
 | 3 | **0.3576** | 0.2657 | PCA |
 | 4 | 0.2625 | 0.2638 | tie |
 | 5 | 0.2581 | 0.2962 | scGPT |
 
-scGPT leads in three folds, PCA in one, one is a tie, and the **fold-to-fold spread on `X_pca` alone
-(0.2025–0.3576) is larger than any between-arm gap in the table**. Under this protocol the two
-representations are not distinguished.
+**Two folds each and one tie.** The fold-to-fold spread on `X_pca` alone (0.2581–0.3576) is larger
+than any between-arm gap in the table. Under this protocol the two representations are **not
+distinguished** — which is the finding, and it is a different one from either arm winning.
 
-> ⛔ **Correction 13.08.2026 — a fold-1 value was reported as the result.** The Gate 5 execution log
-> recorded *"scGPT edges PCA (0.747 vs 0.738 raw; 0.244 vs 0.203 normalised)"*. Those figures are
-> **fold 1 only**, taken from a 50-row file of five folds × ten algorithms. The direction they assert
-> does not survive the other four folds. No conclusion should be drawn from that sentence.
->
-> ⚠️ This benchmark has not been re-run since `4a` was regenerated with three seeds
-> (`02f0fe6`), so these five folds describe the previous, one-seed `4a`.
+> ⛔ **Correction 13.08.2026 — a fold-1 value had been reported as the result.** The Gate 5 execution
+> log recorded *"scGPT edges PCA (0.747 vs 0.738 raw; 0.244 vs 0.203 normalised)"*. Those figures are
+> **fold 1 only**, taken from a 50-row file of five folds × ten algorithms, and the direction they
+> assert did not survive the other four folds even then. On the re-run, fold 1 itself reverses
+> (`X_pca` 0.2025 → 0.2776, the only fold that moved), so the sentence is now wrong about its own
+> fold as well. Do not repeat it.
 
 **Ruled out by measurement, not by argument:** the metric, drug-level response spread, a misuse of
 scGPT (the call matches `Tutorial_Reference_Mapping` from the scGPT repo), and broken embeddings.
