@@ -2,6 +2,22 @@
 
 > # ⛔ 28.07.2026 — THE CURRENT DRUG PANEL IS VOID
 >
+> ## ✅ LIFTED 13.08.2026 (Selin) — the release condition this banner names is met
+>
+> The condition is stated below in this banner's own words: it lifts *"when a run exists on the new
+> panel, i.e. at **R4** of the sweep."* Such runs exist and are committed:
+> `notebooks/outputs/panel/panel_leaderboard.csv` (commit `02f0fe6`, three seeds) and
+> `panel_arch_summary.csv` / `panel_heads_summary.csv` (commit `84bb32f`), all on the rebuilt
+> 11-drug panel in `notebooks/outputs/panel/panel.csv`, produced by
+> `notebooks/4a_percell_training.ipynb` §A, §C and §D.
+>
+> **What stays void:** everything computed on the *old* 8-drug panel, which rebuilding retired rather
+> than restored. Those numbers live in
+> [Corrections](./steps/corrections-and-dead-ends.md) and under
+> `notebooks/outputs/archive/panel_void_8drug/`, and are not quotable.
+>
+> The text below is kept as the record of what was believed between 28.07 and 13.08.2026.
+>
 > **The 8-drug literature panel is discarded.** Its candidate list was ranked by `min(kill, spare)` on
 > our own response values before the literature criterion was applied, so the selection inherited the
 > label dependency it was built to remove — and 32 approved or clinical compounds, `nutlin-3` among them,
@@ -24,6 +40,26 @@
 > around it.
 
 > # ⛔ 03.08.2026 — NOTHING IS RE-RUN UNTIL SELIN'S REVIEW IS FINISHED
+>
+> ## ✅ LIFTED 13.08.2026 (Selin) — the review finished and the re-run happened
+>
+> Selin lifted this freeze on 13.08.2026. The clean sweep it reserved was then executed: the Gate 5
+> chain (commits `3d69332`, `ffe13be`, `824eebe`, `5b3f2ec`) re-ran the numbered notebooks, and
+> `02f0fe6` committed the resulting artifacts.
+>
+> **The four decisions this banner listed as open are all settled**, which is what released it:
+> gene scaling before PCA and the post-HVG renormalization (item 3, closed 10.08.2026; the fit
+> question routed to item 7 and decided 12.08.2026), the HVG ranking scale
+> ([Step 02](./steps/02-preprocessing-and-embeddings.md), §*By-product — the HVG ranking scale*),
+> and the re-embedding scope (**R1**, decided 12.08.2026).
+>
+> ⚠️ **R1's scope was widened in practice.** R1 settled on `hvg5000` + `all_genes`; all five
+> variants were in fact re-embedded on 13.08.2026 after `a788bf9` set `hvg_sweep_build` to rebuild.
+> The consequence is favourable and the warning under R2 about a sweep that *"mixes re-embedded
+> hvg5000 with three variants embedded by the older code"* **no longer applies** — the gene-set sweep
+> is like-for-like.
+>
+> The text below is kept as the record of what was believed between 03.08 and 13.08.2026.
 >
 > **No re-embedding, no retraining, no recomputing of `X_pca` — nothing — until Selin has completed her
 > own double-check of the pipeline and the repository and says so.** Code and documentation fixes
@@ -52,6 +88,24 @@
 > that **trains** waits unconditionally, `verify_variants` §9 among it.
 
 > # ⛔ 12.08.2026 — NUMBERS AND CLAIMS CLEARED FROM THE DOCS AND THE REPORT
+>
+> ## ⚠️ SUPERSEDED IN PART 13.08.2026 — the ruling below is false as of today
+>
+> This banner's governing sentence — *"nothing has been re-run and nothing on disk is current"* — was
+> true when written and is **not true now**. The re-run happened on 12./13.08.2026; the artifacts
+> under `notebooks/outputs/` were regenerated and committed (`02f0fe6`, `84bb32f`, and section E
+> below).
+>
+> **What still holds:** the clearing itself. Every number listed in the table below was *removed*, not
+> re-derived, so each remains **unevidenced until something re-derives it** — a current run on disk
+> does not retroactively support a sentence that was deleted. The replacements are written from the
+> regenerated artifacts, not restored from history.
+>
+> **What no longer holds:** the ban on quoting current artifacts. Numbers read from the
+> `notebooks/outputs/` files named in [Step 05](./steps/05-multitask-results.md) are quotable, each
+> naming the notebook section and artifact it came from.
+>
+> The text below is kept as the record of what was believed on 12.08.2026.
 >
 > **What this was.** A docs-vs-code audit, asked for by Selin: *are the docs and the report up to date
 > and non-redundant with the code, and are there numbers or hypotheses stated without a re-run?* The
@@ -1207,6 +1261,12 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       Rejected alternatives and why: **all five** keeps the sweep like-for-like but is the longest run;
       **`hvg5000` only** is cheapest but voids the sweep entirely and leaves every `all_genes` number in
       the report stale.
+      ✅ **Overtaken by events 13.08.2026 — the top-up happened and the cost above was not paid.**
+      All five variants were re-embedded: `hvg5000` and `all_genes` first, then `hvg1000`, `hvg2000`
+      and `hvg3000` after `a788bf9` set `analysis/qc/hvg_sweep_build` to rebuild. **The sweep is
+      like-for-like**, so the "not like-for-like" warning above describes a state that never reached
+      the committed artifacts. Read from `notebooks/outputs/embeddings/hvg_sweep_auc.csv`
+      (commit `02f0fe6`), written by `analysis/qc/verify_variants.ipynb` §9.
 - [ ] **R2 · Re-run preprocessing end to end.** Driver: the notebooks —
       `notebooks/1_data.ipynb` (`fetch`, `convert`) then `notebooks/3_representations.ipynb`
       (`scgpt`, `targets`, `splits`, `pca`), both calling `scripts/preprocessing/pipeline.py`. Needs
