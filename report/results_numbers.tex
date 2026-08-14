@@ -28,7 +28,11 @@
 % =============================================================================
 
 % === dataset (docs/project_progress.md, notebooks/04) 
-\newcommand{\NLines}{180}          % SCP542 x CTRPv2 lines with post-QC labels
+\newcommand{\NLines}{181}          % SCP542 x CTRPv2 lines with post-QC labels.
+                                   % 180 until 14.08.2026: ctrp_to_h5ad deduplicated the
+                                   % experiment table and resolved the H292 alias, which added
+                                   % one line. Verified against splits/split_ctrp.csv (181 rows:
+                                   % 126 train / 27 val / 28 test).
 \newcommand{\NDrugs}{545}          % CTRPv2 compounds in the overlap
 \newcommand{\NCells}{53{,}513}     % single cells
 \newcommand{\NGenes}{22{,}722}     % genes in the distributed SCP542 matrix
@@ -51,7 +55,12 @@
                                    % over it, which is why it is not the effective sample size.
                                    % Defined for precision; not currently cited in prose.
 \newcommand{\NHvg}{5{,}000}        % highly variable genes (hvg5000 variant)
-\newcommand{\NVocab}{4{,}576}      % of those, in scGPT's vocabulary
+\newcommand{\NVocab}{4{,}765}      % of those, in scGPT's vocabulary AFTER the symbol repair --
+                                   % i.e. what scGPT actually embeds. 4,576 until 14.08.2026, a
+                                   % figure from the pre-repair gene set. Measured value, from
+                                   % 3_representations: "4,632 of 5,000 rows match the vocabulary
+                                   % directly, 133 more via their current HGNC symbol".
+\newcommand{\NVocabDirect}{4{,}632} % of those, matching without the symbol repair.
 % === gene-symbol defect (notebooks/outputs/embeddings/gene_symbol_rescue.csv, 05.08.2026)
 % Genes discarded as out-of-vocabulary that are in fact IN scGPT's vocabulary under
 % their current HGNC symbol; recovered via prev_symbol in reference/hgnc_complete_set.txt.
@@ -60,7 +69,9 @@
 \newcommand{\NRescuedHvg}{129}     % hvg5000 variant
 % Genes embedded after the repair (scripts/annotation/gene_symbols.py), measured 05.08.2026
 % on the matrices as they stand; below the rescuable count because collisions stay unmapped.
-\newcommand{\NVocabRepaired}{4{,}704}   % hvg5000, was \NVocab
+% \NVocabRepaired RETIRED 14.08.2026: it held the PREDICTED post-repair count (4,704).
+% The repair has run; the measured value is \NVocab (4,765) and the pre-repair count is
+% \NVocabDirect (4,632), so a separate 'repaired' macro no longer names anything distinct.
 
 % === CTRPv2 replicate disagreement (notebooks/outputs/archive/replicate_variation.csv, 10.08.2026)
 % Pairs screened in two separate CTRPv2 experiments, within the SCP542 overlap. RepDiffMed is
@@ -101,10 +112,11 @@
 %   * the replicate-disagreement macros were computed on CTRPv2's own 2015
 %     distribution, which is no longer the target source, so they are stale in
 %     the same way and are due for re-derivation.
-%   * \NVocab (4,576) is the pre-repair vocabulary count and is superseded in
-%     code by \NVocabRepaired (4,704); it is still quoted as the live figure in
-%     03_methods.tex Data, under an adjacent revision block that says so.
-%     \NVocabRepaired goes away and \NVocab takes the measured value at R6.
+%   * DONE 14.08.2026. \NVocab now holds the MEASURED post-repair count (4,765)
+%     and \NVocabDirect the pre-repair one (4,632); \NVocabRepaired, which held
+%     the PREDICTED 4,704, is retired. Source: 3_representations' own output,
+%     "4,632 of 5,000 rows match the vocabulary directly, 133 more via their
+%     current HGNC symbol".
 %   * \NIndep was RETIRED 12.08.2026 (Selin's ruling). It named two quantities
 %     at once: it was DEFINED as the effective sample size after the held-out
 %     splits, but its VALUE 150 came from the ridge control's line count -- a

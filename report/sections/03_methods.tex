@@ -5,7 +5,7 @@
 \label{sec:data}
 
 All experiments use the highest-confidence intersection of SCP542 \cite{scp542} and CTRPv2 \cite{ctrpv2,ctrp_rees}. This intersection comprises \NLines{} cell lines with
-post-quality-control measurements (190 roster name matches, of which 10 are unscreened), \NDrugs{}
+post-quality-control measurements (190 roster name matches, of which 9 are unscreened), \NDrugs{}
 compounds and \NCells{} cells, with effectively complete viability coverage inside the overlap. Genes are
 reduced to the \NHvg{} most highly variable; scGPT embeds the \NVocab{} of these that lie in its
 vocabulary, while PCA is computed on all \NHvg{}.
@@ -32,9 +32,14 @@ here is conservative with respect to it, never inflated. The repair is implement
 the conversion step now records each row's current symbol alongside the identifier the dataset
 distributes, and the embedding step consults it only where a row's own symbol is not in the
 vocabulary, so no gene embedded today can be lost by it. It raises the \NHvg-gene variant from
-\NVocab{} genes to \NVocabRepaired{}. \textbf{No representation has been regenerated}, deliberately:
+\NVocabDirect{} genes to \NVocab{}. \textbf{No representation has been regenerated}, deliberately:
 the embeddings are rebuilt once, from a settled pipeline, at the end of the review, so every number
 in this report belongs to the pipeline as described before this paragraph.
+
+\revision{\textbf{Superseded 14.08.2026.} The sentence above was true when written and is not now:
+the rebuild happened on 12.--13.08.2026 and all five gene-set variants were re-embedded. The
+counts in this paragraph are the measured post-rebuild values rather than the predictions they
+were; the predicted \NHvg{} figure had been 4{,}704 against a measured 4{,}765.}
 \end{revisionblock}
 The \NHvg-gene selection is used throughout.
 \revision{\emph{The justification for that choice is withdrawn (12.08.2026).} This sentence read ``the
