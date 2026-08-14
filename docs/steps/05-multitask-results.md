@@ -530,6 +530,50 @@ lead. Switching the regularizer off widens the margin from +0.0317 to +0.0457 �
 analysis decision and is not taken here — turning it off also removes a regularizer the model was
 tuned with, and this test changed one thing at a time deliberately. Recorded for Selin.
 
+### E2 · Shrinking the atlas does not shrink the lead — the adaptation explanation is refuted
+
+**The question §E left open.** §E thinned the *label* supply while every cell stayed in the fold, in
+the batches and in the per-fold PCA, so both arms saw an identical input at every point. That refuted
+the small-data reading. The explanation it left standing was the **input** side: `X_pca` is fitted on
+this atlas and `X_scGPT` is not, so PCA's directions adapt to exactly these cells while scGPT's are
+frozen. §E's own markdown named E2 as the follow-up.
+
+**E2 is the "smaller study" scenario.** Cell lines are dropped **entirely** — their cells leave the
+eligible set, so they leave the folds, the batches *and* the per-fold PCA's fitting set. `X_pca` is
+therefore refitted on a genuinely smaller atlas while `X_scGPT`'s frozen embedding is unchanged in
+kind. Linear head, α=0, `mse`, three seeds × five folds, 120 fits.
+`scripts/evaluation/section_e2_smaller_study.py` → `notebooks/outputs/panel/panel_curve_e2.csv`.
+
+| lines kept | median fit lines | `X_pca` | `X_scGPT` | Q1 margin | §E at comparable budget |
+|---|---|---|---|---|---|
+| 31 | 21 | −0.0510 | −0.0528 | +0.0018 | +0.0036 |
+| 62 | 41 | 0.0818 | 0.0464 | **+0.0353** | +0.0090 |
+| 94 | 63 | 0.2226 | 0.1947 | **+0.0279** | +0.0505 |
+| 153 (all) | 103 | 0.2629 | 0.2292 | **+0.0336** | +0.0317 |
+
+⛔ **The adaptation explanation is refuted.** If `X_pca`'s lead came from being fitted on a large
+atlas, halving that atlas should have eroded it. The margin is instead flat across every budget at
+which the model works at all: **+0.0353** at 62 lines, **+0.0279** at 94, **+0.0336** at 153. PCA's
+advantage does **not** depend on how many cells its projection was fitted on.
+
+**Two controls in the same table.**
+- The 153-line row *is* the standard setup, and it reproduces §C's linear arm (+0.0336 against
+  +0.0317), so the harness is measuring what it should.
+- At 31 lines **both arms score below zero** (−0.0510, −0.0528). That row says the study has collapsed,
+  not that the margin is small; it is not evidence about Q1 either way.
+
+**What this leaves standing, and it is the geometry.** With small-data and atlas-adaptation both
+refuted, the account that survives is the one measured directly on the inputs: the label is per cell
+line, and `X_pca` carries 20 % more between-line variance than `X_scGPT` (between/within **1.405**
+against **1.168**). That is a property of what variance-maximisation captures, not of how much data it
+was given — which is exactly what a flat margin across atlas sizes predicts.
+
+⚠️ **Not comparable to §E in absolute score.** E2 changes the held-out set as well as the training
+set, so its per-budget scores answer a different question than §E's. Only the margins are being
+compared, and only loosely. Note also how much more damaging E2 is than §E: at ~21–25 fitting lines
+E2 gives −0.05 where §E gave +0.14, because removing the **cells** costs far more than removing their
+**labels**.
+
 ### Why `X_scGPT` scores lower — geometry, not training (14.08.2026)
 
 **The short answer: the label is defined per cell line, and the two representations differ in how
