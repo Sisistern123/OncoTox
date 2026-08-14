@@ -96,6 +96,14 @@ Recorded here because a check is only as trustworthy as its documented ways of l
   pass. **What that costs meanwhile:** every other `scripts/` module is still covered (24 imported,
   0 failed, 1.7 s), and the evaluation scripts are exercised whenever a notebook runs them, so the
   gap is narrow but real.
+- ⚠️ **Both gates invoke every check through `uv run`, which blocks while another `uv` process holds
+  the project environment (found 14.08.2026).** With a `uv run jupyter lab` server and a live kernel
+  running, `verify_main.sh` sat at 0 % CPU for over twenty minutes without producing a line, and had
+  to be killed. It is not a hang in the checks themselves: run directly against `.venv/bin/python`,
+  the same checks complete in seconds. **Consequence for anyone verifying main:** if the gate appears
+  to stall, it is waiting on the environment lock, not working — reproduce the individual checks with
+  `.venv/bin/python` rather than assuming a slow check. Whether the gates should call the interpreter
+  directly instead of through `uv` is a change to two scripts and is not made here.
 - **Branch-specific checks are not carried forward.** `merge_gate.sh` briefly held checks that
   pinned particular strings in `4a` and particular output directories against a rename. They were
   right for one merge and noise on every other. Add one for the merge that needs it, delete it

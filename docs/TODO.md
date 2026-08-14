@@ -297,6 +297,32 @@
 >   used top-k cells is deliberately **not** in the criterion — selecting cells by their predicted value
 >   and scoring them against the line's true response is biased by construction.
 
+> ## 📋 14.08.2026 — what the consolidation sweep did NOT cover
+>
+> Recorded because a sweep that reports "all clear" without saying what it did not examine is the
+> failure `scripts/gate/README.md` was written to prevent. Everything below is unchecked or only
+> partly checked, not known-broken.
+>
+> - **`verify_main.sh` was never run end to end.** It blocked on the `uv` environment lock (a
+>   `jupyter lab` server and a live kernel held it) and was killed after twenty minutes. Its checks
+>   were reproduced individually against `.venv/bin/python` — links 609/0, artifacts 64/0, cmdpaths
+>   39/2 (both legitimate), coderefs 223/19 (all archive, corrections, third-party or the untracked
+>   July record), resolved-paths 152 expressions/0 failed, unbound-names 0, notebooks 27 validated/0
+>   invalid, modules 24 imported/0 failed, report 30 pages/0 errors — but **not through the gate's
+>   own driver**, so the driver's arithmetic and its floors are untested by this pass.
+> - **Numbers in notebook *markdown* were not exhaustively re-verified** against their artifacts. The
+>   docs, the report and the figures were; notebook prose was checked only where a sweep dimension
+>   led into it.
+> - **`docs/progress_report_2026-07-27.md` was treated as a dated historical record** and its stale
+>   paths and numbers were left. It is untracked by design and describes what was believed in July.
+> - **The scGPT arm was not exercised.** Nothing here imported or ran `scgpt`; it lives in a separate
+>   venv, and `gen_embeds.py` is import-checked only to the point where that import fails.
+> - **Two files in the working tree are not mine and were left alone**: `notebooks/_reverse_scratch.ipynb`
+>   (an untracked 1.9 MB scratch copy of `4a`, 00:12).
+> - **No artifact was regenerated and nothing was retrained**, deliberately — so every number was
+>   checked against the artifact as committed, not against a fresh run. Where an artifact is itself
+>   suspected stale, this pass could not tell.
+
 - start bei data download, schau genauer auf drug selection, suche publications dafür raus
 - data harmonization genauer anschauen
       - bulk und sc annotation merge -- wie genau wurde es gemacht, ist es valide?
