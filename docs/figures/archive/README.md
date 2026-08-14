@@ -9,6 +9,24 @@ rather than rendered.** `make_figures.py` skips each of them with a printed reas
 building them from whatever happens to be on disk. A figure that renders anyway is worse than one
 that is absent, because nothing on its face says which target it came from.
 
+> ✅ **Updated 14.08.2026 — two of the four below now build again, and the table is no longer
+> accurate about the other two.**
+>
+> `figure_data.npz` was the common blocker: it was archived as un-rebuildable because it came from the
+> retired `auc` target. That target's replacement has since been produced, so `make_figures.py`
+> rebuilt the cache from `auc_cc` and it now sits at the live path again (the archived copy here is
+> the void-era one and is untouched).
+>
+> * **`loss_02_weights.png` — builds.** Its blocker was the cache alone.
+> * **`loss_03_effect.png` — builds**, after `panel_corr()` was repointed from this archive onto
+>   `outputs/panel/` and migrated from the retired `weighted` column to `alpha`.
+> * **`pipeline.png` and `model_architecture.png` — still skip, but not for the reason below.**
+>   The cache is no longer missing. What remains is `EXAMPLE_PRED`: eight out-of-fold predictions
+>   from the **void 8-drug panel**, drawn against the rebuilt 11-drug panel's names, so every bar
+>   would carry another compound's name. Out-of-fold predictions for the rebuilt panel now exist,
+>   so this is repairable — but refreshing that vector changes what the figures show, so it is
+>   Selin's call rather than a mechanical fix.
+
 | File | Why it cannot be regenerated |
 |---|---|
 | `figure_data.npz` | The cache every panel below is derived from. Built on the retired **`auc`** target and the **void 8-drug panel**, so it is 8 columns wide. `figure_data()` now reads `auc_cc` only — and that h5ad has never been written, because preprocessing has not re-run under the [freeze](../../TODO.md). |
