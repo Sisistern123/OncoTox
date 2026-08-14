@@ -8,7 +8,8 @@ acted on. When one is settled, move it into the file that owns the topic (`docs/
 items, `docs/steps/` for the scientific record) and delete it here, so this file never becomes a
 second place where a decision lives.
 
-Ranked by what it blocks for the 14.08.2026 lab meeting.
+Ranked by what it blocks for the 14.08.2026 lab meeting. ⚠️ *That date has passed; the one
+remaining entry (§7) blocks nothing, so the ranking no longer orders anything.*
 
 ---
 
@@ -234,7 +235,23 @@ you than found by someone in the room.
 
 ---
 
-## 7 · `input_dropout` is matched in value but not in effect — what should it be?
+## 7 · `input_dropout` — only the *configuration* is open, and it blocks nothing
+
+> ⚠️ **Re-read 14.08.2026, because this entry reads as more open than it is.** `input_dropout` has
+> been settled three times — but three *different* questions, none of them the one below.
+>
+> | Settled | Where |
+> |---|---|
+> | **Does it act symmetrically?** No, and one-sided: `X_scGPT` flat across p ∈ [0, 0.3] (range 0.0020, inside one seed sd), `X_pca` moves 0.0145 | review item 8B, 60 fits + a six-point sweep |
+> | **How big is the effect?** The first figure — 0.0138, *"44 % of the margin"* — was **corrected**: it was measured at p = 0.10, which sits ~1 seed sd below its neighbours. Trend cost ≈ 0.005–0.008, and there is **no interior optimum** | [Step 05](./steps/05-multitask-results.md) |
+> | **What it means for Q1** — the shipped setting **understates** PCA's lead, so Q1's *direction* is not at risk; only its *magnitude* is contingent. Margins are to be quoted with the setting named | [Step 05](./steps/05-multitask-results.md); **implemented** — `report/sections/04_results.tex` states the section is quoted at 0.1 and is conservative with respect to it |
+>
+> **What is left is one thing: the value itself** — 0.1, 0.0, or per-arm. That is an analysis decision
+> and is untaken. **It blocks nothing.** The interim course is already in force and implemented (keep
+> 0.1, name it wherever a margin is quoted), changing it re-runs every number in the project, and Q1's
+> direction survives either way. Read the options below as *"worth testing after the talk"*, not as a
+> gap in the current results.
+
 
 **Opened 14.08.2026, from the test of review item 8B.** Measured, 60 fits
 (`notebooks/outputs/diagnostics/input_dropout_test.csv`, §C's linear row, both representations,
