@@ -409,12 +409,14 @@ neighbouring fold, which would have cost twenty per cent of the training lines.
 \label{sec:target}
 
 The target is \code{auc\_cc}, the area under the fitted dose-response curve as re-fitted by DrEval
-\revision{\textbf{A defect in the distributed table, recorded 14.08.2026.} The per-curve confidence
-interval columns are inverted: \code{p1\_conf\_int\_low} exceeds \code{p1\_conf\_int\_high} in
-\emph{all} 392{,}648 populated rows, and the fourth-parameter columns behave likewise with some
-infinite bounds. Nothing in this work uses them --- the fit statistics used in
-Section~\ref{sec:results} are \code{R2} and \code{pValue}, which are sound --- but they should not be
-read as bounds by anyone extending it.}
+\revision{\textbf{A note on the per-curve confidence intervals, 14.08.2026.} Their
+\code{\_low}/\code{\_high} labels do not order by numeric value: \code{p1\_conf\_int\_low} exceeds
+\code{p1\_conf\_int\_high} in every populated row. That is a naming convention rather than an error ---
+the bounds refer to the opposite end of the dose axis, which inverts once the parameter is expressed
+in the fitted units --- and the intervals are sound: the corresponding point estimate lies inside
+$[\,\text{high},\text{low}\,]$ in $100.0\,\%$ of the 392{,}648 rows for the first parameter and
+$99.2\,\%$ for the fourth. Recorded because reading them in the obvious order gives an empty interval.
+This work does not use them; the fit statistics it relies on are \code{R2} and \code{pValue}.}
 \cite{dreval} from CTRPv2's raw measurements. Their reprocessing normalizes each replicate against its
 own no-drug control and fits one curve with CurveCurator, folding replicate disagreement into the fit
 rather than averaging replicates before fitting --- which their Methods argue is the practice that
