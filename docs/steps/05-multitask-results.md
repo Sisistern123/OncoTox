@@ -558,14 +558,41 @@ representations, at `input_dropout` 0.1 as shipped and 0.0 off. 60 fits.
 | 0.0 (off) | **0.2746** | 0.2289 | **+0.0457** |
 | effect of the regularizer | **−0.0138** | −0.0002 | −0.0140 |
 
-⛔ **The asymmetry is real and one-sided.** Input dropout costs `X_pca` **0.0138** and `X_scGPT`
-**nothing** — 0.0002, indistinguishable from zero. That is exactly the mechanism item 8B described,
-and it is measured rather than argued: PCA's variance-ordered dimensions make an independent 10 %
-coordinate dropout a heavier-tailed perturbation than it is for an entangled embedding.
+⛔ **Corrected 14.08.2026 by a six-point sweep — the two-point reading overstated it.**
+`p` was swept over {0.00, 0.02, 0.05, 0.10, 0.20, 0.30}, three seeds each
+(`notebooks/outputs/diagnostics/input_dropout_sweep_extra.csv`,
+`notebooks/analysis/evaluation/q1_sensitivity.ipynb` §2):
+
+| `p` | `X_pca` | seed sd | `X_scGPT` | Q1 margin |
+|---|---|---|---|---|
+| 0.00 | 0.2746 | 0.0041 | 0.2289 | 0.0457 |
+| 0.02 | **0.2753** | 0.0073 | 0.2289 | 0.0464 |
+| 0.05 | 0.2705 | 0.0040 | 0.2282 | 0.0423 |
+| **0.10** | **0.2608** | 0.0074 | 0.2291 | **0.0317** |
+| 0.20 | 0.2652 | 0.0131 | 0.2278 | 0.0375 |
+| 0.30 | 0.2612 | 0.0072 | 0.2272 | 0.0341 |
+
+**What survives, and it is the thesis.** `X_scGPT` is flat across the entire sweep — range **0.0020**
+against a seed sd of **0.0021**, i.e. inside one seed's noise — while `X_pca` moves over a range of
+**0.0145**, about two seed sds. **The asymmetry is real and one-sided**, and six points establish it
+far better than two.
+
+**What does not survive: the size I quoted.** The p = 0.10 point sits **0.0071 below the mean of its
+neighbours** at 0.05 and 0.20 — almost exactly one seed sd (0.0072). The figures *"costs `X_pca`
+0.0138"* and *"44 % of the margin"* were measured against that single low point and are **overstated**.
+Read from the trend, the cost from p = 0 to p = 0.1 is nearer **0.005–0.008**, and the margin runs
+0.0317–0.0464 across the sweep with p = 0.10 at its bottom.
+
+**And there is no interior optimum.** The peak at p = 0.02 exceeds p = 0 by **0.0007**, a tenth of a
+seed sd. So the sweep gives **no evidence that input dropout regularizes** — the response is broadly
+declining, which is closer to the information-deletion account, though the effect is small enough that
+neither account is established.
+
+⚠️ **The curve is not monotone**, so it does not cleanly select deletion either. What it does settle is
+that `X_scGPT` is unaffected and `X_pca` is mildly harmed.
 
 **What it means for Q1, and the direction is favourable.** The shipped setting **understates** PCA's
-lead. Switching the regularizer off widens the margin from +0.0317 to +0.0457 — the effect is
-**44 % of the margin as measured**. So:
+lead: every other rate in the sweep gives a margin at or above p = 0.10's. So:
 
 - Q1's **direction is not at risk**; removing the asymmetry strengthens it.
 - Q1's **magnitude is contingent** on a setting that is matched in value but not in effect. Any margin

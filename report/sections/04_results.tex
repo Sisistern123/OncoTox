@@ -89,10 +89,12 @@ where thinning labels alone scored $+0.14$.
 \paragraph{One regularizer penalizes one arm, and it makes the reported margin conservative.}
 Input dropout zeroes each input coordinate independently at a rate of $0.1$. The transcript-level
 embedding's dimensions are entangled and comparable in magnitude; the principal components are
-variance-ordered, so the same nominal rate removes a heavier-tailed share. Switching it off raises the
-principal-component arm from $0.2608$ to $0.2746$ and leaves the transcript-level arm unchanged
-($0.2291$ to $0.2289$), widening the margin from $+0.0317$ to $+0.0457$ --- an effect equal to
-$44\,\%$ of the margin as reported, and running against the arm that leads. Every margin in this
+variance-ordered, so the same nominal rate removes a heavier-tailed share. Sweeping the rate over
+$\{0, 0.02, 0.05, 0.1, 0.2, 0.3\}$ leaves the transcript-level arm flat --- a range of $0.0020$
+against a per-seed standard deviation of $0.0021$ --- while the principal-component arm varies over
+$0.0145$, so the regularizer acts on one arm and not the other. The shipped rate of $0.1$ is the least
+favourable of the six to the leading arm, and no rate above zero improves on $p=0$ by more than a
+tenth of a seed standard deviation, so the setting is not doing the work a regularizer is meant to do. Every margin in this
 section is therefore quoted at input dropout $0.1$ and is conservative with respect to this setting.
 Because weight decay is zero, dropout is the model's only regularizer, so this is not a minor
 hyperparameter; what the rate should be is left open.

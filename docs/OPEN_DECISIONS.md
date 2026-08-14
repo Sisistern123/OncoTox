@@ -211,8 +211,12 @@ three seeds):
 | 0.0 (off) | **0.2746** | 0.2289 | **+0.0457** |
 | cost of the regularizer | **−0.0138** | −0.0002 | −0.0140 |
 
-**The asymmetry is confirmed and one-sided.** It costs `X_pca` 0.0138 and `X_scGPT` nothing —
-**44 % of the Q1 margin**, running in PCA's disfavour. It matters more than when item 8B was written,
+**The asymmetry is confirmed and one-sided**, and a six-point sweep now establishes it properly:
+`X_scGPT` is flat across p ∈ [0, 0.3] (range 0.0020, inside one seed sd) while `X_pca` moves over
+0.0145. ⛔ **But the size first quoted here — 0.0138, "44 % of the margin" — was measured at p = 0.10,
+which the sweep shows sits ~1 seed sd below its neighbours.** The trend cost is nearer 0.005–0.008.
+There is **no interior optimum** (p = 0.02 beats p = 0 by 0.0007), so the sweep gives no evidence that
+input dropout regularizes at all. It matters more than when item 8B was written,
 because `weight_decay = 0.0` makes dropout the **only** regularizer in the model.
 
 **The choice.**
