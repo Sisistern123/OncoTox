@@ -87,6 +87,21 @@ RETIRED = [
       "notebooks/README.md", "notebooks/outputs/README.md", "notebooks/4a_percell_training.ipynb",
       "notebooks/analysis/evaluation/dreval_benchmark.ipynb", "scripts/gate/retired_values.py", "scripts/gate/README.md"]),
 
+    (r"0\.2421(?!\d)|0\.2692(?!\d)|0\.3111(?!\d)|0\.7709(?!\d)",
+     "the metric-equivalence row (per-drug and pooled, raw and DrEval-normalized), computed in an "
+     "uncommitted shell session", "0.2473 / 0.2750 / 0.3126 / 0.7700, from "
+     "scripts/evaluation/bias_accounting.py", "(this commit)",
+     ["docs/steps/corrections-and-dead-ends.md", "docs/steps/05-multitask-results.md",
+      "scripts/evaluation/bias_accounting.py", "scripts/gate/retired_values.py",
+      "scripts/gate/README.md"]),
+
+    (r"0\.1660(?!\d)|0\.2224(?!\d)|0\.1778(?!\d)",
+     "the fragility-control table, computed in an uncommitted shell session",
+     "0.1602 / 0.2138 / 0.1733, from scripts/evaluation/bias_accounting.py", "(this commit)",
+     ["docs/steps/corrections-and-dead-ends.md", "docs/steps/05-multitask-results.md",
+      "scripts/evaluation/bias_accounting.py", "scripts/gate/retired_values.py",
+      "scripts/gate/README.md"]),
+
     (r"180 trainable|180 labelled lines|153 of the 180",
      "the trainable line count before the H292 alias", "181", "914bb50",
      ["docs/steps/corrections-and-dead-ends.md", "docs/TODO.md",

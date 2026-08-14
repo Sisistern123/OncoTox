@@ -1002,21 +1002,47 @@ exists because most published models score well through mean effects, and their 
 strips `overall mean + line effect + drug effect` from truth and prediction alike. Reporting our own
 per-drug Spearman instead could look like sidestepping exactly that.
 
-**Measured, on our own out-of-fold predictions** (`X_pca`, α=0, mse, `dreval_normalize.naive_predictions`):
+**Which metric this project reports, precisely.** The headline is a **mean per-drug Spearman**:
+predictions are reduced to one value per (cell line, drug) (`cv.line_level_predictions`), correlated
+with the truth **within each drug** across held-out lines, pooled over the five folds, then averaged
+over the eleven drugs — and over the three seeds. It is a *raw* correlation with **no baseline
+subtracted**; what removes the drug effect is the grouping, not a correction.
+
+**Measured, on our own out-of-fold predictions** (`scripts/evaluation/bias_accounting.py` →
+`notebooks/outputs/dreval/bias_accounting.csv`, all twelve arms; the row below is `X_pca`, α=0, mse):
 
 | | pooled | per-drug |
 |---|---|---|
-| raw | 0.7709 | 0.2421 |
-| after DrEval's normalization | 0.3111 | **0.2692** |
+| raw | 0.7700 | 0.2473 |
+| after DrEval's normalization | 0.3126 | **0.2750** |
+
+> ⚠️ **Corrected 14.08.2026, and the reason matters more than the correction.** This table first read
+> `0.7709 / 0.2421` raw and `0.3111 / 0.2692` normalized. Those were computed in an **uncommitted
+> shell session**, which `CLAUDE.md` says is not a result, and they do not reproduce: the committed
+> script gives the values above. **Every conclusion in this section is unchanged.** The check that
+> catches this class is now built in — `spearman_raw_per_drug` in that artifact reproduces
+> `panel_leaderboard.csv` **exactly in all twelve arms**, so the file cannot silently drift from the
+> leaderboard it is meant to be commensurable with.
 
 **Their normalization carries no line effect under leave-cell-line-out — verified, not assumed.** The
 fitted baseline takes exactly **five distinct values within each drug**, one per fold, and none of
-them varies by cell line. So what it removes is the drug (and fold) effect, which is what correlating
-*within* a drug removes by construction. The per-drug figure barely moves, 0.2421 → 0.2692.
+them varies by cell line (`n_distinct_naive` in that artifact, 5 in every arm). So what it removes is
+the drug (and fold) effect, which is what correlating *within* a drug removes by construction. The
+per-drug figure barely moves, 0.2473 → 0.2750; **the pooled figure collapses**, 0.7700 → 0.3126.
 
 **So the metric choice is not the dodge.** Under LCO, DrEval's normalization and this project's
 per-drug correlation are near-equivalent, and the project's headline is on the harder of the two
 scales — the pooled 0.77 is the flattering number and is not quoted.
+
+**And Q1 is metric-invariant, which is worth stating because it need not have been.** Under DrEval's
+own normalized per-drug metric `X_pca` still leads `X_scGPT` in **all six** loss × α arms
+(0.2750–0.2961 against 0.2132–0.2676), and pooled in all six as well. The ordering does not depend on
+whose metric is used.
+
+⚠️ **What neither metric does under this protocol is control for line fragility** — theirs cannot,
+because the line was never seen, and ours does not attempt to. That is a limitation of the **split**,
+not of the metric, and it is the whole point of the leave-pairs-out section above. The measurement
+that does address it, without changing the split, is the fragility control immediately below.
 
 ### ⛔ What "we beat the baseline" is worth, and it is less than it sounds
 
@@ -1061,22 +1087,35 @@ Measured on the committed out-of-fold predictions, no retraining.
 **Method.** For each drug, a fragility proxy is the line's mean response over the **other ten** drugs
 (leave-one-drug-out, so the drug being scored never enters its own proxy). Two quantities per arm:
 how fragility-like the predictions are, `ρ(prediction, proxy)`; and the rank-partial `ρ(truth,
-prediction)` with the proxy controlled out. Averaged over drugs, then over the six loss × α arms.
+prediction)` with the proxy controlled out. Averaged over drugs, then over seeds, then over the six
+loss × α arms. Source: `scripts/evaluation/bias_accounting.py` →
+`notebooks/outputs/dreval/bias_accounting.csv`.
 
 | | `ρ(prediction, fragility)` | partial `ρ(truth, prediction)` |
 |---|---|---|
-| `X_pca` | **0.1660** | **0.2224** |
-| `X_scGPT` | **0.1200** | 0.1778 |
+| `X_pca` | **0.1602** | **0.2138** |
+| `X_scGPT` | **0.1172** | 0.1733 |
+
+> ⚠️ **Corrected 14.08.2026 together with the metric table above, and for the same reason** — the
+> first version (`0.1660 / 0.2224` and `0.1200 / 0.1778`) came from an uncommitted computation and
+> does not reproduce. **Direction, sign-consistency and every conclusion below are unchanged**; the
+> values moved in the third decimal.
 
 **`X_scGPT` is the less bias-driven arm, in every one of the six arms** — its predictions correlate
-less with general fragility (0.120 against 0.166). That is exactly what the representation is built to
+less with general fragility (0.117 against 0.160). That is exactly what the representation is built to
 do, and it is the same mechanism that makes it score lower: it suppresses the line identity the label
 is defined at.
 
 **And Q1's ordering survives the control.** `X_pca` leads on the partial correlation in **all six
-arms**, by +0.007 to +0.074, sign-consistent. So the PCA lead is **not** an artifact of PCA exploiting
-fragility more — controlling for fragility leaves it intact. This closes one more alternative
-explanation by elimination, which is how every other Q1 explanation was closed.
+arms**, by **+0.0069 to +0.0679**, sign-consistent. So the PCA lead is **not** an artifact of PCA
+exploiting fragility more — controlling for fragility leaves it intact. This closes one more
+alternative explanation by elimination, which is how every other Q1 explanation was closed.
+
+⚠️ **Read the two columns together, not separately.** Controlling for fragility costs `X_pca`
+0.2685 → 0.2138 of its raw per-drug score and `X_scGPT` 0.2163 → 0.1733: **roughly a fifth of each
+arm's signal is fragility-aligned, and the share is very nearly the same for both** (20.4 % and
+19.9 %). So the finding is *not* "PCA is the biased one and scGPT is clean" — both lean on the
+channel to a similar degree in proportion; scGPT simply has less of everything.
 
 ⚠️ **Limits.** Eleven drugs; the proxy is built from the same eleven, so it is an approximation of
 "general fragility" rather than a measurement of it; rank-partial correlation controls linearly in the

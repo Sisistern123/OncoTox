@@ -1483,3 +1483,33 @@ disqualification stands on evidence anyone can check.
 quoted without its predecessor would look like a different result rather than the same result with
 its unreproducible half removed.
 
+---
+
+## The two bias tables were reported from an uncommitted shell session (14.08.2026)
+
+**What was wrong.** The metric-equivalence table (*"per-drug 0.2421 → 0.2692, pooled 0.7709 →
+0.3111"*) and the fragility-control table (*"0.1660 / 0.2224 against 0.1200 / 0.1778"*) entered
+[Step 05](05-multitask-results.md), `report/sections/04_results.tex` and
+`report/sections/06_limitations_and_outlook.tex` on 14.08.2026 **without any code in the repository
+that produced them**. They were computed in a shell session and read off the terminal.
+
+**What replaced them.** `scripts/evaluation/bias_accounting.py` →
+`notebooks/outputs/dreval/bias_accounting.csv`, which re-derives both for all twelve arms:
+**0.2473 → 0.2750** and **0.7700 → 0.3126**; **0.1602 / 0.2138** against **0.1172 / 0.1733**.
+
+**What changed scientifically: nothing.** Direction, sign-consistency in all six arms, the
+near-coincidence of the two metrics, and the survival of Q1 under the fragility control all hold, and
+the margin range moved from *"+0.007 to +0.074"* to **+0.0069 to +0.0679**. What moved is the third
+decimal of every quoted value.
+
+**Why it is here and not merely a correction.** `CLAUDE.md` states that anything existing only as a
+shell command in a chat is not a result — and this happened *in the same session* that built
+`scripts/gate/retired_values.py`, a check whose entire purpose is to stop corrected numbers from
+surviving. The defect was not ignorance of the rule; it was applying it to other people's numbers.
+*Before a number reaches a document, the command that produced it has to be a file in the repository.*
+
+**What now makes it mechanical.** The new script's `spearman_raw_per_drug` column reproduces
+`panel_leaderboard.csv` in **all twelve arms**, so a future divergence between the bias accounting and
+the leaderboard shows up as a mismatch rather than as a plausible number; and all four retired values
+are registered in `scripts/gate/retired_values.py`.
+

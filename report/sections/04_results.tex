@@ -208,17 +208,22 @@ for it (added 14.08.2026).} If the principal-component arm leads because it expl
 fragility more effectively, that is a different claim from its carrying more of what the label varies
 over. Taking as a proxy for a line's general sensitivity its mean response over the \emph{other ten}
 compounds, so that the compound being scored never enters its own proxy, the transcript-level arm's
-predictions correlate with that proxy at $0.120$ and the principal-component arm's at $0.166$,
-averaged over compounds and over all six objective settings. \textbf{The transcript-level arm is the
+predictions correlate with that proxy at $0.117$ and the principal-component arm's at $0.160$,
+averaged over compounds, seeds and all six objective settings. \textbf{The transcript-level arm is the
 less bias-driven of the two, in every one of the six}, which is what an embedding built to suppress
 line identity should do and is the same mechanism by which it scores lower here.
 
-Controlling for the proxy by rank-partial correlation leaves the ordering unchanged: $0.222$ against
-$0.178$, with the principal-component arm ahead in all six settings by between $0.007$ and $0.074$.
+Controlling for the proxy by rank-partial correlation leaves the ordering unchanged: $0.214$ against
+$0.173$, with the principal-component arm ahead in all six settings by between $0.007$ and $0.068$.
 \textbf{The lead is therefore not an artifact of differential fragility exploitation}, which closes
-one further alternative explanation by elimination. The limits are the eleven compounds, a proxy built
-from those same eleven, and a control that is linear in the ranks; the narrowest margin is close to a
-tie.
+one further alternative explanation by elimination. The two columns should nevertheless be read
+together: the control costs the principal-component arm $20.4\,\%$ of its raw score and the
+transcript-level arm $19.9\,\%$, so approximately a fifth of each is fragility-aligned and the
+\emph{proportion} is nearly identical. The finding is not that one arm is biased and the other clean.
+The limits are the eleven compounds, a proxy built from those same eleven, and a control that is
+linear in the ranks; the narrowest margin is close to a tie. Read from
+\code{bias\_accounting.csv}, produced by \code{scripts/evaluation/bias\_accounting.py}, whose raw
+within-compound column reproduces \code{panel\_leaderboard.csv} in all twelve arms.
 \end{revisionblock}
 
 \paragraph{The positive is weak, and the positive control is why.}

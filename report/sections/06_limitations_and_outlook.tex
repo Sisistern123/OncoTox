@@ -23,8 +23,13 @@ It also bears on the choice of metric. Reporting a within-compound correlation r
 benchmark's normalized one could look like avoiding the very correction that benchmark exists to
 apply. Measured on the same predictions, it is not: under this split design the normalization removes
 the compound effect and nothing else, so the two nearly coincide, moving the within-compound figure
-from $0.242$ to $0.269$. The pooled correlation of $0.771$ is the flattering number and is not the one
-this work reports.
+from $0.247$ to $0.275$, while the pooled figure collapses from $0.770$ to $0.313$. The pooled
+correlation is the flattering number and is not the one this work reports. The comparison of the two
+representations is likewise unaffected by which metric is used: the principal-component arm leads on
+the benchmark's normalized within-compound metric in all six objective settings, as it does on the raw
+one. What neither metric controls for under this split is line fragility --- the benchmark's cannot,
+because the line was never seen --- and that is a property of the partition rather than of the metric.
+Read from \code{bias\_accounting.csv} (\code{scripts/evaluation/bias\_accounting.py}).
 \end{revisionblock}
 
 \begin{revisionblock}
