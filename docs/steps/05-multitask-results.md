@@ -264,8 +264,32 @@ two runs — different from each other, both inside the pre-fix range. The chang
 (`e6c087d`); the commit that adds it (`664f3e8`) can be reapplied unchanged if the first-fit effect
 is ever worth chasing on its own.
 
-⚠️ **Review item 10's "the `mps` nondeterminism does not reproduce under current code" is wrong**, but
-narrowly: it reproduces in one configuration of six, which is why a smaller check missed it.
+### ⚠️ This is not a new finding — it was recorded in July, and item 10 wrongly dismissed it
+
+**The project already knew.** [Corrections](corrections-and-dead-ends.md#inverse-density-loss-weighting-improves-ranking)
+records, on the **void 8-drug panel and the retired `auc` target**:
+
+> *"The PCA unweighted arm is not bit-reproducible on `mps`: four identical runs gave 0.313 / 0.315 /
+> 0.317 / 0.320, while every other arm reproduced exactly. The cause is that PCA peaks at epoch 1
+> (best epoch per fold `[1,1,3,1,1]` vs scGPT `[10,11,2,21,4]`)"*
+
+Tonight's independent measurement, on the **rebuilt 11-drug panel and the `auc_cc` target**, two code
+generations later: the α=0 `X_pca` arm spans 0.2450–0.2541 over eight runs while every other arm
+reproduces exactly, and its best epoch per fold at seed 42 is **`[1,1,3,1,4]`** — against the recorded
+`[1,1,3,1,1]`.
+
+**Same arm, same signature, same cause, across two panels, two targets and two code generations.** The
+July entry's instruction — *"do not read the sign of these deltas"* — was right then and is right now.
+
+⛔ **Review item 10's "the `mps` nondeterminism does not reproduce under current code" is therefore
+wrong twice over:** it contradicted the project's own earlier record, and it is refuted by direct
+measurement. It reproduces in one configuration of six, which is why a smaller check missed it.
+
+⚠️ **One refinement to the July diagnosis.** It attributed the instability to the *checkpoint being
+chosen among near-tied states*. That is not what the fold logs show: `best_epoch` is **identical**
+across runs in all fifteen (fold × seed) combinations, while `best_val_obj` differs. So the same epoch
+is selected every time and the **weights at that epoch differ** — the instability is in the fit itself
+at epoch 1, where the model is barely past its head-bias initialisation, not in which epoch is picked.
 
 ### Item 9A — settled 14.08.2026: the rule cannot select a winner, and why
 
