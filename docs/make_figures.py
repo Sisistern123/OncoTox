@@ -78,9 +78,14 @@ ref.
         ``alpha = 0`` — so the figure asserted a weighting it does not show. The subtitle now names
         only what does not vary (the masking); *which* arm the bars are is stated once, with them,
         from ``EXAMPLE_ARM``.
-  ⚠️ ``build_pipeline_flow``   "unscreened pairs dropped, rare response values weighted up"
-        Same class: true only for ``alpha > 0``, while every panel on the figure plots ``alpha = 0``.
-        **Flagged to Selin 14.08.2026 and deliberately NOT rewritten** — what a loss weights is hers.
+  ✅ ``build_pipeline_flow`` ~~"unscreened pairs dropped, rare response values weighted up"~~
+        **Fixed 14.08.2026 (Selin).** Same class as the one above: *"weighted up"* is true only for
+        ``alpha > 0``, and every panel on that figure plots ``alpha = 0``, where ``W`` is identically
+        1 and nothing is weighted at all. The caption now separates what the objective **always**
+        does (masking) from what is **swept** (the weight), and reads ``alpha`` off ``EXAMPLE_ARM``
+        so it follows the arm the figure draws. This matches the stance ``LOSS_TEX_MACROS`` already
+        takes deliberately — ``\\ell`` and ``\\alpha`` stay symbolic there so the figure cannot
+        pre-empt the R4 comparison — which the caption had been quietly contradicting.
 
 ⚠️ **Headline register — true, but the wrong form:**
   ``draw_architecture``     "Model architecture — one cell in, one AUC per panel drug out"
@@ -990,8 +995,14 @@ def build_pipeline_flow():
     draw_architecture(ax, compact=True)
 
     # ================================================== 6 · loss  (the standalone drawing)
+    # Rewritten 14.08.2026 (Selin). The second clause -- "rare response values weighted up" --
+    # described alpha > 0, while every panel on this figure is alpha = 0, where W is identically 1
+    # and nothing is weighted up at all. Same defect as the architecture subtitle: a swept arm stated
+    # as a fact. The caption now separates what the objective always does (masking) from what is
+    # swept (the weight), and reads alpha off EXAMPLE_ARM so it tracks the arm the figure plots.
     stage(41.0, ROW2_TITLE, "6", "Loss",
-          "unscreened pairs dropped, rare\nresponse values weighted up", ROW2_CAP)
+          f"unscreened pairs dropped; the weight W is\n"
+          f"a swept arm — α = {EXAMPLE_ARM['alpha']:g} here, so every pair weighs 1", ROW2_CAP)
     ax = fig.add_axes([0.405, 0.215, 0.215, 0.16])
     draw_loss_objective(ax, compact=True)
 
