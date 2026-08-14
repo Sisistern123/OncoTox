@@ -39,7 +39,11 @@ latent-space analysis illustrates the effect (Figure~\ref{fig:umap}). When cells
 type, full-transcriptome PCA is dominated by tissue-specific markers and separates the data into distinct
 lineage clusters, so that a downstream model could achieve low error simply by classifying the cell line.
 The scGPT embeddings \cite{scgpt} instead project the same cells onto a continuous, shared manifold in
-which tissues are intermixed. The project therefore diverges from prior work such as PERCEPTION
+which tissues are intermixed. \revision{The islands in that baseline are individual cell lines rather
+than tissues, which matters for how the figure should be read: what separates them is the same
+granularity at which the response label is defined. Section~\ref{sec:results} finds that this works
+in the baseline's favour on the present task, so the analysis below motivates the hypothesis without
+confirming it.} The project therefore diverges from prior work such as PERCEPTION
 \cite{perception}, which pre-trained on bulk data to predict PRISM response, by focusing on reusable
 representation learning: it evaluates whether transformer-based single-cell embeddings improve
 drug-response prediction over a standard PCA baseline, and it is designed to extend to multi-task learning
@@ -74,9 +78,17 @@ very within-line variation it would have to express.}
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.9\textwidth]{fig_umap.png}
-\caption{\textbf{scGPT removes the tissue-of-origin bias that dominates a PCA baseline.} Cells are embedded
-by full-transcriptome PCA (left) and by scGPT (right), reduced to two dimensions by UMAP and colored by
-cancer type. PCA separates the data into tissue-specific clusters, whereas scGPT projects the cells onto a
-continuous, shared manifold. Produced by \code{notebooks/analysis/qc/verify\_variants.ipynb}.}
+\caption{\textbf{PCA resolves individual cell lines; scGPT collapses them onto one shared manifold.}
+Cells embedded by full-transcriptome PCA (left) and by scGPT (right), reduced to two dimensions by UMAP
+and colored by cancer type. PCA separates the atlas into many compact islands; a single color recurs
+across a number of them, so the islands are individual \emph{cell lines} rather than tissues, nested
+within lineage. scGPT projects the same cells onto one continuous manifold in which cancer type is only
+partially organized. \textbf{This figure states the motivating hypothesis, and
+Section~\ref{sec:results} does not bear out the consequence drawn from it.} The structure PCA retains
+is between-line structure, and the response label is defined per cell line --- so it is precisely the
+structure the label varies over, which is why the principal-component arm predicts better here rather
+than worse. The between-to-within variance ratio that quantifies this, and the comparison it explains,
+are in Section~\ref{sec:results}. Produced by
+\code{notebooks/analysis/qc/verify\_variants.ipynb}; regenerated at the 13.08.2026 sweep.}
 \label{fig:umap}
 \end{figure}
