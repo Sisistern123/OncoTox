@@ -603,11 +603,35 @@ def figure_data() -> dict:
     return figure_data()
 
 
+#: Which loss the drawings hold fixed when they need one. `mse` is the level sections C and D hold
+#: fixed, so the figures inherit the sweep's reference rather than introducing a fourth convention.
+FIG_LOSS = "mse"
+
+#: Which alpha level stands for "the weighting is on". `cv.py`'s own note: "today's weighted=True is
+#: exactly alpha=0.5 because DEFAULT_ALPHA is 0.5", so this is a documented identity, not a choice
+#: made here. `weighted` (bool) was replaced by `alpha` (numeric) in 059d548; this reader was missed.
+FIG_ALPHA_ON = 0.5
+
+
 def panel_corr():
-    """``notebooks/outputs/archive/panel_void_8drug/panel_per_drug_correlation.csv`` as a DataFrame."""
+    """``notebooks/outputs/panel/panel_per_drug_correlation.csv``, averaged over seeds.
+
+    **Repointed 14.08.2026 (Selin) from ``outputs/archive/panel_void_8drug/``.** It read the void
+    8-drug panel, which shares three compounds with the rebuilt eleven, so every consumer either
+    skipped itself or would have plotted three points as though they were a complete comparison.
+
+    The current file carries three seeds and two losses per (rep, drug) where the legacy one carried
+    a single row, so it is reduced here rather than at each call site: the loss is held at
+    :data:`FIG_LOSS` and the three seeds are averaged, which is the convention every number in
+    ``docs/steps/05`` uses. Callers therefore still get one row per (rep, alpha, drug).
+    """
     import pandas as pd
 
-    return pd.read_csv(LEGACY_PANEL / "panel_per_drug_correlation.csv")
+    d = pd.read_csv(PANEL_OUT / "panel_per_drug_correlation.csv")
+    d = d[d.loss == FIG_LOSS]
+    return (d.groupby(["rep", "alpha", "drug"], as_index=False)
+             .agg({"spearman": "mean", "mse": "mean", "pred_std": "mean",
+                   "true_std": "mean", "n_lines": "first"}))
 
 
 def _needs_data(name: str) -> bool:
@@ -825,10 +849,15 @@ def build_pipeline_flow():
     stage(64.5, ROW2_TITLE, "7", "Evaluation",
           "cells → one value per line,\nSpearman within each drug", ROW2_CAP)
     ax = fig.add_axes([0.655, 0.155, 0.125, 0.255])
-    oof = pd.read_csv(LEGACY_PANEL / "panel_oof_predictions.csv")
-    g8 = oof[(oof.rep == "X_scGPT") & (~oof.weighted) & (oof.drug == "dasatinib")]
+    # Repointed 14.08.2026 from the void panel, and reduced to ONE seed on purpose: this is a
+    # scatter of individual held-out lines, so averaging predictions across seeds would draw a
+    # cloud no single run produced. Seed 42 is the first of the three.
+    oof = pd.read_csv(PANEL_OUT / "panel_oof_predictions.csv")
+    g8 = oof[(oof.rep == "X_scGPT") & (oof.alpha == 0.0) & (oof.loss == FIG_LOSS)
+             & (oof.seed == 42) & (oof.drug == "dasatinib")]
     ax.scatter(g8.y_true, g8.y_pred, s=11, color=BLUE, alpha=0.55, edgecolor="white", lw=0.35)
-    rho = corr[(corr.rep == "X_scGPT") & (~corr.weighted) & (corr.drug == "dasatinib")].spearman.iloc[0]
+    rho = corr[(corr.rep == "X_scGPT") & (corr.alpha == 0.0)
+               & (corr.drug == "dasatinib")].spearman.iloc[0]
     ax.set_xlabel("measured AUC", fontsize=7.2, labelpad=1)
     ax.set_ylabel("predicted", fontsize=7.2, labelpad=1)
     ax.text(0.04, 0.96, f"dasatinib\nρ = {rho:.2f}", transform=ax.transAxes,
@@ -840,10 +869,10 @@ def build_pipeline_flow():
     stage(82.0, ROW2_TITLE, "8", "Result",
           "one seed — only scGPT clears\nthe ridge control", ROW2_CAP)
     ax = fig.add_axes([0.868, 0.155, 0.115, 0.255])
-    ridge = pd.read_csv(LEGACY_PANEL / "panel_ridge_baseline.csv")
+    ridge = pd.read_csv(PANEL_OUT / "panel_ridge_baseline.csv")
     bars = [
-        ("scGPT MLP", corr[(corr.rep == "X_scGPT") & (~corr.weighted)].spearman.mean(), AMBER),
-        ("PCA MLP", corr[(corr.rep == "X_pca") & (~corr.weighted)].spearman.mean(), GREY),
+        ("scGPT MLP", corr[(corr.rep == "X_scGPT") & (corr.alpha == 0.0)].spearman.mean(), AMBER),
+        ("PCA MLP", corr[(corr.rep == "X_pca") & (corr.alpha == 0.0)].spearman.mean(), GREY),
         ("scGPT ridge", ridge[ridge.rep == "X_scGPT"].spearman.mean(), "#cfcfc9"),
         ("PCA ridge", ridge[ridge.rep == "X_pca"].spearman.mean(), "#cfcfc9"),
     ]
@@ -1258,18 +1287,18 @@ def build_loss_effect():
 
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(10.5, 5.4))
     fig.subplots_adjust(top=0.82)
-    fig.suptitle("The weighting fired — and the ranking did not move", x=0.02, ha="left",
-                 fontsize=13, fontweight="bold", color=INK, y=0.99)
-    fig.text(0.02, 0.925, "one point per drug, out of fold, one seed — unweighted against "
-                          "density-weighted",
+    fig.suptitle("Prediction spread and per-drug Spearman, unweighted against density-weighted",
+                 x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=0.99)
+    fig.text(0.02, 0.925, f"one point per drug, out of fold, mean of three seeds, loss={FIG_LOSS} — "
+                          f"alpha=0 against alpha={FIG_ALPHA_ON:g}",
              ha="left", va="top", fontsize=8.8, color=GREY)
 
     for ax, col, label, lim in [(a1, "pred_std", "spread of the predictions", (0.03, 0.11)),
                                 (a2, "spearman", "per-drug Spearman", (0.0, 0.65))]:
         ax.plot(lim, lim, color="#c9c9c4", lw=1.0, ls="--", zorder=1)
         for rep, c, name in reps:
-            u = corr[(corr.rep == rep) & (~corr.weighted)].set_index("drug").reindex(PANEL)[col]
-            w = corr[(corr.rep == rep) & (corr.weighted)].set_index("drug").reindex(PANEL)[col]
+            u = corr[(corr.rep == rep) & (corr.alpha == 0.0)].set_index("drug").reindex(PANEL)[col]
+            w = corr[(corr.rep == rep) & (corr.alpha == FIG_ALPHA_ON)].set_index("drug").reindex(PANEL)[col]
             ax.scatter(u, w, s=46, color=c, alpha=0.85, edgecolor="white", lw=0.8,
                        label=name, zorder=3)
         ax.set_xlim(*lim); ax.set_ylim(*lim)
@@ -1279,10 +1308,13 @@ def build_loss_effect():
         _tidy(ax, grid="both")
         ax.tick_params(labelsize=8)
     a1.legend(frameon=False, fontsize=8.5, loc="lower right")
-    a1.text(0.04, 0.96, "above the line:\nthe model hedges less", transform=a1.transAxes,
-            ha="left", va="top", fontsize=8.5, color=BLUE)
-    a2.text(0.04, 0.96, "on the line:\nno gain, no loss", transform=a2.transAxes,
-            ha="left", va="top", fontsize=8.5, color=MUTED)
+    # Were "above the line: the model hedges less" and "on the line: no gain, no loss". The second
+    # was a reading of the plot AND is now false: at alpha=0.5 the per-drug Spearman moves +0.0281
+    # on X_pca and -0.0082 on X_scGPT (panel_metrics.csv). The diagonal needs identifying, not
+    # interpreting; what a departure from it means belongs in prose that can be cited.
+    for _ax in (a1, a2):
+        _ax.text(0.04, 0.96, "dashed: y = x", transform=_ax.transAxes,
+                 ha="left", va="top", fontsize=8.5, color=MUTED)
 
     out = FIG / "loss_03_effect.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
