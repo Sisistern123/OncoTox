@@ -942,6 +942,21 @@ seeds on both representations. Source: `notebooks/4b_mil_training.ipynb` →
 **The verdict, in the notebook's own words: `Q2(a) POSITIVE` for both representations** — but stated
 there with the qualifier that matters, *"at a measured instrument sensitivity of AUROC 0.518"*.
 
+> ⚠️ **Stage 2's ρ circulates under two aggregations, and only one of them says so (noted 14.08.2026).**
+> The **0.256 / 0.861** above is `q2_verdict.csv`'s `stage2_median_rho` — a median taken **per seed
+> pair and then across them**. `docs/figures/q2_instrument.png` shows **0.261 / 0.866** for the same
+> quantity, because it takes the **pooled** median over all 10,098 points of
+> `stage2_cross_seed_agreement.csv`; the figure labels its own as *"pooled median of points shown"*, so
+> it is not wrong. Re-derived both ways on 14.08.2026 and they reproduce exactly (pooled 0.2611 /
+> 0.8662).
+>
+> **Nothing turns on the difference** — it is in the third decimal and the veto compares ρ² against a
+> quantity two orders of magnitude away from the gap. It is recorded because CLAIMS IN THIS PROJECT
+> MUST NAME THEIR AGGREGATION: pooled-versus-per-group is one of the choices `CLAUDE.md` reserves, and
+> a reader who checks the deck's figure against the deck's table finds two numbers for one thing with
+> only one of them explained. **The table above, and the report and presentation that quote it, take
+> the verdict artifact's aggregation.**
+
 ### The stage-6 veto was evaluated, and it does not fire (settled 14.08.2026)
 
 **The bar is a comparison, not a threshold, and it was fixed before any model existed.** `4b` §2.4:

@@ -68,9 +68,20 @@ ref.
         — into a PNG, where it can be neither qualified nor retracted; the tallest bar on the panel
         is in fact the *PCA ridge* (0.2767), so "only scGPT clears" reads as "scGPT wins" and is not
         that. The finding lives in ``docs/steps/05``, sourced and disputable.
-  ``build_loss_effect``     "The weighting fired — and the ranking did not move"
-        The 27.07 conclusion, on the figure drawn from the run that re-tests that very claim.
-  ``build_loss_effect``     "above the line: the model hedges less" · "on the line: no gain, no loss"
+  ✅ ``build_loss_effect``  ~~"The weighting fired — and the ranking did not move"~~ ·
+     ~~"above the line: the model hedges less"~~ · ~~"on the line: no gain, no loss"~~
+        **All three closed in `8fd1c85`; this block was not updated and still listed them as
+        outstanding until 14.08.2026.** The title is now descriptive — *"Prediction spread and
+        per-drug Spearman, unweighted against density-weighted"* — and the two interpretive
+        annotations are gone, leaving only the ``dashed: y = x`` legend. Verified twice over, by
+        rendering ``loss_03_effect.png`` and looking at it, and by grepping the source: the only
+        surviving occurrences of all three strings are in this audit block and in two comments at
+        the call site recording what was removed.
+        ⚠️ **This is the third audit entry here to outlive its defect** — after the head-count
+        entries and the ``"Correct as written; do not sweep in"`` line about the PLOTTED disclaimer.
+        The pattern is not that the entries are wrong when written; it is that **nothing re-reads
+        this block when a figure changes**, so it decays in exactly one direction: toward claiming
+        more is broken than is.
 
 ⛔ **Asserts a swept arm as a fact:**
   ✅ ``draw_architecture``   ~~"per-cell MLP · trained with the density-weighted masked MSE"~~
