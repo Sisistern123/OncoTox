@@ -354,6 +354,20 @@ roughly a hundred and fifty independent labels may simply memorize them, which i
 small-sample objection that governs everything else here.
 \end{revisionblock}
 
+\begin{revisionblock}
+\textbf{Re-running the comparison under the benchmark's leave-pairs-out design (added 14.08.2026).}
+This is listed first among the next steps because it is the cheapest and it bears directly on how the
+present result should be read. The external benchmark defines four test designs and this work has
+used one. Under the design used here a naive mean-effects baseline cannot express a cell-line effect,
+so clearing it establishes less than it appears to; under leave-pairs-out it can, and a predictor
+knowing only each line's average response reaches a within-compound rank correlation of $0.322$ ---
+of the same order as everything reported here. Retraining both representations under that design
+would answer whether the model clears a baseline with both of its channels available, which is the
+question the benchmark was built to ask and the one this work leaves open. It requires no new data
+and no new model, only a different partition of the pairs, and its results would not be comparable
+with those above, which is why it is a separate experiment rather than a revision of this one.
+\end{revisionblock}
+
 \textbf{Bulk pretraining in the manner of scDEAL} follows. The remaining levers are argued to be on the
 label side.
 \revision{\emph{The three measurements that argument rested on are withdrawn (12.08.2026), for two
