@@ -117,3 +117,50 @@ Two things the absorption surfaced that were not visible before:
 
 ---
 
+---
+
+## 6 · The two arms are not optimised comparably — input scale against one learning rate
+
+**Opened 14.08.2026.** Found while asking why `best_epoch` is so early.
+
+**The observation.** Median best epoch, out of 50 available, patience 10:
+
+| | `X_pca` | `X_scGPT` |
+|---|---|---|
+| trunk (128,64) | **1** | 8 |
+| linear | **12** | 2 |
+
+A crossover, so it is not "PCA trains fast". `X_pca` reaches the optimizer at **104×** the magnitude of
+`X_scGPT` (median per-dimension sd 1.1062 against 0.0107,
+`notebooks/outputs/diagnostics/input_scale.csv`) under **one shared learning rate**. Large inputs with
+high capacity overfit inside one epoch; tiny inputs with low capacity cannot move off the head-bias
+initialisation. Both are optimisation artefacts, not statements about the representations.
+
+**What it costs.** The α=0/mse `X_pca` arm peaks at **epoch 1** — barely past its initialisation —
+which is why it is the one arm that does not reproduce (§3). And **§C's "capacity does not carry Q1"
+was measured correctly but rests on an uncontrolled difference**: the two arms are not receiving
+comparable optimisation, so a capacity effect and a scale effect cannot be separated in that design.
+
+**This is review item 4A's second half**, which has never been tested: *"if one arm reaches the
+optimizer with values ~78× larger than the other, one learning rate is not one setting, and an arm can
+look worse for a reason that has nothing to do with the representation."* The measured factor is now
+104×, not 78×.
+
+**The options.**
+
+- **Standardise each representation** (z-score to unit variance) before the model. Makes the learning
+  rate mean the same thing for both. Changes every number and requires a full re-run.
+- **Per-arm learning rate**, tuned so each peaks in a comparable epoch range. Keeps the inputs as they
+  are, but introduces a second per-arm setting to justify.
+- **Leave it and report the confound.** Costs nothing, and the Q1 margins stay as measured with a
+  stated qualification.
+
+**The assumption underneath.** That the Q1 ordering would survive equalisation. Untested — and it is
+the one open confound that could plausibly move it, since it is the only known difference between the
+arms that is not the representation itself.
+
+**My reading, as a reading.** Report the confound now (option 3) and standardise afterwards, because
+option 1 changes every number in the project and there is no time to re-verify them before the talk.
+But say it out loud in the talk: it is the strongest remaining threat to Q1, and it is better said by
+you than found by someone in the room.
+
