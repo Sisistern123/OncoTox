@@ -337,6 +337,15 @@ the bag-objective axis is not re-scored under the four conventions.
 > committed history (`9732b6f^`, `9732b6f`), and the artifact is regenerable by anyone with the
 > repository.
 >
+> **It is a FLOOR, not an estimate of the spread** (settled 14.08.2026,
+> [OPEN_DECISIONS](../OPEN_DECISIONS.md) §8): six further executions of this configuration were
+> observed and widened it to 0.2450–0.2541; they simply cannot be replayed. The claim it supports —
+> *"differences below this are not interpretable"* — is exactly what a floor supports.
+> ⚠️ **`ffe13be` was checked and disqualified**, on evidence rather than taste: it shares only 2 of
+> 14 rows with this sweep, both the ridge control, and disagrees on one (0.2736 against 0.2767).
+> Ridge is a closed-form fit with no seed and reads 0.2767 in all eight original executions, so a
+> different value means different **inputs** — an earlier pipeline state, not a repeat.
+>
 > **What moved.** The band narrows **0.2450–0.2541 → 0.2473–0.2541** (width 0.0091 → 0.0068), and
 > *"twelve of fourteen arms identical"* becomes **thirteen of fourteen** — fewer executions, so less
 > opportunity to differ. **What did not move is the argument**: the two values

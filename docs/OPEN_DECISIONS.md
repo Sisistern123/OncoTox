@@ -264,7 +264,37 @@ and Q1's direction survives every rate in the sweep.
 
 ---
 
-## 8 · Which committed executions count as *comparable* for the reproducibility band?
+## 8 · ~~Which committed executions count as *comparable* for the reproducibility band?~~ — SETTLED 14.08.2026
+
+> ✅ **Settled by the data, not by choosing: the only candidate is disqualified, so the option space is
+> empty.** The band stays at the two executions it has, and is described as a **floor**.
+>
+> **The test §8 named for its own assumption was "diff what changed between the commits; if anything
+> did, it is a pipeline difference and not execution noise." The artifacts answer it directly.**
+>
+> `ffe13be` shares only **2 of 14** arm × rep rows with the current sweep — and both are the **ridge
+> control**; it carries no `mae` arm at all. On one of those two shared rows it disagrees:
+> **ridge `X_pca` = 0.2736**, against **0.2767** in both retained executions.
+>
+> **That disagreement cannot be execution noise.** The control is `RidgeCV(alphas=RIDGE_ALPHAS)` on
+> cell-line means — a closed-form fit with no seed, no early stopping and no dropout — and it reads
+> **0.2767 / 0.1914 in all eight** of the original executions without a digit of variation. A
+> deterministic estimator returning a different number had **different inputs**: a different PCA, panel,
+> fold assignment or line set. `ffe13be` is an earlier pipeline state, not a repeat of the same
+> configuration, and including it would inject a pipeline difference into a band whose whole purpose is
+> to isolate execution noise.
+>
+> **So the band remains the two replayable executions, 0.2473–0.2541.** It is labelled a **floor**
+> rather than an estimate of the spread: six further executions of this configuration were observed on
+> 14.08.2026 and are recorded in
+> [Corrections](./steps/corrections-and-dead-ends.md), and they widened it to 0.2450–0.2541 — they
+> simply cannot be replayed. The claim the band supports is *"differences below this are not
+> interpretable"*, and a floor supports exactly that claim without overstating the evidence.
+>
+> **Nothing moves.** No number, no conclusion; §3's disqualification of `α=0`/`mse`/`X_pca` already
+> sits entirely inside the two retained executions.
+
+## 8 · Which committed executions count as *comparable* for the reproducibility band? *(the original entry, kept)*
 
 **Opened 14.08.2026, and it should have been opened the moment I wrote the sentence.** ⚠️ Three files
 — `scripts/evaluation/build_execution_band.py`, `docs/steps/05` twice — say *"which commits count as
@@ -312,7 +342,7 @@ it are not interpretable", which a floor supports. It also costs nothing and cha
 
 ---
 
-## Nothing else is open
+## Nothing is open
 
-§8 above is the only open decision as of 14.08.2026. Everything before it is settled, dissolved or
-demoted. Add the next one as §9.
+**Every entry is settled, dissolved or demoted as of 14.08.2026** — §8 last, by evidence rather than
+by choice. Add the next one as §9.

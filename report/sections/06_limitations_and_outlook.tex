@@ -126,7 +126,7 @@ anyone holding the repository. The spread narrows accordingly, from $0.2450$--$0
 $0.2473$--$0.2541$, and the count of arms identical across executions rises from twelve of fourteen
 to thirteen, there being fewer executions in which to differ. The conclusion drawn from it is
 unaffected: the two values on which the loss comparison's verdict turns are precisely the two
-executions retained. The earlier eight-execution measurement is kept as a record rather than deleted.
+executions retained. The earlier eight-execution measurement is kept as a record rather than deleted, and the retained spread is therefore reported as a lower bound rather than as an estimate: six further executions of the same configuration were observed and widened it, and cannot be replayed. A third committed execution was examined and set aside, because the deterministic control it shares with the retained pair returns a different value in it, which identifies it as an earlier state of the pipeline rather than a repetition of the same one.
 Further executions could be added from version control, but only some of the commits touching that
 table belong to the present pipeline, and deciding which are comparable is a judgement that has not
 been made.
