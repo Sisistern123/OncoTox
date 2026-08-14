@@ -179,6 +179,29 @@ $82.3\,\%$ (\code{X\_scGPT}) of (compound, line) pairs on all three seeds, and t
 reproduces across seeds with median $\rho$ of $0.256$ and $0.861$. On the criterion as specified this
 is positive for both arms.
 
+\begin{revisionblock}
+\textbf{How much of the ranking is general fragility rather than compound-specific response (added
+14.08.2026).} The external benchmark is run leave-cell-line-out, and under that design the question
+cannot be asked: a held-out line has never been seen, so the benchmark's own cell-line-mean baseline
+predicts a constant and scores zero, and its normalization has no line effect to remove. Run instead
+in the benchmark's leave-pairs-out mode, where held-out pairs belong to lines present in training,
+that baseline becomes informative. Knowing only each line's average response, and nothing whatever
+about any compound, it reaches a mean within-compound rank correlation of $0.322$; knowing only the
+lineage reaches $0.184$. The same quantity computed without the benchmark, by correlating each
+compound's measured response against the line's mean over the remaining ten, gives $0.361$.
+
+\textbf{The ranking of cell lines within a compound is therefore substantially a property of the
+line rather than of the compound:} lines that are broadly sensitive rank low almost everywhere.
+\textbf{These figures are not comparable with those reported above}, which come from the
+leave-cell-line-out design in which the model predicts lines it has never encountered and the same
+baseline scores zero. The comparison is not a contest between the two, and it is not offered as one.
+What it establishes is the size of the channel: general fragility supplies rank information of the
+same order as the total this work reports, so a model that cannot observe a line's mean and
+nevertheless ranks lines may be recovering that fragility from expression rather than any
+compound-specific biology. Separating the two is not attempted here and would require a decomposition
+this work has deliberately not built, for reasons given in the methods.
+\end{revisionblock}
+
 \paragraph{The positive is weak, and the positive control is why.}
 Stage 7 asks whether the instrument can detect a between-line difference it already knows is present.
 The median within-bag AUROC is $0.518$ and $0.537$ against a $0.5$ null, with fewer than half of pairs

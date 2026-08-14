@@ -955,6 +955,67 @@ the sign reversed, and near the per-drug noise floor throughout.
 > whether something imported the writer before assuming the number is stale.
 > Recorded in `scripts/gate/README.md` under *Known limits*.
 
+## Is it just learning bias? — DrEval's leave-pairs-out baselines (14.08.2026)
+
+**The question.** Does the model rank cell lines by drug-specific biology, or by the fact that some
+lines are fragile to everything? The project's DrEval run is **leave-cell-line-out**, and under LCO
+that question is *unanswerable by construction*: a held-out line was never seen, so
+`NaiveCellLineMeanPredictor` has no line mean to predict with — it scores exactly **0.0000** — and
+DrEval's normalization has no line effect to subtract either.
+
+**`drevalpy` ships four test modes and six naive baselines; this project had only ever run one mode.**
+Under **leave-pairs-out** the held-out pairs come from lines that *are* in training, so the line-mean
+baseline becomes informative. Produced by `scripts/evaluation/dreval_lpo.py` →
+`notebooks/outputs/dreval/dreval_lpo_results.csv`; 5 folds, 1,918 (line, drug) pairs, 181 lines,
+11 drugs.
+
+| baseline (drevalpy's own) | pooled Spearman | **per-drug Spearman** |
+|---|---|---|
+| `NaivePredictor` | 0.0000 | — (constant) |
+| `NaiveDrugMeanPredictor` | 0.7413 | — (constant within a drug) |
+| **`NaiveCellLineMeanPredictor`** | 0.0354 | **0.3220** |
+| `NaiveTissueMeanPredictor` | 0.0999 | 0.1835 |
+| `NaiveMeanEffectsPredictor` | 0.7541 | 0.3220 |
+| `SingleDrugElasticNet` (pca) | 0.7688 | 0.3165 |
+| `SingleDrugRandomForest` (scgpt) | 0.7815 | 0.2401 |
+
+**Read the two columns as different questions.** Pooled Spearman is dominated by compound potency —
+predicting each drug's mean alone scores 0.7413 of it, so the raw 0.77-ish numbers say almost nothing.
+This project's metric is the per-drug column, which removes the drug effect by construction.
+
+### What it establishes
+
+**A predictor that knows only each cell line's average response, and nothing about any compound,
+reaches 0.3220 mean per-drug Spearman.** Lineage alone reaches 0.1835. So **the within-drug ranking of
+cell lines is substantially a line-level property**: broadly fragile lines rank low in most drugs.
+
+**Corroborated without `drevalpy` and without any model.** Correlating each drug's truth against the
+line's mean over the *other ten* drugs — leave-one-drug-out, so no self-inclusion — gives mean
+**0.3614**, median **0.4097**, range 0.075–0.629 (`panel_oof_predictions.csv`, `y_true` only). The
+independent figure is higher because it estimates the line mean from all ten remaining drugs where the
+LPO baseline estimates it from training pairs only.
+
+### ⛔ What it does NOT establish, and the comparison not to make
+
+**0.3220 is LPO and the project's 0.2824 is LCO. They are not a horse race and must never be quoted
+side by side as one.** The baseline is allowed to know the held-out line; our model is not — it
+predicts lines it has never seen, which is a strictly harder task and the one the project is about.
+A line-mean baseline scores **0.0000** under our protocol.
+
+What the result does say is that **the fragility channel is large — comparable to the entire signal we
+report** — and that a model which cannot see the line mean but achieves 0.2824 may be inferring
+line-level fragility from expression rather than drug-specific biology. **It does not separate those
+two.** Nothing here measures what share of our model's 0.2824 is fragility; that would need a
+decomposition this project has deliberately not built
+([Corrections](corrections-and-dead-ends.md), and `dreval_normalize.py` on why).
+
+⚠️ **One more thing the run showed.** `SingleDrugElasticNet` on the scGPT line-means **collapsed to the
+drug mean** — pooled 0.7413, exactly `NaiveDrugMeanPredictor`, and a constant within each drug. On
+those features the elastic net shrank to the intercept, finding no usable within-drug signal at all.
+On PCA line-means the same model reaches 0.3165.
+
+---
+
 ## Q2 on the rebuilt panel — does a per-cell model learn heterogeneity implicitly? (14.08.2026)
 
 > ✅ **Not covered by the page banner above.** Measured after the pipeline review, on the rebuilt
