@@ -38,6 +38,23 @@ arms.
 arm by arm against `panel_aggregation_comparison.csv`, identical to four decimals for all twelve.
 No number moves and no code changes.
 
+> ⚠️ **That verification needs redoing, and this is a note about the artifact rather than about the
+> decision (14.08.2026, 19:00 JST).** `panel_aggregation_comparison.csv` was **modified in the working
+> tree while a Jupyter kernel was executing** — one row changed, `X_pca / mlp / alpha=0 / mse / seed
+> 42`, in the fourth decimal (`0.24210 → 0.24397` on the first column). The change was not committed
+> and was not made by the consolidation pass that found it.
+>
+> **It is the expected row.** That arm is the single unstable configuration in the sweep — §3 of this
+> file records it as the only one of fourteen that does not reproduce, banded 0.2450–0.2541 over eight
+> executions, and `panel_execution_band.csv` is the artifact that measures exactly this. So the
+> movement is the documented MPS non-determinism, not a new defect.
+>
+> **What it costs here:** the sentence above says *"identical to four decimals for all twelve"*. That
+> was true of the committed file and is now false of the file on disk, for one of the twelve. **The
+> decision is unaffected** — the aggregation convention does not depend on that arm, and §3 already
+> disqualifies it as a reference point — but the *verification* must be re-run against whatever the
+> in-flight execution finally commits. Do not re-verify against a file being written.
+
 **What it does and does not settle.** It fixes which arm has the highest `order` on `X_pca`
 (**α=0.5/mae, 0.2824**). It does **not** settle item 9A, which *blocks* that arm on `values` and
 `spread_slope` — raising the density exponent buys ranking and pays for it in calibration and
