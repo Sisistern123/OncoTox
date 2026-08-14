@@ -202,6 +202,25 @@ compound-specific biology. Separating the two is not attempted here and would re
 this work has deliberately not built, for reasons given in the methods.
 \end{revisionblock}
 
+\begin{revisionblock}
+\textbf{Which representation is the more bias-driven, and whether the comparison survives controlling
+for it (added 14.08.2026).} If the principal-component arm leads because it exploits general
+fragility more effectively, that is a different claim from its carrying more of what the label varies
+over. Taking as a proxy for a line's general sensitivity its mean response over the \emph{other ten}
+compounds, so that the compound being scored never enters its own proxy, the transcript-level arm's
+predictions correlate with that proxy at $0.120$ and the principal-component arm's at $0.166$,
+averaged over compounds and over all six objective settings. \textbf{The transcript-level arm is the
+less bias-driven of the two, in every one of the six}, which is what an embedding built to suppress
+line identity should do and is the same mechanism by which it scores lower here.
+
+Controlling for the proxy by rank-partial correlation leaves the ordering unchanged: $0.222$ against
+$0.178$, with the principal-component arm ahead in all six settings by between $0.007$ and $0.074$.
+\textbf{The lead is therefore not an artifact of differential fragility exploitation}, which closes
+one further alternative explanation by elimination. The limits are the eleven compounds, a proxy built
+from those same eleven, and a control that is linear in the ranks; the narrowest margin is close to a
+tie.
+\end{revisionblock}
+
 \paragraph{The positive is weak, and the positive control is why.}
 Stage 7 asks whether the instrument can detect a between-line difference it already knows is present.
 The median within-bag AUROC is $0.518$ and $0.537$ against a $0.5$ null, with fewer than half of pairs

@@ -995,6 +995,42 @@ line's mean over the *other ten* drugs — leave-one-drug-out, so no self-inclus
 independent figure is higher because it estimates the line mean from all ten remaining drugs where the
 LPO baseline estimates it from training pairs only.
 
+### Why this project reports a per-drug correlation and not DrEval's normalized metric
+
+**The objection is fair and the answer is that under our protocol the two nearly coincide.** DrEval
+exists because most published models score well through mean effects, and their normalized metric
+strips `overall mean + line effect + drug effect` from truth and prediction alike. Reporting our own
+per-drug Spearman instead could look like sidestepping exactly that.
+
+**Measured, on our own out-of-fold predictions** (`X_pca`, α=0, mse, `dreval_normalize.naive_predictions`):
+
+| | pooled | per-drug |
+|---|---|---|
+| raw | 0.7709 | 0.2421 |
+| after DrEval's normalization | 0.3111 | **0.2692** |
+
+**Their normalization carries no line effect under leave-cell-line-out — verified, not assumed.** The
+fitted baseline takes exactly **five distinct values within each drug**, one per fold, and none of
+them varies by cell line. So what it removes is the drug (and fold) effect, which is what correlating
+*within* a drug removes by construction. The per-drug figure barely moves, 0.2421 → 0.2692.
+
+**So the metric choice is not the dodge.** Under LCO, DrEval's normalization and this project's
+per-drug correlation are near-equivalent, and the project's headline is on the harder of the two
+scales — the pooled 0.77 is the flattering number and is not quoted.
+
+### ⛔ What "we beat the baseline" is worth, and it is less than it sounds
+
+Our model scores **normalized Spearman 0.2776** on DrEval's protocol against **0.0000** for
+`NaiveMeanEffectsPredictor`. **That margin is inflated by our split design, not earned against it.**
+Under LCO the baseline cannot use a line effect — the line is unseen — so it is competing with one
+channel removed. Beating a handicapped baseline is close to automatic for any model carrying signal.
+
+**The test DrEval's paper is actually about is the leave-pairs-out one, and we have not run our model
+under it.** There the baseline gets its line effect back and reaches **0.3220** on the per-drug scale,
+above our LCO 0.2824 — on an easier task. Whether our model still clears a *fully-armed*
+mean-effects baseline is therefore **open**, and it is the single most informative measurement this
+project could still make. Doing it means retraining under an LPO split.
+
 ### ⛔ What it does NOT establish, and the comparison not to make
 
 **0.3220 is LPO and the project's 0.2824 is LCO. They are not a horse race and must never be quoted
@@ -1013,6 +1049,39 @@ decomposition this project has deliberately not built
 drug mean** — pooled 0.7413, exactly `NaiveDrugMeanPredictor`, and a constant within each drug. On
 those features the elastic net shrank to the intercept, finding no usable within-drug signal at all.
 On PCA line-means the same model reaches 0.3165.
+
+---
+
+### Which arm is more bias-driven? — `X_scGPT` is, in all six arms, and Q1 survives it (14.08.2026)
+
+**Directly relevant to Q1.** If `X_pca` leads because it exploits general line fragility more
+effectively, that is a very different claim from "PCA carries more of what the label varies over".
+Measured on the committed out-of-fold predictions, no retraining.
+
+**Method.** For each drug, a fragility proxy is the line's mean response over the **other ten** drugs
+(leave-one-drug-out, so the drug being scored never enters its own proxy). Two quantities per arm:
+how fragility-like the predictions are, `ρ(prediction, proxy)`; and the rank-partial `ρ(truth,
+prediction)` with the proxy controlled out. Averaged over drugs, then over the six loss × α arms.
+
+| | `ρ(prediction, fragility)` | partial `ρ(truth, prediction)` |
+|---|---|---|
+| `X_pca` | **0.1660** | **0.2224** |
+| `X_scGPT` | **0.1200** | 0.1778 |
+
+**`X_scGPT` is the less bias-driven arm, in every one of the six arms** — its predictions correlate
+less with general fragility (0.120 against 0.166). That is exactly what the representation is built to
+do, and it is the same mechanism that makes it score lower: it suppresses the line identity the label
+is defined at.
+
+**And Q1's ordering survives the control.** `X_pca` leads on the partial correlation in **all six
+arms**, by +0.007 to +0.074, sign-consistent. So the PCA lead is **not** an artifact of PCA exploiting
+fragility more — controlling for fragility leaves it intact. This closes one more alternative
+explanation by elimination, which is how every other Q1 explanation was closed.
+
+⚠️ **Limits.** Eleven drugs; the proxy is built from the same eleven, so it is an approximation of
+"general fragility" rather than a measurement of it; rank-partial correlation controls linearly in the
+ranks. The smallest margin, `mae`/α=0 at **+0.007**, is effectively a tie — the ordering is
+sign-consistent but not uniformly comfortable.
 
 ---
 

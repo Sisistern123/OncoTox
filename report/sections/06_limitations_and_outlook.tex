@@ -4,6 +4,30 @@
 Several limitations bound the strength of the present claims, and each points to a concrete next step.
 
 \begin{revisionblock}
+\textbf{What clearing the external benchmark's naive baseline is worth here (added 14.08.2026).} The
+model reaches a normalized rank correlation of $0.278$ on that benchmark against zero for its
+mean-effects baseline, and that margin is weaker evidence than it appears. The benchmark is run
+leave-cell-line-out, and a held-out line is unseen, so the baseline has no line effect to use: its
+fitted values vary only by compound and by fold, never by cell line --- five distinct values within
+each compound, one per fold. It is competing with one of its two channels removed, and clearing a
+baseline in that condition is close to automatic for any model carrying signal at all.
+
+The benchmark's own leave-pairs-out mode restores that channel, and there a predictor knowing only
+each line's average response reaches $0.322$ on the within-compound scale. \textbf{Whether this model
+clears a fully-armed mean-effects baseline is therefore not established}, and it is the single most
+informative measurement that remains: it requires retraining under a leave-pairs-out split, which is
+not attempted here. This is stated rather than left implicit because the published margin invites the
+stronger reading.
+
+It also bears on the choice of metric. Reporting a within-compound correlation rather than the
+benchmark's normalized one could look like avoiding the very correction that benchmark exists to
+apply. Measured on the same predictions, it is not: under this split design the normalization removes
+the compound effect and nothing else, so the two nearly coincide, moving the within-compound figure
+from $0.242$ to $0.269$. The pooled correlation of $0.771$ is the flattering number and is not the one
+this work reports.
+\end{revisionblock}
+
+\begin{revisionblock}
 \textbf{A set of training hyperparameters was fixed by convention and never varied (added 14.08.2026).}
 The learning rate, the gradient-clipping threshold, the learning-rate scheduler's patience and factor,
 and the early-stopping patience are conventional defaults carried from the first prototype. None is
