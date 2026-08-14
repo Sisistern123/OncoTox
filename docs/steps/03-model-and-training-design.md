@@ -715,6 +715,38 @@ and the defaults above are at or within noise of the best setting on all of them
 > rescue table:
 > [Corrections](corrections-and-dead-ends.md#the-model-is-over-regularized-or-too-small).
 
+> ⚠️ **LIMITATION — "every axis is flat" is a statement about four axes, and five settings were never
+> among them (added 14.08.2026).** The sweep's axes are the four rows of the table: regularization,
+> capacity, `batch_size` and sample reweighting. **The learning rate, the gradient clip, the
+> learning-rate scheduler's patience and factor, and the early-stopping patience were never varied** —
+> not here, and nowhere else in the project. They are conventional defaults carried from the first
+> prototype, with no citation and no measurement behind them (`TrainConfig`, where the same limitation
+> is recorded beside the constants).
+>
+> **This matters because of how the sentence above travels.** *"These hyperparameters are not worth
+> tuning"* is the section's title and *"every axis is flat"* its claim, and both read as covering the
+> model's hyperparameters in general. They do not. Anyone quoting this section as evidence that tuning
+> is exhausted is quoting it past its coverage.
+>
+> **Which of the five can move a reported quantity, and which are inert.** Two can. The **learning
+> rate** sets where training peaks, and this page and [Step 05](05-multitask-results.md) both use
+> `best_epoch` as evidence about how linearly accessible each representation is. **Early-stopping
+> patience** decides when a run ends, and every recorded run ends by early stopping rather than by
+> reaching the epoch cap. The **gradient clip** and the **scheduler pair** are inert by comparison:
+> nothing reported reads them, and they act only when a step is already extreme.
+>
+> **What would have to be true for it not to matter:** that the Q1 ordering is insensitive to all five
+> across any range one would plausibly pick. Untested. **How you would know if it were not:** a sweep
+> of the learning rate alone, at fixed everything else, over both arms — if the ordering moved anywhere
+> inside a conventional range, the margins would need requoting at the setting that produced them.
+>
+> **Cost of closing it:** a 2-arm × 3-seed × 5-fold re-run per value swept, i.e. the §C grid again per
+> point. **Left at its values deliberately.** Choosing them now, with the results visible and Q1's
+> margins near 0.03, would be tuning against the answer. The defensible statement is that the
+> comparison is reported at **one untuned setting applied identically to both arms** — which makes it
+> fair, not strong. Also in `report/sections/06_limitations_and_outlook.tex` and
+> `docs/final_presentation.md` §4.
+
 **Decision: stop tuning the model** *(on the corrected loss)*. At ~153 independent labels, architecture
 search cannot buy signal. Three findings are worth carrying forward, because each kills a
 plausible-sounding "fix":
