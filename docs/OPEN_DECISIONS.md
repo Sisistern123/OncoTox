@@ -152,7 +152,22 @@ stated with a hypothesis marked as a hypothesis, and the test refuted it within 
 
 ---
 
----|---|
+### ⚠️ Below: the body item 6 had BEFORE it dissolved — superseded, kept as the record (marked 14.08.2026)
+
+**None of what follows is live.** It is the reasoning item 6 was opened on, and the paragraph above
+withdraws its conclusion by name. It was left in the file unheaded, beneath a table whose header row
+had been lost, so the section ran straight into item 7 and read as current — including *"the strongest
+remaining threat to Q1"*, which is the exact sentence line 150 retracts. Preserved rather than deleted
+because the reasoning is what the test refuted, and a retraction without its claim cannot be checked.
+**The header row is restored below; the three options and the closing reading are superseded by the
+dissolution above.**
+
+Median `best_epoch`, by architecture — re-derived 14.08.2026 from
+`notebooks/outputs/panel/panel_arch_folds.csv` (60 fits), which is the artifact that carries
+`best_epoch`; `panel_arch_summary.csv` does not:
+
+| arch | `X_pca` | `X_scGPT` |
+|---|---|---|
 | trunk (128,64) | **1** | 8 |
 | linear | **12** | 2 |
 
