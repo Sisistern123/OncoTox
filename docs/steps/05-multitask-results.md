@@ -472,20 +472,128 @@ arm converging and then overfitting sooner is what that predicts.
 Label supply and input scale are *identical* across §C's two arms, yet **which representation peaks
 early reverses with capacity**. §E reproduces the linear half of that pattern independently.
 
-**The reading this supports, marked as a reading.** Large inputs with high capacity (PCA + trunk,
-~75k parameters) overfit within one epoch; tiny inputs with low capacity (scGPT + linear) cannot move
-off the head-bias initialisation and so peak immediately having learned almost nothing. Both are
-**optimisation artefacts, not properties of the representations** — which is exactly what review item
-4A warned would happen if the arms reached the optimizer at different scales.
+**The reading this supported, and how it fared.** It was that large inputs with high capacity
+overfit within one epoch while tiny inputs with low capacity cannot move off the head-bias
+initialisation — an optimisation artefact of the kind review item 4A predicted.
 
-⚠️ **What this costs §C.** *"Capacity does not carry Q1"* was measured correctly, but the design
-cannot separate a capacity effect from a scale effect while the two arms are optimised this
-differently. The margins stand; the attribution is qualified. Recorded as
-`docs/OPEN_DECISIONS.md` §6, with the three ways out and what each costs.
+⛔ **The scale half of that reading was tested and REFUTED the same day** (§*Input scale is NOT the
+cause*): rescaling `X_scGPT` by 103.4× to `X_pca`'s exact magnitude left the mean `best_epoch`
+unchanged, because AdamW is approximately invariant to a uniform input rescale. **What survives is the
+capacity half**: the crossover is real and is between architecture and representation, but it is not
+driven by input magnitude. And it does not explain the *score* gap either — `best_epoch` does not
+track score (§*Training dynamics do NOT explain the gap*).
+
+⚠️ **What this costs §C — revised 14.08.2026.** The original worry was that a capacity effect and a
+scale effect could not be separated. The scale test removes that: a uniform rescale changes nothing,
+so §C's capacity comparison is **not** confounded by input magnitude. What remains true is narrower —
+the two representations respond to capacity in opposite directions, so *"capacity does not carry Q1"*
+holds as a statement about the **margin** (which moves only 0.0317 → 0.0383) while concealing that
+each arm's own best architecture differs in how long it trains. The margins stand.
 
 ⚠️ **And it explains the instability.** The one arm that does not reproduce is the one that peaks at
 epoch **1** — barely past its initialisation, where the fit is numerically most fragile. Same
 signature the July record identified on the void panel.
+
+### Why `X_scGPT` scores lower — geometry, not training (14.08.2026)
+
+**The short answer: the label is defined per cell line, and the two representations differ in how
+much of their variance is *between* cell lines.**
+
+From `notebooks/outputs/mil/stage0_input_ceiling.csv`, which measures this on the inputs alone, before
+any model:
+
+| | within-line share | between-line share | between / within |
+|---|---|---|---|
+| `X_pca` | 0.4158 | 0.5842 | **1.405** |
+| `X_scGPT` | 0.4613 | 0.5387 | **1.168** |
+
+`X_pca` carries **20 % more between-line structure**. Since every label is constant within a cell
+line, that is precisely the axis a model has to read to predict anything at all — so the
+representation that separates lines more cleanly starts ahead, before a single parameter is fitted.
+
+**It is visible directly.** `notebooks/outputs/embeddings/umap_cancertype_pca_vs_scgpt.png`: `X_pca`
+resolves ~150 discrete islands — one per cell line — while `X_scGPT` collapses them into a single
+continuous manifold with cancer type only partially organised.
+
+⚠️ **And this is scGPT working as designed, not failing.** A foundation-model embedding maps cells
+onto a shared biological manifold and suppresses batch and line identity; that is the property it is
+built and praised for. This task's label happens to be defined at exactly the granularity scGPT
+removes. **The result is therefore about a mismatch between the embedding's objective and this task's
+label, not about embedding quality** — which is a materially different claim, and the defensible one.
+
+### Training dynamics do NOT explain the gap — `best_epoch` does not track score
+
+The natural next thought is that `X_scGPT` peaks early and is therefore undertrained. The four §C
+cells refute it:
+
+| arch | rep | score | median `best_epoch` |
+|---|---|---|---|
+| linear | `X_pca` | **0.2608** | 12 |
+| linear | `X_scGPT` | 0.2291 | **2** |
+| trunk | `X_pca` | 0.2429 | **1** |
+| trunk | `X_scGPT` | 0.2047 | 8 |
+
+**Within each representation the linear head wins** — by +0.0179 on `X_pca` and +0.0245 on
+`X_scGPT` — *despite* the two having opposite epoch behaviour. The best-scoring arm in the table peaks
+at epoch 12; the worst peaks at 8; the second-best peaks at 2. **Peaking early is not why `X_scGPT`
+scores lower**, and training it longer does not recover the gap: the trunk trains `X_scGPT` for four
+times as many epochs and scores *worse*.
+
+What `best_epoch` does track is how **linearly accessible** each representation's information is.
+`X_pca` is a linear projection of expression, so a linear head extracts its signal steadily over ~12
+epochs while a trunk overfits it within one. `X_scGPT` is a frozen non-linear embedding: a linear head
+plateaus almost immediately at epoch 2 because there is little for it to extract linearly, and a trunk
+trains longer without finding more.
+
+### ⛔ Input scale is NOT the cause — tested and refuted 14.08.2026
+
+An earlier entry here attributed the epoch crossover to the **104×** input-scale gap. **That is
+wrong, and the test is direct.** `X_scGPT` was rescaled by 103.4× to `X_pca`'s exact magnitude
+(median per-dimension sd 0.0107 → **1.1048**, against `X_pca`'s 1.1062) and the same α=0/mse arm
+re-run over three seeds and five folds. A uniform rescale changes *nothing* else — same directions,
+same ordering, same relative variance — so any change must be scale.
+
+| | median `best_epoch` | mean | max |
+|---|---|---|---|
+| `X_scGPT` native | 8.0 | **6.73** | 15 |
+| `X_scGPT` × 103.4 | 3.0 | **7.13** | 17 |
+
+**The mean is unchanged and several folds are identical fold-for-fold.** Had scale driven the regime,
+matching `X_pca`'s magnitude should have produced `X_pca`'s behaviour (median 1–2 with a trunk); it
+did not.
+
+**Why, in hindsight:** the optimizer is **AdamW**, which normalises each parameter's step by a running
+second moment of its gradient, so it is approximately invariant to a uniform rescaling of the input.
+Review item 4A's premise — *"if one arm reaches the optimizer with values ~78× larger than the other,
+one learning rate is not one setting"* — is a statement about SGD-like updates and is **much weaker
+under AdamW**. The 104× asymmetry is real and is still worth stating as a difference between the arms;
+it is **not** the explanation for the training-regime difference, and it is not a confound on Q1 in the
+way the earlier entry claimed.
+
+### Why every arm scores low in absolute terms
+
+Four measured reasons, none of which is the choice of representation.
+
+**1 · The effective sample is ~153 cell lines, not 53,513 cells.** One label per (cell line, drug),
+broadcast to every cell of that line. The 34k-cell training set contains ~104 independent labelled
+examples per fold.
+
+**2 · The labels disagree with themselves.** `notebooks/outputs/archive/replicate_variation.csv`:
+**2,637** (cell line, drug) pairs were screened twice in CTRPv2. The median disagreement is
+**0.487** of that drug's standard deviation across cell lines, and **27.3 %** of pairs differ by more
+than a full standard deviation. A model cannot correlate with a target better than the target
+correlates with itself. ⚠️ **Measured on the retired `auc` source and due for re-derivation** — the
+magnitude will move, the phenomenon will not, since it is a property of the assay rather than of the
+transform.
+
+**3 · Against the per-drug null the margin is near zero on the full catalogue.** Over all 534 drugs,
+`vs_null` runs **+0.00017 to +0.00043**, and is **−0.00005** for linear/`X_pca` — worse than a
+constant (`panel_heads_summary.csv`).
+
+**4 · Simple models match or beat the network.** `RidgeCV` on cell-line-mean embeddings scores 0.2767
+against 0.2608 for the best per-cell `X_pca` arm, and on DrEval a per-drug random forest matches the
+multi-task model to 0.0003. **Whatever is limiting performance is not model capacity**, which is
+consistent with 1 and 2: the ceiling is label supply and label quality.
 
 ### The gene-set sweep, on live numbers — and it puts scGPT ahead at every gene-set size
 

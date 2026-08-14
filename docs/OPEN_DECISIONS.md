@@ -119,14 +119,40 @@ Two things the absorption surfaced that were not visible before:
 
 ---
 
-## 6 · The two arms are not optimised comparably — input scale against one learning rate
+## 6 · ~~The two arms are not optimised comparably~~ — LARGELY DISSOLVED 14.08.2026
 
-**Opened 14.08.2026.** Found while asking why `best_epoch` is so early.
+**Opened this morning on the reading that the 104× input-scale gap confounded Q1. That reading was
+tested and is wrong.**
 
-**The observation.** Median best epoch, out of 50 available, patience 10:
+`X_scGPT` was rescaled by 103.4× to `X_pca`'s exact magnitude and the α=0/mse arm re-run over three
+seeds and five folds. Mean `best_epoch` went **6.73 → 7.13** — unchanged, with several folds
+identical fold-for-fold. **AdamW normalises each step by a running second moment of the gradient, so
+it is approximately invariant to a uniform input rescale**, which makes review item 4A's premise
+(*"one learning rate is not one setting"*) a statement about SGD-like updates rather than about this
+optimizer.
 
-| | `X_pca` | `X_scGPT` |
-|---|---|---|
+**What that dissolves.** The scale gap is **not** a confound on Q1, and §C's capacity comparison is
+not compromised by it. The three options originally listed here — standardise the inputs, per-arm
+learning rates, report the confound — were answers to a problem that does not exist in the form
+stated.
+
+**What remains, and it is genuinely smaller.** The 104× difference is real and worth stating as a
+difference between the arms; it simply does not drive the training-regime crossover or the score gap.
+The crossover itself is an interaction between **capacity and representation**
+([Step 05](./steps/05-multitask-results.md#training-dynamics-do-not-explain-the-gap--best_epoch-does-not-track-score)),
+and `best_epoch` does not track score in any case.
+
+**Still open, if you want it:** whether to standardise the representations anyway, on the general
+principle that two arms being compared should reach the optimizer alike. That is now a tidiness
+argument rather than a correctness one, and it would still change every number, so my reading is: not
+before the talk, and not urgent after it.
+
+**My earlier reading — that this was "the strongest remaining threat to Q1" — is withdrawn.** It was
+stated with a hypothesis marked as a hypothesis, and the test refuted it within the day.
+
+---
+
+---|---|
 | trunk (128,64) | **1** | 8 |
 | linear | **12** | 2 |
 
