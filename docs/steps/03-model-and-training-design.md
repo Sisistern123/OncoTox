@@ -216,14 +216,26 @@ errors, the model simply trains against a handicap — so they are recorded with
 
 ⚠️ **It starts the model near the null predictor's *level*, not at the null predictor.** The head's
 weight rows are still randomly initialized, so at initialization predictions already scatter with a
-standard deviation of ≈0.31 across cells, against a true across-line spread of order 0.17 on `auc_cc`;
-the mean prediction lands at 0.76 and 0.96 for a requested 0.90 at seeds 42 and 0. Measured on synthetic
-unit-variance input, `init_spread.py` under audit 08 — an architecture property, no data read.
+standard deviation of **≈0.38** across cells, against a true across-line spread of **≈0.128** on
+`auc_cc` — **the initial scatter is ~3× the spread the label actually has.** The mean prediction lands
+at 0.751 and 0.958 for a requested 0.90 at seeds 42 and 0, and the head's mean row norm is 0.588 /
+0.581. Measured on 20,000 synthetic unit-variance cells by
+[`scripts/evaluation/init_spread.py`](../../scripts/evaluation/init_spread.py), which also reads the
+label spread from `outputs/panel/panel_oof_predictions.csv` so the ratio cannot go stale.
 
-> ⚠️ **`init_spread.py` was never committed — anywhere (found 14.08.2026).** Not on `main`, not on
-> any branch, not in any commit: `git log --all -- '*init_spread.py'` is empty. **This is the second
-> instance of the `arch_facts.py` defect**, which [TODO](../TODO.md) item 8 recorded on 13.08.2026 —
-> a measurement cited to a file that only ever existed in a session scratch directory.
+> ✅ **Resolved 14.08.2026 (Selin) — the measurement is now committed, and two of its numbers moved.**
+> The script this paragraph used to cite, `init_spread.py`, had **never been committed anywhere** —
+> not on `main`, not on any branch: `git log --all -- '*init_spread.py'` was empty. That was the
+> second instance of the `arch_facts.py` defect ([TODO](../TODO.md) item 8, 13.08.2026): a
+> measurement cited to a file that only ever existed in a session scratch directory. It now exists
+> at `scripts/evaluation/init_spread.py`, states its own choices, and reads the label side from the
+> committed artifacts.
+>
+> **What changed, and it is both figures in the comparison, not one.** The scatter was given as
+> ≈0.31 and the label spread as "of order 0.17", i.e. ≈1.8×. Measured: **0.377 against 0.128,
+> ≈3.0×**. The 0.17 was the looser of the two — the per-drug across-line sd runs 0.061–0.207 with a
+> mean of 0.128, and only two of eleven compounds reach 0.20. **Both errors ran the same way, so the
+> paragraph's point was understated rather than overstated.**
 >
 > **Re-derived against the real `scripts/model/OncoMLP.py` on 14.08.2026** (`OncoMLP(input_dim=512,
 > hidden_dims=(128,64), output_dim=11)`, `init_head_bias_` at a uniform 0.90, `.eval()`, synthetic
@@ -234,15 +246,15 @@ unit-variance input, `init_spread.py` under audit 08 — an architecture propert
 > | head row norm ≈ 0.58 | 0.588 / 0.581 | ✅ |
 > | mean 0.76 at seed 42 | 0.751 | ✅ |
 > | mean 0.96 at seed 0 | 0.958 | ✅ |
-> | prediction sd ≈ **0.31** | **0.365 / 0.389** | ⛔ **does not reproduce** |
+> | prediction sd ≈ **0.31** | **0.365 / 0.389** | ⛔ **did not reproduce — now 0.38** |
 >
-> Three of four match closely, so the setup is almost certainly the one used — `(64,32)` was tried
-> and matches *neither* the means nor the row norm. **The spread reads ≈0.37, not ≈0.31.** It is
-> flagged rather than replaced: the original script is gone, so the setup detail that differs
-> cannot be recovered, and swapping in my number would assert one measurement over another that
-> nobody can inspect. Note the direction — a *larger* initial scatter makes the point this
-> paragraph is making stronger, not weaker. **Whether to adopt 0.37, re-measure, or drop the
-> figure is Selin's.** Starting
+> Three of four matched closely, so the setup was almost certainly the one used — `(64,32)` was tried
+> and matches *neither* the means nor the row norm. **Selin's ruling, 14.08.2026: do not swap one
+> unsourced number for another — commit the measurement instead**, so that all four figures are
+> checkable from now on and the 0.31-vs-0.37 question cannot recur. The script states its choices,
+> the sharpest being that it measures on *synthetic unit-variance* input: the two real
+> representations differ in input scale by ~100×, so the initial scatter on real input is
+> arm-dependent and this figure is a stand-in for both. Quote it as "on unit-variance input". Starting
 genuinely *at* the null would also require shrinking the output layer's weight initialization, which
 Lin et al. do (σ = 0.01) and **this project has not decided**.
 

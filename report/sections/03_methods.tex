@@ -291,9 +291,29 @@ resolution is in \code{scripts/annotation/drug\_annotation.py} and
 The comparison between representations is controlled so that only the content of the embedding differs.
 Both the PCA baseline (\code{X\_pca}) and the scGPT embedding (\code{X\_scGPT}) are 512-dimensional and are
 fed into the same multi-head perceptron, with hidden dimensions 128 and 64, layer normalization, GELU
-activations and dropout. The network has one output head per drug and is trained with a masked
-mean-squared-error loss that is evaluated only on observed cell-drug pairs. The model and training code are
+activations and dropout. The network has one output head per drug. The model and training code are
 defined in \code{scripts/model/OncoMLP.py} and \code{scripts/training/train\_multitask.py}.
+
+The objective is a masked error, averaged over the pairs that were actually screened:
+\begin{equation}
+  \LossObjective
+  \label{eq:objective}
+\end{equation}
+where $n$ indexes cells, $j$ indexes the $K$ drug heads, and the weight
+\begin{equation}
+  \LossWeightMatrix
+  \label{eq:weight}
+\end{equation}
+carries the mask $M_{nj}$, which is $1$ where that cell line was screened against that compound and $0$
+otherwise. Unscreened pairs therefore contribute nothing to either the numerator or the denominator,
+which is what makes the denominator a count of observations rather than of matrix entries --- the
+target matrix is $84.7\,\%$ dense, so the distinction is not cosmetic. Two components are left
+symbolic because both are swept rather than fixed, $\ell \in \{\text{squared},\ \text{absolute}\}$
+and a density weight $w_j$ whose strength is set by an exponent $\alpha$. \textbf{Every result
+reported here is the unweighted arm}, $\alpha = 0$, in which $w_j \equiv 1$ and $W_{nj}$ reduces to
+the mask alone; the weighting and the sweep over it are reported separately in
+Section~\ref{sec:results}. The equations above are generated from the same source as the objective
+figure, so the two cannot diverge.
 
 \begin{revisionblock}
 \textbf{Splits, and where each representation is fitted (added 05.08.2026).} Train, validation and test

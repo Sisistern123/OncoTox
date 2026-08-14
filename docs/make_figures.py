@@ -160,21 +160,26 @@ ref.
 
 **And one artifact that is not a figure**, written to ``report/`` rather than ``docs/figures/``:
 
-  report/loss_objective.tex   the objective's equations, as LaTeX macros — **generated for the report,
-                              but not yet used by it; see below**
+  report/loss_objective.tex   the objective's equations, as LaTeX macros the report ``\\input``s
 
 It is generated from ``LOSS_TEX_MACROS`` — the same strings ``loss_01_objective.png`` renders — so
 that the maths in the report and the maths in the figure would have one source and could not drift
 apart.
 
-⛔ **That guarantee is not in force, found 14.08.2026: THE REPORT DOES NOT USE THIS FILE.**
-``report/main.tex`` carries no ``\\input{loss_objective}``, and not one of the five macros
-(``\\LossObjective``, ``\\LossWeightMatrix``, ``\\LossWeightFn``, ``\\LossDensity``, ``\\LossArms``) is
-cited in any section — checked by scanning every ``.tex`` for ``\\newcommand`` against use. So the file
-is regenerated on every figure build, is committed, and is read by nothing, while the report states the
-objective in prose instead. **The generator is sound and the guarantee is sound; the wiring was never
-done**, and both this line and the generated file's own header have been asserting otherwise. Whether
-to typeset the objective in Methods, and where, is Selin's. Decided
+✅ **Wired in 14.08.2026 (Selin), and it had never been.** Until then ``report/main.tex`` carried no
+``\\input{loss_objective}`` and no section cited any of the five macros — the file was regenerated on
+every figure build, committed, and read by nothing, while both this docstring and the generated file's
+own header asserted that the report used it. §Representation and model now sets ``\\LossObjective`` and
+``\\LossWeightMatrix`` as equations, so the guarantee is real for the first time.
+
+⚠️ **Only two of the five are cited, deliberately.** ``\\LossWeightFn`` and ``\\LossDensity`` describe
+the density weighting, which is **off in every arm the report reports** (``alpha = 0``, so ``w_j``
+is identically 1). Typesetting the weighting apparatus in Methods would give formal prominence to a
+mechanism that never fires in the results — the same register error this file's own audit block
+catalogues in its captions. They belong wherever the ``alpha`` sweep is reported. ⚠️ **Still missing:
+the regenerate-and-diff pre-merge check** named below as owned by the gate session. It does not exist —
+``loss_objective`` appears in no script under ``scripts/gate/`` — so nothing yet catches a hand-edit of
+the generated file. Decided
 by Selin 12.08.2026 over rendering the formula into the PNG (raster, fonts would not match the
 report body, not referenceable by LaTeX) and over a PGF/vector figure (fonts match, but it puts a
 LaTeX installation in the figure build path). It is committed so a clean checkout still compiles
@@ -1275,10 +1280,10 @@ def build_loss_formula_tex():
         "%   writes e.g. \\begin{equation}\\LossObjective\\end{equation}. Definitions only -- the",
         "%   section chooses the environment.",
         "%",
-        "%   !! NOT WIRED UP YET (checked 14.08.2026). main.tex has no \\input{loss_objective} and",
-        "%   no section cites any macro below, so this file is generated, committed and unread.",
-        "%   Until a section uses it, the figure and the report do NOT share one source for the",
-        "%   maths -- the report describes the objective in prose. Wiring it in is Selin's call.",
+        "%   WIRED IN 14.08.2026: main.tex \\input{loss_objective}s in the preamble and 03_methods",
+        "%   sets \\LossObjective and \\LossWeightMatrix as equations (eq:objective, eq:weight).",
+        "%   \\LossWeightFn / \\LossDensity are deliberately NOT cited: they describe the density",
+        "%   weighting, which is off (alpha = 0) in every arm the report reports.",
         "%",
         "% WHAT IS DELIBERATELY SYMBOLIC",
         "%   \\ell and \\alpha are left as symbols: the loss comparison (docs/TODO.md item 9A)",

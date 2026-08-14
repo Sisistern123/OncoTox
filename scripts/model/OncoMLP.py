@@ -92,24 +92,25 @@ def init_head_bias_(model: nn.Module, means: np.ndarray) -> None:
     else -- it is a statistic of the labels, so a mean over held-out lines would inform training.
 
     ⚠️ **This does not make the model start at the null predictor, only near its level.** The head's
-    weight rows are still randomly initialized (mean row norm ~0.58 over a LayerNorm'd 64-d hidden
-    vector), so at initialization the predictions already scatter with a standard deviation of ~0.31
-    across cells -- against a true across-line spread of order 0.17 on ``auc_cc``. Measured on
-    synthetic unit-variance input at seeds 42 and 0; the mean prediction lands at 0.76 and 0.96 for
-    a requested 0.90. Starting genuinely *at* the null would also require shrinking the output
-    layer's weight initialization, which Lin et al. do (sigma=0.01 on the final layer) and this
-    project has not decided. Open, audit 08.
+    weight rows are still randomly initialized (mean row norm 0.588 / 0.581 over a LayerNorm'd 64-d
+    hidden vector), so at initialization the predictions already scatter with a standard deviation of
+    **~0.38** across cells -- against a true across-line spread of **~0.128** on ``auc_cc``, so the
+    initial scatter is about **three times** the spread the label actually has. The mean prediction
+    lands at 0.751 and 0.958 for a requested 0.90, at seeds 42 and 0. Starting genuinely *at* the null
+    would also require shrinking the output layer's weight initialization, which Lin et al. do
+    (sigma=0.01 on the final layer) and this project has not decided. Open, audit 08.
 
-    ⚠️ **The script those numbers came from, ``init_spread.py``, was never committed anywhere**
-    (found 14.08.2026; ``git log --all -- '*init_spread.py'`` is empty) -- the second instance of the
-    ``arch_facts.py`` defect recorded in ``docs/TODO.md`` item 8. Re-deriving against this file on
-    14.08.2026 reproduces the row norm (0.588 / 0.581) and both means (0.751 / 0.958) but **not the
-    spread: it reads 0.365 / 0.389, not ~0.31**. Stable across 1k-20k synthetic cells, and
-    ``hidden_dims=(64,32)`` matches neither the means nor the row norm, so the setup is very likely
-    the one used. Flagged rather than corrected here: the original script is gone, the discrepancy
-    cannot be traced, and the direction is favourable to the warning this paragraph makes. The
-    working is in ``docs/steps/03-model-and-training-design.md``, same section; **adopting 0.37,
-    re-measuring, or dropping the figure is Selin's call.**
+    **Measured by ``scripts/evaluation/init_spread.py``** on 20,000 synthetic unit-variance cells;
+    that script also reads the label spread from the committed panel out-of-fold predictions, so the
+    ratio cannot drift. ⚠️ Quote it as *on unit-variance input*: the two real representations differ
+    in input scale by ~100x, so the scatter on real input is arm-dependent.
+
+    ⚠️ **Why the numbers moved (14.08.2026).** They previously read ~0.31 against "order 0.17",
+    i.e. ~1.8x, and came from an ``init_spread.py`` that **was never committed anywhere**
+    (``git log --all -- '*init_spread.py'`` was empty) -- the second instance of the ``arch_facts.py``
+    defect in ``docs/TODO.md`` item 8. Re-derivation reproduced the row norm and both means but not
+    the spread. Selin's ruling: commit the measurement rather than swap one unsourced number for
+    another. **Both figures were off in the same direction, so the warning was understated.**
 
     Applied 12.08.2026 to all three training paths. Before that only ``cv.oof_predictions`` did it,
     so the fixed-split and 8-run-matrix paths trained against an offset the panel run did not:

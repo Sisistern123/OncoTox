@@ -13,10 +13,10 @@
 %   writes e.g. \begin{equation}\LossObjective\end{equation}. Definitions only -- the
 %   section chooses the environment.
 %
-%   !! NOT WIRED UP YET (checked 14.08.2026). main.tex has no \input{loss_objective} and
-%   no section cites any macro below, so this file is generated, committed and unread.
-%   Until a section uses it, the figure and the report do NOT share one source for the
-%   maths -- the report describes the objective in prose. Wiring it in is Selin's call.
+%   WIRED IN 14.08.2026: main.tex \input{loss_objective}s in the preamble and 03_methods
+%   sets \LossObjective and \LossWeightMatrix as equations (eq:objective, eq:weight).
+%   \LossWeightFn / \LossDensity are deliberately NOT cited: they describe the density
+%   weighting, which is off (alpha = 0) in every arm the report reports.
 %
 % WHAT IS DELIBERATELY SYMBOLIC
 %   \ell and \alpha are left as symbols: the loss comparison (docs/TODO.md item 9A)

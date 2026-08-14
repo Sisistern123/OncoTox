@@ -37,6 +37,11 @@
 
 % single source of truth for the headline numbers (see results_numbers.tex)
 \input{results_numbers}
+% the training objective, generated from docs/make_figures.py::LOSS_TEX_MACROS -- the same
+% strings docs/figures/loss_01_objective.png renders, so the equation in this document and the
+% equation in that figure have one source. Wired in 14.08.2026 (Selin); before that the file was
+% generated, committed and read by nothing.
+\input{loss_objective}
 
 \title{\textbf{Prediction of Anti-Cancer Drug Efficacy Scores}\\[0.4em]
 \large Single-Cell Drug-Response Prediction with Foundation-Model Embeddings\\[0.4em]
