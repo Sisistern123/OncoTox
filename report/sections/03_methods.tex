@@ -5,7 +5,7 @@
 \label{sec:data}
 
 All experiments use the highest-confidence intersection of SCP542 \cite{scp542} and CTRPv2 \cite{ctrpv2,ctrp_rees}. This intersection comprises \NLines{} cell lines with
-post-quality-control measurements (190 roster name matches, of which 9 are unscreened), \NDrugsModelled{}
+post-quality-control measurements --- of the \NLinesAtlas{} lines in the atlas, \NLinesRoster{} match a name in the screen's cell-line roster, ten of those were never actually screened, and one further screened line is recovered by an explicit alias where the two sources spell it differently --- \NDrugsModelled{}
 compounds and \NCells{} cells, with effectively complete viability coverage inside the overlap. That
 compound count is smaller than CTRPv2's catalogue of \NDrugs{}: a compound enters the target matrix
 only if it was screened against at least fifty of the overlapping cell lines, and eleven fall below
@@ -93,7 +93,7 @@ droplet held two cells rather than one, since two transcriptomes together presen
 than either alone. The window therefore retains droplets consistent with a single intact cell.
 Suspected doublets and low-quality cells were removed on this basis, as were cell lines with fewer than
 fifty assigned cells. What
-remains is the \NCells{} cells and 198 cell lines used here, at an average of 19{,}264 unique molecular
+remains is the \NCells{} cells and \NLinesAtlas{} cell lines used here, at an average of 19{,}264 unique molecular
 identifiers and 3{,}802 detected genes per cell. The gene filters the source study applied for its own
 heterogeneity analyses were \emph{not} applied to the distributed matrix, which retains \NGenes{}
 genes, so the gene selection described below is independent of them.
@@ -107,7 +107,7 @@ margins of an already filtered population without recovering that signal. Two co
 inherited filter are worth stating. Cells outside the retained window are absent from the data
 entirely, so any statement this report makes about cellular heterogeneity concerns heterogeneity within
 that window --- relevant to the second research question, since states of low transcript content, such
-as quiescent or senescence-like cells, lie near its lower bound. And the 198 lines are where the sample
+as quiescent or senescence-like cells, lie near its lower bound. And the \NLinesAtlas{} lines are where the sample
 funnel begins: \NLines{} of them carry usable response measurements, and that number, not the size of
 the drug screen, is what bounds the effective sample size, since the screen itself covers roughly
 1{,}100 lines.
@@ -535,7 +535,7 @@ was measured on the previous source.}
 \subsection{Evaluation}
 
 Cell lines are evaluated out of fold. A 5-fold group $k$-fold split, grouped by cell line, is applied to
-the 153 training and validation lines, so that no cell of a test line is seen during training. Each line
+the \NLinesCV{} training and validation lines, so that no cell of a test line is seen during training. Each line
 is predicted exactly once, the per-cell predictions of a line are averaged to the line level, and the
 Spearman correlation between predicted and true values across those lines is computed per drug and
 averaged over drugs. This protocol replaces an earlier fixed 27-line validation split, on which the

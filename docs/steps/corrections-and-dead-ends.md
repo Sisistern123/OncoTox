@@ -592,6 +592,22 @@ matrices only (`TrainConfig.no_decay_bias_and_norm`; until 12.08.2026 the narrow
 `exclude_output_from_decay`), and each head's bias is initialized at the fold's per-drug mean. Current
 definition: [Step 03](03-model-and-training-design.md).
 
+> ⚠️ **Note added 14.08.2026 — two things in that last sentence do not carry to the live pipeline.**
+> Left in place because this page records what was believed, and the sentence describes the
+> *winsorized-`auc`* replacement, which is itself superseded. Both are flagged rather than edited:
+>
+> - **"a target near 0.7"** belongs to that retired target. On `auc_cc` the centre is higher **and it
+>   is not one number**: the per-drug means run **0.58–0.99** across the panel (0.790 on average) and
+>   average **0.893** over the full catalogue, which is why the bias is initialized per head rather
+>   than to a single offset. The same stale 0.7 was corrected on `model_architecture.png` and in
+>   `cv.py`'s `init_head_bias` docstring on 14.08.2026. **Whether 0.7 was ever right for winsorized
+>   `auc` is unverifiable** — the target is retired and no artifact on disk carries its distribution —
+>   so it is neither confirmed nor changed here.
+> - **"weight decay is applied to the weight matrices only"** describes a grouping that is real but
+>   currently **binds on nothing**: `TrainConfig.weight_decay` is `0.0`, so the decayed group is
+>   decayed by zero. The mechanic is therefore not "forced" by anything today. Argued, with
+>   citations, in `report/sections/03_methods.tex` §*Representation and model*.
+
 ### Per-drug variance weighting — dissolved by a scope change, never needed
 
 **Established** 27.07.2026 as plan items 1.0–1.2: estimate a pooled `σ_noise` from the replicated curve

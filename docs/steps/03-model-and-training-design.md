@@ -305,7 +305,7 @@ per **cell line**. Two distributions therefore multiply into the weight each lin
 
 Combined, `NCIH2110_LUNG` carries **4.37 %** of the total loss and `PANC1_PANCREAS` **0.054 %** — a factor
 of **82**. Equal shares would be 0.56 % each; the top 10 lines carry **18.3 %** instead of 5.6 %. With
-~150 independent examples, letting one line count 82× another is indefensible, and most of the imbalance
+~153 independent examples, letting one line count 82× another is indefensible, and most of the imbalance
 is the cell count — a sequencing artifact carrying no information about the label. (The z-scoring code was
 careful about exactly this — "statistics are computed per cell line, not per cell" — the loss was not.)
 
@@ -678,7 +678,7 @@ and the defaults above are at or within noise of the best setting on all of them
 > rescue table:
 > [Corrections](corrections-and-dead-ends.md#the-model-is-over-regularized-or-too-small).
 
-**Decision: stop tuning the model** *(on the corrected loss)*. At ~150 independent labels, architecture
+**Decision: stop tuning the model** *(on the corrected loss)*. At ~153 independent labels, architecture
 search cannot buy signal. Three findings are worth carrying forward, because each kills a
 plausible-sounding "fix":
 
@@ -697,6 +697,17 @@ plausible-sounding "fix":
 
 ### The baseline that actually binds: ridge on 150 line-mean embeddings
 
+> ⚠️ **150 and 153 are two different quantities, and this page used to blur them (fixed 14.08.2026).**
+> **150 is the line count of *this* ridge control**, in the void run the table below reports — it is
+> what `\NIndep` in the report carried before that macro was retired on 12.08.2026 for naming two
+> things at once. **153 is the effective sample size**, the lines cross-validation predicts exactly
+> once (`\NLinesCV`, from the committed `splits/split_ctrp.csv`: 181 labelled lines, 28 held out as
+> `test`). Every sentence on this page that says *"independent examples"* or *"independent labels"*
+> now says **153**; the two mentions of 150 below stay, because they name this run's control and not
+> the sample size. The current ridge control scores 140–152 lines per drug
+> (`outputs/panel/panel_ridge_baseline.csv`), which is a third number again — coverage varies by
+> compound.
+
 | Model | PCA | scGPT |
 |---|---|---|
 | `OncoMLP` (128,64) | 0.428 | **0.487** |
@@ -705,7 +716,7 @@ plausible-sounding "fix":
 
 A ridge regression on one mean vector per cell line — **no single cells, no network, seconds to fit** —
 **ties the PCA MLP** and comes within 0.06 of the scGPT MLP. This is the direct consequence of the target
-resolution: the label is per (cell line × drug), so there are **~150 independent training examples**, and
+resolution: the label is per (cell line × drug), so there are **153 independent training examples**, and
 the 34k cells are an illusion of sample size.
 
 > **Decision: `RidgeCV` on line-mean embeddings is the baseline to beat from now on** — not the

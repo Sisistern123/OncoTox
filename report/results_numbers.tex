@@ -57,6 +57,20 @@
 % OncoMLP.init_head_bias_'s own docstring ("auc_cc sits near 0.9").
 \newcommand{\PanelMeanLo}{0.58}    % lowest per-drug mean (paclitaxel)
 \newcommand{\PanelMeanHi}{0.99}    % highest per-drug mean (cisplatin, recorded as `platin`)
+\newcommand{\NLinesRoster}{190}    % of \NLinesAtlas{}, the SCP542 names present in CTRPv2's
+                                   % cell-line roster. NOT the trainable set: ten of them were
+                                   % never screened, leaving 180, and one further screened line
+                                   % is recovered by the h292 -> ncih292 alias, giving \NLines{}.
+                                   % 03_methods.tex said "of which 9 are unscreened" from
+                                   % 86c2458 until 14.08.2026 -- 10 was changed to 9 to make
+                                   % 190 - n = 181 come out, which hid the alias. Step 01 lists
+                                   % the ten unscreened lines by name.
+\newcommand{\NLinesAtlas}{198}     % cell lines in the SCP542 atlas -- where the cell-line
+                                   % funnel STARTS, before any join with CTRPv2. \NLines{}
+                                   % (181) are the ones CTRPv2 screened; the remaining 17 carry
+                                   % no response label. Was a literal 198 in 03_methods.tex
+                                   % until 14.08.2026, the last line-count digits left in a
+                                   % section file.
 \newcommand{\NCells}{53{,}513}     % single cells
 \newcommand{\NGenes}{22{,}722}     % genes in the distributed SCP542 matrix
 % \NIndep was RETIRED 12.08.2026 (Selin) -- it named two different quantities at once

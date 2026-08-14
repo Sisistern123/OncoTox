@@ -984,6 +984,11 @@ run adds is the split and the drug scope:
 **Run-time overlap reported by the pipeline:** **180 / 198** SCP542 cell lines overlap
 CTRPv2 (180 = lines with actual post-QC measurements; the audit's 190 counts roster name-matches — see
 [Step 01](01-datasets-and-harmonization.md)).
+⚠️ **That is what *this* run reported, and it is no longer what the pipeline reports (noted
+14.08.2026).** The `h292 → ncih292` alias recovers a screened line the name join had been dropping, so
+the current figure is **181 / 198**, with **17** lines unlabelled rather than 18. Left as written
+because it records this run's own output; the live funnel is owned by
+[Step 01](01-datasets-and-harmonization.md#the-join-dropped-a-screened-cell-line-h292-10082026).
 
 > ⚠️ **10.08.2026 — this becomes 181 at the next sweep, and every number on this page with it.** The
 > name join was dropping `NCIH292`, which CTRPv2 spells `H292`, and was double-counting experiments
@@ -1290,7 +1295,7 @@ cells, no network — scores **0.428**, *tying* the PCA MLP (0.428) and within 0
 (0.487). The whole deep single-cell apparatus currently buys **+0.06 Spearman, and only for scGPT**
 (whose linear head drops to 0.438 — it *needs* the hidden layer; PCA does not). **Ridge on line means is
 the baseline to beat from now on.** The cause is structural: the label is per cell line, so there are
-~150 independent examples and the 34k cells are an illusion of sample size — which is why the remaining
+153 independent examples and the 34k cells are an illusion of sample size — which is why the remaining
 levers are **label-side** (more lines, bulk pretraining, denoising), not model-side.
 
 ### The learnability gate measured the wrong quantity (27.07.2026)
