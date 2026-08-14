@@ -692,7 +692,7 @@ devices; scratchpad `mps_smoke2.py`, 03.08.2026):
 > `init_spread.py` — the latter now closed by committing the measurement as
 > `scripts/evaluation/init_spread.py`. The fourth, `scratchpad/learnability_validity.py`, was handled
 > correctly: its figures were **retracted** rather than kept
-> ([Corrections](corrections-and-dead-ends.md#the-learnability-filter-was-validated-against-the-ρ-the-model-achieved)).
+> ([Corrections](corrections-and-dead-ends.md#the-learnability-filter-was-validated-against-the-ρ-the-model-achieves)).
 >
 > **Which half matters, because the two halves are not equal.** The **timings** are inert — no result
 > reads them; they justify a device choice and nothing else, and being wrong about them costs

@@ -470,6 +470,13 @@ EXAMPLE_LINE = "SKES1_BONE"
 #: The arm those predictions come from: the transcript-level representation, unweighted, squared
 #: error, first seed. One real run rather than a mean across seeds, because the figure exists to show
 #: the actual output scale -- including the visible shrinkage -- and an average is not a run's output.
+#:
+#: **Chosen by Selin, 14.08.2026** -- recorded here because it is a display decision and this is where
+#: it lives. The docs had said the repair was hers, an agent proposed the arm, and she confirmed it as
+#: her choice while keeping ``EXAMPLE_LINE`` at her original 27.07.2026 pick. ⚠️ Note what it is: not
+#: the project's best arm (that is ``X_pca``/``mae``/alpha=0.5 at 0.2824) but ``X_scGPT`` unweighted --
+#: so the bars show the transcript-level arm's own output, and a reader must not take them for the
+#: headline result. The PLOTTED line under the figure names all four fields for exactly that reason.
 EXAMPLE_ARM = dict(rep="X_scGPT", alpha=0.0, loss="mse", seed=42)
 
 

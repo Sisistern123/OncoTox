@@ -878,7 +878,7 @@ every one of them was a step that looked settled and had never been checked.
       one. The count-weighted mean is the more defensible statistic and was rejected only because no
       earlier number would be comparable to it.
     - **Pooled across folds** — every held-out line appears exactly once across the five folds, which
-      is what the out-of-fold table is for. Note that `analysis/qc/diagnostics.ipynb`'s
+      is what the out-of-fold table is for. Note that `analysis/evaluation/diagnostics.ipynb`'s
       `sd_across_folds` is the *other* combination (per fold, then averaged) and gives a different
       number; **that spread is not the seed band and must not be used as one.**
     - ⚠️ **Why the aggregation mattered more than it looks, and why it was fixed in advance.**

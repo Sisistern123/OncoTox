@@ -87,6 +87,22 @@ Recorded here because a check is only as trustworthy as its documented ways of l
   pinned particular strings in `4a` and particular output directories against a rename. They were
   right for one merge and noise on every other. Add one for the merge that needs it, delete it
   after.
+- **Three of the seven components had no documented limits until 14.08.2026** — `artifacts.py`,
+  `coderefs.py` and `cmdpaths.py`. Each documents its own *scope* in its module docstring, but this
+  section, which is where a reviewer looks, named only two checkers and the `merge_gate.sh` floors.
+  What the four path-checkers leave between them, stated once: `coderefs.py` reads only
+  the `.py`, `.ipynb`, `.png` and `.tex` extensions, so a dangling `.csv` or `.h5ad` in inline code is invisible to it and
+  is caught only if it lies under `outputs/` or `figures/`, which is `artifacts.py`'s scope;
+  `cmdpaths.py` requires a token to contain `/` **and** start with a tracked top-level directory or
+  end with a known source extension, so a bare filename in a shell block is skipped by design. **No
+  checker covers a path built by string concatenation in prose**, and none validates a path inside a
+  notebook *output* rather than its source.
+- ⚠️ **A stale justification lived inside two of them until 14.08.2026.** `artifacts.py` and
+  `coderefs.py` both explained skipping csv references partly by "splits/split_ctrp.csv is documented
+  as not existing until R2 creates it". **R2 has run**: that file is tracked and 181 rows long. The
+  scope restrictions are unchanged — narrowing or widening them is a judgement about noise, not a bug
+  fix — but their stated reason named a file that now exists, which is the same defect class the
+  checkers themselves exist to catch.
 - **`links.py` already strips fenced blocks and inline code**, so cisplatin's SMILES
   `` `N[Pt](N)(Cl)Cl` `` is not read as a link. An ad-hoc regex written during a review *did* trip
   on it and report a false broken link — the lesson is about ad-hoc checks, not about this one.

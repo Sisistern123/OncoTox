@@ -1,8 +1,13 @@
 """Find inline-code references to tracked repo paths that no longer exist.
 
-Restricted to .py/.ipynb/.png/.tex on purpose. Extending it to .csv/.h5ad only produces
-noise: runs/, data/ and the outputs artifacts are gitignored, and splits/split_ctrp.csv is
-documented as not existing until R2 creates it -- all legitimately absent from the repo.
+Restricted to .py/.ipynb/.png/.tex on purpose. Extending it to .csv/.h5ad mostly produces
+noise: runs/, data/ and the processed h5ads are gitignored -- legitimately absent from the repo.
+
+⚠️ Corrected 14.08.2026: this reason used to also cite "splits/split_ctrp.csv is documented as not
+existing until R2 creates it". R2 has run and that file is now tracked, 181 rows. The csv restriction
+stands on the gitignored roots alone; note that it means a dangling `splits/...csv` or
+`outputs/....csv` reference in prose is seen by artifacts.py but not by this checker. Recorded in
+README.md under Known limits.
 
 The link checker deliberately strips code spans (so a SMILES string in backticks is not read as a
 link), which means `notebooks/2_training.ipynb` in prose is invisible to it. After a rename that is

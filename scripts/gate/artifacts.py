@@ -5,8 +5,13 @@ prose. `outputs/panel/panel.csv` in a table cell is neither a link nor a module 
 the other two checkers sees it, and it is exactly what a directory move leaves dangling.
 
 Scoped to outputs/ and figures/ deliberately. A blanket check over every backticked .csv is noise,
-because runs/, data/ and the processed h5ads are gitignored and splits/split_ctrp.csv is documented
-as not existing until R2 creates it -- all legitimately absent. Under outputs/ and figures/ the files
+because runs/, data/ and the processed h5ads are gitignored -- legitimately absent.
+
+⚠️ Corrected 14.08.2026: this reason used to end "...and splits/split_ctrp.csv is documented as not
+existing until R2 creates it". R2 has run. That file is now TRACKED and 181 rows long, so it is no
+longer an example of a legitimately-absent csv, and the scope restriction now rests on the gitignored
+roots alone. The restriction itself is unchanged -- widening it is a judgement about noise, not a bug
+fix -- but the blind spot it leaves is written down in README.md under Known limits. Under outputs/ and figures/ the files
 are tracked, so absence is a defect.
 
 Both prefixes are written in docs in their short form, relative to the directory a reader is assumed
