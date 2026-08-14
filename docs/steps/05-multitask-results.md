@@ -609,39 +609,39 @@ Four measured reasons, none of which is the choice of representation.
 broadcast to every cell of that line. The 34k-cell training set contains ~104 independent labelled
 examples per fold.
 
-**2 · Label noise — plausible as a ceiling, but ⛔ NOT currently measured.** This needs stating
-carefully, because the obvious number does not mean what it looks like.
+**2 · ✅ Label quality is a MEASURED constraint, not a hypothesis (14.08.2026).**
 
-`notebooks/outputs/archive/replicate_variation.csv` records **2,637** (cell line, drug) pairs screened
-twice, with a median disagreement of **0.487** of that drug's across-line standard deviation and
-**27.3 %** differing by more than a full standard deviation. Two things disqualify it as a ceiling for
-the numbers on this page.
+⛔ **This entry said the opposite a few hours earlier** — that assay noise was *"plausible… and not
+measured"* because the live target folds replicate variability into one fit. That was true of replicate
+*disagreement* and **false about label quality in general**: CurveCurator writes per-curve fit-quality
+columns into the response table (`R2`, `RMSE`, `pValue`, `conc_pts_fit`) and **nothing in this project
+had read them.** `scripts/evaluation/label_quality.py` now does, on the exact 1,971 curves behind this
+project's labels (11 panel drugs × 180 trainable lines) →
+`notebooks/outputs/diagnostics/label_quality_vs_performance.csv`.
 
-**(a) It is not the panel.** Those 2,637 pairs are **6 cell lines × 534 compounds** — the whole
-catalogue, not the eleven the panel trains on. Only **62 pairs (2.4 %)** involve a panel drug, and on
-those the disagreement is *smaller*: median **0.417**, with **16.1 %** beyond one standard deviation.
-Quoting the catalogue-wide figure against a panel result overstates the noise by roughly a fifth.
+**How good are the labels?** Median `R2` is **0.867**, so most curves fit well. But the tail is not
+small: **22.2 %** of curves have `R2 < 0.5`, **10.9 %** have `R2 < 0.25`, and **10.9 % of the fits are
+not statistically significant** (`pValue > 0.05`). One in nine labels comes from a curve that does not
+establish a dose-response at all.
 
-**(b) The current pipeline has no such pair to disagree.** That analysis was run on **CTRPv2's own
-2015 distribution**, retired 11.08.2026, where two separate experiments each produced a number and the
-pipeline averaged them. The live target does **not** average: DrEval re-fit every curve with
-CurveCurator, *"including replicate variability in the fit rather than averaging replicates before
-fitting"*, precisely because averaging *"leads to inaccurate or misleading drug response measures in
-the case of large discrepancies between replicates"*
-(`scripts/preprocessing/ctrp_to_h5ad.py`, module docstring, citing DrEval Methods). After
-`_deduplicate_measurements` drops exact duplicate **rows** — table-level repetition in the published
-file, not repeat measurements — there is exactly **one** CurveCurator fit per (cell line, drug).
+**Does it explain performance?** Per drug, over the eleven:
 
-**So on the live target the replicate disagreement is not observable at all**, because it has been
-absorbed into the curve fit rather than left as two numbers. Assay noise certainly still exists and
-almost certainly still caps performance; **this project does not currently measure it**, and the
-0.487 figure must not be quoted as if it did.
+| driver | vs `X_pca` per-drug ρ | vs `X_scGPT` |
+|---|---|---|
+| fraction of non-significant fits | **ρ = −0.718, p = 0.013** | ρ = −0.464, p = 0.15 |
+| label spread across lines (sd of `AUC_curvecurator`) | ρ = +0.591, p = 0.056 | ρ = +0.600, p = 0.051 |
 
-⚠️ **Correction, 14.08.2026.** An earlier version of this entry said the magnitude would move but *"the
-phenomenon will not"*. That was too strong in two ways: the figure is catalogue-wide rather than
-panel-specific, and the quantity it measures no longer exists in the pipeline. **What would measure it
-on the live target:** CurveCurator's own per-curve fit uncertainty, or re-deriving replicate
-disagreement from the raw dose-response data before the fit. Neither has been done.
+**And the two are independent** — `frac_ns` against `label_sd` gives ρ = −0.227, **p = 0.50** — so they
+are two separate label-side drivers rather than one effect seen twice.
+
+**`platin` is the extreme and is worth naming.** 73.3 % of its curves are non-significant, median
+`R2` **0.167**, and the smallest label spread of the eleven — and it scores **0.0295** (`X_pca`) and
+0.0909 (`X_scGPT`), at the bottom of the panel. **One of the eleven panel compounds has labels that
+barely encode a dose-response.**
+
+⚠️ **n = 11 drugs.** The p = 0.013 result is the strongest of the four and the others are marginal;
+these are indicative of a real effect, not a precise estimate of its size. What is not in doubt is
+that both drivers are properties of the **labels** rather than of the model or the representation.
 
 **3 · Against the per-drug null the margin is near zero on the full catalogue.** Over all 534 drugs,
 `vs_null` runs **+0.00017 to +0.00043**, and is **−0.00005** for linear/`X_pca` — worse than a

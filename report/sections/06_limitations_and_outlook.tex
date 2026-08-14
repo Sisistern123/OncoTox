@@ -29,9 +29,13 @@ present model does not handle.
 First, \textbf{the label-noise ceiling is no longer measurable in the obvious way.} Under the previous
 source two experiments produced two numbers that could be compared; under this one there is a single fit
 per (cell line, compound) and no pair remains to disagree. An earlier estimate of that disagreement
-therefore does not transfer, and this work does not quantify how much of the residual error is
-irreducible assay noise. CurveCurator reports a per-curve uncertainty that would supply the estimate;
-it is not currently read.
+therefore does not transfer. \revision{\textbf{Corrected 14.08.2026.} This paragraph continued
+``CurveCurator reports a per-curve uncertainty that would supply the estimate; it is not currently
+read''. It is read now: the per-curve fit statistics are analysed in Section~\ref{sec:results}, where
+$10.9\,\%$ of the fits behind this panel prove not to be statistically significant and the per-compound
+rate of such fits predicts out-of-fold performance. What remains unquantified is narrower --- the share
+of the residual error that is irreducible --- since fit quality bounds the labels without giving the
+noise floor directly.}
 
 Second, \textbf{every label is treated as equally certain.} The masked loss weights each observed (cell,
 compound) pair by the density term alone; a curve fitted from concordant replicates and one fitted from

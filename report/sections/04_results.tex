@@ -116,9 +116,16 @@ approximately invariant to a uniform rescaling of its input.
 \paragraph{Why no arm scores well in absolute terms.}
 Four measured reasons, none of which is the choice of representation. First, the effective sample is
 \NLinesCV{} cell lines rather than \NCells{} cells: one label per (cell line, compound) is broadcast to
-every cell of that line, so each fold fits on roughly a hundred independent labelled examples. Second, assay
-noise plausibly imposes a further ceiling, though it is \emph{not} quantified on the present target and
-is stated here as a hypothesis rather than a measurement.\footnote{An earlier analysis of
+every cell of that line, so each fold fits on roughly a hundred independent labelled examples. Second, label quality
+varies and measurably constrains what can be predicted. The response is a curve fitted by CurveCurator,
+which reports the quality of each fit: across the 1{,}971 curves behind this panel the median $R^2$ is
+$0.867$, but $22.2\,\%$ fall below $0.5$ and $10.9\,\%$ of the fits are not statistically significant,
+so roughly one label in nine comes from a curve that does not establish a dose-response. Per compound,
+the fraction of non-significant fits predicts out-of-fold performance ($\rho = -0.718$, $p = 0.013$ for
+the principal-component arm over eleven compounds), and the spread of the label across cell lines
+predicts it independently ($\rho \approx +0.60$, $p \approx 0.05$; the two are uncorrelated,
+$p = 0.50$). One panel compound, cisplatin, has $73\,\%$ non-significant fits and a median $R^2$ of
+$0.167$, and is among the worst predicted.\footnote{An earlier analysis of
 \NRepPairs{} doubly screened (cell line, compound) pairs reported a median disagreement of
 \RepDiffMed{} standard deviations. It does not transfer, for two reasons. It covers six cell lines
 across the full compound catalogue rather than the panel --- only 62 of those pairs involve a panel
