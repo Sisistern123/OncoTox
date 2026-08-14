@@ -151,6 +151,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 FIG = HERE / "figures"
 PANEL_OUT = ROOT / "notebooks" / "outputs" / "panel"
+MIL_OUT = ROOT / "notebooks" / "outputs" / "mil"
 # The 27.07.2026 training run's outputs, archived 12.08.2026: they were produced on the void 8-drug
 # panel and cannot be recreated by a standard run, so they moved out of outputs/panel/. Only the
 # archived figures read them, and each guards on existence first.
@@ -1289,6 +1290,83 @@ def build_loss_effect():
     print(f"wrote {out}")
 
 
+
+def build_q2_instrument():
+    """Q2's two halves in one figure: the structure reproduces, the instrument is near chance.
+
+    **Why this figure exists.** Until 14.08.2026 Q2 had no figure at all -- eleven CSVs and no
+    image -- while being one of the two questions the project is organised around.
+
+    **What is on the axes, and why these two stages of the seven.** Q2's verdict is ``POSITIVE`` and
+    its weakness is measured, and both facts live in different stage tables, so quoting either alone
+    misrepresents it. Stage 2 asks whether the within-line structure the model imposes *reproduces
+    across seeds* -- if it did not, there would be nothing to discuss. Stage 7 is the **positive
+    control**: it asks whether the instrument can detect a between-line gap it already knows is
+    there. Putting them side by side is the honest statement, because the second bounds what the
+    first is worth.
+
+    Distributions rather than the medians alone: the medians are in
+    ``notebooks/outputs/mil/q2_verdict.csv`` and a bar chart of four numbers would hide that stage
+    7's mass sits against its null.
+
+    The title says what is plotted. What it means belongs in prose that can be cited and disputed --
+    this file's own rule against asserting results inside a drawing.
+    """
+    import pandas as pd
+
+    s2 = pd.read_csv(MIL_OUT / "stage2_cross_seed_agreement.csv")
+    s7 = pd.read_csv(MIL_OUT / "stage7_positive_control.csv")
+
+    reps = [("X_pca", BLUE, "PCA"), ("X_scGPT", AMBER, "scGPT")]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.0, 4.5))
+    fig.subplots_adjust(top=0.80, wspace=0.28)
+    fig.suptitle("Q2 instrument: cross-seed agreement, and the positive control",
+                 x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=0.99)
+    fig.text(0.02, 0.90,
+             "left: stage 2, one point per (drug, cell line, seed pair).   "
+             "right: stage 7, one point per (drug, line pair, seed).   "
+             "dashed = the null each is measured against",
+             ha="left", va="top", fontsize=8.6, color=GREY)
+
+    for rep, c, name in reps:
+        a1.hist(s2[s2.rep == rep]["rho"].dropna(), bins=60, range=(-1, 1), histtype="step",
+                lw=1.8, color=c, label=name, density=True)
+    a1.axvline(0.0, color="#9a9a95", lw=1.1, ls="--", zorder=1)
+    a1.set_xlabel("cross-seed Spearman of per-cell predictions", fontsize=9)
+    a1.set_ylabel("density", fontsize=9)
+    a1.set_xlim(-1, 1)
+
+    for rep, c, name in reps:
+        a2.hist(s7[s7.rep == rep]["auroc"].dropna(), bins=60, range=(0, 1), histtype="step",
+                lw=1.8, color=c, label=name, density=True)
+    a2.axvline(0.5, color="#9a9a95", lw=1.1, ls="--", zorder=1)
+    a2.set_xlabel("within-bag AUROC, known between-line gap", fontsize=9)
+    a2.set_ylabel("density", fontsize=9)
+    a2.set_xlim(0, 1)
+
+    # Medians read from the same rows that are plotted, so the annotation cannot drift from the bars.
+    for ax, df, col in ((a1, s2, "rho"), (a2, s7, "auroc")):
+        lines = []
+        for rep, _, name in reps:
+            med = df[df.rep == rep][col].median()
+            lines.append(f"{name} median {med:.3f}")
+        # Labelled "pooled" on purpose. q2_verdict.csv's headline medians aggregate PER SEED
+        # (and, for stage 7, take the median of per-seed medians), so a pooled median over every
+        # point drawn here differs in the third decimal. Saying which statistic this is keeps the
+        # figure self-consistent with what it plots instead of appearing to contradict the verdict.
+        ax.text(0.03, 0.97, "pooled median of points shown\n" + "\n".join(lines),
+                transform=ax.transAxes, ha="left", va="top",
+                fontsize=8.5, color=MUTED, linespacing=1.5)
+        ax.legend(frameon=False, fontsize=8.5, loc="upper right")
+        _tidy(ax, grid="y")
+        ax.tick_params(labelsize=8)
+
+    out = FIG / "q2_instrument.png"
+    fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
 if __name__ == "__main__":
     FIG.mkdir(parents=True, exist_ok=True)
     build_pipeline()
@@ -1300,3 +1378,4 @@ if __name__ == "__main__":
     build_loss_formula_tex()
     build_loss_weights()
     build_loss_effect()
+    build_q2_instrument()
