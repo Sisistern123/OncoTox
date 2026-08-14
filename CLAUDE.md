@@ -152,7 +152,14 @@ deadline she never stated.
 `docs/steps/06-planned-work.md` — the three unstarted stages (cross-database · XAI · foundation model).
 `docs/steps/corrections-and-dead-ends.md` — everything superseded, retracted, refuted or abandoned. The
 steps carry a pointer; the content lives here. Nothing in it is a live result.
-`docs/progress_report_*.md` — working record and slide text; **untracked by design**.
+`docs/OPEN_DECISIONS.md` — choices that are Selin's and are **not taken**, each stated as a choice
+with what every option implies, the assumption underneath, and any reading marked as a reading. A
+decision is parked here rather than guessed; when it is settled it moves to the file that owns the
+topic and is deleted here, so this never becomes a second place a decision lives.
+`docs/progress_report_*.md` and `docs/final_presentation*.md` — working record, slide text and the
+presentation deliverable; **untracked by design** (`.gitignore`). Not committed, still kept current.
+`docs/make_figures.py` — builds every figure in `docs/figures/` plus `report/loss_objective.tex`,
+and carries its own audit checklist of every title, caption and annotation in its module docstring.
 `report/` — the written version (LaTeX → `main.pdf`).
 `notebooks/` — a number means pipeline (`1_`→`5_`); analysis sits under `analysis/`; nothing in
 `archive/` is load-bearing. See its README.
