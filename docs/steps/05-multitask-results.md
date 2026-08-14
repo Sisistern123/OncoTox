@@ -346,6 +346,68 @@ and MIL arms through one scorer. At `alpha=0.5`, `mse`, over three seeds:
 (0.1927 → 0.2177) while `X_pca` loses (0.2754 → 0.2441). This is what makes *"PCA beats scGPT"*
 dependent on the objective: the statement is about a per-cell loss, not about the representations.
 
+### Why training peaks so early — label count excluded, capacity × scale implicated (14.08.2026)
+
+**The question.** Across §A, `best_epoch` is a median of **2** on `X_pca` and **8** on `X_scGPT`, out
+of 50 available. The α=0/mse `X_pca` arm peaks at **1**. Is the training being cut short?
+
+**Not by early stopping, and not by weight decay.** Patience is **10** with `epochs=50`
+(`TrainConfig`), so a `best_epoch` of 1 means training ran to at least epoch 11 and never beat epoch
+1 — the model genuinely peaked immediately and then got worse for ten consecutive epochs.
+`weight_decay = 0.0` (decided 12.08.2026), so the only regularizers are dropout 0.5 and
+`input_dropout` 0.1, and both apply identically to the two arms.
+
+**Three candidate causes. One is now excluded.**
+
+**1 · Label supply — EXCLUDED.** ~104 labelled cell lines per fold against ~27,000 cells, each line's
+single label broadcast to all its cells; a model can fit ~104 line-means very fast and then overfit.
+§E tests this directly and for free: it varies **only** the label budget, holding architecture
+(linear), α, loss and the input identical at every point. Read from
+`notebooks/outputs/panel/panel_curve_folds.csv`:
+
+| labelled lines per fold | `X_pca` median `best_epoch` | `X_scGPT` |
+|---|---|---|
+| 25 | **19.0** | 1.0 |
+| 50 | 11.0 | 1.0 |
+| 75 | 6.0 | 1.0 |
+| 103 (full) | 11.5 | 1.5 |
+| 105 (full) | 19.0 | 8.0 |
+
+`Spearman(n_label_lines, best_epoch)` is **−0.274** (p = 0.034, n = 60) for `X_pca` and **+0.463**
+(p = 0.0002, n = 60) for `X_scGPT`. **Opposite signs, both significant.** Label supply does move where
+training peaks, but in *opposite directions* for the two representations — so it cannot be the common
+cause, and `X_pca` peaking *later* with fewer labels is the reverse of the naive overfitting story.
+
+**2 · Input scale — live.** `X_pca` enters the optimizer at median per-dimension sd **1.1062** against
+`X_scGPT`'s **0.0107** — **104×**, under one shared `lr = 1e-3`
+(`notebooks/outputs/diagnostics/input_scale.csv`). Larger inputs mean larger effective steps, so an
+arm converging and then overfitting sooner is what that predicts.
+
+**3 · Capacity — live, and it inverts the ordering.** This is what neither single explanation covers:
+
+| | `X_pca` | `X_scGPT` |
+|---|---|---|
+| trunk (128,64) | **1** | 8 |
+| linear | **12** | 2 |
+
+Label supply and input scale are *identical* across §C's two arms, yet **which representation peaks
+early reverses with capacity**. §E reproduces the linear half of that pattern independently.
+
+**The reading this supports, marked as a reading.** Large inputs with high capacity (PCA + trunk,
+~75k parameters) overfit within one epoch; tiny inputs with low capacity (scGPT + linear) cannot move
+off the head-bias initialisation and so peak immediately having learned almost nothing. Both are
+**optimisation artefacts, not properties of the representations** — which is exactly what review item
+4A warned would happen if the arms reached the optimizer at different scales.
+
+⚠️ **What this costs §C.** *"Capacity does not carry Q1"* was measured correctly, but the design
+cannot separate a capacity effect from a scale effect while the two arms are optimised this
+differently. The margins stand; the attribution is qualified. Recorded as
+`docs/OPEN_DECISIONS.md` §6, with the three ways out and what each costs.
+
+⚠️ **And it explains the instability.** The one arm that does not reproduce is the one that peaks at
+epoch **1** — barely past its initialisation, where the fit is numerically most fragile. Same
+signature the July record identified on the void panel.
+
 ### The gene-set sweep, on live numbers — and it puts scGPT ahead at every gene-set size
 
 `analysis/qc/verify_variants.ipynb` §9 → `notebooks/outputs/embeddings/hvg_sweep_auc.csv`, and the

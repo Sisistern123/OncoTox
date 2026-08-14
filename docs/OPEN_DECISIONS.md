@@ -155,6 +155,13 @@ look worse for a reason that has nothing to do with the representation."* The me
 - **Leave it and report the confound.** Costs nothing, and the Q1 margins stay as measured with a
   stated qualification.
 
+**Label supply is excluded as the cause, tested 14.08.2026.** §E varies only the label budget with
+architecture, α, loss and input held fixed. `Spearman(n_label_lines, best_epoch)` is **−0.274**
+(p = 0.034) for `X_pca` and **+0.463** (p = 0.0002) for `X_scGPT` — opposite signs, both significant.
+Label supply moves where training peaks, but in opposite directions per representation, so it cannot
+be the common cause. Full table in
+[Step 05](./steps/05-multitask-results.md#why-training-peaks-so-early--label-count-excluded-capacity--scale-implicated-14082026).
+
 **The assumption underneath.** That the Q1 ordering would survive equalisation. Untested — and it is
 the one open confound that could plausibly move it, since it is the only known difference between the
 arms that is not the representation itself.
