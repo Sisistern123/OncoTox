@@ -235,58 +235,34 @@ you than found by someone in the room.
 
 ---
 
-## 7 · `input_dropout` — only the *configuration* is open, and it blocks nothing
+## 7 · ~~`input_dropout`~~ — MOVED TO OUTLOOK 14.08.2026 (Selin)
 
-> ⚠️ **Re-read 14.08.2026, because this entry reads as more open than it is.** `input_dropout` has
-> been settled three times — but three *different* questions, none of them the one below.
->
-> | Settled | Where |
-> |---|---|
-> | **Does it act symmetrically?** No, and one-sided: `X_scGPT` flat across p ∈ [0, 0.3] (range 0.0020, inside one seed sd), `X_pca` moves 0.0145 | review item 8B, 60 fits + a six-point sweep |
-> | **How big is the effect?** The first figure — 0.0138, *"44 % of the margin"* — was **corrected**: it was measured at p = 0.10, which sits ~1 seed sd below its neighbours. Trend cost ≈ 0.005–0.008, and there is **no interior optimum** | [Step 05](./steps/05-multitask-results.md) |
-> | **What it means for Q1** — the shipped setting **understates** PCA's lead, so Q1's *direction* is not at risk; only its *magnitude* is contingent. Margins are to be quoted with the setting named | [Step 05](./steps/05-multitask-results.md); **implemented** — `report/sections/04_results.tex` states the section is quoted at 0.1 and is conservative with respect to it |
->
-> **What is left is one thing: the value itself** — 0.1, 0.0, or per-arm. That is an analysis decision
-> and is untaken. **It blocks nothing.** The interim course is already in force and implemented (keep
-> 0.1, name it wherever a margin is quoted), changing it re-runs every number in the project, and Q1's
-> direction survives either way. Read the options below as *"worth testing after the talk"*, not as a
-> gap in the current results.
+**Not settled by choosing a value, and not left open either: demoted.** Selin's ruling — *"if it is
+unnecessary, keep it as an outlook."*
 
+**The sweep she remembered wanting has already been run**: six values — 0, 0.02, 0.05, 0.10, 0.20,
+0.30 — three seeds each, both arms, 36 fits, committed as
+`notebooks/outputs/diagnostics/input_dropout_test.csv` and `input_dropout_sweep_extra.csv`. So there
+is no experiment outstanding. What the sweep shows: **no interior optimum** (`X_pca` peaks at 0.02,
+0.2753, against the shipped 0.10's 0.2608; `X_scGPT` is flat at 0.0020 across the whole range, inside
+one seed sd).
 
-**Opened 14.08.2026, from the test of review item 8B.** Measured, 60 fits
-(`notebooks/outputs/diagnostics/input_dropout_test.csv`, §C's linear row, both representations,
-three seeds):
+**Nothing changes.** `input_dropout` stays at **0.1** on both arms, which is what every reported
+number was measured at and is the **conservative** setting — at `X_pca`'s best rate the Q1 margin
+would be ≈0.046 rather than the reported 0.0317.
 
-| `input_dropout` | `X_pca` | `X_scGPT` | Q1 margin |
-|---|---|---|---|
-| 0.1 (shipped) | 0.2608 | 0.2291 | **+0.0317** |
-| 0.0 (off) | **0.2746** | 0.2289 | **+0.0457** |
-| cost of the regularizer | **−0.0138** | −0.0002 | −0.0140 |
+**Where it now lives, as future work rather than an open decision:**
+`report/sections/06_limitations_and_outlook.tex` and `docs/final_presentation.md` §7. The finding
+itself is owned by [Step 05](./steps/05-multitask-results.md).
 
-**The asymmetry is confirmed and one-sided**, and a six-point sweep now establishes it properly:
-`X_scGPT` is flat across p ∈ [0, 0.3] (range 0.0020, inside one seed sd) while `X_pca` moves over
-0.0145. ⛔ **But the size first quoted here — 0.0138, "44 % of the margin" — was measured at p = 0.10,
-which the sweep shows sits ~1 seed sd below its neighbours.** The trend cost is nearer 0.005–0.008.
-There is **no interior optimum** (p = 0.02 beats p = 0 by 0.0007), so the sweep gives no evidence that
-input dropout regularizes at all. It matters more than when item 8B was written,
-because `weight_decay = 0.0` makes dropout the **only** regularizer in the model.
+**Why it is not a decision.** It blocks nothing, the interim course is implemented (0.1, named
+wherever a margin is quoted — `report/sections/04_results.tex`), changing it re-runs every number,
+and Q1's direction survives every rate in the sweep.
 
-**The choice.**
+---
 
-- **Keep 0.1 on both.** Matched in value, unmatched in effect. The published margin stays
-  conservative, and every margin must be quoted with the setting named.
-- **Set 0.0 on both.** Removes the asymmetry, and removes a regularizer the model was tuned with —
-  the test changed one thing at a time and did not check whether 0.0 overfits elsewhere.
-- **Per-arm rates**, chosen so the *expected variance removed* matches rather than the nominal rate.
-  Principled, but introduces a second per-arm setting to justify, and `X_pca`'s variance ordering
-  means the matching rate depends on how many components you count.
+## Nothing is currently open
 
-**The assumption underneath.** That the effect is a regularization effect rather than an
-information-deletion one. `X_pca`'s dimensions are variance-ordered, so a 10 % coordinate dropout
-removes a heavier-tailed share — PC1 alone is 5.9 % of the retained variance — and that may be
-deleting signal rather than regularizing.
-
-**My reading, as a reading.** Keep 0.1 and name it, before the talk: the margin it produces is the
-conservative one, so nothing currently reported is inflated by it. Afterwards, the per-arm option is
-the one worth testing, because it is the only one that removes the asymmetry without removing the
-regularizer.
+Every entry above is settled, dissolved or demoted. **This file is empty of open decisions as of
+14.08.2026** — which is the state it should be left in, not a sign it has been forgotten. Add the
+next one as §8.

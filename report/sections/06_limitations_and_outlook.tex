@@ -294,6 +294,22 @@ full: the veto does not fire for either representation. This sentence was the fi
 that a number was outstanding when none was, the other four having been corrected earlier the same
 day.}
 
+\begin{revisionblock}
+\textbf{Matching the input regularizer in effect rather than in nominal value (added 14.08.2026).}
+Both arms are trained with the same input-dropout rate, and a six-point sweep across the range from
+zero to three tenths, at three seeds and both representations, shows that the rate does not act on
+them alike: the transcript-level arm is flat across the whole range, within a single seed's spread,
+while the principal-component arm varies by an order of magnitude more. Its dimensions are ordered by
+variance, so dropping coordinates at a fixed rate removes a heavier share of the signal from it than
+from an embedding whose coordinates carry comparable weight; whether that is regularization or
+deletion of signal is not established. The setting is left as shipped, and every margin in this report
+is quoted at it and is conservative with respect to it --- the principal-component arm scores its best
+at a lower rate, so equalizing would widen rather than narrow the reported gap. The experiment worth
+running is therefore not another sweep, which exists, but a per-arm rate chosen so that the
+\emph{expected variance removed} matches rather than the nominal rate. It is listed here rather than
+among the limitations because nothing reported depends on it being done.
+\end{revisionblock}
+
 \textbf{Bulk pretraining in the manner of scDEAL} follows. The remaining levers are argued to be on the
 label side.
 \revision{\emph{The three measurements that argument rested on are withdrawn (12.08.2026), for two
