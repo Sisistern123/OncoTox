@@ -15,7 +15,11 @@
 #   * The floors themselves are round numbers chosen to be obviously below the true count, not
 #     derived. They catch collapse to zero or near-zero; they do not catch a check that examines
 #     80% of what it should.
-#   * Read-only. Nothing here trains, reads the h5ad data, or writes outside report/ and /tmp.
+#   * Read-only -- TRUE ONLY SINCE 14.08.2026, and it was false when written. The module-import
+#     check below imported scripts/evaluation/*, whose files have no __main__ guard, so importing
+#     them ran them: it retrained models and rewrote two committed artifacts. 'evaluation' is now
+#     excluded, with the cost of that exclusion stated at the check itself. Nothing here trains,
+#     reads the h5ad data, or writes outside report/ and /tmp.
 #
 # Usage:  bash scripts/gate/verify_main.sh
 set -uo pipefail
@@ -69,8 +73,25 @@ import importlib, pathlib
 # 'gate' is excluded for the same reason 'archive' is: nothing imports it. The helpers there are
 # scripts with top-level code, so importing them RUNS them -- which briefly made this check report
 # 27 modules and 3 failures, the failures being the gate's own helpers executing mid-sweep.
+#
+# ⚠️ 'evaluation' excluded 14.08.2026, for EXACTLY the same reason, after this check was caught
+# doing the thing the comment above describes. Nine files under scripts/evaluation/ are straight-line
+# scripts with no `if __name__ == '__main__'` guard, so importing them executes them:
+# aggregation_comparison.py writes notebooks/outputs/panel/panel_aggregation_comparison.csv at top
+# level, build_execution_band.py writes panel_execution_band.csv, and section_e2_smaller_study.py
+# and input_dropout_test.py CALL oof_predictions -- i.e. they train. Running this gate therefore
+# retrained models and modified two COMMITTED artifacts, which is how it was found: the working tree
+# went dirty during a consolidation pass that regenerates nothing.
+#
+# That also falsified this script's own "Read-only" claim in KNOWN LIMITS above, now corrected there.
+#
+# COST OF THE EXCLUSION, stated because it is real: those nine modules are no longer import-checked,
+# so a syntax error or a missing import in scripts/evaluation/ will not be caught here. The proper
+# fix is to give each a __main__ guard, after which they can be imported safely and the exclusion
+# removed. That is a change to nine files and is left undone rather than rushed; it is recorded in
+# docs/steps/03 and in the report's limitations.
 mods = [p for p in pathlib.Path('.').glob('scripts/**/*.py')
-        if not {'archive', 'gate', '__pycache__'} & set(p.parts)]
+        if not {'archive', 'gate', 'evaluation', '__pycache__'} & set(p.parts)]
 bad = []
 for p in sorted(mods):
     name = '.'.join(p.with_suffix('').parts)
