@@ -315,6 +315,21 @@ running is therefore not another sweep, which exists, but a per-arm rate chosen 
 among the limitations because nothing reported depends on it being done.
 \end{revisionblock}
 
+\begin{revisionblock}
+\textbf{Fine-tuning the transcript-level encoder is the step this report's own finding points at, and
+it was missing from this outlook (added 14.08.2026).} The embedding used here is frozen and
+general-purpose: it maps cells onto a shared biological manifold and suppresses the line and batch
+identity that distinguishes them. Section~\ref{sec:results} finds that this is precisely why it
+predicts less well than the fitted baseline, because the response label is defined per cell line, so
+the structure the encoder removes is the structure the label varies over. The direct test of that
+account is therefore to stop freezing it --- to fine-tune the encoder on this task and ask whether the
+ordering reverses. Nothing here does that, and the outlook listed cross-database integration, bulk
+pretraining and clinical fine-tuning while omitting the one experiment that follows immediately from
+the result. It is stated as the obvious next step and not as a prediction: an encoder fine-tuned on
+roughly a hundred and fifty independent labels may simply memorize them, which is the same
+small-sample objection that governs everything else here.
+\end{revisionblock}
+
 \textbf{Bulk pretraining in the manner of scDEAL} follows. The remaining levers are argued to be on the
 label side.
 \revision{\emph{The three measurements that argument rested on are withdrawn (12.08.2026), for two

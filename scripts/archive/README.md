@@ -86,8 +86,11 @@ on `auc_cc`.
 **The open question the deletion does not settle**, for **audit 11 (Evaluation)**: under our
 leave-cell-line-out splits, DrEval's normalization removes only the **drug** effect, because a held-out
 line's effect is unseen and therefore zero. A synthetic predictor emitting nothing but
-`mean + line effect + drug effect` — no drug-specific signal at all — still scores normalized Spearman
-**0.98**. So *"is this drug-specific signal or general fragility?"* is a real question that the paper's
+`mean + line effect + drug effect` — no drug-specific signal at all — would still score highly.
+⚠️ *A figure of **0.98** stood here until 14.08.2026 and is removed: the 12.08.2026 audit cleared that
+claim because no code produces it and no artifact records it, but reached only the report. The
+mechanism stands; the number was never measured.* So *"is this drug-specific signal or general
+fragility?"* is a real question that the paper's
 metric does not answer under this split design. Audit 11 has to decide how to answer it, and reviving a
 metric that reads held-out labels is only one of the options.
 

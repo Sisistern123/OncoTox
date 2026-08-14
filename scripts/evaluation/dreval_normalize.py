@@ -29,10 +29,20 @@ Whether that question gets answered again, and how, is for **audit 11 (Evaluatio
 **⚠️ In our split design this metric does not control for cell-line fragility, and that is not a defect
 in it.** DrEval evaluate in several test modes; ours is leave-cell-line-out, where every held-out line
 is unseen by the baseline, so ``cell_line_effects.get(cl, 0)`` returns **0** and the subtraction removes
-the *drug* effect only. Demonstrated, not assumed: a synthetic predictor emitting nothing but
-``overall mean + line effect + drug effect`` — zero drug-specific signal — scores **normalized Spearman
-0.98** here, pooled and per drug. The line effect survives in truth and prediction alike and correlates
-with itself.
+the *drug* effect only. A synthetic predictor emitting nothing but
+``overall mean + line effect + drug effect`` — zero drug-specific signal — would still score highly,
+because the line effect survives in truth and prediction alike and correlates with itself.
+
+⚠️ **The figure that used to appear here — "scores normalized Spearman 0.98", called "Demonstrated,
+not assumed" — is REMOVED (14.08.2026).** The 12.08.2026 docs-vs-code audit cleared exactly this claim
+on the grounds that **no code in the repository produces it and no artifact records it**: it existed
+only in prose. That clearing named three locations — ``report/sections/03_methods.tex``, this
+docstring and ``scripts/archive/README.md`` — and reached only the first, which now carries a
+``\revision`` saying the figure was removed and that quantifying the consequence needs a
+synthetic-predictor check. The other two kept asserting it, one of them under the word *Demonstrated*.
+**The MECHANISM above stands and is verifiable by reading the code** (``cell_line_effects.get(cl, 0)``
+returns 0 for an unseen line); **the number does not**, and nothing here should be read as having
+measured it.
 
 So a high normalized score is **not** evidence of drug-specific biology under leave-cell-line-out. It is
 the correct behaviour for a prediction benchmark, because no model can know an unseen line's effect —
