@@ -52,11 +52,11 @@ reported below.
 With a per-cell objective, \code{X\_pca} leads \code{X\_scGPT} by $+0.0317$ with a linear head and
 $+0.0383$ with a $(128,64)$ trunk, each outside the wider of the two seed bands
 (\code{panel\_arch\_summary.csv}, \code{4a}~\S C). Capacity therefore moves both arms together and
-leaves the ordering intact. Head count does not disturb it either: a 534-head model scored on the same
+leaves the ordering intact. Head count does not disturb it either: a \NDrugsModelled{}-head model scored on the same
 eleven compounds gives $+0.0479$ (linear) and $+0.0252$ (trunk).
 
 \paragraph{The scoring set moves the answer further than either architectural axis.}
-The same 534-head model scored on all 534 compounds gives $+0.0231$ with a linear head and
+The same \NDrugsModelled{}-head model scored on all \NDrugsModelled{} compounds gives $+0.0231$ with a linear head and
 $-0.0077$ with a trunk --- inside the seed band, with the sign reversed
 (\code{panel\_heads\_summary.csv}, \code{4a}~\S D). The panel and the full catalogue disagree about
 which compounds are measured, not about the model.
@@ -100,7 +100,7 @@ Because weight decay is zero, dropout is the model's only regularizer, so this i
 hyperparameter; what the rate should be is left open.
 
 \paragraph{Everything sits near the per-drug null.}
-Across all 534 compounds the improvement over a per-drug constant runs $+0.00017$ to $+0.00043$, and
+Across all \NDrugsModelled{} compounds the improvement over a per-drug constant runs $+0.00017$ to $+0.00043$, and
 for the linear principal-component arm it is $-0.00005$, worse than the constant
 (\code{panel\_heads\_summary.csv}). A ridge regression on cell-line-mean embeddings scores $0.2767$
 against $0.2608$ for the best per-cell principal-component arm, and on an external protocol a per-drug

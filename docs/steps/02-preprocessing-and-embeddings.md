@@ -530,9 +530,13 @@ Three reasons, in descending order of weight.
 > fold sd of 27.2 — flat within error
 > ([Step 05](05-multitask-results.md#the-gene-set-sweep-on-live-numbers--and-it-puts-scgpt-ahead-at-every-gene-set-size)).
 
-The sweep itself — 1k/2k/3k/5k **and** `all_genes` through the same 5-fold GroupKFold over all 545 drugs
-(`notebooks/analysis/qc/verify_variants.ipynb` §9, first run 28.06.2026) — is the right experiment and is
-scheduled to run again; only its numbers are gone.
+The sweep itself — 1k/2k/3k/5k **and** `all_genes` through the same 5-fold GroupKFold over the full
+534-drug catalog (`notebooks/analysis/qc/verify_variants.ipynb` §9 passes `drugs=None`, so it takes
+whatever the targets h5ad holds; first run 28.06.2026) — is the right experiment and is scheduled to
+run again; only its numbers are gone. *(Read "all 545 drugs" until 14.08.2026, which contradicted the
+"out of 534" two lines above it: 545 is CTRPv2's catalogue, and the
+[50-cell-line drug cut](01-datasets-and-harmonization.md#the-50-cell-line-drug-cut--the-threshold-has-no-source-and-is-recorded-as-having-none-14082026)
+had already removed eleven compounds before this sweep ever read the file.)*
 
 **2 — At the input length we run, `all_genes` is randomly subsampled and `hvg5000` is not.** We embed
 with `max_length=1200` (`gen_embeds.py`), which is `embed_data`'s default and matches the `scGPT_human`
@@ -816,7 +820,7 @@ of each artifact, under `processed/scRNAseq_SCP542/` (`<score>` = the `--score` 
 | scGPT embeddings | **non-filtered** | `all_genes/SCP542_CCLE_scGPT_human_embeddings.h5ad` | `obsm["X_scGPT"]` | 53,513 × 512 (from 20,570 in-vocab genes) |
 | PCA | **filtered** | `hvg5000/…_with_targets_<score>.h5ad` | `obsm["X_pca"]` | 53,513 × **512** (computed on the 5,000 HVG) |
 | PCA | **non-filtered** | `all_genes/…_with_targets_<score>.h5ad` | `obsm["X_pca"]` | 53,513 × **512** (computed on all 22,722) |
-| Drug labels — all 545 | both | `<variant>/…_with_targets_<score>.h5ad` | `obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, `uns["ctrp_score"]` | 53,513 × 545 |
+| Drug labels — the full catalog | both | `<variant>/…_with_targets_<score>.h5ad` | `obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, `uns["ctrp_score"]` | 53,513 × 534 |
 | Drug labels — one drug | both | same targets file | one column of `Y_ctrp` via `--drugs paclitaxel`; legacy `obs["viability_paclitaxel"]` | 53,513 × 1 |
 | Split — shared, cell-line-grouped | both | same targets file | `obs["split_ctrp"]` | per-cell |
 | Split — paclitaxel-only (legacy) | both | same targets file | `obs["split_paclitaxel"]` | per-cell |
@@ -828,7 +832,7 @@ of each artifact, under `processed/scRNAseq_SCP542/` (`<score>` = the `--score` 
 | gene set | `--variant {hvg5000, all_genes}` | which folder |
 | target score | `--score {auc, auc_z, mean_pv}` | which targets file in that folder |
 | representation | `--use-rep {X_scGPT, X_pca}` | which `obsm` key |
-| task | `--drugs paclitaxel` vs omitted | K = 1 vs K = 545 |
+| task | `--drugs paclitaxel` vs omitted | K = 1 vs K = 534 |
 
 **Training outputs:** each run writes `runs/<timestamp>_<tag>/` (gitignored) holding `best_model.pt`,
 `config.json`, `run_meta.json` (records the variant via the targets path), `history.csv`,

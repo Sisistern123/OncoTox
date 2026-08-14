@@ -51,7 +51,10 @@ and the train/val/test grouping.
   (`OncoMLP.py`). For **single-task** `output_dim = 1` (one drug's response score); for **multi-task**
   `output_dim = K`, so the "`K` drug heads" are literally the **K rows of that one output matrix**
   over a shared trunk — there are no separate per-drug sub-networks. The default catalog is
-  **K = 545** CTRPv2 drugs.
+  **K = 534** drugs — CTRPv2's 545 compounds less the eleven that miss the
+  [50-cell-line drug cut](01-datasets-and-harmonization.md#the-50-cell-line-drug-cut--the-threshold-has-no-source-and-is-recorded-as-having-none-14082026),
+  which owns both numbers. *(Read **545** until 14.08.2026: the catalogue's size had been written in
+  as the model's head count.)*
 
 ### The prediction is per cell; the line-level table is derived from it (13.08.2026)
 
@@ -108,7 +111,7 @@ Two consequences worth having written down:
   why `literature_panel.ipynb` can rebuild the panel under the freeze while the h5ads cannot be rebuilt.
 - **Filtering upstream would have moved the splits.** A cell line is eligible for splitting if any of its
   cells carries at least one observed label — `has_any_label = M.any(axis=1)`, `create_splits.py:164`.
-  That test is taken over the *width* of `M`, so narrowing `M` from ~545 columns to 11 would re-evaluate
+  That test is taken over the *width* of `M`, so narrowing `M` from its 534 columns to 11 would re-evaluate
   eligibility against the panel and could drop lines that are screened but not against a panel compound,
   silently redrawing `split_ctrp`. Found by the code-quality session and verified here against
   `create_splits.py`; it is a consequence of the decision, not its motivation.
@@ -327,7 +330,11 @@ Only the **macro per-drug** numbers feed the **per-drug-mean baseline** comparis
 (`train_multitask._per_drug_constant_mse`). That baseline is a null model: for each drug it predicts
 the constant train-set mean score over that drug's observed cells. "**Heads beating baseline**"
 then counts drugs whose model per-drug val MSE beats that constant (scGPT 142/545, PCA 97/545 —
-[Step 05](05-multitask-results.md)).
+[Step 05](05-multitask-results.md)). **The denominator here is 545 and that is correct**: those two
+26.05.2026 runs are the `--all-drugs` branch, i.e. `min_cell_lines=0`, so they bypassed the
+[50-cell-line drug cut](01-datasets-and-harmonization.md#the-50-cell-line-drug-cut--the-threshold-has-no-source-and-is-recorded-as-having-none-14082026)
+that leaves every other run at 534. Checked 14.08.2026 rather than swept with the stale 545s
+elsewhere on this page.
 
 ### The loss is plain masked MSE, and stays that way until MIL (audit 09, 12.08.2026)
 

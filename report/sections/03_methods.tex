@@ -5,8 +5,14 @@
 \label{sec:data}
 
 All experiments use the highest-confidence intersection of SCP542 \cite{scp542} and CTRPv2 \cite{ctrpv2,ctrp_rees}. This intersection comprises \NLines{} cell lines with
-post-quality-control measurements (190 roster name matches, of which 9 are unscreened), \NDrugs{}
-compounds and \NCells{} cells, with effectively complete viability coverage inside the overlap. Genes are
+post-quality-control measurements (190 roster name matches, of which 9 are unscreened), \NDrugsModelled{}
+compounds and \NCells{} cells, with effectively complete viability coverage inside the overlap. That
+compound count is smaller than CTRPv2's catalogue of \NDrugs{}: a compound enters the target matrix
+only if it was screened against at least fifty of the overlapping cell lines, and eleven fall below
+that. The requirement exists to keep output heads with very little support out of the shared trunk;
+the threshold itself was set rather than derived, is not taken from any published convention, and has
+not been varied, so it should be read as an arbitrary cutoff whose effect on the results is unmeasured.
+Genes are
 reduced to the \NHvg{} most highly variable; scGPT embeds the \NVocab{} of these that lie in its
 vocabulary, while PCA is computed on all \NHvg{}.
 \begin{revisionblock}
@@ -55,7 +61,7 @@ justify --- and the two readings below narrow what the measurement could ever ha
 re-embedded on 13.08.2026, so its points now differ in gene count alone rather than in gene count
 \emph{and} code version, and it is like-for-like for the first time. Over the whole range from
 1{,}000 genes to the full transcriptome the principal-component arm moves 5.8 heads-beating-baseline
-out of 534, against a fold-to-fold standard deviation of 27.2 --- flat within error for both
+out of \NDrugsModelled{}, against a fold-to-fold standard deviation of 27.2 --- flat within error for both
 representations. The withdrawn sentence is therefore supported again on current numbers, and \NHvg{}
 rests on that measurement rather than on inheritance. The correction immediately below still applies:
 what the sweep compares for the transcript-level arm is gene \emph{selection} at a fixed per-cell cap,
@@ -227,14 +233,14 @@ lines.
 Matching an external drug list to a screen is not a string operation, and treating it as one loses
 compounds systematically. Approval lists name drugs by international nonproprietary name and often in
 their salt form, whereas screens use development codes and free bases; furthermore the compound
-annotation and the response values reach this project through two different files that name the same 545
-compounds differently, so that a name-based join between them fails for 102 of the 545, of which 15 are
+annotation and the response values reach this project through two different files that name the same \NDrugs{}
+compounds differently, so that a name-based join between them fails for 102 of the \NDrugs{}, of which 15 are
 single-agent approved or clinical compounds. Four keys are therefore used and the successful one is
 recorded per compound: the two name spaces, the PubChem compound identifier, and PubChem's
 parent-compound relation \cite{pubchem}, which is what connects a salt named in an approval list to the
 free base a screen dissolved. The last key alone accounts for 13 of the matches, among them imatinib and
 doxorubicin. The join between the two internal files is made on the screen's own compound identifier
-rather than on names, which matches all 545. One compound required an explicit correction: cisplatin is
+rather than on names, which matches all \NDrugs{}. One compound required an explicit correction: cisplatin is
 recorded under a nonstandard name and carries a structure identifier pointing to elemental platinum
 rather than to the drug, and is resolved here on the screen's own recorded structure and vendor
 catalogue entry.

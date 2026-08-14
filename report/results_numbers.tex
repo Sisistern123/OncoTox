@@ -33,7 +33,20 @@
                                    % experiment table and resolved the H292 alias, which added
                                    % one line. Verified against splits/split_ctrp.csv (181 rows:
                                    % 126 train / 27 val / 28 test).
-\newcommand{\NDrugs}{545}          % CTRPv2 compounds in the overlap
+% --- 545 vs 534: two quantities, and the gloss here named the wrong one until 14.08.2026.
+\newcommand{\NDrugs}{545}          % CTRPv2's COMPOUND CATALOGUE -- the whole screen, before any
+                                   % filter of ours. Glossed "CTRPv2 compounds in the overlap"
+                                   % until 14.08.2026, which is what sent it into the abstract,
+                                   % the introduction and Methods as the size of the modelled
+                                   % intersection. It is not that: 545 is where the drug funnel
+                                   % STARTS. Use it only where the catalogue is meant.
+\newcommand{\NDrugsModelled}{534}  % compounds the model actually has a head for: \NDrugs{} less
+                                   % the eleven screened against fewer than 50 SCP542-overlapping
+                                   % cell lines (ctrp_to_h5ad.py:78 DEFAULT_MIN_CELL_LINES,
+                                   % applied at :246). THE THRESHOLD OF 50 HAS NO SOURCE and is
+                                   % recorded as arbitrary in docs/steps/01, section "The
+                                   % 50-cell-line drug cut". This is the h5ad's width
+                                   % (53,513 x 534), uns["ctrp_drugs"], and K in Results.
 \newcommand{\NCells}{53{,}513}     % single cells
 \newcommand{\NGenes}{22{,}722}     % genes in the distributed SCP542 matrix
 % \NIndep was RETIRED 12.08.2026 (Selin) -- it named two different quantities at once

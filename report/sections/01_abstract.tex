@@ -3,7 +3,7 @@
 This report investigates whether single-cell RNA-seq, combined with foundation-model embeddings, can
 predict pharmacological response, as a first step toward a reusable pan-cancer single-cell foundation
 model. On the highest-confidence intersection of the SCP542 single-cell atlas and the CTRPv2
-drug-response database (\NLines{} cell lines, \NDrugs{} compounds), we train a shared-trunk multi-task
+drug-response database (\NLines{} cell lines, \NDrugsModelled{} compounds), we train a shared-trunk multi-task
 regressor on individual cells and evaluate it under a leave-cell-line-out protocol, comparing scGPT
 embeddings against a matched principal component analysis (PCA) baseline. The guiding hypothesis is that
 the foundation model provides a denoised, tissue-agnostic representation of cellular state.

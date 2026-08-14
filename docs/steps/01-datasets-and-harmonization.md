@@ -531,6 +531,57 @@ whether to clip the weighting's *input* — never the target — is reopened the
 **Also gained.** Every row carries a **Cellosaurus accession**, and `meta.zip` ships Cellosaurus 52.0,
 so the name join can now be checked against an external authority — see the join audit below.
 
+### The 50-cell-line drug cut — the threshold has no source, and is recorded as having none (14.08.2026)
+
+The table above records the *consequence* — the row *"534 of 545 drugs (`auc_cc`)"* — and it has said
+so since 11.08.2026. **What it never recorded is that a threshold was chosen.** This section supplies
+the missing half, and the honest version of it is short: **the number is arbitrary.**
+
+**What the rule is.** `DEFAULT_MIN_CELL_LINES = 50` in `scripts/preprocessing/ctrp_to_h5ad.py:78`,
+applied at `:246` (`coverage[coverage >= min_cell_lines]`): a CTRPv2 compound becomes a column of
+`Y_ctrp` only if it was screened against at least 50 distinct SCP542-overlapping cell lines. So the
+targets h5ad, `uns["ctrp_drugs"]`, and the multi-task model's head count are all shaped by it — the
+model has one head per surviving drug, which is what
+[Step 03](03-model-and-training-design.md#a-training-example--one-single-cell) and
+[Step 05](05-multitask-results.md) mean by *K*.
+
+**The source, stated plainly: there is none.** A search of the code, `docs/`, `report/`,
+`notebooks/` and the full git history turns up no citation, no appeal to convention, no sensitivity
+analysis and no comparison run. The value arrived at 50 in `ed8897c` (26.05.2026) — whose message
+introduces it as *"`--min-cell-lines` filter (default 50)"* and says nothing further — and has never
+been changed or varied since. The one rationale that does exist is for having a cut **at all**, not
+for its size: `ctrp_to_h5ad.py:40-42`, *"so we don't add heads with too little support"*. That
+reasoning is sound and unquantified; **50 is where it was set, not where it was shown to belong.**
+
+Recorded here rather than left silent for the reason this repository applies to
+`DEFAULT_WINSOR = 1.1` two paragraphs up, and to the 15 % early-stopping fraction in
+[Step 03](03-model-and-training-design.md#the-early-stopping-set-is-nested-inside-the-training-lines-12082026):
+an arbitrary threshold documented as arbitrary is honest, while the same threshold stated without
+comment reads as principled. Until 14.08.2026 this one was stated without comment, in the more
+damaging of the two forms.
+
+**The assumption underneath, and how it would show up if it were wrong.** The cut assumes a head
+supported by fewer than 50 lines contributes more noise to the shared trunk than signal — that a
+sparsely-screened drug's gradient is mostly fitting its own handful of lines. If that were false,
+the cost is the eleven excluded compounds and whatever they would have taught the trunk; if it were
+true but the threshold too low, some of the 534 kept heads are already in that regime. **Both are
+measurable and neither has been measured.** The code exposes exactly one alternative — `--all-drugs`,
+i.e. `min_cell_lines=0` — and no artifact in the repository uses it as a comparison against the
+default. The 26.05.2026 K=545 runs in [Step 05](05-multitask-results.md) took that branch, but they
+predate the current target and panel, so they compare nothing that is live.
+
+⚠️ **Two different 50s, and they are unrelated.** The other is upstream: *"lines with fewer than 50
+assigned cells excluded"*, in the [upstream-QC table](#upstream-qc--what-scp542-already-had-done-to-it-05082026)
+above. That one **is** sourced, and it is not this project's decision at all — it is Kinker et al.'s,
+applied before publication (Kinker et al., *Nature Genetics* **52**, 1208–1218 (2020),
+doi:10.1038/s41588-020-00726-6, Methods, "Processing of scRNA-seq data"; `references.bib` key
+`scp542`), and no code in `scripts/` applies it. **One counts cells per line and belongs to someone
+else; the other counts lines per drug and is ours.** Sharing a number is a coincidence, and a
+confusing one — quote them together or not at all.
+
+**Whether 50 stays is Selin's**, and nothing here proposes changing it. What this section fixes is
+that the choice existed and was not written down.
+
 ### The join audit — what was checked and what held (10.08.2026)
 
 Walked as review item 2. The name join is the only thing linking CTRPv2 to SCP542, and until this date
