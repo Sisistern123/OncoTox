@@ -169,7 +169,7 @@ steps (`pipeline.py`), which the numbered notebooks drive, then `model/`, `train
 plus `archive/`, which holds superseded code and is never imported (see its README). Reorganized
 12.08.2026 — `preprocessing/` held all fourteen.
 `check_resolved_paths.py` and `check_unbound_names.py` sit beside `layout.py`, and `scripts/gate/`
-holds `merge_gate.sh`, `verify_main.sh` and their helpers — the exception to the rule that everything
+holds `verify_main.sh` and its helpers (`merge_gate.sh` retired 14.08.2026 to `scripts/archive/`) — the exception to the rule that everything
 in `scripts/` is pipeline code: imported by nothing, run around a merge. The first catches paths built
 from variables (`OUT / 'a' / 'b'`, `OUT.glob(…)`) that no string search can see; the second catches
 names used but never bound — code that parses cleanly and raises at call time. **Every check prints how

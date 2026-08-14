@@ -96,3 +96,20 @@ and `auc` stopped being a valid score on 11.08.2026, so it raised on constructio
 under `notebooks/outputs/dreval/` were computed on the retired target and the voided 8-drug panel, and
 are void with them. `notebooks/analysis/evaluation/dreval_benchmark.ipynb` imports the removed module and
 also hardcodes `'auc'`; it is untouched pending audit 11.
+
+## `merge_gate.sh` — retired 14.08.2026 (Selin)
+
+**Verified a branch against `main` before a merge. There are no branches.** `git branch -a` shows
+`main` only, the workflow is commit-direct-to-main, and the last merge commit (`99637f4`, 13.08.2026)
+is **140 commits** behind HEAD. A gate that cannot be run as intended is not a safety net; it is a
+file that looks like one.
+
+**What it did that `verify_main.sh` does not:** it diffed a branch tip against `main` — the
+`coderefs.py` before/after comparison at its checks 4-6, which catches a reference that a *branch*
+breaks. That capability goes with it, and nothing replaces it, because nothing produces branches to
+compare.
+
+**What survives:** every content check it called is still called by `scripts/gate/verify_main.sh`,
+which runs against `main` as it stands and is the gate that is actually used. Recoverable from git
+history if branching ever returns.
+

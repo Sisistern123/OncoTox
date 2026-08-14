@@ -38,59 +38,62 @@ from scripts.layout import PipelinePaths
 from scripts.training.cv import oof_predictions, line_level_predictions
 from scripts.training.training_utils import TrainConfig
 
-PANEL = pd.read_csv(ROOT/'notebooks/outputs/panel/panel.csv')['drug_key'].tolist()
-paths = PipelinePaths.build(None, 'hvg5000', 'auc_cc')
-src = ad.read_h5ad(paths.targets_h5ad, backed='r')
-drugs = list(src.uns['ctrp_drugs']); k = [drugs.index(d) for d in PANEL]
-Y = np.asarray(src.obsm['Y_ctrp'], dtype=np.float32)[:, k]
-M = np.asarray(src.obsm['M_ctrp'], dtype=bool)[:, k]
-full = ad.AnnData(obs=src.obs.copy())
-for r in ('X_pca', 'X_scGPT'):
-    full.obsm[r] = np.asarray(src.obsm[r], dtype=np.float32)
-full.obsm['Y_ctrp'], full.obsm['M_ctrp'] = np.where(M, Y, 0.0).astype(np.float32), M
-full.uns['ctrp_drugs'] = PANEL
-src.file.close()
 
-base_split = full.obs['split_ctrp'].astype(str).to_numpy().copy()
-elig = full.obs['split_ctrp'].isin(['train', 'val']).to_numpy()
-lines = np.unique(full.obs['Cell_line'].astype(str).to_numpy()[elig])
-print(f'eligible cell lines: {len(lines)}')
+if __name__ == "__main__":   # guard added 14.08.2026 (Selin): importing this file used to RUN it
 
-SIZES = [31, 62, 94, None]     # None = the full eligible set
-cfg = TrainConfig(epochs=50, seed=42, loss='mse')
-rows, folds_log = [], []
-for n_lines in SIZES:
-    for seed in (42, 43, 44):
-        rng = np.random.default_rng(seed)
-        keep = lines if n_lines is None else np.sort(rng.choice(lines, size=n_lines, replace=False))
-        # The per-fold PCA refits from the FULL counts h5ad, so its masks must stay full-length --
-        # subsetting the AnnData breaks that correspondence (IndexError, 14.08.2026). Instead the
-        # dropped lines are marked INELIGIBLE, which removes them from the folds, from the batches
-        # and from the PCA's fitting set alike. That is the E2 scenario: the study shrinks.
-        sub = full
-        sub.obs['split_ctrp'] = np.where(
-            np.isin(full.obs['Cell_line'].astype(str).to_numpy(), keep),
-            base_split, 'test')
-        for rep in ('X_pca', 'X_scGPT'):
-            pred, folds = oof_predictions(
-                sub, rep, PANEL, config=replace(cfg, seed=seed), hidden_dims=(),
-                n_splits=5, density_weighting=False, alpha=0.0, init_head_bias=True,
-                counts_h5ad=paths.raw_h5ad, pca_seed=42,
-                tag=f'E2_{n_lines or "all"}_{rep}_s{seed}')
-            g = line_level_predictions(pred, sub, PANEL, folds=folds)
-            rho = [spearmanr(d.y_true, d.y_pred).statistic
-                   for _, d in g.groupby('drug') if d.y_true.nunique() > 2]
-            rows.append({'n_lines_kept': len(keep), 'rep': rep, 'seed': seed,
-                         'n_fit_lines': int(np.median([f['n_fit_lines'] for f in folds])),
-                         'order': float(np.nanmean(rho))})
-            print(f"  {len(keep):3d} lines {rep:8s} s{seed}: {rows[-1]['order']:.4f}", flush=True)
-            del pred, g
+    PANEL = pd.read_csv(ROOT/'notebooks/outputs/panel/panel.csv')['drug_key'].tolist()
+    paths = PipelinePaths.build(None, 'hvg5000', 'auc_cc')
+    src = ad.read_h5ad(paths.targets_h5ad, backed='r')
+    drugs = list(src.uns['ctrp_drugs']); k = [drugs.index(d) for d in PANEL]
+    Y = np.asarray(src.obsm['Y_ctrp'], dtype=np.float32)[:, k]
+    M = np.asarray(src.obsm['M_ctrp'], dtype=bool)[:, k]
+    full = ad.AnnData(obs=src.obs.copy())
+    for r in ('X_pca', 'X_scGPT'):
+        full.obsm[r] = np.asarray(src.obsm[r], dtype=np.float32)
+    full.obsm['Y_ctrp'], full.obsm['M_ctrp'] = np.where(M, Y, 0.0).astype(np.float32), M
+    full.uns['ctrp_drugs'] = PANEL
+    src.file.close()
 
-d = pd.DataFrame(rows)
-d.to_csv(ROOT/'notebooks/outputs/panel/panel_curve_e2.csv', index=False)
-m = d.groupby(['n_lines_kept', 'rep'])['order'].mean().unstack()
-m['margin'] = m.X_pca - m.X_scGPT
-m['median_n_fit_lines'] = d.groupby('n_lines_kept')['n_fit_lines'].median()
-print('\n=== E2: study shrunk, PCA refitted on the smaller atlas ===')
-print(m.round(4).to_string())
-print('\n  section E (labels thinned, atlas intact): +0.0036 / +0.0090 / +0.0505 / +0.0317')
+    base_split = full.obs['split_ctrp'].astype(str).to_numpy().copy()
+    elig = full.obs['split_ctrp'].isin(['train', 'val']).to_numpy()
+    lines = np.unique(full.obs['Cell_line'].astype(str).to_numpy()[elig])
+    print(f'eligible cell lines: {len(lines)}')
+
+    SIZES = [31, 62, 94, None]     # None = the full eligible set
+    cfg = TrainConfig(epochs=50, seed=42, loss='mse')
+    rows, folds_log = [], []
+    for n_lines in SIZES:
+        for seed in (42, 43, 44):
+            rng = np.random.default_rng(seed)
+            keep = lines if n_lines is None else np.sort(rng.choice(lines, size=n_lines, replace=False))
+            # The per-fold PCA refits from the FULL counts h5ad, so its masks must stay full-length --
+            # subsetting the AnnData breaks that correspondence (IndexError, 14.08.2026). Instead the
+            # dropped lines are marked INELIGIBLE, which removes them from the folds, from the batches
+            # and from the PCA's fitting set alike. That is the E2 scenario: the study shrinks.
+            sub = full
+            sub.obs['split_ctrp'] = np.where(
+                np.isin(full.obs['Cell_line'].astype(str).to_numpy(), keep),
+                base_split, 'test')
+            for rep in ('X_pca', 'X_scGPT'):
+                pred, folds = oof_predictions(
+                    sub, rep, PANEL, config=replace(cfg, seed=seed), hidden_dims=(),
+                    n_splits=5, density_weighting=False, alpha=0.0, init_head_bias=True,
+                    counts_h5ad=paths.raw_h5ad, pca_seed=42,
+                    tag=f'E2_{n_lines or "all"}_{rep}_s{seed}')
+                g = line_level_predictions(pred, sub, PANEL, folds=folds)
+                rho = [spearmanr(d.y_true, d.y_pred).statistic
+                       for _, d in g.groupby('drug') if d.y_true.nunique() > 2]
+                rows.append({'n_lines_kept': len(keep), 'rep': rep, 'seed': seed,
+                             'n_fit_lines': int(np.median([f['n_fit_lines'] for f in folds])),
+                             'order': float(np.nanmean(rho))})
+                print(f"  {len(keep):3d} lines {rep:8s} s{seed}: {rows[-1]['order']:.4f}", flush=True)
+                del pred, g
+
+    d = pd.DataFrame(rows)
+    d.to_csv(ROOT/'notebooks/outputs/panel/panel_curve_e2.csv', index=False)
+    m = d.groupby(['n_lines_kept', 'rep'])['order'].mean().unstack()
+    m['margin'] = m.X_pca - m.X_scGPT
+    m['median_n_fit_lines'] = d.groupby('n_lines_kept')['n_fit_lines'].median()
+    print('\n=== E2: study shrunk, PCA refitted on the smaller atlas ===')
+    print(m.round(4).to_string())
+    print('\n  section E (labels thinned, atlas intact): +0.0036 / +0.0090 / +0.0505 / +0.0317')

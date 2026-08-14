@@ -15,6 +15,12 @@
 #   * The floors themselves are round numbers chosen to be obviously below the true count, not
 #     derived. They catch collapse to zero or near-zero; they do not catch a check that examines
 #     80% of what it should.
+#   * Runs through .venv/bin/python, NOT `uv run` (changed 14.08.2026, Selin). Every check used to
+#     be invoked via `uv run`, which blocks on the project environment lock whenever another uv
+#     process holds it -- with a `uv run jupyter lab` server and a live kernel up, this script sat at
+#     0 % CPU for over twenty minutes and had to be killed. The same checks complete in seconds
+#     against the interpreter directly. Cost: it now assumes .venv/ exists, which every other
+#     documented entry point in this repo already does.
 #   * Read-only -- TRUE ONLY SINCE 14.08.2026, and it was false when written. The module-import
 #     check below imported scripts/evaluation/*, whose files have no __main__ guard, so importing
 #     them ran them: it retrained models and rewrote two committed artifacts. 'evaluation' is now
@@ -37,27 +43,27 @@ num() { grep -oE "$2" <<<"$1" | head -1 | grep -oE '[0-9]+' | head -1; }
 
 echo "main @ $(git log --oneline -1 | cut -c1-70)"
 
-L=$(uv run python "$G/links.py" "$R");     echo "  $(echo "$L" | tail -n +2 | head -1)"
+L=$(.venv/bin/python "$G/links.py" "$R");     echo "  $(echo "$L" | tail -n +2 | head -1)"
 need links     "$(num "$L" '[0-9]+ relative links checked')" 100
-A=$(uv run python "$G/artifacts.py" "$R"); echo "  $(echo "$A" | sed -n 2p)"
+A=$(.venv/bin/python "$G/artifacts.py" "$R"); echo "  $(echo "$A" | sed -n 2p)"
 need artifacts "$(num "$A" '[0-9]+ artifact references checked')" 10
-C=$(uv run python "$G/cmdpaths.py" "$R");  echo "  $(echo "$C" | sed -n 2p)"
+C=$(.venv/bin/python "$G/cmdpaths.py" "$R");  echo "  $(echo "$C" | sed -n 2p)"
 need cmdpaths  "$(num "$C" '[0-9]+ command/LaTeX paths checked')" 10
 
-uv run python scripts/check_resolved_paths.py 2>&1 | grep -E 'composition|dead-glob' | sed 's/^/  /'
-uv run python scripts/check_resolved_paths.py >/dev/null 2>&1 \
+.venv/bin/python scripts/check_resolved_paths.py 2>&1 | grep -E 'composition|dead-glob' | sed 's/^/  /'
+.venv/bin/python scripts/check_resolved_paths.py >/dev/null 2>&1 \
   || { echo "   ^ BLOCKER: resolved-path checker non-zero"; fail=1; }
 
 # Added 13.08.2026. Catches names used but never bound -- code that parses and raises at call time.
 # Two such defects reached merged main before this existed (f7ef9e4, c351851), both of which would
 # have failed R4 on the first fold.
-U=$(uv run python scripts/check_unbound_names.py 2>&1); echo "  $(echo "$U" | head -1)"
+U=$(.venv/bin/python scripts/check_unbound_names.py 2>&1); echo "  $(echo "$U" | head -1)"
 echo "$U" | grep UNBOUND | sed 's/^/  /'
-uv run python scripts/check_unbound_names.py >/dev/null 2>&1 \
+.venv/bin/python scripts/check_unbound_names.py >/dev/null 2>&1 \
   || { echo "   ^ BLOCKER: unbound-name checker non-zero"; fail=1; }
 need "unbound-name files" "$(num "$U" 'checked [0-9]+ file')" 20
 
-N=$(uv run python -c "
+N=$(.venv/bin/python -c "
 import glob, warnings, nbformat; warnings.filterwarnings('ignore')
 f = sorted(glob.glob('notebooks/**/*.ipynb', recursive=True)); bad = 0
 for p in f:
@@ -68,30 +74,29 @@ echo "  notebooks: $(echo $N | cut -d' ' -f1) validated, $(echo $N | cut -d' ' -
 need notebooks "$(echo $N | cut -d' ' -f1)" 10
 [ "$(echo $N | cut -d' ' -f2)" != "0" ] && fail=1
 
-M=$(uv run python -c "
+M=$(.venv/bin/python -c "
 import importlib, pathlib
 # 'gate' is excluded for the same reason 'archive' is: nothing imports it. The helpers there are
 # scripts with top-level code, so importing them RUNS them -- which briefly made this check report
 # 27 modules and 3 failures, the failures being the gate's own helpers executing mid-sweep.
 #
-# ⚠️ 'evaluation' excluded 14.08.2026, for EXACTLY the same reason, after this check was caught
-# doing the thing the comment above describes. Nine files under scripts/evaluation/ are straight-line
-# scripts with no `if __name__ == '__main__'` guard, so importing them executes them:
-# aggregation_comparison.py writes notebooks/outputs/panel/panel_aggregation_comparison.csv at top
-# level, build_execution_band.py writes panel_execution_band.csv, and section_e2_smaller_study.py
-# and input_dropout_test.py CALL oof_predictions -- i.e. they train. Running this gate therefore
-# retrained models and modified two COMMITTED artifacts, which is how it was found: the working tree
-# went dirty during a consolidation pass that regenerates nothing.
+# ⚠️ 'evaluation' was excluded on 14.08.2026 and the exclusion is GONE AGAIN the same day, because
+# the real fix landed. Nine files under scripts/evaluation/ were straight-line scripts with no
+# 'if __name__ == main' guard, so importing them executed them: aggregation_comparison.py wrote
+# (no backticks in this comment: it sits inside a double-quoted bash command substitution, where a
+#  backtick opens a nested substitution -- which is exactly how this file acquired a syntax error)
+# notebooks/outputs/panel/panel_aggregation_comparison.csv at top level, build_execution_band.py
+# wrote panel_execution_band.csv, and section_e2_smaller_study.py and input_dropout_test.py called
+# oof_predictions -- they TRAINED. Running this gate therefore retrained models and modified two
+# COMMITTED artifacts, which falsified this script's own read-only claim (no inner double quotes
+# here on purpose: this comment lives inside a double-quoted bash command substitution).
 #
-# That also falsified this script's own "Read-only" claim in KNOWN LIMITS above, now corrected there.
-#
-# COST OF THE EXCLUSION, stated because it is real: those nine modules are no longer import-checked,
-# so a syntax error or a missing import in scripts/evaluation/ will not be caught here. The proper
-# fix is to give each a __main__ guard, after which they can be imported safely and the exclusion
-# removed. That is a change to nine files and is left undone rather than rushed; it is recorded in
-# docs/steps/03 and in the report's limitations.
+# All nine now carry the guard (Selin, 14.08.2026), verified by comparing each rewritten file's AST
+# against the original so no string literal could be corrupted by the reindent. Importing the tree is
+# silent and writes nothing, so the exclusion is unnecessary and coverage is restored: 35 modules
+# rather than the 24 the exclusion left.
 mods = [p for p in pathlib.Path('.').glob('scripts/**/*.py')
-        if not {'archive', 'gate', 'evaluation', '__pycache__'} & set(p.parts)]
+        if not {'archive', 'gate', '__pycache__'} & set(p.parts)]
 bad = []
 for p in sorted(mods):
     name = '.'.join(p.with_suffix('').parts)

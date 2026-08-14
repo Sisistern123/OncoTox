@@ -27,47 +27,50 @@ from scripts.model.OncoMLP import DEFAULT_HIDDEN_DIMS
 from scripts.training.cv import oof_predictions
 from scripts.training.training_utils import TrainConfig
 
-PANEL = pd.read_csv(ROOT / 'notebooks/outputs/panel/panel.csv')['drug_key'].tolist()
-paths = PipelinePaths.build(None, 'hvg5000', 'auc_cc')
-src = ad.read_h5ad(paths.targets_h5ad, backed='r')
-drugs = list(src.uns['ctrp_drugs'])
-k = [drugs.index(d) for d in PANEL]
-Y = np.asarray(src.obsm['Y_ctrp'], dtype=np.float32)[:, k]
-M = np.asarray(src.obsm['M_ctrp'], dtype=bool)[:, k]
 
-adata = ad.AnnData(obs=src.obs.copy())
-X = np.asarray(src.obsm['X_scGPT'], dtype=np.float32)
-adata.obsm['X_scGPT'] = X
-adata.obsm['Y_ctrp'] = np.where(M, Y, 0.0).astype(np.float32)
-adata.obsm['M_ctrp'] = M
-adata.uns['ctrp_drugs'] = PANEL
-src.file.close()
+if __name__ == "__main__":   # guard added 14.08.2026 (Selin): importing this file used to RUN it
 
-# The measured gap, from diagnostics/input_scale.csv: 1.1062 / 0.0107.
-FACTOR = 1.1062 / 0.0107
-adata.obsm['X_scGPT_scaled'] = (X * FACTOR).astype(np.float32)
-print(f'scaling factor {FACTOR:.1f}x')
-for r in ('X_scGPT', 'X_scGPT_scaled'):
-    print(f'  {r:16s} median per-dim sd = {np.median(adata.obsm[r].std(axis=0)):.4f}')
+    PANEL = pd.read_csv(ROOT / 'notebooks/outputs/panel/panel.csv')['drug_key'].tolist()
+    paths = PipelinePaths.build(None, 'hvg5000', 'auc_cc')
+    src = ad.read_h5ad(paths.targets_h5ad, backed='r')
+    drugs = list(src.uns['ctrp_drugs'])
+    k = [drugs.index(d) for d in PANEL]
+    Y = np.asarray(src.obsm['Y_ctrp'], dtype=np.float32)[:, k]
+    M = np.asarray(src.obsm['M_ctrp'], dtype=bool)[:, k]
 
-cfg = TrainConfig(epochs=50, seed=42, loss='mse')
-rows = []
-for rep in ('X_scGPT', 'X_scGPT_scaled'):
-    for seed in (42, 43, 44):
-        pred, folds = oof_predictions(
-            adata, rep, PANEL,
-            config=replace(cfg, seed=seed), hidden_dims=DEFAULT_HIDDEN_DIMS['X_scGPT'],
-            n_splits=5, density_weighting=False, alpha=0.0, init_head_bias=True,
-            tag=f'scale_{rep}_s{seed}')
-        for f in folds:
-            rows.append({'rep': rep, 'seed': seed, 'fold': f['fold'],
-                         'best_epoch': f['best_epoch'], 'best_val_obj': f['best_val_obj']})
-        print(f'  done {rep} seed={seed}', flush=True)
-        del pred
+    adata = ad.AnnData(obs=src.obs.copy())
+    X = np.asarray(src.obsm['X_scGPT'], dtype=np.float32)
+    adata.obsm['X_scGPT'] = X
+    adata.obsm['Y_ctrp'] = np.where(M, Y, 0.0).astype(np.float32)
+    adata.obsm['M_ctrp'] = M
+    adata.uns['ctrp_drugs'] = PANEL
+    src.file.close()
 
-d = pd.DataFrame(rows)
-d.to_csv('/Users/selin/.claude/jobs/ce8d4fe5/tmp/scale_test.csv', index=False)
-print('\n=== median best_epoch ===')
-print(d.groupby('rep')['best_epoch'].agg(['median', 'mean', 'min', 'max']).round(2).to_string())
-print('\n=== per fold/seed ===')
-print(d.pivot_table(index=['seed', 'fold'], columns='rep', values='best_epoch').to_string())
+    # The measured gap, from diagnostics/input_scale.csv: 1.1062 / 0.0107.
+    FACTOR = 1.1062 / 0.0107
+    adata.obsm['X_scGPT_scaled'] = (X * FACTOR).astype(np.float32)
+    print(f'scaling factor {FACTOR:.1f}x')
+    for r in ('X_scGPT', 'X_scGPT_scaled'):
+        print(f'  {r:16s} median per-dim sd = {np.median(adata.obsm[r].std(axis=0)):.4f}')
+
+    cfg = TrainConfig(epochs=50, seed=42, loss='mse')
+    rows = []
+    for rep in ('X_scGPT', 'X_scGPT_scaled'):
+        for seed in (42, 43, 44):
+            pred, folds = oof_predictions(
+                adata, rep, PANEL,
+                config=replace(cfg, seed=seed), hidden_dims=DEFAULT_HIDDEN_DIMS['X_scGPT'],
+                n_splits=5, density_weighting=False, alpha=0.0, init_head_bias=True,
+                tag=f'scale_{rep}_s{seed}')
+            for f in folds:
+                rows.append({'rep': rep, 'seed': seed, 'fold': f['fold'],
+                             'best_epoch': f['best_epoch'], 'best_val_obj': f['best_val_obj']})
+            print(f'  done {rep} seed={seed}', flush=True)
+            del pred
+
+    d = pd.DataFrame(rows)
+    d.to_csv('/Users/selin/.claude/jobs/ce8d4fe5/tmp/scale_test.csv', index=False)
+    print('\n=== median best_epoch ===')
+    print(d.groupby('rep')['best_epoch'].agg(['median', 'mean', 'min', 'max']).round(2).to_string())
+    print('\n=== per fold/seed ===')
+    print(d.pivot_table(index=['seed', 'fold'], columns='rep', values='best_epoch').to_string())

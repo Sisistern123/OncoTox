@@ -104,6 +104,12 @@ Recorded here because a check is only as trustworthy as its documented ways of l
   to stall, it is waiting on the environment lock, not working — reproduce the individual checks with
   `.venv/bin/python` rather than assuming a slow check. Whether the gates should call the interpreter
   directly instead of through `uv` is a change to two scripts and is not made here.
+- ✅ **`merge_gate.sh` was retired on 14.08.2026 (Selin) and moved to `scripts/archive/`.** It gated a
+  branch before merging; there are no branches, and the last merge is 140 commits back. The capability
+  lost with it is the branch-vs-main `coderefs.py` comparison, which nothing replaces because nothing
+  produces branches to compare. Every content check it called is still called by `verify_main.sh`.
+  **The floors below that refer to `merge_gate.sh` describe a retired script and are kept as the
+  record of what was verified, not as live checks.**
 - **Branch-specific checks are not carried forward.** `merge_gate.sh` briefly held checks that
   pinned particular strings in `4a` and particular output directories against a rename. They were
   right for one merge and noise on every other. Add one for the merge that needs it, delete it
