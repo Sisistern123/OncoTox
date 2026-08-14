@@ -82,7 +82,9 @@ current results, and only the last is at a live path.
 
   ⚠️ Worth knowing before that decision: under our leave-cell-line-out splits DrEval's normalization
   removes only the **drug** effect, because a held-out line's effect is unseen and therefore zero. A
-  synthetic predictor emitting nothing but mean + line effect + drug effect scores normalized Spearman
+  synthetic predictor emitting nothing but mean + line effect + drug effect would still score highly
+⚠️ *(a figure of 0.98 stood here until 14.08.2026; cleared 12.08.2026 as unevidenced — no code produces
+it — and this location was missed. The mechanism stands; the number was never measured.)* ~~normalized Spearman~~
   **0.98**. A high normalized score is not evidence of drug-specific signal here.
 
 ## `archive/` — what a standard run cannot recreate

@@ -49,6 +49,17 @@ A=$(.venv/bin/python "$G/artifacts.py" "$R"); echo "  $(echo "$A" | sed -n 2p)"
 need artifacts "$(num "$A" '[0-9]+ artifact references checked')" 10
 C=$(.venv/bin/python "$G/cmdpaths.py" "$R");  echo "  $(echo "$C" | sed -n 2p)"
 need cmdpaths  "$(num "$C" '[0-9]+ command/LaTeX paths checked')" 10
+V=$(.venv/bin/python "$G/retired_values.py" "$R"); echo "  $(echo "$V" | head -1)"
+echo "$V" | grep -A4 "^RETIRED VALUE" | sed 's/^/  /'
+.venv/bin/python "$G/retired_values.py" "$R" >/dev/null 2>&1 \
+  || { echo "   ^ BLOCKER: a retired value appears as live text"; fail=1; }
+need "retired-value checks" "$(num "$V" '[0-9]+ checks')" 100
+
+S=$(.venv/bin/python "$G/shell_safety.py" "$G"); echo "$S" | head -1
+echo "$S" | grep BACKTICK | sed 's/^/ /'
+.venv/bin/python "$G/shell_safety.py" "$G" >/dev/null 2>&1 \
+  || { echo "   ^ BLOCKER: backtick inside a command substitution in a gate script"; fail=1; }
+need "gate substitutions" "$(num "$S" '[0-9]+ command substitution')" 3
 
 .venv/bin/python scripts/check_resolved_paths.py 2>&1 | grep -E 'composition|dead-glob' | sed 's/^/  /'
 .venv/bin/python scripts/check_resolved_paths.py >/dev/null 2>&1 \

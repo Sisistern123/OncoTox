@@ -71,6 +71,26 @@ so a path built through a variable — `out = DIR / name` then `df.to_csv(out)` 
 when it is not. It did exactly that on its first run, and the finding was verified by hand and left
 in as a reminder that the check is a prompt, not a verdict.
 
+## Two checks added 14.08.2026, against the defects that actually recurred
+
+`retired_values.py` — **a registry of values that have been corrected, flagged wherever they reappear
+as live text.** The most repeated defect here is not a wrong number but a *corrected* number surviving
+where the correction did not reach: `Q2_CONTROL_THRESHOLD` in five places after it was closed, the
+`0.98` synthetic-predictor figure cleared from one of three named locations, `4,704` gene counts, `545`
+standing in for the head count, `180` trainable lines. Each was found by hand, late. On its first run
+this check found **28 live occurrences in 15 files**, seven of them genuine — four being the same
+`4,704` a docs-only sweep had "fixed" days earlier without touching `scripts/` or `notebooks/`.
+Registering a value is meant to be part of retiring it.
+
+`shell_safety.py` — **backticks inside a `$( ... )` substitution in these shell scripts.** There a
+backtick opens a nested substitution, so a markdown-style code span in a comment makes the script fail
+at runtime; `bash -n` does not catch it and the script still prints most of its output. It reached
+committed `main` on 14.08.2026. ⚠️ Its first two versions were themselves broken — one summed
+`grep -c` with `awk -F:` and reported 0 against a true 11 (the silent-zero failure this directory
+exists to prevent, inside the check written to prevent it), the other used a regex that skipped
+exactly the multi-line substitutions the defect lives in. It is now a bracket scanner **verified by
+fault injection**.
+
 ## Known limits
 
 Recorded here because a check is only as trustworthy as its documented ways of lying.

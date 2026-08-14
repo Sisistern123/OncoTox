@@ -145,8 +145,8 @@ def fold_pca_projections(
 
     **It must read the counts file, not the targets ``.X``.** The two carry different gene sets: PCA
     is fitted on the full HVG set (5,000 for ``hvg5000``) while the targets ``.X`` has scGPT's
-    out-of-vocabulary genes dropped (4,704 after the symbol repair). Refitting from the targets file
-    would silently lose 296 genes relative to the descriptive fit and produce coordinates that are
+    out-of-vocabulary genes dropped (4,765 after the symbol repair; 4,704 was the prediction). Refitting from the targets file
+    would silently lose 235 genes relative to the descriptive fit (296 on the pre-sweep count) and produce coordinates that are
     not comparable with it. Measured 12.08.2026; this is the reason the extra 2.15 GB read exists,
     and the reason not to "simplify" it to whatever matrix is already in memory.
 

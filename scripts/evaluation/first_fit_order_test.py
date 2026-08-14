@@ -2,7 +2,9 @@
 
 Section A trains `for rep in REPS: for alpha: for loss: for seed:`, so the first fit of the
 process is X_pca / alpha=0 / mse / seed 42 -- precisely the one arm that moves across
-executions (0.2450-0.2541 over five runs, everything else identical to six decimals).
+executions (0.2473-0.2541 over the two replayable runs, everything else identical to six decimals;
+   was 0.2450-0.2541 over eight until the band was rebuilt on 14.08.2026 -- six of those eight lived
+   only in an agent scratch directory).
 
 Reverse REPS and X_scGPT / alpha=0 / mse becomes first instead. That arm has read exactly
 0.2009 in all five runs while it was NOT first. If it moves now, position causes the

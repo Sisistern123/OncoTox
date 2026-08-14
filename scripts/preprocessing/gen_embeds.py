@@ -85,7 +85,8 @@ def resolve_gene_names(adata, vocab_tokens, gene_col):
     additive, which is what keeps a re-embedding attributable to the recovered genes alone.
 
     Net effect, measured 05.08.2026 on the matrices as they stand: ``all_genes`` 20,570 ->
-    21,332 genes embedded, ``hvg5000`` 4,576 -> 4,704.
+    21,332 genes embedded, ``hvg5000`` 4,576 -> 4,765.
+    (4,704 was the PREDICTED count; the sweep measured 4,765 -- docs/steps/02, corrected 14.08.2026.)
     """
     base = adata.var_names if gene_col == "index" else adata.var[gene_col].astype(str)
     base = pd.Series(list(base), index=adata.var_names, dtype=object)
