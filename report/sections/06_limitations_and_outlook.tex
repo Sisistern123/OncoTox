@@ -1,21 +1,44 @@
 \section{Limitations and Future Work}
 \label{sec:limitations}
-+ add outlook
-+ multi input (GDSC, PRISM REPURPOSED)
-+ MIL/Attention Pooling
-+ scDEAL bulk pretraining
-+ more focus on explainability/cell heterogeneity
-
 
 Several limitations bound the strength of the present claims, and each points to a concrete next step.
 
-The most serious is that no result currently stands. The target, the compound panel and the preprocessing
-of both representations were each revised after the previous measurements were produced, so those
-measurements were withdrawn rather than updated (Section~\ref{sec:results}). Regenerating them is a
-single ordered pass over the whole pipeline --- re-embedding, preprocessing, the committed read-only
-artifacts, retraining, the analysis notebooks, and finally this document --- deliberately performed once,
-at the end of the review, rather than piecemeal as each correction landed, so that no result is produced
-from a pipeline that a later correction changes again.
+\revision{\textbf{Revised 14.08.2026.} This section opened by stating that no result currently stands,
+and listed the regeneration in the future tense. That pass has been performed and the results are in
+Section~\ref{sec:results}; the paragraph is rewritten below rather than deleted, because the reason
+it was written --- that the target, the panel and both representations were revised after the earlier
+measurements --- is still why those earlier measurements are absent. Five outline notes left at the top
+of the section were removed; each names an item developed in prose further down.}
+
+The regeneration was a single ordered pass over the whole pipeline --- re-embedding, preprocessing, the
+committed read-only artifacts, retraining, the analysis notebooks, and finally this document ---
+performed once, at the end of the review, rather than piecemeal as each correction landed, so that no
+result is produced from a pipeline that a later correction changes again. What it replaced is the set of
+measurements withdrawn when the target, the compound panel and the preprocessing of both representations
+were each revised.
+
+\paragraph{The response label is a fitted quantity, and its uncertainty is discarded.}
+The target is not a measurement but a parameter of a curve fitted to one. DrEval re-fit every
+dose-response curve with CurveCurator, normalizing each replicate against its own no-drug control and
+folding replicate variability \emph{into} the fit rather than averaging replicates beforehand, on the
+argument that averaging ``leads to inaccurate or misleading drug response measures in the case of
+large discrepancies between replicates'' (Section~\ref{sec:target}). That is the better of the two
+treatments of replicate disagreement, and it is why this source was adopted. It has two consequences the
+present model does not handle.
+
+First, \textbf{the label-noise ceiling is no longer measurable in the obvious way.} Under the previous
+source two experiments produced two numbers that could be compared; under this one there is a single fit
+per (cell line, compound) and no pair remains to disagree. An earlier estimate of that disagreement
+therefore does not transfer, and this work does not quantify how much of the residual error is
+irreducible assay noise. CurveCurator reports a per-curve uncertainty that would supply the estimate;
+it is not currently read.
+
+Second, \textbf{every label is treated as equally certain.} The masked loss weights each observed (cell,
+compound) pair by the density term alone; a curve fitted from concordant replicates and one fitted from
+badly discordant replicates enter the objective with identical weight. Propagating the fit uncertainty
+into the loss --- as an inverse-variance weight alongside the existing term --- is a small change to the
+weighting already implemented and would let the model discount the labels that deserve it. It has not
+been done, and no result here should be read as though label quality were uniform.
 
 A constraint on that regeneration is worth stating in advance, because it determines what the comparison
 can conclude. Two changes must never be made in the same run: on the evidence of this project, a change

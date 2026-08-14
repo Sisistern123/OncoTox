@@ -521,6 +521,37 @@ built and praised for. This task's label happens to be defined at exactly the gr
 removes. **The result is therefore about a mismatch between the embedding's objective and this task's
 label, not about embedding quality** — which is a materially different claim, and the defensible one.
 
+### Why the bag objective helps `X_scGPT` and hurts `X_pca`
+
+The objective axis is not a uniform shrinkage — the two arms move in **opposite directions**
+(`panel_metrics.csv`, α=0.5, mse, three seeds):
+
+| | per-cell (`mlp`) | bag (`mil`) | change |
+|---|---|---|---|
+| `X_pca` | 0.2754 | 0.2441 | **−0.0313** |
+| `X_scGPT` | 0.1927 | 0.2177 | **+0.0250** |
+
+So the margin's collapse from +0.0827 to +0.0265 is not PCA degrading alone; it is PCA losing *and*
+scGPT gaining, roughly equally.
+
+**A reading, marked as a reading, and it follows from the input geometry.** `X_scGPT` carries more of
+its variance *within* cell lines than `X_pca` does — within-line share **0.4613** against **0.4158**
+(`stage0_input_ceiling.csv`). Under a per-cell objective every one of a line's ~300 cells is asked to
+predict that line's single label, so within-line variation is, for this task, noise the model must
+absorb. `X_scGPT` has more of it, and pooling cells into a bag before the loss removes exactly that:
+the bag objective spends no capacity fitting variation the label cannot distinguish. `X_pca` has less
+such variation to remove and more between-line signal already resolved per cell, so pooling costs it
+detail it was using and buys it little.
+
+⚠️ **What would test it** rather than leave it a reading: score both arms per-cell and per-bag on the
+*same* predictions split by within-line variance quartile — if the account is right, the bag objective's
+advantage should grow with within-line share. Not run.
+
+⚠️ **And it qualifies "PCA beats scGPT" once more.** The two arms are closest under the objective that
+matches the label's granularity — one value per cell line. The per-cell objective, which is where the
+margin is widest, is also the one asking every cell to account for a label it cannot individually
+possess.
+
 ### Training dynamics do NOT explain the gap — `best_epoch` does not track score
 
 The natural next thought is that `X_scGPT` peaks early and is therefore undertrained. The four §C
