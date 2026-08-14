@@ -942,6 +942,40 @@ seeds on both representations. Source: `notebooks/4b_mil_training.ipynb` →
 **The verdict, in the notebook's own words: `Q2(a) POSITIVE` for both representations** — but stated
 there with the qualifier that matters, *"at a measured instrument sensitivity of AUROC 0.518"*.
 
+### The stage-6 veto was evaluated, and it does not fire (settled 14.08.2026)
+
+**The bar is a comparison, not a threshold, and it was fixed before any model existed.** `4b` §2.4:
+the veto fires when the confounds explain *"as much of the within-line variation as the signal
+reproduces"* — stage 6's median adjusted R² against stage 2's median cross-seed ρ, **squared** to put
+a correlation and a variance fraction on one scale. The notebook states why it is a comparison rather
+than a constant: *"a permutation null cannot supply this magnitude — with hundreds of cells per line,
+an R² far too small to matter is still significant against one."*
+
+| | confounds explain (adj R²) | signal reproduces (ρ²) | ratio | veto |
+|---|---|---|---|---|
+| `X_pca` | 0.0533 | 0.0653 | **0.82** | does not fire |
+| `X_scGPT` | 0.2656 | 0.7405 | **0.36** | does not fire |
+
+**What it means.** For neither representation is the reproducible within-line structure explained
+away by sequencing depth, genes detected, mitochondrial fraction or cell cycle. That is what allows
+`Q2(a)` to be positive at all — it is the condition that separates *"structure that is not noise"*
+from *"structure that is an artefact which happens to reproduce because the artefact does"*.
+
+⚠️ **`X_pca` clears it at 82 % of the bar, which is not comfortable.** Its within-line signal should
+be described as *not confound-dominated*, never as *confound-free*. `X_scGPT` clears it at 36 %.
+Note the two arms order **oppositely** on the two quantities: `X_scGPT` has five times `X_pca`'s
+absolute confound R² (0.266 vs 0.053) and still clears the bar more easily, because what it
+reproduces across seeds is so much larger. Any bar stated as an absolute R² instead of a ratio would
+therefore reverse which arm survives — which is exactly why §2.4 fixed the form in advance.
+
+✅ **There was never a number outstanding.** `docs/TODO.md` and `docs/project_progress.md` both
+recorded *"one number outstanding — `Q2_CONTROL_THRESHOLD`"*, and it is *"the single blank keeping 4b
+a stub"*. **No such constant exists anywhere in the notebook**, and D3 (Selin, 13.08.2026) had
+already gated the verdict on §2.4's comparison. Two notes inside `4b` said the magnitude was unset
+while the cell below them was gating on it. All four records corrected 14.08.2026; the criterion
+itself is unchanged, so **no result moves** — the pre-registration is intact, which it would not have
+been had a bar been chosen now, with the outcomes visible.
+
 ### Why that positive is weak, and stage 7 is the reason
 
 Stage 7 is a **positive control**: it asks whether the instrument can see a difference it already

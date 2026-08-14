@@ -356,6 +356,11 @@ drives the response. It needs no new data.
 > (precondition), within-line spread (necessary condition), cross-seed reproducibility against a
 > shuffled-cell control (**the test**) and confound regression (**veto**). One number is outstanding —
 > `Q2_CONTROL_THRESHOLD` — and it is the single blank keeping 4b a stub.
+> ✅ **Closed 14.08.2026 (Selin): there was no blank.** `Q2_CONTROL_THRESHOLD` does not exist in the
+> notebook, and §2.4 fixes the veto as a comparison rather than a constant — stage 6's adjusted R²
+> against stage 2's ρ², both measured by the run. It has been gated in code since 13.08.2026. The
+> veto does not fire for either representation; the record is what was stale, not the criterion.
+> Owner: [Step 05](./steps/05-multitask-results.md#q2-on-the-rebuilt-panel--does-a-per-cell-model-learn-heterogeneity-implicitly-14082026).
 
 **2. scDEAL-style bulk pretraining + more cell lines — after MIL.** The remaining levers are argued to
 be label-side. ⛔ **The three measurements behind that argument are void (12.08.2026), for two different

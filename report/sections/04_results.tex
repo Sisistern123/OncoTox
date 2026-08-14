@@ -185,7 +185,30 @@ The median within-bag AUROC is $0.518$ and $0.537$ against a $0.5$ null, with fe
 reaching significance, and the distribution is close to uniform
 (Figure~\ref{fig:q2instrument}). For the principal-component arm, technical covariates explain
 $82\,\%$ as much variance as the signal reproduces across seeds. The structure is not noise; it is not
-established to be biological. Whether the variation is genuine \emph{drug-response} heterogeneity, and
+established to be biological.
+
+\begin{revisionblock}
+\textbf{The confound veto was evaluated and does not fire, for either arm (added 14.08.2026).} The
+criterion's final stage regresses each cell's predicted response on sequencing depth, genes detected,
+mitochondrial fraction and cell-cycle score within its line, and vetoes the result if those covariates
+explain as much of the within-line variation as reproduces across seeds. The bar is a comparison
+rather than a constant, and was fixed before any model was trained: the adjusted coefficient of
+determination from that regression is set against the squared cross-seed correlation, so both
+quantities are variance fractions of the same predictions. A permutation null cannot supply such a
+magnitude, because with several hundred cells per line a coefficient far too small to matter is still
+significant against one. Measured, the covariates explain $0.053$ against a reproduced $0.065$ for the
+principal-component arm and $0.266$ against $0.741$ for the transcript-level arm --- $82\,\%$ and
+$36\,\%$ of the bar. Neither is vetoed, which is the condition under which the positive above may be
+stated at all.
+
+Two things follow that are worth stating rather than leaving to be inferred. The principal-component
+arm clears the bar at $82\,\%$, so its within-line signal should be described as not
+confound-\emph{dominated} rather than as confound-\emph{free}. And the two arms order oppositely on
+the two quantities: the transcript-level arm has five times the absolute confound coefficient and
+still clears the bar more comfortably, because what it reproduces across seeds is so much larger. A
+bar stated as an absolute coefficient rather than as a ratio would therefore have reversed which arm
+survives --- which is why the form was fixed in advance rather than after the numbers were visible.
+\end{revisionblock} Whether the variation is genuine \emph{drug-response} heterogeneity, and
 whether it predicts which cells survive, are not addressed and cannot be with this data.
 
 \begin{figure}[t]

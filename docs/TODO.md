@@ -277,6 +277,16 @@
 >   remains open is **one number**, `Q2_CONTROL_THRESHOLD`, plus the stage-1 and stage-2 fractions
 >   derived from it. Wherever this audit wrote "an open decision for Selin", read "pre-registered; one
 >   threshold outstanding" — corrected in the report and in `project_progress.md`.
+>   ✅ **CLOSED 14.08.2026 (Selin) — and it turned out never to have been open.** There is no
+>   `Q2_CONTROL_THRESHOLD` anywhere in the notebook, and §2.4 does not leave a number to set: it fixes
+>   the veto as a **comparison** — stage 6's median adjusted R² against the variance two seeds share,
+>   stage 2's median ρ squared — *"settled by comparison against something the run measures rather
+>   than by a constant"*, precisely because a permutation null cannot supply a magnitude here. D3
+>   (13.08.2026) implemented exactly that in the verdict cell. What was outstanding was **the record**,
+>   not the decision: this bullet, `project_progress.md`, and two notes inside the notebook all said a
+>   number was missing. All four corrected. **Verdict: the veto does not fire for either
+>   representation** — `X_pca` 0.0533 against 0.0653 (82 % of the bar), `X_scGPT` 0.2656 against
+>   0.7405 (36 %) — so Q2(a) stands as reported, with `X_pca` marginal.
 >   ⚠️ ***Agreed plan, Step 2* below still describes the whole criterion as undecided** and was not
 >   touched by `58fadd7`'s path repointing. Pointer added there; the bullet itself is Selin's to retire.
 > - **"Attention weights are the readout" is now wrong.** `58fadd7` chose **instance-level MIL, not
