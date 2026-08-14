@@ -92,10 +92,29 @@ ref.
         The clause after the dash is a strapline; "Model architecture" is the caption.
   ``draw_loss_objective``   "The objective — a weighted, masked mean error"     (written 12.08, mine)
   ``draw_loss_objective``   "per-drug scaling belongs here, in the loss, rather than in the labels"
-  ``draw_architecture``     "The target is uncentred: the head bias is initialized to …"
-        Four lines of reasoning set as a caption. Accurate, and belongs in Methods where it can be
-        cited. A *different passage* from the PLOTTED/CURRENT disclaimer below, in the same function
-        — the two sit ten lines apart and have been confused once already.
+  ⚠️ ``draw_architecture``  "The target is uncentred: each head's bias is initialized to …"
+        Four lines of reasoning set as a caption, which **still** belongs in Methods where it can be
+        cited — that half is open and is Selin's. A *different passage* from the PLOTTED provenance
+        line below, in the same function; the two sit ten lines apart and have been confused once
+        already.
+        ⛔ **This entry called the passage "Accurate", and it was not — corrected 14.08.2026
+        (Selin).** Two defects sat inside it while this list vouched for it:
+          · **"(~0.7)"**, a single hardcoded value for a per-drug quantity spanning **0.58–0.99**.
+            It was below the panel's own mean (0.790), well below the full catalogue's (0.893), and
+            it contradicted ``OncoMLP.init_head_bias_``'s own docstring — *"``auc_cc`` sits near
+            0.9"*. A leftover from the retired winsorized ``auc``. Now derived, and as a range,
+            because the *shape* was wrong too: the caption argued for a **per-head** initialization
+            using a number that implied one head would do (:func:`_panel_drug_mean_range`).
+          · **the causal clause** — *"excluded from weight decay, **because** … decay would pull it
+            to 0"*. Both mechanisms are real, but ``TrainConfig.weight_decay`` is **0.0** and so is
+            the CLI default, so the decayed group is decayed by zero and the exemption exempts the
+            biases from nothing. The figure named a force no run applies and presented it as what
+            holds the bias in place. Nothing in it was false; **the register was** — an inert
+            grouping read as a load-bearing one. Now stated as conditional rather than deleted,
+            because the condition is live: ``TrainConfig``'s own comment records that whether this
+            model needs weight decay is **open**, the evidence that closed it being void.
+        **The lesson is the one two entries down:** "true, but the wrong form" and "correct as
+        written" are both claims about code that moves, and both expired here on the same day.
 
 ⚠️ **Infographic register (rule 3).** ``draw_loss_objective``'s three rounded colour-filled callout
   boxes and grey italic asides; ``draw_architecture``'s circles, arrows and heat strips. Both mine
@@ -458,6 +477,35 @@ def _example_predictions():
             [round(float(sel.loc[d, "y_true"]), 3) for d in PANEL])
 
 
+def _panel_drug_mean_range() -> tuple[float, float]:
+    """``(min, max)`` of the **per-drug** mean ``auc_cc`` over the panel's cross-validated lines.
+
+    What ``OncoMLP.init_head_bias_`` actually targets, and the point is that it is a *vector*: each
+    head is started at **its own** drug's mean over the fold's fitting lines, which is the entire
+    reason the initialization is per head rather than one constant.
+
+    **Replaces a hardcoded "~0.7" (14.08.2026, Selin).** That number was wrong three ways at once —
+    below the panel's own mean of 0.790, well below the full catalogue's 0.893
+    (``panel_heads_oof.csv``), and in direct contradiction with ``init_head_bias_``'s own docstring,
+    which says ``auc_cc`` *"sits near 0.9"*. It reads as a leftover from the retired winsorized
+    ``auc``. Worse than the value, a single figure stood in for a quantity spanning 0.58–0.99, so the
+    caption argued for a per-head initialization using a number that implied one head would do.
+
+    Taken over the out-of-fold rows of the plotted arm, so the range describes the same lines the
+    bars beside it are drawn from.
+    """
+    import pandas as pd
+
+    oof = pd.read_csv(PANEL_OUT / "panel_oof_predictions.csv")
+    sel = oof[(oof.rep == EXAMPLE_ARM["rep"]) & (oof.alpha == EXAMPLE_ARM["alpha"])
+              & (oof.loss == EXAMPLE_ARM["loss"]) & (oof.seed == EXAMPLE_ARM["seed"])
+              & (oof.drug.isin(PANEL))]
+    means = sel.groupby("drug").y_true.mean()
+    if len(means) != len(PANEL):     # never describe a partial panel as the panel
+        raise ValueError(f"per-drug means cover {len(means)} of {len(PANEL)} panel drugs")
+    return float(means.min()), float(means.max())
+
+
 EXAMPLE_DRUGS = list(PANEL)
 EXAMPLE_PRED, EXAMPLE_TRUE = _example_predictions()
 
@@ -493,9 +541,11 @@ def draw_architecture(ax, *, compact: bool = False):
     xc, xe, lx, x0, span = ((4.5, 9.5, [16, 23, 29, 35], 49.0, 10.5) if compact else
                             (6.0, 14.0, [26, 39, 51, 62], 76.0, 17.0))
     # Non-compact lower bound dropped 14 -> 11 on 12.08.2026 to make room for the "plotted" note
-    # below the uncentred-target paragraph. Compact is untouched: it is embedded in pipeline.png,
-    # which has its own layout, and it draws neither of those notes.
-    ax.set_xlim(0, 62 if compact else 100); ax.set_ylim(23 if compact else 11, 47 if compact else 52)
+    # below the uncentred-target paragraph, and 11 -> 10 on 14.08.2026 when that paragraph went from
+    # two lines to three: at 11 the note sat one line-height below the paragraph and read as its
+    # fourth line rather than as a separate provenance note. Compact is untouched: it is embedded in
+    # pipeline.png, which has its own layout, and it draws neither of those notes.
+    ax.set_xlim(0, 62 if compact else 100); ax.set_ylim(23 if compact else 10, 47 if compact else 52)
     ax.set_aspect("equal"); ax.axis("off")
 
     if not compact:
@@ -618,10 +668,34 @@ def draw_architecture(ax, *, compact: bool = False):
     # excluded from weight decay" described exclude_output_from_decay, which exempted the whole
     # output Linear including its weight matrix while still decaying LayerNorm; it was replaced by
     # no_decay_bias_and_norm the same day.
+    #
+    # Two further corrections, 14.08.2026 (Selin), both inside the second clause.
+    #
+    # 1. THE NUMBER. "(~0.7)" is derived now -- see :func:`_panel_drug_mean_range` for why a single
+    #    value was the wrong SHAPE of fact here, not merely the wrong one.
+    #
+    # 2. THE CAUSAL REGISTER, which is the substantive fix. The clause read "biases and LayerNorm
+    #    are excluded from weight decay, BECAUSE ... decay would pull it to 0". Both mechanisms are
+    #    real -- `init_head_bias_` runs in all three training paths, and `no_decay_bias_and_norm` is
+    #    True by default (training_utils.py:88, grouping at :304-309, sourced to HuggingFace's
+    #    Trainer.create_optimizer). But `TrainConfig.weight_decay` is 0.0 and so is the CLI default,
+    #    so the "decayed" group is decayed by zero and the exemption exempts the biases from
+    #    nothing. The sentence named a force that is not applied in any run this pipeline produces,
+    #    and presented it as what keeps the bias in place -- so a reader took an inert grouping for
+    #    a load-bearing one. Nothing in it was false; the register was.
+    #
+    #    It is stated as conditional rather than deleted because the condition is live: TrainConfig's
+    #    own comment records that "whether this model needs weight decay is OPEN, not settled", the
+    #    evidence that used to close it being void. The grouping is insurance against a decision not
+    #    yet taken, and saying exactly that is both accurate today and still accurate if it is.
+    lo, hi = _panel_drug_mean_range()
     ax.text(0, 16.0,
-            "The target is uncentred:  the head bias is initialized to the fold's per-drug mean AUC, "
-            "and biases and LayerNorm are excluded from weight decay,\nbecause the bias must sit near "
-            "the drug's mean (~0.7) and decay would pull it to 0.  Any per-drug scaling belongs in the "
+            "The target is uncentred:  each head's bias is initialized to that drug's own mean AUC "
+            f"over the fold's fitting lines — across the panel those means run {lo:.2f} to {hi:.2f} —\n"
+            "because an untouched Linear starts near 0 and the first epochs would be spent climbing "
+            "to the drug means rather than separating cell lines.\n"
+            "Biases and LayerNorm are held out of weight decay; decay is 0.0 in every run here, so "
+            "that grouping binds only if it is switched on.  Any per-drug scaling belongs in the "
             "loss, not in the target.",
             ha="left", va="top", fontsize=8.2, color=INK)
 
@@ -639,7 +713,7 @@ def draw_architecture(ax, *, compact: bool = False):
     # field is read from EXAMPLE_ARM and PANEL, so it cannot drift from the vector it describes --
     # the same reason the vector itself is derived. Colour drops from RED to MUTED with the change
     # of job. Plain ASCII: matplotlib's default font renders the warning emoji as a tofu box.
-    ax.text(0, 12.6,
+    ax.text(0, 11.8,
             f"PLOTTED: one arm of the current sweep — target auc_cc, the {len(PANEL)}-drug panel; "
             f"{EXAMPLE_ARM['rep']}, alpha = {EXAMPLE_ARM['alpha']:g} (unweighted: every observed "
             f"pair weighs 1), {EXAMPLE_ARM['loss'].upper()}, seed {EXAMPLE_ARM['seed']}"
