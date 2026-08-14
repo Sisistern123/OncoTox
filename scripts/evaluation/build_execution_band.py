@@ -20,7 +20,9 @@ only thing that writes the live artifact.
 ⚠️ **Adding more executions is possible and is NOT done here.** Seven commits have touched
 ``panel_leaderboard.csv``, but only some are the same pipeline: the earlier ones predate the target
 and panel corrections, so including them would measure pipeline changes rather than execution noise.
-**Which commits count as comparable executions is an analysis decision** and was not taken.
+**Which commits count as comparable executions is an analysis decision** and was not taken --
+parked as ``docs/OPEN_DECISIONS.md`` §8. The candidate set is one commit: ``ffe13be`` is the only
+other execution on the corrected pipeline, and it carries 4 arms against these 7.
 """
 import io, subprocess
 from pathlib import Path

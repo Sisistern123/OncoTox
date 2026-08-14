@@ -264,8 +264,55 @@ and Q1's direction survives every rate in the sweep.
 
 ---
 
-## Nothing is currently open
+## 8 · Which committed executions count as *comparable* for the reproducibility band?
 
-Every entry above is settled, dissolved or demoted. **This file is empty of open decisions as of
-14.08.2026** — which is the state it should be left in, not a sign it has been forgotten. Add the
-next one as §8.
+**Opened 14.08.2026, and it should have been opened the moment I wrote the sentence.** ⚠️ Three files
+— `scripts/evaluation/build_execution_band.py`, `docs/steps/05` twice — say *"which commits count as
+comparable executions is an analysis decision and was not taken"*, while this file said **"nothing is
+currently open"**. That contradiction is the exact defect `b8b3131` was written about, created fresh.
+Parked here now.
+
+**The choice.** `panel_execution_band.csv` is rebuilt from executions replayed out of git. **Which
+commits qualify?** Seven have touched `panel_leaderboard.csv`; they are not the same experiment:
+
+| commit | date | arms in the file | comparable to today's sweep? |
+|---|---|---|---|
+| `9732b6f` | 13.08 | **7** | yes — used |
+| `02f0fe6` (= `9732b6f^`) | 13.08 | **7** | yes — used |
+| `ffe13be` | 13.08 | **4** | **the only real candidate** — same corrected pipeline, smaller sweep |
+| `5161e00` | 12.08 | file absent | no |
+| `a0bb7b8`, `2947ed2`, `6882db3` | 27.07 | **3** | no — pre-correction target and panel |
+
+So the decision is narrower than it first looked: **it is a yes/no on `ffe13be` alone.**
+
+**What each option implies.**
+
+- **Two executions (current).** Band 0.2473–0.2541, width 0.0068, 13 of 14 arms identical. Fully
+  replayable. Weakest form of the stability claim, because two runs give the least opportunity to
+  differ.
+- **Add `ffe13be` (three).** It carries only 4 arms, so it can contribute to those arms and must be
+  absent for the rest — the band would then rest on a **different number of executions per arm**, and
+  a "range across executions" column would mean different things in different rows. It would widen
+  the claim's base where it applies. Nothing else changes; the α=0/mse/X_pca flip is already inside
+  the two.
+- **Two, and say the band is a floor.** Keep as-is and state explicitly that the true spread is at
+  least this wide, since six further executions were observed and are recorded in
+  [Corrections](./steps/corrections-and-dead-ends.md) even though they cannot be replayed.
+
+**The assumption underneath.** That `ffe13be` and `9732b6f`/`02f0fe6` are the *same configuration* run
+more than once, rather than successive states of a pipeline still being changed on 13.08.2026. It has
+4 arms against 7, which is evidence they are **not** the same run scope. **How you would know:** diff
+the code paths `4a` §A executes between `ffe13be` and `02f0fe6`; if anything in `cv.py`,
+`training_utils.py` or the panel changed, it is a pipeline difference and not execution noise.
+
+**My reading, as a reading.** Option 3 — leave it at two and label the band a **floor**. The
+arm-count mismatch makes `ffe13be` a ragged addition that buys a wider base on some rows and not
+others, and the sentence a reader needs is not "the band is exactly this wide" but "differences below
+it are not interpretable", which a floor supports. It also costs nothing and changes no number.
+
+---
+
+## Nothing else is open
+
+§8 above is the only open decision as of 14.08.2026. Everything before it is settled, dissolved or
+demoted. Add the next one as §9.

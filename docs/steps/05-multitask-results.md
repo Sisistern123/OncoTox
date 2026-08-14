@@ -348,7 +348,8 @@ the bag-objective axis is not re-scored under the four conventions.
 > [Corrections](corrections-and-dead-ends.md). ⚠️ **More executions could be added and were not:**
 > seven commits have touched `panel_leaderboard.csv`, but the earlier ones predate the target and
 > panel corrections, so including them would measure pipeline change rather than execution noise.
-> **Which commits count as comparable is an analysis decision and was not taken.**
+> **Which commits count as comparable is an analysis decision and was not taken** — parked as
+> [OPEN_DECISIONS](../OPEN_DECISIONS.md) §8, where the candidate set turns out to be one commit.
 
 `4a` §A was executed **eight independent times**: five in normal order, one with `REPS` reversed, and
 two with a device warm-up active. Every arm captured each time —
