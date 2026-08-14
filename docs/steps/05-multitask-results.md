@@ -155,6 +155,60 @@ and at the two smallest budgets the two representations cannot be told apart at 
 margin *flat*, which would have placed the advantage purely on the input side — that `X_pca` is
 fitted on this atlas and `X_scGPT` is not.
 
+### ⚠️ Two "more supervision" axes that point in opposite directions
+
+This is the single easiest thing to misremember about the project, so it is written out rather than
+left to be reconstructed. **"More supervision" means two different things here, and they favour
+different representations.**
+
+**Axis 1 — more labelled cell lines, at 11 drugs (§E). Favours `X_pca`.**
+
+| labelled lines | `X_pca` | `X_scGPT` | margin |
+|---|---|---|---|
+| 25 | 0.1374 | 0.1338 | +0.0036 (inside band) |
+| 50 | 0.1947 | 0.1857 | +0.0090 (inside band) |
+| 75 | 0.2469 | 0.1964 | +0.0505 |
+| 103 (all) | 0.2608 | 0.2291 | +0.0317 |
+
+- **`X_pca` is not flat across the curve** — it gains **+0.1235** from 25 to 103 labelled lines, more
+  than `X_scGPT`'s **+0.0953**. At 25 lines it sits at about *half* its full-budget score.
+- **`X_scGPT` is never ahead at any budget.** The margin runs in `X_pca`'s favour throughout.
+- ⚠️ **The one grain that supports the opposite intuition:** in *proportional* terms `X_scGPT` holds up
+  marginally better under scarcity — **58 %** of its full-budget score at 25 lines against `X_pca`'s
+  **53 %**. That is a real but small difference, and it never becomes an advantage in absolute score.
+
+**Axis 2 — more drugs per cell line, at a fixed line count (§D, and the gene-set sweep). Favours
+`X_scGPT`.** Going from 11 heads to 534 is ~48× more supervision per cell line. The Q1 margin falls
+from +0.0479 to +0.0231 with a linear head and to **−0.0077** with a trunk, where the sign reverses
+toward `X_scGPT`; and on the gene-set sweep's heads-beating metric over 534 drugs `X_scGPT` is ahead
+at **all five** gene-set sizes.
+
+**So: in plain English both axes are "more labels", and in the data they point opposite ways.** Any
+sentence of the form *"scGPT needs more supervision"* has to name which axis, or it is simply
+ambiguous rather than wrong.
+
+### ⚠️ One place the label-hunger intuition IS right — training, not performance
+
+`X_scGPT` genuinely does need more labelled lines before it trains at all; it just never converts that
+into beating `X_pca` on the panel. Median `best_epoch` across §E's budgets:
+
+| labelled lines | `X_pca` | `X_scGPT` |
+|---|---|---|
+| 25 | 19.0 | **1.0** |
+| 50 | 11.0 | **1.0** |
+| 75 | 6.0 | **1.0** |
+| 103–105 | 11.5–19.0 | 1.5–**8.0** |
+
+At 25 labelled lines `X_scGPT` peaks at **epoch 1** — it barely trains. `Spearman(n_label_lines,
+best_epoch)` is **+0.463** (p = 0.0002) for `X_scGPT` and **−0.274** (p = 0.034) for `X_pca`: the two
+representations respond to label supply in **opposite directions on training as well as on score**.
+
+**Why that matters for reading §E.** The two arms are not merely differently accurate at 25 lines —
+they are in different training regimes there, one barely training and the other running 19 epochs.
+That is the same capacity-and-scale interaction recorded under
+§*Why training peaks so early*, and it is a further reason the §E curve should not be read as a clean
+data-efficiency comparison.
+
 ⚠️ **What this does not license.** Four points against bands this wide do not support a fitted slope,
 and the notebook computes no trend statistic on purpose. The margin is also not monotone — it peaks
 at 75 lines (+0.0505) and is smaller at the full 103 (+0.0317). Read the table as *"indistinguishable
