@@ -55,6 +55,51 @@ K=545) rows of the 8-run experiment matrix**
 
 ---
 
+## Q0 — can drug response be predicted from single cells with bulk labels at all? (14.08.2026)
+
+> ✅ **The precondition Q1 and Q2 both assume, asked explicitly for the first time on 14.08.2026.**
+> Q1 compares two representations and Q2 asks what the model learns; both are conditional on the task
+> being learnable. It is worth asking separately because the answer is *"modestly, and very
+> unevenly"*, which changes how the other two should be read.
+
+**The setup.** One response value per (cell line, drug), broadcast to every cell of that line
+(~300 cells each). The model never sees a per-cell label. So Q0 asks whether a bulk label attached to
+single cells supports prediction on **held-out cell lines** at all.
+
+| | value | source |
+|---|---|---|
+| best arm, 11 panel drugs | **0.2824** (α=0.5/mae, `X_pca`) | `panel_metrics.csv` |
+| `RidgeCV` on cell-line-mean embeddings | **0.2767** | `panel_arch_summary.csv` |
+| best over **all 534** drugs | **0.1019** | `panel_heads_summary.csv` |
+| … against the per-drug constant | **+0.00043** at best | `panel_heads_summary.csv` |
+| external, DrEval normalized | **0.2776** | `dreval_lco_results.csv` |
+
+**The answer, in three parts.**
+
+**1 · On a curated panel, modestly — about 0.28 mean per-drug Spearman.** That is a real signal and
+not noise: it is stable across seeds, survives out-of-fold scoring over held-out cell lines, and
+reproduces on an external protocol at 0.2776.
+
+**2 · Very unevenly across drugs.** On `X_pca` at α=0/mse the eleven panel compounds run from
+**+0.0177** (`imatinib`) to **+0.5134** (`dasatinib`). **Five of eleven fall below 0.20 and two below
+0.10.** A single headline number conceals that the method works well for some compounds and not at
+all for others — and §*label quality* shows part of that spread is the labels rather than the model.
+
+**3 · On the full catalogue, barely at all.** The same model scored over all 534 drugs reaches
+**0.1019**, and beats a per-drug constant by at most **+0.00043**. The panel is a favourable subset,
+selected for coverage and literature evidence; it is not representative of what the method does on an
+unselected compound set.
+
+⚠️ **And a simple baseline matches it.** `RidgeCV` on cell-line-mean embeddings scores **0.2767**
+against the best per-cell arm's 0.2824 — a difference of 0.0057. **So whatever Q0's positive answer
+is worth, it is not evidence that the single-cell treatment is buying anything over a line-level
+one.** That is the finding that most constrains how the rest of this page should be read.
+
+**Consequence for Q1 and Q2.** Q1 compares two representations on a task where the achievable ceiling
+is ~0.28 on a favourable panel and ~0.10 on the full catalogue; margins of 0.03 must be read against
+that. Q2 asks what a model learns about heterogeneity when that model predicts the bulk label only
+modestly to begin with.
+
 ## Q1 on the rebuilt panel — what carries the PCA lead (13.08.2026)
 
 > ✅ **This section is not covered by the page banner above.** It was measured after the pipeline
