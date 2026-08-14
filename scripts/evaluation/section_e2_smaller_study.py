@@ -11,8 +11,21 @@ per-fold PCA is refitted on a smaller atlas while X_scGPT's frozen embedding is 
   If PCA's advantage comes from adaptation, its margin should SHRINK as the atlas shrinks.
   If it comes from what variance-maximisation captures regardless, the margin should hold.
 
-No code change: subsetting the AnnData is the scenario. The x-axis is read from the fold log, as in
-section E, rather than from the constants below.
+The x-axis is read from the fold log, as in section E, rather than from the constants below.
+
+⚠️ **Corrected 14.08.2026 — this paragraph described an implementation the file does not have.** It
+read *"No code change: subsetting the AnnData is the scenario."* Subsetting **was** the first
+approach and it does not work: the per-fold PCA refits from the full counts h5ad, so the masks handed
+to it must stay full-length, and a subset AnnData breaks that correspondence with an ``IndexError``.
+The dropped lines are instead marked **ineligible** by overwriting ``split_ctrp`` (see the loop
+below), which removes them from the folds, from the batches and from the PCA's fitting set alike.
+**The scenario is unchanged** — those cells leave the study either way — but it is achieved by
+relabelling rather than by subsetting, and *there is* a code change. The string written is
+``'test'``, used purely as an ineligibility marker because ``eligible_splits`` is
+``("train", "val")``; **the project's real held-out test lines are not read here or anywhere else.**
+``base_split`` is snapshotted with ``.copy()`` before the loop precisely because the overwrite is
+in place, so each iteration rebuilds from the original assignment rather than from the previous
+iteration's.
 """
 import sys
 from dataclasses import replace
