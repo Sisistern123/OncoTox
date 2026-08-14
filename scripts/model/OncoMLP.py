@@ -100,6 +100,17 @@ def init_head_bias_(model: nn.Module, means: np.ndarray) -> None:
     layer's weight initialization, which Lin et al. do (sigma=0.01 on the final layer) and this
     project has not decided. Open, audit 08.
 
+    ⚠️ **The script those numbers came from, ``init_spread.py``, was never committed anywhere**
+    (found 14.08.2026; ``git log --all -- '*init_spread.py'`` is empty) -- the second instance of the
+    ``arch_facts.py`` defect recorded in ``docs/TODO.md`` item 8. Re-deriving against this file on
+    14.08.2026 reproduces the row norm (0.588 / 0.581) and both means (0.751 / 0.958) but **not the
+    spread: it reads 0.365 / 0.389, not ~0.31**. Stable across 1k-20k synthetic cells, and
+    ``hidden_dims=(64,32)`` matches neither the means nor the row norm, so the setup is very likely
+    the one used. Flagged rather than corrected here: the original script is gone, the discrepancy
+    cannot be traced, and the direction is favourable to the warning this paragraph makes. The
+    working is in ``docs/steps/03-model-and-training-design.md``, same section; **adopting 0.37,
+    re-measuring, or dropping the figure is Selin's call.**
+
     Applied 12.08.2026 to all three training paths. Before that only ``cv.oof_predictions`` did it,
     so the fixed-split and 8-run-matrix paths trained against an offset the panel run did not:
     docs/steps/03, *The uncentred target is handled the same way in every training path*.

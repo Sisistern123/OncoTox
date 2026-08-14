@@ -133,13 +133,13 @@
 > | *"The gene-set size is not critical"* + the sweep's heads-beating counts and val MSEs | `03_methods.tex` §Data; [Step 02](./steps/02-preprocessing-and-embeddings.md) §Why HVG-5000 is the default, reason 1 | The sweep has **no live numbers** — [Step 05](./steps/05-multitask-results.md) already banners the same table as superseded. Step 02 restated it unmarked *and* as reason 1 for the live default, so **HVG-5000 now rests on reasons 2 and 3 alone** |
 > | Pearson tracks Spearman within 0.02 | `03_methods.tex` §Evaluation | Empirical, on the retired target and voided panel |
 > | Synthetic mean-effects predictor scores normalized ρ = **0.98** | `03_methods.tex` §Evaluation; `dreval_normalize.py` docstring; `scripts/archive/README.md` | **No code in the repo produces it and no artifact records it** — it exists only in prose, presented as "demonstrated". The *mechanism* is verifiable and was kept |
-> | MPS band = 0.313 / 0.315 / 0.317 / 0.320 | `06_limitations.tex` | Void runs. That MPS is non-deterministic stands; the **width** of the band does not, and differences are currently being called interpretable against a number that no longer applies |
-> | `pred_std` 0.53 / 0.47 against "a true spread of **1.0**" | `06_limitations.tex` | The 1.0 is `auc_z`'s unit variance — stated in units the pipeline no longer produces |
-> | Density weighting "does not help" | `project_progress.md` | Void panel, and the deltas fall inside the MPS band. **Superseded the same day by audit 09**, which found the sharper fault — the metrics could not have seen the effect — and re-tests rather than retires it (item 9A). Audit 09 owns the `06_limitations.tex` correction; this audit's weaker note there was dropped on rebase |
-> | *"averaging a line's cells loses nothing measurable"* / ridge ties the MLP / model-side tuning closed | `06_limitations.tex`, `project_progress.md`, scorecard | Only the network arm early-stopped on the fold it was scored on. The tie is an **upper bound on the network's side** — the honest ordering may favour ridge (item 8C) |
-> | ~a fifth of the signal is the cell-line effect | `06_limitations.tex` | Void run, deleted normalization, **and cited at `outputs/dreval/…`, a path that does not exist** |
-> | scGPT−PCA margin "was **not** sign-consistent across seeds" | `06_limitations.tex` | ⚠️ **Direct contradiction with [Step 05](./steps/05-multitask-results.md)** — both marked unsupported, neither resolved. Own item below |
-> | MIL is *"the only untested capacity lever"*; must beat ridge to be worthwhile | `06_limitations.tex`, `project_progress.md` | **Already retracted 11.08.2026** in this file and left standing in both. Controls are a floor; what counts as a positive Q2 result is still **Selin's open decision**, to be fixed *before* the run |
+> | MPS band = 0.313 / 0.315 / 0.317 / 0.320 | `06_limitations_and_outlook.tex` | Void runs. That MPS is non-deterministic stands; the **width** of the band does not, and differences are currently being called interpretable against a number that no longer applies |
+> | `pred_std` 0.53 / 0.47 against "a true spread of **1.0**" | `06_limitations_and_outlook.tex` | The 1.0 is `auc_z`'s unit variance — stated in units the pipeline no longer produces |
+> | Density weighting "does not help" | `project_progress.md` | Void panel, and the deltas fall inside the MPS band. **Superseded the same day by audit 09**, which found the sharper fault — the metrics could not have seen the effect — and re-tests rather than retires it (item 9A). Audit 09 owns the `06_limitations_and_outlook.tex` correction; this audit's weaker note there was dropped on rebase |
+> | *"averaging a line's cells loses nothing measurable"* / ridge ties the MLP / model-side tuning closed | `06_limitations_and_outlook.tex`, `project_progress.md`, scorecard | Only the network arm early-stopped on the fold it was scored on. The tie is an **upper bound on the network's side** — the honest ordering may favour ridge (item 8C) |
+> | ~a fifth of the signal is the cell-line effect | `06_limitations_and_outlook.tex` | Void run, deleted normalization, **and cited at `outputs/dreval/…`, a path that does not exist** |
+> | scGPT−PCA margin "was **not** sign-consistent across seeds" | `06_limitations_and_outlook.tex` | ⚠️ **Direct contradiction with [Step 05](./steps/05-multitask-results.md)** — both marked unsupported, neither resolved. Own item below |
+> | MIL is *"the only untested capacity lever"*; must beat ridge to be worthwhile | `06_limitations_and_outlook.tex`, `project_progress.md` | **Already retracted 11.08.2026** in this file and left standing in both. Controls are a floor; what counts as a positive Q2 result is still **Selin's open decision**, to be fixed *before* the run |
 > | +0.077 / 0.048 / 0.011 / 82× / ~78× on the index page | `project_progress.md` | Void, **and** the index is barred from holding numbers by its own conventions |
 >
 > ### ⛔ Open — the seed sign-consistency conflict, to be settled by the rerun and not by choosing now
@@ -150,7 +150,7 @@
 >
 > | Location | What it currently claims |
 > |---|---|
-> | `report/sections/06_limitations.tex` | the scGPT−PCA margin *"was **not** sign-consistent across seeds, and did not survive DrEval's normalized metric"* |
+> | `report/sections/06_limitations_and_outlook.tex` | the scGPT−PCA margin *"was **not** sign-consistent across seeds, and did not survive DrEval's normalized metric"* |
 > | [Step 05](./steps/05-multitask-results.md#learnability-filtered-subset--the-signal-was-there-all-along-13072026) | *"Gap = +0.075 ± 0.038, **sign-consistent** across all three seeds"* — seeds 42/1/7, gaps +0.043 / +0.066 / +0.117 |
 >
 > **Both are marked unsupported in the meantime** — the report's characterisation was cleared on
@@ -204,7 +204,8 @@
 >   `scripts/evaluation/`; `e804f07` fixed the `'auc'` literal; the real blocker is that three imported
 >   functions were deleted with the cell-line-effect diagnostic (item 11). One blocker, not two.
 > - [Step 02](./steps/02-preprocessing-and-embeddings.md) §HVG-5000 pipeline outputs stated the on-disk
->   counts with no marker; it now records that the symbol repair moves 4,576 → 4,704, the `H292` alias
+>   counts with no marker; it now records that the symbol repair moves 4,576 → **4,765** (predicted 4,704
+>   at the time; corrected against the live h5ad 14.08.2026), the `H292` alias
 >   moves 180 → 181 and every split size with it, and that **`add_pca.TRAIN_SPLIT_COLS` no longer writes
 >   `X_pca_train_paclitaxel`** (verified: `TRAIN_SPLIT_COLS = ("split_ctrp",)`).
 >
@@ -387,8 +388,8 @@ every one of them was a step that looked settled and had never been checked.
   - [x] ~~**A · Apply the gene-symbol repair — BEFORE the clean sweep.**~~ **Done in code 05.08.2026**
         (`scripts/annotation/gene_symbols.py`; `scp542_conversion.py` annotates,
         `gen_embeds.py::resolve_gene_names` resolves, own symbol first so nothing embedded today is
-        lost). Takes effect at the sweep: **4,576 → 4,704** genes for `hvg5000` and
-        **20,570 → 21,332** for `all_genes`. Three decisions and what each rejects:
+        lost). Took effect at the sweep: **4,576 → 4,765** genes for `hvg5000` — this line predicted
+        4,704, and the HVG set moved too — and **20,570 → 21,332** for `all_genes`, as predicted. Three decisions and what each rejects:
         [Corrections](./steps/corrections-and-dead-ends.md#scgpt-discarded-genes-that-are-in-its-vocabulary-under-their-current-symbols).
         Source table: `reference/hgnc_complete_set.txt`. (FAIRER: **I**)
     - [ ] **Open:** `gene_symbol_rescue.ipynb` and its artifact `gene_symbol_rescue.csv` predate the
@@ -552,7 +553,7 @@ every one of them was a step that looked settled and had never been checked.
         here rather than deleted because it is the kind of sentence that gets quoted into an abstract,
         and it would have been quoted on grounds this decision dissolved. **What survives is narrower
         and on a different footing:** the embedding reads only its in-vocabulary subset of the selected
-        genes — 4,704 of 5,000 on `hvg5000` — which no fitting-set choice touches. The restriction to
+        genes — **4,765** of 5,000 on `hvg5000` — which no fitting-set choice touches. The restriction to
         `fitc` is therefore about **attributability**, not conservatism: it is the one knob that could
         move a difference for a reason unrelated to the representations.
         **1 — HVG stays all-cells.** Keeping one gene set keeps folds, arms and Step 05's gene-set sweep
@@ -680,7 +681,7 @@ every one of them was a step that looked settled and had never been checked.
           working tree. A red flag that outlives its defect costs the same attention as a real one.
           What it said, in the past tense: cell 8's `run_oncomlp` **also** trained an `OncoMLP` and
           nobody had enumerated it — it constructed the model and called `train_model` with **no
-          `init_head_bias_` anywhere**, while `cv.py:375` called
+          `init_head_bias_` anywhere**, while `cv.oof_predictions` called
           `init_head_bias_(model, per_drug_line_mean(...))`. The consequence it named was real for the
           window it describes: `auc_cc` centres near 0.9, a zero-initialized head starts every drug an
           offset from the base rate, and early epochs are spent travelling there — so between 12.08 and
@@ -693,7 +694,8 @@ every one of them was a step that looked settled and had never been checked.
           is what missed it the first time.
       - Two lesser differences from the same enumeration, recorded so they are not re-found.
         **(i) No `DataLoader` generator** — `dreval`'s train loader is `shuffle=True` with no `generator`,
-        which is precisely the ordering dependency `cv.py:378-386` carries a comment about having removed.
+        which is precisely the ordering dependency `cv.oof_predictions` carries a comment about having removed
+        (the explicit `torch.Generator().manual_seed(config.seed)` on its `DataLoader`).
         **Benign today**, because `train_model` calls `set_seed(config.seed)` before the loader is first
         iterated, so the shuffle is in fact seeded — fragile rather than broken, and fragile in the exact
         way the project already decided against. **(ii) Validation `batch_size` 256 vs the pipeline's 128**
@@ -1320,7 +1322,7 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       `data/processed/scRNAseq_SCP542/<variant>/` predates the code that now produces it:
   - `scp542_conversion.py` annotates `var["hgnc_symbol"]` (`gene_symbols.py`, 05.08.2026) → `SCP542_CCLE.h5ad`
   - `gen_embeds.py` seeds with 42, runs on MPS, resolves through `resolve_gene_names` → embeddings and
-    the OOV table; **4,576 → 4,704** genes (`hvg5000`), **20,570 → 21,332** (`all_genes`)
+    the OOV table; **4,576 → 4,765** genes (`hvg5000`, predicted 4,704), **20,570 → 21,332** (`all_genes`)
   - `add_pca.py` passes `random_state=42`, plus gene scaling, the post-HVG renormalization fix, the HVG
     ranking scale, and `uns["pca_fits"]` (item 4B)
   - `ctrp_to_h5ad.py` (audit 02): deduplicated experiment table + the `H292` alias → **180 → 181** lines,

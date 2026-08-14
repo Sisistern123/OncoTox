@@ -4,14 +4,19 @@
 %
 % GENERATED FILE -- DO NOT EDIT.
 %   Written by docs/make_figures.py :: build_loss_formula_tex() from LOSS_TEX_MACROS,
-%   which is also what docs/figures/loss_01_objective.png renders. One source, both
-%   destinations, so the equation in the report and the equation in the figure cannot
+%   which is also what docs/figures/loss_01_objective.png renders -- so that the equation
+%   in the report and the equation in the figure would have one source and could not
 %   drift apart. To change a formula, edit LOSS_TEX_MACROS and re-run the generator.
 %
 % HOW THEY ARE USED
-%   main.tex does \input{loss_objective} in the preamble; a section then writes e.g.
-%     \begin{equation}\LossObjective\end{equation}
-%   Definitions only -- the section chooses the environment.
+%   INTENDED USE: main.tex does \input{loss_objective} in the preamble; a section then
+%   writes e.g. \begin{equation}\LossObjective\end{equation}. Definitions only -- the
+%   section chooses the environment.
+%
+%   !! NOT WIRED UP YET (checked 14.08.2026). main.tex has no \input{loss_objective} and
+%   no section cites any macro below, so this file is generated, committed and unread.
+%   Until a section uses it, the figure and the report do NOT share one source for the
+%   maths -- the report describes the objective in prose. Wiring it in is Selin's call.
 %
 % WHAT IS DELIBERATELY SYMBOLIC
 %   \ell and \alpha are left as symbols: the loss comparison (docs/TODO.md item 9A)

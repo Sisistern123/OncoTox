@@ -218,7 +218,31 @@ errors, the model simply trains against a handicap — so they are recorded with
 weight rows are still randomly initialized, so at initialization predictions already scatter with a
 standard deviation of ≈0.31 across cells, against a true across-line spread of order 0.17 on `auc_cc`;
 the mean prediction lands at 0.76 and 0.96 for a requested 0.90 at seeds 42 and 0. Measured on synthetic
-unit-variance input, `init_spread.py` under audit 08 — an architecture property, no data read. Starting
+unit-variance input, `init_spread.py` under audit 08 — an architecture property, no data read.
+
+> ⚠️ **`init_spread.py` was never committed — anywhere (found 14.08.2026).** Not on `main`, not on
+> any branch, not in any commit: `git log --all -- '*init_spread.py'` is empty. **This is the second
+> instance of the `arch_facts.py` defect**, which [TODO](../TODO.md) item 8 recorded on 13.08.2026 —
+> a measurement cited to a file that only ever existed in a session scratch directory.
+>
+> **Re-derived against the real `scripts/model/OncoMLP.py` on 14.08.2026** (`OncoMLP(input_dim=512,
+> hidden_dims=(128,64), output_dim=11)`, `init_head_bias_` at a uniform 0.90, `.eval()`, synthetic
+> `randn` input; stable across 1k/5k/20k cells, so the unstated cell count does not matter):
+>
+> | claim | re-derived | verdict |
+> |---|---|---|
+> | head row norm ≈ 0.58 | 0.588 / 0.581 | ✅ |
+> | mean 0.76 at seed 42 | 0.751 | ✅ |
+> | mean 0.96 at seed 0 | 0.958 | ✅ |
+> | prediction sd ≈ **0.31** | **0.365 / 0.389** | ⛔ **does not reproduce** |
+>
+> Three of four match closely, so the setup is almost certainly the one used — `(64,32)` was tried
+> and matches *neither* the means nor the row norm. **The spread reads ≈0.37, not ≈0.31.** It is
+> flagged rather than replaced: the original script is gone, so the setup detail that differs
+> cannot be recovered, and swapping in my number would assert one measurement over another that
+> nobody can inspect. Note the direction — a *larger* initial scatter makes the point this
+> paragraph is making stronger, not weaker. **Whether to adopt 0.37, re-measure, or drop the
+> figure is Selin's.** Starting
 genuinely *at* the null would also require shrinking the output layer's weight initialization, which
 Lin et al. do (σ = 0.01) and **this project has not decided**.
 
@@ -295,7 +319,8 @@ the cross-database block-sparse matrix in [Step 06](06-planned-work.md#a-cross-d
 
 ### ⚠️ Open defect — the loss weights cell lines by how deeply they were sequenced
 
-The loss is a mean over observed **cells** (`scripts/training/training_utils.py:90`), but the label is
+The loss is a mean over observed **cells** (`scripts/training/training_utils._masked_mean`, the shared
+`sum(err * M) / sum(M)` reduction both loss arms go through), but the label is
 per **cell line**. Two distributions therefore multiply into the weight each line carries:
 
 | | min | median | max |

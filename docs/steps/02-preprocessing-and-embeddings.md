@@ -56,7 +56,7 @@ identical filenames. `auc`, `auc_z` and `mean_pv` were all removed with their re
 |---|---|---|---|
 | 0 | **fetch** — `fetch_ctrp_response.py` | Zenodo record **`21807175`**, pinned in `layout.ZENODO_RESPONSE_RECORD` | `metadata/drevalpy_CTRPv2_zenodo_21807175/`: the CTRPv2 response table and Cellosaurus 52.0, each **MD5-verified against the record's published checksums**, plus a `provenance.json` recording record, DOI and retrieval date. Idempotent — a cached archive matching its MD5 is neither re-downloaded nor re-extracted, so this costs a checksum pass. The **only** step that touches the network; `--start-at convert` skips it. |
 | 1 | **convert** — `scp542_conversion.py` | `expression/CPM_data.txt` (genes×cells) + `metadata/Metadata.txt` | `SCP542_CCLE.h5ad`: cells×genes, `.X` = **CPM**. **HVG filtering happens here** (see below); records `uns["hvg_n_top_genes"]`. Since 05.08.2026 also `var["hgnc_symbol"]` — the current HGNC symbol per row, read only by step 2. Since 13.08.2026 also `obs["total_counts"]` and `obs["pct_counts_mt"]`, read from `other/UMIcount_data.txt` by `qc_covariates.py` — **the only step that reads the un-normalised matrix**, and the only source of sequencing depth, since `.X` is CPM. They are joined **by barcode** (56,982 UMI cells against 53,513 here, different order) and both the coverage and the value are checked, so a misjoin raises. Added before the HVG filter and over the **full** gene set: [why that is not a precision argument](01-datasets-and-harmonization.md#sequencing-depth-and-mitochondrial-fraction-are-recovered-from-the-raw-umi-matrix-13082026). No expression value is touched. |
-| 2 | **scgpt** — `scripts/preprocessing/gen_embeds.py`, run under the separate scGPT venv via `--scgpt-python` (vendored into the repo 03.08.2026; it was previously an untracked file outside it) | the **convert output** `SCP542_CCLE.h5ad` | `..._scGPT_human_embeddings.h5ad`: adds `obsm["X_scGPT"]` (**512-dim**) **and drops scGPT-OOV genes from `.X`** (hvg5000: 5,000→4,576). |
+| 2 | **scgpt** — `scripts/preprocessing/gen_embeds.py`, run under the separate scGPT venv via `--scgpt-python` (vendored into the repo 03.08.2026; it was previously an untracked file outside it) | the **convert output** `SCP542_CCLE.h5ad` | `..._scGPT_human_embeddings.h5ad`: adds `obsm["X_scGPT"]` (**512-dim**) **and drops scGPT-OOV genes from `.X`** (hvg5000: 5,000→4,765). |
 | 3 | **targets** — `ctrp_to_h5ad.py` | the embeddings h5ad + the fetched response table `CTRPv2.csv` (one column per measure, both from the same CurveCurator fit) | `..._with_targets_<score>.h5ad`: adds `obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, `uns["ctrp_score"]`, and `obs["cellosaurus_id"]` — the persistent accession per cell line, **recorded but never joined on**. Exact duplicate rows are dropped and a disagreeing pair **raises**. Resulting matrices, counts and every discrepancy against CTRPv2's own distribution: [Step 01](01-datasets-and-harmonization.md#the-target-moved-to-drevals-reprocessed-ctrpv2-11082026). |
 | 4 | **splits** — `create_splits.py` | the targets h5ad (in place) | `obs["split_paclitaxel"]` (`run`) + `obs["split_ctrp"]` (`run_multi`) — cell-line-grouped. |
 | 5 | **pca** — `add_pca.py` | the targets h5ad + the **convert counts** `SCP542_CCLE.h5ad` | `obsm["X_pca"]`: `log2(1 + CPM/10)` → `sc.pp.scale(max_value=10)` → `sc.pp.pca` (**512 comps**, matching the scGPT width) computed on the **HVG-filtered convert counts** (5,000 genes), *not* the targets `.X` — plus one train-fitted `X_pca_train_<split>` per fixed split, and a `uns["pca_fits"]` record per key (both below). Targets `.X` left unchanged. |
@@ -91,8 +91,8 @@ So at the `convert` step, two things are true:
 
 **A second, scGPT-specific reduction happens at the `scgpt` step — and it does *not* propagate to
 PCA.** scGPT can only embed genes in its own fixed vocabulary, so `gen_embeds.py` drops the
-out-of-vocabulary (OOV) genes from the embeddings file's `.X`: `5,000 → 4,576` for `hvg5000`
-(424 OOV) and `22,722 → 20,570` for `all_genes` (2,152 OOV). This shrinks **only the gene set scGPT
+out-of-vocabulary (OOV) genes from the embeddings file's `.X`: `5,000 → 4,765` for `hvg5000`
+(235 OOV) and `22,722 → 21,332` for `all_genes` (1,390 OOV). This shrinks **only the gene set scGPT
 embeds**. The HVG filter is applied **once**, and PCA uses that full filtered set (below).
 
 **What `.X` holds along the pipeline** (`hvg5000` gene counts shown):
@@ -100,9 +100,9 @@ embeds**. The HVG filter is applied **once**, and PCA uses that full filtered se
 | After step | `.X` holds | genes |
 |---|---|---|
 | convert | CPM, subset to HVG | 5,000 |
-| scgpt | CPM, scGPT-OOV genes dropped (+ `obsm["X_scGPT"]`) | 4,576 |
-| targets, splits | CPM, unchanged | 4,576 |
-| pca | CPM, **unchanged** (+ `obsm["X_pca"]`, computed from the convert file) | 4,576 |
+| scgpt | CPM, scGPT-OOV genes dropped (+ `obsm["X_scGPT"]`) | 4,765 |
+| targets, splits | CPM, unchanged | 4,765 |
+| pca | CPM, **unchanged** (+ `obsm["X_pca"]`, computed from the convert file) | 4,765 |
 
 So the trainable file's `.X` stays CPM throughout (the `pca` step no longer rewrites it). The model
 never reads `.X` anyway — only `obsm["X_scGPT"]` / `obsm["X_pca"]`.
@@ -111,7 +111,7 @@ never reads `.X` anyway — only `obsm["X_scGPT"]` / `obsm["X_pca"]`.
 
 ```
 convert : 22,722 → 5,000 genes (HVG)  — the single filter        [.X = CPM]
-   ├─ scgpt : embeds the 4,576 of those in scGPT's vocabulary ──► X_scGPT (512-d)
+   ├─ scgpt : embeds the 4,765 of those in scGPT's vocabulary ──► X_scGPT (512-d)
    └─ pca   : PCA of all 5,000 HVG genes (read from convert) ───► X_pca   (512-d)
 ```
 
@@ -153,6 +153,24 @@ the genes it can embed.
 > the [clean sweep](../TODO.md); it landed before the sweep so the sweep is not paid for twice. The
 > gene counts stated throughout this file (4,576 / 20,570) are what is **on disk**; after the sweep
 > they become **4,704 / 21,332**.
+>
+> ✅ **The sweep ran on 12.–13.08.2026, and this note is the record of what was expected, not of what
+> happened (corrected 14.08.2026).** ⚠️ **The `hvg5000` prediction was wrong.** Measured on the live
+> h5ads, `.X` is **53,513 × 4,765** (`hvg5000`) and **53,513 × 21,332** (`all_genes`) — so
+> `all_genes` landed exactly on 21,332 and `hvg5000` landed on **4,765, not 4,704**.
+>
+> **Why the miss, since it matters for reading the rest of this file:** 4,704 was arithmetic on the
+> *old* gene set — 4,576 direct matches plus 128 rescued symbols. At the sweep the HVG selection
+> itself moved, so the direct matches went **4,576 → 4,632**, and the repair then rescued **133**:
+> 4,632 + 133 = **4,765**. `all_genes` matched its prediction because its gene set is every gene and
+> could not move (20,570 + 762 = 21,332). Source: `notebooks/3_representations.ipynb`, which prints
+> *"4,632 of 5,000 rows match the vocabulary directly, 133 more via their current HGNC symbol"* and
+> the matching `all_genes` line; the report carries them as `\NVocab` / `\NVocabDirect`.
+>
+> **Every current-state count below now reads the measured value.** Two places deliberately still
+> show 4,576 / 20,570, each marked where it stands: the *in scGPT vocab* column of the input-length
+> table, which is an input to a measurement taken before the sweep, and the item-3A note, which is
+> quoted as the prediction it was.
 
 Changing the gene set means re-running `convert`, which forces a re-embed and a re-PCA; that is why
 `hvg5000` and `all_genes` live in **separate folders that never share files** (`guard_output`
@@ -441,7 +459,7 @@ coords = (z - center) @ components.T
 ```
 
 **Why `uns` and not `varm`.** `varm` is indexed by the file's own `var`, and the targets file keeps
-4,576 genes after the scGPT OOV drop while PCA runs on the 5,000 from the convert output — the axes do
+4,765 genes after the scGPT OOV drop while PCA runs on the 5,000 from the convert output — the axes do
 not match. Hence the explicit `genes` vector.
 
 **Which key this matters most for.** `X_pca` can be recovered by re-running, since it depends only on
@@ -472,7 +490,7 @@ fits** were not produced by identical code. `_pca_fitted_on_train` now passes
 - **`X_scGPT` (512-dim, the prior).** scGPT (`gen_embeds.py`, `scGPT_human` weights) is a transformer
   foundation model, pretrained self-supervised on ~33 M human cells. For each cell it reads the
   expressed genes and their binned expression values and outputs one fixed-length **cell embedding**.
-  Genes outside scGPT's vocabulary are dropped as **out-of-vocabulary (OOV)**, so only 4,576 / 5,000
+  Genes outside scGPT's vocabulary are dropped as **out-of-vocabulary (OOV)**, so only 4,765 / 5,000
   HVGs contribute (424 OOV). This is the hypothesized *denoised biological prior* — it aligns
   functional cell states across tissues.
 - **`X_pca` (512-dim, the baseline).** The standard single-cell linear baseline, sized to **512
@@ -487,15 +505,16 @@ fits** were not produced by identical code. `_pca_fitted_on_train` now passes
 ### HVG-5000 pipeline outputs
 
 - Genes after HVG (convert): **22,722 → 5,000** — the single filter
-- scGPT embeds the **4,576** of those in its vocabulary (424 OOV); PCA uses all **5,000**
-- Trainable AnnData: `.X` = CPM, **53,513 × 4,576** (OOV-dropped), carrying `X_scGPT` (512-d, from the
-  4,576 vocab genes) and `X_pca` (512-d, from the 5,000 HVG genes) in `obsm`
+- scGPT embeds the **4,765** of those in its vocabulary (235 OOV); PCA uses all **5,000**
+- Trainable AnnData: `.X` = CPM, **53,513 × 4,765** (OOV-dropped), carrying `X_scGPT` (512-d, from the
+  4,765 vocab genes) and `X_pca` (512-d, from the 5,000 HVG genes) in `obsm`
 - Paclitaxel labels: 44,367 / 53,513 cells
 - `split_paclitaxel`: train **31,824** / val **5,035** / test **7,508** / unassigned **9,146**
 
 > ⚠️ **Every count above describes the artifacts on disk, not what the current code produces
 > (12.08.2026).** Three changes are already in the tree and land at the sweep: the gene-symbol repair
-> takes **4,576 → 4,704** in-vocab genes, so the OOV count and the `.X` width move with it
+> took **4,576 → 4,765** in-vocab genes — *this note predicted 4,704; see the correction at the
+> gene-symbol repair above for why the prediction missed* — so the OOV count and the `.X` width moved with it
 > ([TODO](../TODO.md) item 3A); the `H292` alias and the experiment de-duplication take the trainable
 > overlap **180 → 181** lines, adding 213 cells, so the cell counts and every split size move; and
 > `add_pca.TRAIN_SPLIT_COLS` no longer includes `split_paclitaxel`, so `X_pca_train_paclitaxel` is no
@@ -568,10 +587,12 @@ it as a random draw rather than a dispersion-selected set.
 > from an ad-hoc `h5py` pass that existed as a shell command rather than as code. The re-runnable
 > measurement reproduces both rows exactly and adds the three smaller variants.
 >
-> ⚠️ **Measured on the embeddings currently on disk, which the gene-symbol repair changes (noted
-> 12.08.2026).** The *in scGPT vocab* column is what `gen_embeds.py` resolved **before** the repair
-> landed in code on 05.08.2026; at the sweep it becomes **4,704** for `hvg5000` and **21,332** for
-> `all_genes` ([TODO](../TODO.md) item 3A). More in-vocab genes means more expressed genes per cell, so
+> ⚠️ **Measured on the embeddings that were on disk before the sweep (noted 12.08.2026).** The *in
+> scGPT vocab* column is what `gen_embeds.py` resolved **before** the gene-symbol repair landed in
+> code on 05.08.2026, so the two bottom rows read 4,576 and 20,570. ⚠️ **The sweep has since run
+> (corrected 14.08.2026): those are now 4,765 and 21,332** — this note predicted 4,704 for
+> `hvg5000` and that was wrong, because the HVG set itself moved. The table is left on its own
+> inputs rather than rewritten, since the measurement was taken on them and has not been repeated. More in-vocab genes means more expressed genes per cell, so
 > every column to its right moves with it — including how hard the cap binds. The qualitative reading is
 > not at risk (`hvg5000` stays far below 1,200 and `all_genes` stays fully capped), but the digits are
 > due for re-measurement at **R3**, and §10a–§10c are stale again despite having run under the audit's
@@ -750,9 +771,9 @@ for `hvg5000` (`du -sh data/processed/scRNAseq_SCP542/*/`, 03.08.2026).
 
 Re-running the **whole** orchestrator with `--variant all_genes` (HVG off) regenerates an independent
 gene set under `processed/scRNAseq_SCP542/all_genes/`. `convert` keeps all 22,722 genes; the `scgpt`
-OOV-drop then leaves **20,570** in `.X` (what scGPT embeds), while **`X_pca` is computed on the full
+OOV-drop then leaves **21,332** in `.X` (what scGPT embeds), while **`X_pca` is computed on the full
 22,722 convert counts** — a genuine full-transcriptome PCA. So the trainable file is **53,513 ×
-20,570** in `.X`, carrying `X_scGPT` (from the 20,570 in-vocab genes) and `X_pca` (from all 22,722).
+21,332** in `.X`, carrying `X_scGPT` (from the 21,332 in-vocab genes) and `X_pca` (from all 22,722).
 `notebooks/analysis/qc/verify_variants.ipynb` checks the gene counts directly and plots the two variants'
 UMAPs side by side. Evaluation of the all-genes side is still pending.
 
@@ -816,8 +837,8 @@ of each artifact, under `processed/scRNAseq_SCP542/` (`<score>` = the `--score` 
 |---|---|---|---|---|
 | Counts (CPM) | **filtered** | `hvg5000/SCP542_CCLE.h5ad` | `.X` | 53,513 × 5,000 |
 | Counts (CPM) | **non-filtered** | `all_genes/SCP542_CCLE.h5ad` | `.X` | 53,513 × 22,722 |
-| scGPT embeddings | **filtered** | `hvg5000/SCP542_CCLE_scGPT_human_embeddings.h5ad` | `obsm["X_scGPT"]` | 53,513 × 512 (from 4,576 in-vocab genes) |
-| scGPT embeddings | **non-filtered** | `all_genes/SCP542_CCLE_scGPT_human_embeddings.h5ad` | `obsm["X_scGPT"]` | 53,513 × 512 (from 20,570 in-vocab genes) |
+| scGPT embeddings | **filtered** | `hvg5000/SCP542_CCLE_scGPT_human_embeddings.h5ad` | `obsm["X_scGPT"]` | 53,513 × 512 (from 4,765 in-vocab genes) |
+| scGPT embeddings | **non-filtered** | `all_genes/SCP542_CCLE_scGPT_human_embeddings.h5ad` | `obsm["X_scGPT"]` | 53,513 × 512 (from 21,332 in-vocab genes) |
 | PCA | **filtered** | `hvg5000/…_with_targets_<score>.h5ad` | `obsm["X_pca"]` | 53,513 × **512** (computed on the 5,000 HVG) |
 | PCA | **non-filtered** | `all_genes/…_with_targets_<score>.h5ad` | `obsm["X_pca"]` | 53,513 × **512** (computed on all 22,722) |
 | Drug labels — the full catalog | both | `<variant>/…_with_targets_<score>.h5ad` | `obsm["Y_ctrp"]`, `obsm["M_ctrp"]`, `uns["ctrp_drugs"]`, `uns["ctrp_score"]` | 53,513 × 534 |

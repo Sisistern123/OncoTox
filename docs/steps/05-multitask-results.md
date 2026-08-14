@@ -787,15 +787,28 @@ measured"* because the live target folds replicate variability into one fit. Tha
 *disagreement* and **false about label quality in general**: CurveCurator writes per-curve fit-quality
 columns into the response table (`R2`, `RMSE`, `pValue`, `conc_pts_fit`) and **nothing in this project
 had read them.** `scripts/evaluation/label_quality.py` now does, on the exact 1,971 curves behind this
-project's labels (11 panel drugs over the 181 trainable lines of `splits/split_ctrp.csv`, which is what
-`label_quality.py` filters on; they are **curves**, not (line, drug) pairs, so a drug repeat-screened on
-some lines contributes more than one) →
+project's labels — **1,971 curves, 11 panel drugs × 180 cell lines** →
 `notebooks/outputs/diagnostics/label_quality_vs_performance.csv`.
+
+> **Why 180 and not 181** (checked 14.08.2026). `label_quality.py` filters on the committed
+> `splits/split_ctrp.csv`, which holds **181** lines — but only 180 of them carry a CurveCurator fit
+> for *any* panel compound, so the curve set spans 180. The two numbers answer different questions:
+> 181 is what the pipeline trains on, 180 is what this measurement covers. *(This sentence briefly
+> read "181 trainable lines" earlier on 14.08.2026, from reading the filter rather than the result.)*
+> Note also that the per-drug counts in the CSV reach **183**, above either line count, because these
+> are **curves** rather than (line, drug) pairs and repeat-screened pairs contribute more than one.
 
 **How good are the labels?** Median `R2` is **0.867**, so most curves fit well. But the tail is not
 small: **22.2 %** of curves have `R2 < 0.5`, **10.9 %** have `R2 < 0.25`, and **10.9 % of the fits are
 not statistically significant** (`pValue > 0.05`). One in nine labels comes from a curve that does not
 establish a dose-response at all.
+
+> ⚠️ **Those three percentages are not in the CSV this section names** (found 14.08.2026). The
+> artifact is **per drug** (11 rows: `median_R2`, `frac_ns`, `label_sd`, `n`); the per-**curve**
+> statistics are printed by `scripts/evaluation/label_quality.py` §1 and written nowhere. They were
+> re-derived from `CTRPv2.csv` against the committed panel and split on 14.08.2026 and **all three
+> reproduce exactly** (0.8674 → 0.867; 22.2 %; 10.9 %), so the numbers stand — but until the script
+> writes them, the artifact named here does not evidence them.
 
 **Does it explain performance?** Per drug, over the eleven:
 
@@ -1545,7 +1558,7 @@ correction to an earlier claim that credited the curve fit rather than the stand
 > and `all_genes` only** (decided 12.08.2026, Selin — the middle option, covering every number the
 > report quotes; scGPT embedding is the expensive step, which is why the scope had to be fixed before
 > R2). This table spans `hvg1000/2000/3000/5000`, so once R2 lands it will **mix one re-embedded variant
-> with three embedded by the older code** — before the gene-symbol repair (4,576 → 4,704 in-vocab genes
+> with three embedded by the older code** — before the gene-symbol repair (4,576 → 4,765 in-vocab genes
 > at `hvg5000`), before `gen_embeds.py` was seeded, and before the `ddof=1` harmonization. The gene-set
 > axis would then vary the embedding code alongside the gene count, which is precisely the confound the
 > sweep exists to exclude.

@@ -239,6 +239,13 @@ variant's own gene set: one recovered gene in `hvg5000`, none in the smaller var
 The recovered counts are below the 773 / 129 *recoverable* figures because collisions stay unmapped
 (11 and 1 of them respectively) — the defect's size and the repair's yield are different quantities.
 
+> ⚠️ **The `hvg5000` row was a projection and the outcome differs (checked 14.08.2026).** The sweep
+> ran on 12.–13.08.2026 and the live `hvg5000` h5ad is **53,513 × 4,765**, not 4,704 — because the
+> HVG selection itself moved at the sweep, taking direct matches 4,576 → 4,632, on top of which the
+> repair rescued 133. `all_genes` landed exactly on its projected 21,332, its gene set being every
+> gene and therefore unable to move. Table left as the 05.08.2026 measurement it is; the live counts
+> are owned by [Step 02](02-preprocessing-and-embeddings.md).
+
 **Standing — code only, nothing recomputed.** Every embedding on disk, and therefore every scGPT number
 in the docs and the report, still carries the defect in full. The repair takes effect at the
 [clean sweep](../TODO.md); it landed before it so that the sweep does not have to be paid for twice.

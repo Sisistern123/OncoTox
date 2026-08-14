@@ -160,10 +160,21 @@ ref.
 
 **And one artifact that is not a figure**, written to ``report/`` rather than ``docs/figures/``:
 
-  report/loss_objective.tex   the objective's equations, as LaTeX macros the report ``\\input``s
+  report/loss_objective.tex   the objective's equations, as LaTeX macros — **generated for the report,
+                              but not yet used by it; see below**
 
 It is generated from ``LOSS_TEX_MACROS`` — the same strings ``loss_01_objective.png`` renders — so
-the maths in the report and the maths in the figure have one source and cannot drift apart. Decided
+that the maths in the report and the maths in the figure would have one source and could not drift
+apart.
+
+⛔ **That guarantee is not in force, found 14.08.2026: THE REPORT DOES NOT USE THIS FILE.**
+``report/main.tex`` carries no ``\\input{loss_objective}``, and not one of the five macros
+(``\\LossObjective``, ``\\LossWeightMatrix``, ``\\LossWeightFn``, ``\\LossDensity``, ``\\LossArms``) is
+cited in any section — checked by scanning every ``.tex`` for ``\\newcommand`` against use. So the file
+is regenerated on every figure build, is committed, and is read by nothing, while the report states the
+objective in prose instead. **The generator is sound and the guarantee is sound; the wiring was never
+done**, and both this line and the generated file's own header have been asserting otherwise. Whether
+to typeset the objective in Methods, and where, is Selin's. Decided
 by Selin 12.08.2026 over rendering the formula into the PNG (raster, fonts would not match the
 report body, not referenceable by LaTeX) and over a PGF/vector figure (fonts match, but it puts a
 LaTeX installation in the figure build path). It is committed so a clean checkout still compiles
@@ -1255,14 +1266,19 @@ def build_loss_formula_tex():
         "%",
         "% GENERATED FILE -- DO NOT EDIT.",
         "%   Written by docs/make_figures.py :: build_loss_formula_tex() from LOSS_TEX_MACROS,",
-        "%   which is also what docs/figures/loss_01_objective.png renders. One source, both",
-        "%   destinations, so the equation in the report and the equation in the figure cannot",
+        "%   which is also what docs/figures/loss_01_objective.png renders -- so that the equation",
+        "%   in the report and the equation in the figure would have one source and could not",
         "%   drift apart. To change a formula, edit LOSS_TEX_MACROS and re-run the generator.",
         "%",
         "% HOW THEY ARE USED",
-        "%   main.tex does \\input{loss_objective} in the preamble; a section then writes e.g.",
-        "%     \\begin{equation}\\LossObjective\\end{equation}",
-        "%   Definitions only -- the section chooses the environment.",
+        "%   INTENDED USE: main.tex does \\input{loss_objective} in the preamble; a section then",
+        "%   writes e.g. \\begin{equation}\\LossObjective\\end{equation}. Definitions only -- the",
+        "%   section chooses the environment.",
+        "%",
+        "%   !! NOT WIRED UP YET (checked 14.08.2026). main.tex has no \\input{loss_objective} and",
+        "%   no section cites any macro below, so this file is generated, committed and unread.",
+        "%   Until a section uses it, the figure and the report do NOT share one source for the",
+        "%   maths -- the report describes the objective in prose. Wiring it in is Selin's call.",
         "%",
         "% WHAT IS DELIBERATELY SYMBOLIC",
         "%   \\ell and \\alpha are left as symbols: the loss comparison (docs/TODO.md item 9A)",
