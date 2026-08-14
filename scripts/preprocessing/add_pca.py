@@ -11,6 +11,12 @@ from scripts.preprocessing.expression import kinker_transform
 from scripts.layout import PipelinePaths, add_data_args
 
 
+# 512 to MATCH scGPT's embedding width, so the two arms are compared at equal dimensionality.
+# It is a comparability choice, NOT a statement about how many components this atlas needs --
+# no scree or variance-explained criterion selected it, and it has never been varied
+# (docs/TODO.md item 4A; `uns['pca_fits']['variance_ratio']`, written by _pca_record below, is
+# what would answer the question). Noted here 14.08.2026: the justification existed only in
+# report/results_numbers.tex, where nobody reading this module would find it.
 DEFAULT_N_COMPS = 512
 # Project-wide seed. scanpy's own default is random_state=0, so this must be passed
 # explicitly to sc.pp.pca -- leaving it out silently uses 0.

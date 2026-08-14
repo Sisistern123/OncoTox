@@ -3,6 +3,32 @@
 
 Several limitations bound the strength of the present claims, and each points to a concrete next step.
 
+\begin{revisionblock}
+\textbf{A set of training hyperparameters was fixed by convention and never varied (added 14.08.2026).}
+The learning rate, the gradient-clipping threshold, the learning-rate scheduler's patience and factor,
+and the early-stopping patience are conventional defaults carried from the first prototype. None is
+taken from the literature, none was tuned, and none has been varied on these data. This is a weaker
+footing than the settings around them, which is why it is stated rather than left implicit: the number
+of epochs rests on a measurement of where training peaks, the absence of weight decay on a measurement
+of what decay does under this optimizer, the decayed-parameter grouping on a named software convention,
+and the standardization clip on the default of an established package.
+
+It is also not covered by the model-side ablation reported above. That varied regularization strength,
+network capacity, batch size and sample reweighting, and found every axis flat; the learning rate, the
+clip and the scheduler were not among its axes, so its conclusion does not extend to them. Two of the
+five could move a reported quantity rather than only the running time. The learning rate sets where
+training peaks, and the epoch at which each representation peaks is used above as evidence about how
+linearly accessible that representation is; the early-stopping patience decides when a run ends, and
+every run recorded here ended by early stopping rather than by exhausting its epoch budget. The
+remaining three are inert by comparison.
+
+They are left at their values rather than chosen now. Selecting them after the results are visible
+would be tuning against the answer, and the margins this report treats as informative are small enough
+that such tuning could manufacture one. The honest statement is that the comparison is reported at one
+untuned setting, applied identically to both arms --- which is what makes it a fair comparison rather
+than a strong one.
+\end{revisionblock}
+
 \revision{\textbf{Revised 14.08.2026.} This section opened by stating that no result currently stands,
 and listed the regeneration in the future tense. That pass has been performed and the results are in
 Section~\ref{sec:results}; the paragraph is rewritten below rather than deleted, because the reason

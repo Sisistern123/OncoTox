@@ -49,7 +49,7 @@ class TrainConfig:
     # ~104 lines rather than 122, so where training peaks can move. It argued that 25 was *enough*,
     # never that 50 was wrong; early stopping is what actually ends training in every recorded run.
     epochs: int = 50
-    lr: float = 1e-3
+    lr: float = 1e-3               # arbitrary and never varied -- see the block below
     # 0.0, and this is a decision rather than a default (Selin, 12.08.2026). **The model trains
     # without weight decay**, with dropout 0.5 and input dropout 0.1 as the only regularizers.
     #
@@ -68,11 +68,33 @@ class TrainConfig:
     # narrower -- no sourced value exists for either optimizer, dropout is already substantial, and
     # a decay nobody can justify is worse than none.
     weight_decay: float = 0.0
+    # ⚠️ **THE FIVE BELOW ARE ARBITRARY, AND THIS IS THE ONLY PLACE THAT SAYS SO** (added
+    # 14.08.2026). `lr` above and `grad_clip`, `scheduler_patience`, `scheduler_factor` and
+    # `early_stop_patience` here are conventional deep-learning defaults, carried from the first
+    # prototype. **None of them is taken from a paper, none was tuned, and none has been varied on
+    # this data.** That is a different status from the constants around them: `epochs` has a
+    # measurement behind it, `weight_decay` has an argument and a measurement, `no_decay_bias_and_norm`
+    # has a named convention, and `SCALE_MAX_VALUE` has Seurat's default. These five have nothing.
+    #
+    # It is not covered by the model-side ablation either. That swept regularization, capacity,
+    # `batch_size` and sample reweighting (docs/steps/03, *These hyperparameters are not worth
+    # tuning*) -- the learning rate, the gradient clip and the scheduler were never axes of it, so
+    # "every axis is flat" does not extend to them.
+    #
+    # Two of them can move a reported number rather than only wall-clock, so they are the ones to
+    # name if asked. `lr` sets where training peaks, and this project reports `best_epoch` as
+    # evidence about how linearly accessible each representation is. `early_stop_patience` decides
+    # when the run stops, and every recorded run ends by early stopping rather than by reaching
+    # `epochs`. `grad_clip` and the scheduler pair are the more inert of the five.
+    #
+    # Recorded as a limitation in `report/sections/06_limitations_and_outlook.tex` rather than
+    # quietly fixed: choosing values now, after the results are visible, would be tuning against the
+    # answer. Whether to sweep them is Selin's.
     grad_clip: float | None = 1.0
     scheduler_patience: int = 3
     scheduler_factor: float = 0.5
     early_stop_patience: int = 10
-    log_every: int = 5
+    log_every: int = 5              # logging cadence only -- cannot affect a result
     seed: int = 42
     loss: str = "mse"  # "mse" or "mae" -- the two arms of review item 9A
     # Decay the weight matrices, exempt the biases and the normalization parameters. This is the
