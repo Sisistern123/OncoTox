@@ -51,6 +51,15 @@ a path that no longer exists; the sweep now lives in
 \code{notebooks/analysis/qc/verify\_variants.ipynb}, \S9, and has not been re-run. So
 \NHvg{} is at present a choice carried forward from a superseded measurement, not one this report can
 justify --- and the two readings below narrow what the measurement could ever have supported.}
+\revision{\textbf{Restored 14.08.2026.} The sweep has been re-run. All five gene-set variants were
+re-embedded on 13.08.2026, so its points now differ in gene count alone rather than in gene count
+\emph{and} code version, and it is like-for-like for the first time. Over the whole range from
+1{,}000 genes to the full transcriptome the principal-component arm moves 5.8 heads-beating-baseline
+out of 534, against a fold-to-fold standard deviation of 27.2 --- flat within error for both
+representations. The withdrawn sentence is therefore supported again on current numbers, and \NHvg{}
+rests on that measurement rather than on inheritance. The correction immediately below still applies:
+what the sweep compares for the transcript-level arm is gene \emph{selection} at a fixed per-cell cap,
+not gene count.}
 \revision{\emph{Correction, 05.08.2026.} That sweep's \emph{all-genes} arm is also not the full transcriptome as far as
 scGPT is concerned: the model reads at most 1{,}200 genes per cell, drawn at random from that cell's
 non-zero genes, and in the all-genes variant every cell exceeds that cap. What the sweep compared for

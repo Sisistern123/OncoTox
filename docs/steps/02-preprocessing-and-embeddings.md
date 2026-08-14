@@ -516,7 +516,9 @@ Three reasons, in descending order of weight.
 > evidence.** This paragraph quoted the gene-set sweep's heads-beating counts and val MSEs — the same
 > table [Step 05](05-multitask-results.md#gene-set-sweep--heads-beating-vs-gene-count-incl-all_genes-28062026)
 > already carries under a ⛔ banner saying the sweep **has no live numbers**: it was produced on the
-> retired `mean_pv` target and read from a cache the code no longer opens, and §9 has not been re-run
+> retired `mean_pv` target and read from a cache the code no longer opens, and §9 had not been re-run
+> at the time this was written (⚠️ **it has since**: 13.08.2026, on all five re-embedded variants —
+> see [Step 05](05-multitask-results.md#the-gene-set-sweep-on-live-numbers--and-it-puts-scgpt-ahead-at-every-gene-set-size))
 > since it was re-pointed. Restating them here, unmarked, both dressed a superseded measurement as a
 > live justification and put the same number in two places, which
 > [the doc conventions](../project_progress.md#maintaining-these-docs-conventions) forbid. Reasons 2 and

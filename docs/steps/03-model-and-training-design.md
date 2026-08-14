@@ -512,12 +512,19 @@ Defaults encode specific choices for this regime:
   statistics are noisy; LayerNorm normalizes per-sample and is stable here.
 - **GELU** rather than ReLU — a smoother activation for continuous-valued targets.
 - **Heavy regularization** — `input_dropout=0.1` on the raw embedding plus `dropout=0.5` in the
-  trunk, and Adam **weight decay 1e-3** (L2) — all aimed at the same failure mode: suppressing
-  cell-line memorization given the broadcast labels.
+  trunk, aimed at one failure mode: suppressing cell-line memorization given the broadcast labels.
+  ⚠️ **Corrected 14.08.2026.** This read *"and Adam **weight decay 1e-3** (L2)"*. **Both halves are
+  wrong today:** the optimizer is `AdamW` and `weight_decay` is **0.0**, decided 12.08.2026 — under
+  AdamW the inherited 1e-3 was measured to change the weight-matrix L2 norm by 0.04 %, i.e. to do
+  nothing, so carrying it across would have read as a deliberate setting while having no effect
+  (`TrainConfig`, and item 10 in `docs/TODO.md`). **Dropout is therefore the only regularizer**, which
+  makes the `input_dropout` asymmetry between the arms (item 8B) the more consequential of the two.
 
-Training (`training_utils.train_model`, all in `TrainConfig`) is seeded (42) and uses **Adam**
-(lr 1e-3), **ReduceLROnPlateau** (factor 0.5, patience 3) on the val MSE, **gradient clipping**
-(max-norm 1.0), and **early stopping** (patience 10); the **best-val-MSE checkpoint is restored** at
+Training (`training_utils.train_model`, all in `TrainConfig`) is seeded (42) and uses **AdamW**
+(lr 1e-3, `weight_decay=0.0`, with biases and norm parameters excluded from decay by
+`no_decay_bias_and_norm`), **ReduceLROnPlateau** (factor 0.5, patience 3) on the val MSE, **gradient
+clipping** (max-norm 1.0), and **early stopping** (patience 10); the **best-val-MSE checkpoint is
+restored** at
 the end rather than the last-epoch weights. Which lines that validation set is drawn from is the
 subject of *The early-stopping set is nested inside the training lines* above — under cross-validation
 it is no longer the scored fold. The single entrypoint `train_multitask.py` exposes these
