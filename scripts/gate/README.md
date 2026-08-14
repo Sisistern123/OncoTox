@@ -83,6 +83,19 @@ Recorded here because a check is only as trustworthy as its documented ways of l
 - **`check_resolved_paths.py` sees `Path.glob` only** — a module-level `glob.glob` is invisible to
   it. That gap let `4a` call `glob.glob` unimported for weeks (`c351851`); `check_unbound_names.py`
   now covers it from the other side, by catching the unbound name rather than the dead pattern.
+- ⛔ **`verify_main.sh` was not read-only until 14.08.2026, and its own limits said it was.** Its
+  module-import check imported every module under `scripts/` except `archive` and `gate`. **Nine
+  files in `scripts/evaluation/` have no `if __name__ == "__main__"` guard**, so importing them ran
+  them: `aggregation_comparison.py` and `build_execution_band.py` write committed artifacts at top
+  level, and `section_e2_smaller_study.py` and `input_dropout_test.py` call `oof_predictions` — they
+  **train**. Running the post-merge gate therefore retrained models and left the tree dirty. Fixed by
+  excluding `evaluation`, exactly as `gate` was already excluded for the same reason.
+  **Residual limitation, open:** those nine modules are no longer import-checked, so a syntax error
+  or missing import in `scripts/evaluation/` is invisible to this gate. The real fix is a `__main__`
+  guard on each, after which the exclusion can be dropped — nine files, not done in a consolidation
+  pass. **What that costs meanwhile:** every other `scripts/` module is still covered (24 imported,
+  0 failed, 1.7 s), and the evaluation scripts are exercised whenever a notebook runs them, so the
+  gap is narrow but real.
 - **Branch-specific checks are not carried forward.** `merge_gate.sh` briefly held checks that
   pinned particular strings in `4a` and particular output directories against a rename. They were
   right for one merge and noise on every other. Add one for the merge that needs it, delete it

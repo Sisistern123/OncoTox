@@ -38,22 +38,25 @@ arms.
 arm by arm against `panel_aggregation_comparison.csv`, identical to four decimals for all twelve.
 No number moves and no code changes.
 
-> ⚠️ **That verification needs redoing, and this is a note about the artifact rather than about the
-> decision (14.08.2026, 19:00 JST).** `panel_aggregation_comparison.csv` was **modified in the working
-> tree while a Jupyter kernel was executing** — one row changed, `X_pca / mlp / alpha=0 / mse / seed
-> 42`, in the fourth decimal (`0.24210 → 0.24397` on the first column). The change was not committed
-> and was not made by the consolidation pass that found it.
+> ⚠️ **A note about the artifact — and the correction is the point (14.08.2026, 19:20 JST).**
+> `panel_aggregation_comparison.csv` went dirty in the working tree during the consolidation sweep:
+> one row, `X_pca / mlp / alpha=0 / mse / seed 42`, moved in the fourth decimal
+> (`0.24210 → 0.24397` on the first column). **It has been restored to `HEAD` and the tree is clean,
+> so the verification above stands exactly as committed.**
 >
-> **It is the expected row.** That arm is the single unstable configuration in the sweep — §3 of this
-> file records it as the only one of fourteen that does not reproduce, banded 0.2450–0.2541 over eight
-> executions, and `panel_execution_band.csv` is the artifact that measures exactly this. So the
-> movement is the documented MPS non-determinism, not a new defect.
+> ⛔ **I first recorded here that a live Jupyter kernel had written it. That was wrong, and I caused
+> it.** `scripts/gate/verify_main.sh`'s module-import check imports every module under `scripts/`
+> except `archive` and `gate`, and nine files in `scripts/evaluation/` are straight-line scripts with
+> no `if __name__ == "__main__"` guard — so **importing them runs them**.
+> `aggregation_comparison.py` writes this very file at top level. Running the post-merge gate
+> therefore rewrote it. Proven twice: the gate's own log carries that script's
+> *"skip … no matching rows in panel_oof_predictions.csv"* output, and after the file was restored it
+> **stayed** restored while the kernel kept running.
 >
-> **What it costs here:** the sentence above says *"identical to four decimals for all twelve"*. That
-> was true of the committed file and is now false of the file on disk, for one of the twelve. **The
-> decision is unaffected** — the aggregation convention does not depend on that arm, and §3 already
-> disqualifies it as a reference point — but the *verification* must be re-run against whatever the
-> in-flight execution finally commits. Do not re-verify against a file being written.
+> **Nothing about the decision changes.** The row that moved is the single arm §3 already disqualifies
+> as unstable, so even had it been a genuine re-run it would not bear on the convention. What changed
+> is the gate: `evaluation` is now excluded from its import check, and the cost of that exclusion is
+> stated at the check itself.
 
 **What it does and does not settle.** It fixes which arm has the highest `order` on `X_pca`
 (**α=0.5/mae, 0.2824**). It does **not** settle item 9A, which *blocks* that arm on `values` and
