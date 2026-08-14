@@ -409,6 +409,12 @@ neighbouring fold, which would have cost twenty per cent of the training lines.
 \label{sec:target}
 
 The target is \code{auc\_cc}, the area under the fitted dose-response curve as re-fitted by DrEval
+\revision{\textbf{A defect in the distributed table, recorded 14.08.2026.} The per-curve confidence
+interval columns are inverted: \code{p1\_conf\_int\_low} exceeds \code{p1\_conf\_int\_high} in
+\emph{all} 392{,}648 populated rows, and the fourth-parameter columns behave likewise with some
+infinite bounds. Nothing in this work uses them --- the fit statistics used in
+Section~\ref{sec:results} are \code{R2} and \code{pValue}, which are sound --- but they should not be
+read as bounds by anyone extending it.}
 \cite{dreval} from CTRPv2's raw measurements. Their reprocessing normalizes each replicate against its
 own no-drug control and fits one curve with CurveCurator, folding replicate disagreement into the fit
 rather than averaging replicates before fitting --- which their Methods argue is the practice that
@@ -476,6 +482,18 @@ indicates that a material share of the target is screening noise, but it does no
 ceiling on the achievable correlation. Quantified in
 \code{notebooks/archive/replicate\_variation.ipynb}, with the underlying pairs in
 \code{notebooks/outputs/archive/replicate\_variation.csv}.
+\revision{\textbf{Closed 14.08.2026 --- the re-derivation flagged above will not be performed, and
+does not need to be.} The labels are taken from the reprocessed table rather than
+computed here, and that table carries one curve per (cell line, compound) with replicate variability
+folded into the fit, so no pair of numbers remains in it to disagree. Recomputing the labels from
+CTRPv2's raw well-level measurements is possible in principle --- those files are held, and fitting
+each replicate separately would restore the pair --- but that is a re-derivation of the target itself
+rather than a diagnostic, and it would replace every label in this work with one produced here. It
+would also be of narrow reach --- only 19 of CTRPv2's 887 cell lines were screened more than once, of
+which \NRepLines{} lie inside this project's \NLines{}, or $3.3\,\%$. Label quality is instead measured
+directly from the per-curve fit statistics that accompany every label, which cover all 1{,}971 curves
+behind this panel; see Section~\ref{sec:results}. The figures above are retained as the record of what
+was measured on the previous source.}
 
 \subsection{Evaluation}
 
