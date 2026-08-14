@@ -711,8 +711,17 @@ every one of them was a step that looked settled and had never been checked.
         each input coordinate independently. scGPT's 512 dimensions are entangled and comparable in
         magnitude, so the perturbation is uniformly small; PCA's are variance-ordered, so one draw in ten
         deletes PC1. Same expected variance removed, far heavier-tailed for PCA — and the "matched trunk
-        ⇒ fair comparison" argument covers the trunk, not the input regularizer. Settleable from
-        `uns["pca_fits"]["variance_ratio"]` once R2 writes it (item 4B), before any decision to change it.
+        ⇒ fair comparison" argument covers the trunk, not the input regularizer.
+        ✅ **MEASURED 14.08.2026, and the effect is real but smaller than this wording implies.**
+        From `uns["pca_fits"]["X_pca"]["variance_ratio"]` in the `auc_cc` targets h5ad, which R2 wrote:
+        **PC1 carries 2.50 % of total variance — 5.9 % of the 42.09 % the 512 components retain** — so
+        it is not a dominant direction whose loss guts the input. Across dimensions, PCA's per-dimension
+        standard deviation spans **9.4×** (`input_scale.csv`, `within_rep_ratio`) against scGPT's
+        **5.6×**; the PC1/PC512 *variance* ratio of 88× is exactly 9.4², which cross-checks the two
+        artifacts against each other. So the perturbation IS heavier-tailed for PCA, by roughly a
+        factor of two in dimension spread rather than the order of magnitude the phrasing suggests.
+        **Whether to change `input_dropout` is still open and is Selin's**; what is settled is the size
+        of the asymmetry it was to be judged on.
   - [ ] **C · The evidence that closed model-side tuning is void — decide the minimal re-derivation.**
         `ablations_and_rescue.ipynb` early-stopped on the fold it scored, on retired `auc_z`, over the
         five drugs of the discredited gate, and cannot be re-run.
@@ -721,6 +730,15 @@ every one of them was a step that looked settled and had never been checked.
         the honest ordering may be ridge above it. **Scope agreed (Selin, 12.08.2026): the minimal
         re-run** — trunk `(128,64)` vs a bare linear head, both representations, against `RidgeCV` on the
         same folds and the rebuilt panel; not the four-knob sweep. Scheduled at R4.
+        ✅ **DONE 13.08.2026 — this is exactly `4a` §C.** `panel_arch_summary.csv` carries trunk
+        `(128,64)` against a bare linear head, both representations, three seeds, five folds, with
+        `RidgeCV` on the same folds in its own column. The honest ordering the item anticipated is
+        confirmed: **ridge is above both per-cell PCA arms** (−0.0158 linear, −0.0337 trunk), and
+        clears neither. Written up in
+        [Step 05](./steps/05-multitask-results.md#c--capacity-does-not-carry-it).
+        ⚠️ Read it with [Step 05 §*Why training peaks so early*](./steps/05-multitask-results.md):
+        the two arms are not optimised comparably, so a capacity effect and a scale effect cannot be
+        separated in that design.
   - [ ] **Found on the way, routed elsewhere — NARROWED 13.08.2026 (Gate 1 sweep).** It read
         *"`--epochs` defaults to 50 in the CLI, 25 in `TrainConfig` **and `4a_percell_training`**, and
         `4a_percell_training` §B sets 50"*. The notebook half is no longer true: `4a` sets
@@ -1513,6 +1531,13 @@ open above, so the review closes on what the review can decide — and so it is 
 that can be picked up early.
 
 - [ ] **4A · The ~78× input-scale asymmetry between the two arms, under one shared learning rate.**
+      ✅ **RE-MEASURED 14.08.2026: it is 104×, not 78×** (median per-dimension sd 1.1062 against
+      0.0107, `notebooks/outputs/diagnostics/input_scale.csv`) — larger after gene scaling entered the
+      PCA path, not smaller. ⚠️ **And the second half — does it matter — now has evidence rather than
+      a test:** `best_epoch` crosses over with capacity (trunk 1 vs 8, linear 12 vs 2) and label supply
+      is excluded as the cause (opposite-signed correlations per representation). Recorded as
+      `docs/OPEN_DECISIONS.md` §6 with three options and their costs, because choosing between
+      standardising the inputs, per-arm learning rates, or reporting the confound is Selin's.
       Moved out of review item 4 on 10.08.2026. It qualifies every PCA-vs-scGPT claim made so far: if one
       arm reaches the optimizer with values ~78× larger than the other, one learning rate is not one
       setting, and an arm can look worse for a reason that has nothing to do with the representation.
