@@ -48,8 +48,14 @@ A standalone LaTeX write-up of the current state lives in [`../report/`](../repo
 > 8-drug panel. It is deliberately **not** rebuilt from the retired `auc` h5ad still on disk — a
 > figure reproducible only from a target the pipeline no longer writes is not reproducible by a
 > standard run. The same applies to `model_architecture.png`, `loss_02_weights.png` and
-> `loss_03_effect.png`. All four return at R4; `make_figures.py` skips each with a printed reason
-> until then.
+> `loss_03_effect.png`.
+> ✅ **Updated 14.08.2026 — R4 has run and two of the four are back.** `loss_02_weights.png` and
+> `loss_03_effect.png` now build, the latter after `panel_corr()` was repointed off the void 8-drug
+> archive onto `outputs/panel/`. `pipeline.png` and `model_architecture.png` **still skip**, and the
+> reason has changed: their `EXAMPLE_PRED` vector is eight predictions from the void panel, so the
+> drawing would label each bar with another compound's name. Out-of-fold predictions for the rebuilt
+> panel now exist, so this is repairable — but refreshing that vector changes what the figure shows
+> and is Selin's.
 
 What the pipeline does, stage by stage — the sparse (cell line × drug) response matrix, the drug panel
 funnel, the cell-line-grouped folds, the two representations that are compared, the per-cell MLP,
@@ -62,7 +68,9 @@ the weighted loss, and the out-of-fold scoring — is in
 Green = done / on-plan · amber = addition beyond plan · grey = results withdrawn · red (dashed) = still
 missing. Stages 1–3 are complete; **stages 4 and 5 have had every model result withdrawn** (12.08.2026 —
 the target was replaced, the panel rebuilt, and the representations predate the preprocessing
-corrections), and they are re-measured at R4. The red boxes — cross-database PRISM/GDSC heads and the
+corrections). ✅ **Re-measured 13.–14.08.2026**: stage 5's results are current and live in
+[Step 05](./steps/05-multitask-results.md); stage 4 (single-task) remains withdrawn and was not
+re-run. The red boxes — cross-database PRISM/GDSC heads and the
 XAI stretch goal — are the unstarted work. This figure is a pure drawing and carries no data, so it was
 corrected and re-rendered on 12.08.2026 without touching a frozen artifact.
 
@@ -88,7 +96,9 @@ The first three read `figure_data.npz`, rebuilt from the **`auc_cc`** targets h5
 been written, because preprocessing has not re-run under the [freeze](TODO.md). They are deliberately
 **not** built from the retired `auc` h5ad still on disk: a figure reproducible only from a target the
 pipeline no longer writes is not reproducible by a standard run. `uv run docs/make_figures.py` builds
-the two current figures and skips these four with a printed reason; every skip clears by itself at R4.
+the current figures and prints a reason for each skip. ⚠️ **As of 14.08.2026 two of the four are
+back** (`loss_02_weights`, `loss_03_effect`); the two that still skip need their example prediction
+vector refreshed off the void panel, which is a change to what the figure shows.
 The drug panel is read from `notebooks/outputs/panel/panel.csv` rather than duplicated in
 `make_figures.py`, which is how the old 8-drug copy went stale.
 
@@ -246,8 +256,13 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 
 ## Current status — plan vs. reality
 
-> ⚠️ **Every verdict in this table rests on measurements withdrawn on 12.08.2026** and is pending
-> re-measurement. The target was replaced, the drug panel rebuilt, and the representations on disk
+> ✅ **Updated 14.08.2026.** This read *"every verdict in this table rests on measurements withdrawn
+> on 12.08.2026 and is pending re-measurement"*. The re-measurement has happened for the multi-task
+> stage: [Step 05](./steps/05-multitask-results.md) carries current, banner-exempt results for **Q0,
+> Q1 and Q2**. What is still withdrawn is the **single-task** stage, which was not re-run. Read a ✅
+> below as *"the finding on the pipeline as it then stood"* unless Step 05 restates it.
+>
+> ⚠️ The original wording is kept here because it explains why several rows carry no number at all: The target was replaced, the drug panel rebuilt, and the representations on disk
 > predate the preprocessing corrections, so a ✅ here means *"this was the finding on the pipeline as it
 > then stood"*, not *"this currently holds"*. The report withdrew the corresponding numbers rather than
 > caveating them (`report/sections/04_results.tex`); the verdicts are kept because a scorecard that

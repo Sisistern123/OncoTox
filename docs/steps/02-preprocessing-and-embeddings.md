@@ -525,6 +525,10 @@ Three reasons, in descending order of weight.
 > 3 below do not depend on it and are unaffected — they are properties of the input length and the
 > vocabulary, not of any training run. **HVG-5000 therefore rests on those two reasons alone until §9
 > re-runs at R4**, and whether the flat result reproduces on `auc_cc` is open.
+> ✅ **Answered 13.–14.08.2026: it reproduces.** The sweep re-ran on all five re-embedded variants;
+> `X_pca` moves 5.8 heads-beating-baseline out of 534 across the whole gene-set range against a
+> fold sd of 27.2 — flat within error
+> ([Step 05](05-multitask-results.md#the-gene-set-sweep-on-live-numbers--and-it-puts-scgpt-ahead-at-every-gene-set-size)).
 
 The sweep itself — 1k/2k/3k/5k **and** `all_genes` through the same 5-fold GroupKFold over all 545 drugs
 (`notebooks/analysis/qc/verify_variants.ipynb` §9, first run 28.06.2026) — is the right experiment and is

@@ -218,7 +218,7 @@ which `4a_percell_training` drives. `train_multitask.cv_evaluate` (the CV behind
 an offset the panel run did not, and the two were never the same experiment. Both now take
 `init_head_bias=True` by default. The record, including what the superseded flag actually did:
 [Corrections](corrections-and-dead-ends.md#the-two-uncentred-target-mechanics-ran-in-one-training-path-of-three).
-**Takes effect at R4.**
+**Takes effect at R4.** ✅ **R4 ran on 13.08.2026; this is in force.**
 
 ### Per-drug Spearman is affine-invariant — and what that implies
 
@@ -494,7 +494,7 @@ labels define the baseline they are scored against. `scripts/evaluation/dreval_n
 requires the column and refuses to run without it.
 
 ⚠️ The committed `panel_oof_predictions.csv` predates this and has no `fold` column, so that script
-correctly raises on it. It becomes runnable when `4a_percell_training.ipynb` re-runs at R4 of the sweep.
+correctly raises on it. ✅ **`4a_percell_training.ipynb` re-ran on 13.08.2026, so it is runnable and has run.**
 
 ---
 
@@ -700,3 +700,5 @@ bounds, and the PCA row — where the two are *equal* — can go negative once t
 would say the per-cell model is beaten by a ridge on 153 line-mean vectors, a different claim from the
 one written above. **The decision on the row that matters is recorded in [TODO](../TODO.md) item 8C:
 re-derive trunk vs bare linear head, both representations, against ridge on the same folds, at R4.**
+✅ **Done 13.08.2026 — this is `4a` §C**; ridge sits above both per-cell PCA arms
+([Step 05](05-multitask-results.md#c--capacity-does-not-carry-it)).
