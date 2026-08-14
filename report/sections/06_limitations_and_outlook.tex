@@ -268,9 +268,19 @@ response rather than a weight over a pooled embedding --- readable at the level 
 at an expected cost in predictive accuracy, which is the trade taken because the question is one about
 readability. The success criterion is likewise no longer open: it is pre-registered as a synthetic
 positive control, a within-line spread condition, cross-seed reproducibility against a shuffled-cell
-control as the test, and a confound regression that can veto a pass. Only its recovery threshold is
-outstanding. Both are recorded in the project's stage-4b notebook and are stated here because a report
-that still promised attention maps would describe a model this project has decided not to build.}
+control as the test, and a confound regression that can veto a pass. Both are recorded in the
+project's stage-4b notebook and are stated here because a report that still promised attention maps
+would describe a model this project has decided not to build.}
+\revision{\emph{Correction, 14.08.2026.} This passage ended ``Only its recovery threshold is
+outstanding.'' Nothing is outstanding, on either reading of that phrase. The confound veto is fixed in
+the notebook as a \emph{comparison} rather than a constant --- the regression's adjusted coefficient
+of determination against the squared cross-seed correlation, both measured by the run --- and has been
+applied in code since the criterion was written; there is no threshold constant to set, and none by
+that name exists anywhere in the notebook. The other candidate reading, the recovered gap fraction, is
+described there as reported for information and gating nothing. The criterion has been evaluated in
+full: the veto does not fire for either representation. This sentence was the fifth record to state
+that a number was outstanding when none was, the other four having been corrected earlier the same
+day.}
 
 \textbf{Bulk pretraining in the manner of scDEAL} follows. The remaining levers are argued to be on the
 label side.
