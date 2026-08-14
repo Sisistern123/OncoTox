@@ -115,6 +115,22 @@ kept as a record in \code{docs/steps/corrections-and-dead-ends.md}. That MPS is 
 property of the backend and stands, but \emph{how large} the resulting band is has to be re-measured
 before any difference is called interpretable or uninterpretable against it.}
 
+\begin{revisionblock}
+\textbf{A related check cannot be reproduced (added 14.08.2026).} Every scGPT embedding used here was
+produced on the Metal backend, and the decision to move the embedding step onto it rests on a
+comparison against the same batch embedded on the processor, reported at the time as agreeing to
+single-precision noise. \textbf{The script that performed that comparison was never committed}, so
+neither the agreement nor the accompanying timings can be reproduced from anything in the repository.
+The timings are of no consequence --- no result reads them. The agreement is not of no consequence: it
+is the whole basis for treating embeddings produced on the two devices as interchangeable, and if it
+failed, every transcript-level number would carry a device term. Two committed facts bear on it
+without settling it, namely that the embeddings are normalized to unit length by the model itself,
+which bounds how far two of them can differ, and that the backend's \emph{non-determinism} is
+separately measured. Neither is a comparison between the two devices. Closing this costs minutes ---
+one seeded batch embedded on each --- and it is left open rather than closed here because this pass
+regenerates nothing; it is recorded so the claim is not read as verified.
+\end{revisionblock}
+
 A second asymmetry concerns how each representation is built, and it bears on the comparison itself. The
 principal components were fitted on the full expression matrix: gene selection, per-gene standardization
 and the rotation all used every cell, held-out lines included. The scGPT embedding has no step of that

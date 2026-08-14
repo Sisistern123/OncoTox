@@ -684,6 +684,35 @@ devices; scratchpad `mps_smoke2.py`, 03.08.2026):
 
 > ⚠️ The full-run figures are **extrapolated linearly from 256 cells** — no complete run has been timed.
 
+> ⛔ **LIMITATION — none of the numbers in this subsection is reproducible from a committed artifact
+> (found 14.08.2026).** `mps_smoke2.py` is a **scratchpad script that was never committed**: `git log
+> --all -- '*mps_smoke2.py'` is empty. So the timing table, the max absolute difference of 2.7 × 10⁻⁷
+> and the cosine similarity of 1.000000 all rest on a file that no longer exists. **This is the third
+> instance of that failure in this repository**, after `arch_facts.py` ([TODO](../TODO.md) item 8) and
+> `init_spread.py` — the latter now closed by committing the measurement as
+> `scripts/evaluation/init_spread.py`. The fourth, `scratchpad/learnability_validity.py`, was handled
+> correctly: its figures were **retracted** rather than kept
+> ([Corrections](corrections-and-dead-ends.md#the-learnability-filter-was-validated-against-the-ρ-the-model-achieved)).
+>
+> **Which half matters, because the two halves are not equal.** The **timings** are inert — no result
+> reads them; they justify a device choice and nothing else, and being wrong about them costs
+> wall-clock. The **agreement check is not inert**: it is the entire basis for the claim that switching
+> to MPS did not change what was embedded, and **every scGPT embedding in this project was produced on
+> MPS**. If CPU and MPS did *not* agree, every scGPT number would carry a device term.
+>
+> **What would have to be true for it not to matter:** that the two devices agree to float32 noise, as
+> the deleted script reported. Two committed things bear on it without establishing it — the embeddings
+> are L2-normalised by scGPT, which bounds how far apart two of them can drift, and MPS's
+> *non-determinism* is separately measured and banded in
+> [Step 05](05-multitask-results.md) — but neither is a CPU-vs-MPS comparison. **How you would know if
+> it were not:** re-embed one seeded batch on each device and compare, which is what the lost script
+> did.
+>
+> **Cost of closing it:** a few minutes — 256 cells, twice, in the scGPT venv, written as a committed
+> script beside `init_spread.py`. **Not done here:** this pass is consolidation only, and re-running an
+> embedding is a run. Recorded rather than quietly kept, because the numbers read as measurements and
+> are presented in a file that states only what currently holds.
+
 **`gen_embeds.py` now selects MPS and seeds itself** (03.08.2026): it sets
 `PYTORCH_ENABLE_MPS_FALLBACK=1` *before* the scgpt import — PyTorch reads that variable when the MPS
 backend registers its dispatch keys, i.e. at `torch` import time, so a later assignment is silently
