@@ -720,8 +720,14 @@ every one of them was a step that looked settled and had never been checked.
         **5.6×**; the PC1/PC512 *variance* ratio of 88× is exactly 9.4², which cross-checks the two
         artifacts against each other. So the perturbation IS heavier-tailed for PCA, by roughly a
         factor of two in dimension spread rather than the order of magnitude the phrasing suggests.
-        **Whether to change `input_dropout` is still open and is Selin's**; what is settled is the size
-        of the asymmetry it was to be judged on.
+        ✅ **TESTED 14.08.2026, and the asymmetry is confirmed and one-sided.** 60 fits, section C's
+        linear row at `input_dropout` 0.1 and 0.0, both representations
+        (`notebooks/outputs/diagnostics/input_dropout_test.csv`): the regularizer costs `X_pca`
+        **0.0138** and `X_scGPT` **0.0002**, widening the Q1 margin from **+0.0317 to +0.0457** when
+        switched off — **44 % of the margin as measured**. The shipped setting therefore UNDERSTATES
+        PCA's lead, so Q1's direction is not at risk while its magnitude is contingent on a setting
+        matched in value but not in effect. **Whether to change `input_dropout` is still open and is
+        Selin's**; the size of the asymmetry, and now its cost, are settled.
   - [ ] **C · The evidence that closed model-side tuning is void — decide the minimal re-derivation.**
         `ablations_and_rescue.ipynb` early-stopped on the fold it scored, on retired `auc_z`, over the
         five drugs of the discredited gate, and cannot be re-run.

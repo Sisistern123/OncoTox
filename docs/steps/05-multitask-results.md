@@ -494,6 +494,42 @@ each arm's own best architecture differs in how long it trains. The margins stan
 epoch **1** — barely past its initialisation, where the fit is numerically most fragile. Same
 signature the July record identified on the void panel.
 
+### Item 8B tested — the input regularizer is not matched in effect, and it costs PCA alone
+
+**The concern (item 8B, 12.08.2026).** `input_dropout=0.1` zeroes each input coordinate
+independently. `X_scGPT`'s dimensions are entangled and comparable in magnitude, so the perturbation
+is uniformly small; `X_pca`'s are variance-ordered, so the same rate removes a heavier-tailed share.
+*"Matched trunk ⇒ fair comparison"* covers the trunk, not the input regularizer. **Never tested until
+now**, and it matters more than when it was written: `weight_decay = 0.0`, so **dropout is the only
+regularizer in the model**.
+
+**The test.** §C's linear row (α=0, `mse`, linear head, three seeds × five folds), both
+representations, at `input_dropout` 0.1 as shipped and 0.0 off. 60 fits.
+`scripts/evaluation/input_dropout_test.py` → `notebooks/outputs/diagnostics/input_dropout_test.csv`.
+
+| `input_dropout` | `X_pca` | `X_scGPT` | Q1 margin |
+|---|---|---|---|
+| 0.1 (shipped) | 0.2608 | 0.2291 | **+0.0317** |
+| 0.0 (off) | **0.2746** | 0.2289 | **+0.0457** |
+| effect of the regularizer | **−0.0138** | −0.0002 | −0.0140 |
+
+⛔ **The asymmetry is real and one-sided.** Input dropout costs `X_pca` **0.0138** and `X_scGPT`
+**nothing** — 0.0002, indistinguishable from zero. That is exactly the mechanism item 8B described,
+and it is measured rather than argued: PCA's variance-ordered dimensions make an independent 10 %
+coordinate dropout a heavier-tailed perturbation than it is for an entangled embedding.
+
+**What it means for Q1, and the direction is favourable.** The shipped setting **understates** PCA's
+lead. Switching the regularizer off widens the margin from +0.0317 to +0.0457 — the effect is
+**44 % of the margin as measured**. So:
+
+- Q1's **direction is not at risk**; removing the asymmetry strengthens it.
+- Q1's **magnitude is contingent** on a setting that is matched in value but not in effect. Any margin
+  quoted from this project carries that, and it should be quoted with the setting named.
+
+⚠️ **What this does not settle.** Whether `input_dropout` should be 0.1, 0.0, or per-arm is an
+analysis decision and is not taken here — turning it off also removes a regularizer the model was
+tuned with, and this test changed one thing at a time deliberately. Recorded for Selin.
+
 ### Why `X_scGPT` scores lower — geometry, not training (14.08.2026)
 
 **The short answer: the label is defined per cell line, and the two representations differ in how
