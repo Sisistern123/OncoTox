@@ -54,6 +54,9 @@
                                    % A training-set size: no uncertainty reported here is taken
                                    % over it, which is why it is not the effective sample size.
                                    % Defined for precision; not currently cited in prose.
+\newcommand{\NPca}{512}           % principal components kept, and scGPT's embedding width.
+                                   % 512 was chosen to MATCH scGPT so the comparison is at equal
+                                   % width; it is not a statement about the data (TODO item 4A).
 \newcommand{\NHvg}{5{,}000}        % highly variable genes (hvg5000 variant)
 \newcommand{\NVocab}{4{,}765}      % of those, in scGPT's vocabulary AFTER the symbol repair --
                                    % i.e. what scGPT actually embeds. 4,576 until 14.08.2026, a

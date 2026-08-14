@@ -34,3 +34,107 @@ But a conclusion that has not been re-measured on the corrected pipeline is a hy
 re-measurement will show, and presenting it as a result is the error this project has already made twice.
 The regeneration is a single pass over the whole pipeline, described in Section~\ref{sec:limitations};
 this section is written once from its output.
+
+\revision{\textbf{Written from the regenerated pipeline, 14.08.2026.} The pass described above has
+run. Every figure below is read from a committed artifact under \code{notebooks/outputs/}, produced by
+the notebook and section named beside it; none is quoted from an earlier run. The withdrawal note is
+kept above rather than deleted, because what was withdrawn and why is part of the record.}
+
+\subsection{Does a transcript-level embedding beat the standard reduction?}
+\label{sec:results-q1}
+
+Both arms are \NPca-dimensional, so the comparison is at matched width. Scoring is per drug over
+held-out cell lines and then averaged over the eleven panel compounds, aggregated to the cell line and
+pooled across folds; the convention is fixed in Section~\ref{sec:data} and the alternatives are
+reported below.
+
+\paragraph{The principal-component arm leads, and the margin depends on what is being asked.}
+With a per-cell objective, \code{X\_pca} leads \code{X\_scGPT} by $+0.0317$ with a linear head and
+$+0.0383$ with a $(128,64)$ trunk, each outside the wider of the two seed bands
+(\code{panel\_arch\_summary.csv}, \code{4a}~\S C). Capacity therefore moves both arms together and
+leaves the ordering intact. Head count does not disturb it either: a 534-head model scored on the same
+eleven compounds gives $+0.0479$ (linear) and $+0.0252$ (trunk).
+
+\paragraph{The scoring set moves the answer further than either architectural axis.}
+The same 534-head model scored on all 534 compounds gives $+0.0231$ with a linear head and
+$-0.0077$ with a trunk --- inside the seed band, with the sign reversed
+(\code{panel\_heads\_summary.csv}, \code{4a}~\S D). The panel and the full catalogue disagree about
+which compounds are measured, not about the model.
+
+\paragraph{The objective is the largest single axis.}
+At $\alpha=0.5$ with squared error, the margin is $+0.0827$ under the per-cell objective and
+$+0.0265$ under the bag objective, so $68.0\,\%$ of it does not survive the change
+(\code{panel\_metrics.csv}, \code{5\_evaluation}~\S1.8). The transcript-level arm \emph{gains} under
+multiple-instance learning while the principal-component arm loses.
+
+\paragraph{The lead is not an artefact of how few labels there are.}
+Thinning the label supply inside each fold while holding the input, the architecture and the loss
+fixed, the margin runs $+0.0036$ at 25 labelled lines and $+0.0090$ at 50 --- inside the seed band in
+both cases, so the arms are indistinguishable there --- then $+0.0505$ at 75 and $+0.0317$ at the full
+budget (\code{panel\_curve\_summary.csv}, \code{4a}~\S E). A small-data account predicts a margin that
+\emph{shrinks} as labels are added; it grows.
+
+\paragraph{Everything sits near the per-drug null.}
+Across all 534 compounds the improvement over a per-drug constant runs $+0.00017$ to $+0.00043$, and
+for the linear principal-component arm it is $-0.00005$, worse than the constant
+(\code{panel\_heads\_summary.csv}). A ridge regression on cell-line-mean embeddings scores $0.2767$
+against $0.2608$ for the best per-cell principal-component arm, and on an external protocol a per-drug
+random forest matches the multi-task model to $0.0003$
+(\code{panel\_arch\_summary.csv}; \code{dreval\_lco\_results.csv}). \textbf{On both an internal and an
+external comparison, the multi-task architecture has not been shown to buy anything measurable over a
+simple per-drug model.}
+
+\subsection{Does a model trained on single cells learn heterogeneity implicitly?}
+\label{sec:results-q2}
+
+No per-cell labels exist: one response value per (cell line, compound) is broadcast onto every cell of
+that line, so any within-line structure in the predictions is imposed by the model rather than shown to
+it. The instrument is a staged set of nulls and comparisons
+(\code{4b}, \code{q2\_verdict.csv}), run over three seeds on both representations.
+
+Predicted within-line spread exceeds the per-cell model's on $100\,\%$ (\code{X\_pca}) and
+$82.3\,\%$ (\code{X\_scGPT}) of (compound, line) pairs on all three seeds, and that structure
+reproduces across seeds with median $\rho$ of $0.256$ and $0.861$. On the criterion as specified this
+is positive for both arms.
+
+\paragraph{The positive is weak, and the positive control is why.}
+Stage 7 asks whether the instrument can detect a between-line difference it already knows is present.
+The median within-bag AUROC is $0.518$ and $0.537$ against a $0.5$ null, with fewer than half of pairs
+reaching significance, and the distribution is close to uniform
+(Figure~\ref{fig:q2instrument}). For the principal-component arm, technical covariates explain
+$82\,\%$ as much variance as the signal reproduces across seeds. The structure is not noise; it is not
+established to be biological. Whether the variation is genuine \emph{drug-response} heterogeneity, and
+whether it predicts which cells survive, are not addressed and cannot be with this data.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{q2_instrument.png}
+\caption{Q2's instrument. \textbf{Left:} cross-seed Spearman correlation of per-cell predictions,
+one point per (compound, cell line, seed pair); the dashed line is zero. \textbf{Right:} the positive
+control --- within-bag AUROC on a between-line difference known to be present, one point per
+(compound, line pair, seed); the dashed line is chance. The right panel is close to uniform, so the
+instrument is not merely weak on average. Read from \code{stage2\_cross\_seed\_agreement.csv} and
+\code{stage7\_positive\_control.csv}.}
+\label{fig:q2instrument}
+\end{figure}
+
+\subsection{What the comparison cannot settle}
+\label{sec:results-limits}
+
+\paragraph{The loss comparison is unresolved.}
+Under the pre-registered decision rule, no arm of the six-arm sweep displaces the
+unweighted absolute-error arm: all thirteen challengers fail a guard. The arm with the highest rank
+correlation in the sweep ($0.2824$) is among them, failing on calibration and absolute error --- rank
+bought at the cost of both is not declared better. The comparison is additionally not robust to two
+things that ought not to matter: the scoring convention changes which arm ranks first, and one
+configuration ($\alpha=0$ with squared error on \code{X\_pca}) does not reproduce across identical
+runs, spanning $0.2450$--$0.2541$ over eight executions while twelve of fourteen arms are identical to
+six decimals (\code{panel\_execution\_band.csv}).
+
+\paragraph{The two arms are not optimised comparably.}
+\code{X\_pca} reaches the optimizer at $104\times$ the magnitude of \code{X\_scGPT} under one shared
+learning rate (\code{input\_scale.csv}). Training peaks accordingly and inconsistently: with a trunk
+the principal-component arm peaks at epoch~1 and the transcript-level arm at~8, and with a linear head
+the ordering reverses. Label supply is excluded as the cause, since it moves the peak in opposite
+directions for the two arms. This is an optimisation artefact rather than a property of either
+representation, and it is the strongest remaining threat to the comparison in this section.
