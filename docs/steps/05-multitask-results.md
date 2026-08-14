@@ -578,13 +578,39 @@ Four measured reasons, none of which is the choice of representation.
 broadcast to every cell of that line. The 34k-cell training set contains ~104 independent labelled
 examples per fold.
 
-**2 · The labels disagree with themselves.** `notebooks/outputs/archive/replicate_variation.csv`:
-**2,637** (cell line, drug) pairs were screened twice in CTRPv2. The median disagreement is
-**0.487** of that drug's standard deviation across cell lines, and **27.3 %** of pairs differ by more
-than a full standard deviation. A model cannot correlate with a target better than the target
-correlates with itself. ⚠️ **Measured on the retired `auc` source and due for re-derivation** — the
-magnitude will move, the phenomenon will not, since it is a property of the assay rather than of the
-transform.
+**2 · Label noise — plausible as a ceiling, but ⛔ NOT currently measured.** This needs stating
+carefully, because the obvious number does not mean what it looks like.
+
+`notebooks/outputs/archive/replicate_variation.csv` records **2,637** (cell line, drug) pairs screened
+twice, with a median disagreement of **0.487** of that drug's across-line standard deviation and
+**27.3 %** differing by more than a full standard deviation. Two things disqualify it as a ceiling for
+the numbers on this page.
+
+**(a) It is not the panel.** Those 2,637 pairs are **6 cell lines × 534 compounds** — the whole
+catalogue, not the eleven the panel trains on. Only **62 pairs (2.4 %)** involve a panel drug, and on
+those the disagreement is *smaller*: median **0.417**, with **16.1 %** beyond one standard deviation.
+Quoting the catalogue-wide figure against a panel result overstates the noise by roughly a fifth.
+
+**(b) The current pipeline has no such pair to disagree.** That analysis was run on **CTRPv2's own
+2015 distribution**, retired 11.08.2026, where two separate experiments each produced a number and the
+pipeline averaged them. The live target does **not** average: DrEval re-fit every curve with
+CurveCurator, *"including replicate variability in the fit rather than averaging replicates before
+fitting"*, precisely because averaging *"leads to inaccurate or misleading drug response measures in
+the case of large discrepancies between replicates"*
+(`scripts/preprocessing/ctrp_to_h5ad.py`, module docstring, citing DrEval Methods). After
+`_deduplicate_measurements` drops exact duplicate **rows** — table-level repetition in the published
+file, not repeat measurements — there is exactly **one** CurveCurator fit per (cell line, drug).
+
+**So on the live target the replicate disagreement is not observable at all**, because it has been
+absorbed into the curve fit rather than left as two numbers. Assay noise certainly still exists and
+almost certainly still caps performance; **this project does not currently measure it**, and the
+0.487 figure must not be quoted as if it did.
+
+⚠️ **Correction, 14.08.2026.** An earlier version of this entry said the magnitude would move but *"the
+phenomenon will not"*. That was too strong in two ways: the figure is catalogue-wide rather than
+panel-specific, and the quantity it measures no longer exists in the pipeline. **What would measure it
+on the live target:** CurveCurator's own per-curve fit uncertainty, or re-deriving replicate
+disagreement from the raw dose-response data before the fit. Neither has been done.
 
 **3 · Against the per-drug null the margin is near zero on the full catalogue.** Over all 534 drugs,
 `vs_null` runs **+0.00017 to +0.00043**, and is **−0.00005** for linear/`X_pca` — worse than a

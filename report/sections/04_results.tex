@@ -116,13 +116,18 @@ approximately invariant to a uniform rescaling of its input.
 \paragraph{Why no arm scores well in absolute terms.}
 Four measured reasons, none of which is the choice of representation. First, the effective sample is
 \NLinesCV{} cell lines rather than \NCells{} cells: one label per (cell line, compound) is broadcast to
-every cell of that line, so each fold fits on roughly a hundred independent labelled examples. Second,
-the labels disagree with themselves --- \NRepPairs{} (cell line, compound) pairs were screened twice in
-CTRPv2, with a median disagreement of \RepDiffMed{} standard deviations of that compound's spread
-across cell lines and \RepDiffPct\,\% differing by more than a full standard deviation, so a model
-cannot correlate with the target better than the target correlates with itself.\footnote{Measured on
-the response source retired on 11.08.2026; the magnitude is due for re-derivation, but replicate
-disagreement is a property of the assay rather than of the transform applied to it.} Third, over the
+every cell of that line, so each fold fits on roughly a hundred independent labelled examples. Second, assay
+noise plausibly imposes a further ceiling, though it is \emph{not} quantified on the present target and
+is stated here as a hypothesis rather than a measurement.\footnote{An earlier analysis of
+\NRepPairs{} doubly screened (cell line, compound) pairs reported a median disagreement of
+\RepDiffMed{} standard deviations. It does not transfer, for two reasons. It covers six cell lines
+across the full compound catalogue rather than the panel --- only 62 of those pairs involve a panel
+compound, where the disagreement is smaller --- and it was computed on the response source retired on
+11.08.2026, under which two experiments produced two numbers that the pipeline averaged. The present
+source re-fits every dose-response curve with CurveCurator, including replicate variability in the fit
+rather than averaging replicates beforehand, so there is one fit per (cell line, compound) and no pair
+remains to disagree. Measuring the ceiling on the current target would require CurveCurator's per-curve
+fit uncertainty, or re-deriving replicate disagreement from the raw dose-response data.} Third, over the
 full catalogue the improvement on a per-drug constant lies between $+0.00017$ and $+0.00043$, and is
 negative for one arm. Fourth, a ridge regression on cell-line-mean embeddings and a per-drug random
 forest each match or exceed the multi-task network. Taken together the first two identify the ceiling
