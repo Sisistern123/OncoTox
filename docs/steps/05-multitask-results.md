@@ -534,18 +534,34 @@ The objective axis is not a uniform shrinkage — the two arms move in **opposit
 So the margin's collapse from +0.0827 to +0.0265 is not PCA degrading alone; it is PCA losing *and*
 scGPT gaining, roughly equally.
 
-**A reading, marked as a reading, and it follows from the input geometry.** `X_scGPT` carries more of
-its variance *within* cell lines than `X_pca` does — within-line share **0.4613** against **0.4158**
-(`stage0_input_ceiling.csv`). Under a per-cell objective every one of a line's ~300 cells is asked to
-predict that line's single label, so within-line variation is, for this task, noise the model must
-absorb. `X_scGPT` has more of it, and pooling cells into a bag before the loss removes exactly that:
-the bag objective spends no capacity fitting variation the label cannot distinguish. `X_pca` has less
-such variation to remove and more between-line signal already resolved per cell, so pooling costs it
-detail it was using and buys it little.
+**⛔ A reading was offered here and its own predicted test REFUTED it (14.08.2026).**
 
-⚠️ **What would test it** rather than leave it a reading: score both arms per-cell and per-bag on the
-*same* predictions split by within-line variance quartile — if the account is right, the bag objective's
-advantage should grow with within-line share. Not run.
+The reading was: `X_scGPT` carries more variance *within* cell lines (**0.4613** against **0.4158**,
+`stage0_input_ceiling.csv`); under a per-cell objective that variation is noise, since every cell of a
+line is asked to predict one label; so pooling into a bag removes exactly what `X_scGPT` has more of.
+Its prediction was stated at the time: **the bag advantage should be larger where within-line spread
+is larger.**
+
+Tested by splitting each drug's held-out lines at the median of their within-line prediction spread
+(`scripts/evaluation/`, → `notebooks/outputs/diagnostics/mil_by_within_line_spread.csv`):
+
+| | bag − per-cell, low-spread half | high-spread half | change |
+|---|---|---|---|
+| `X_pca` | +0.0001 | **−0.0316** | −0.0317 |
+| `X_scGPT` | +0.0595 | **+0.0198** | −0.0397 |
+
+**The advantage shrinks with within-line spread, for both arms.** That is the opposite of the
+prediction, so the mechanism is wrong.
+
+**What survives, and it is only the fact.** The bag objective does help `X_scGPT` (positive in both
+halves) and does hurt `X_pca` where spread is high. **Why remains unexplained.**
+
+⚠️ **One observation from the same table, offered as an observation and not a mechanism:** the
+per-cell model scores *better* where predicted within-line spread is higher (`X_pca` 0.2616 → 0.2967;
+`X_scGPT` 0.1840 → 0.1991). So high predicted spread marks lines the per-cell model already handles
+well, leaving the bag objective less to add. Whether that is cause, consequence or coincidence is
+**not established** — and note the splitting variable is the per-cell model's *own output*, not an
+input property, which is a weakness of this test design rather than of the result.
 
 ⚠️ **And it qualifies "PCA beats scGPT" once more.** The two arms are closest under the objective that
 matches the label's granularity — one value per cell line. The per-cell objective, which is where the
