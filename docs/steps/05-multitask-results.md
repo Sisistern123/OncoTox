@@ -1,7 +1,7 @@
-# Step 05 — Multi-task masked loss (545 CTRPv2 drugs) & run versioning
+# Step 05 — Multi-task masked loss (the full CTRPv2 catalogue) & run versioning
 
 *Part of [OncoTox project progress](../project_progress.md). Covers: the multi-task masked-loss
-model over all 545 CTRPv2 drugs, its results vs. the per-drug-mean baseline, and the run-versioning
+model over the full CTRPv2 drug catalogue, its results vs. the per-drug-mean baseline, and the run-versioning
 ledger that records every training run.*
 
 > # ⛔ 13.08.2026 — NO NUMBER ON THIS PAGE IS CURRENTLY SUPPORTED
@@ -787,7 +787,9 @@ measured"* because the live target folds replicate variability into one fit. Tha
 *disagreement* and **false about label quality in general**: CurveCurator writes per-curve fit-quality
 columns into the response table (`R2`, `RMSE`, `pValue`, `conc_pts_fit`) and **nothing in this project
 had read them.** `scripts/evaluation/label_quality.py` now does, on the exact 1,971 curves behind this
-project's labels (11 panel drugs × 180 trainable lines) →
+project's labels (11 panel drugs over the 181 trainable lines of `splits/split_ctrp.csv`, which is what
+`label_quality.py` filters on; they are **curves**, not (line, drug) pairs, so a drug repeat-screened on
+some lines contributes more than one) →
 `notebooks/outputs/diagnostics/label_quality_vs_performance.csv`.
 
 **How good are the labels?** Median `R2` is **0.867**, so most curves fit well. But the tail is not
@@ -1221,7 +1223,7 @@ covers all 180 lines** — max 179, median 171 — **382 drugs clear 90 %** cove
 > merged the newest `runs/*_all_drugs/per_drug_results.csv` **by modification time**. Of the 17 such runs,
 > 16 are on the void `auc` target and one on the retired `auc_z`, and the one that selection picked ran
 > **one epoch in four seconds** (`runs/20260713_141229_multitask_X_pca_all_drugs/run_meta.json`,
-> `05:12:29`→`05:12:33`). R4 re-runs §B of `4a_percell_training` and will produce a K=545 run on `auc_cc`,
+> `05:12:29`→`05:12:33`). R4 re-runs §B of `4a_percell_training` and will produce a full-catalogue run on `auc_cc`,
 > but the cells that turned such a run into this claim are archived, and archived notebooks are not
 > re-run — so **no rerun regenerates it**. Restoring the claim means restoring those cells.
 >

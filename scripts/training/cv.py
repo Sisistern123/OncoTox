@@ -307,8 +307,17 @@ def oof_predictions(
         would let held-out labels inform training. The weights are carried in the mask tensor, which
         turns the masked mean into a weighted one without touching the loss code.
     :param init_head_bias: initialize each head's bias to that drug's mean over the fold's *fitting*
-        lines, so the model starts at the null predictor. Necessary on an uncentred target such as
-        raw AUC, where the bias must reach ~0.7 from a default near 0; harmless on a centred one.
+        lines. Necessary on an uncentred target such as raw AUC, where the bias would otherwise have
+        to climb from ``nn.Linear``'s default near 0 to its drug's mean -- ``auc_cc`` sits near 0.9,
+        and the mean is **per drug**, running 0.58 to 0.99 across the panel, which is why this is one
+        value per head and not a single offset. Harmless on a centred target.
+
+        ⚠️ Two corrections, 14.08.2026. This said the model then "starts at the null predictor",
+        contradicting :func:`OncoMLP.init_head_bias_`'s own warning: it starts near the null's
+        *level* only, since the head's weight rows are still randomly initialized and the predictions
+        already scatter at initialization. And it said the bias must reach **~0.7**, a leftover from
+        the retired winsorized ``auc``; the same stale number was corrected on
+        ``model_architecture.png`` the same day.
     :param pca_seed: the seed for the per-fold PCA fit, held **separate from the model seed**. They
         were the same value until 13.08.2026, which made "seed" mean two different things here and in
         :func:`mil.bag_oof_predictions`: a run over three model seeds also refitted the PCA three

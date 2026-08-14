@@ -32,7 +32,7 @@ A standalone LaTeX write-up of the current state lives in [`../report/`](../repo
 > [Corrections](./steps/corrections-and-dead-ends.md) rather than deleted.
 >
 > **Scope reality check, which has not changed.** Everything trained so far is **one database, one
-> response score** (CTRPv2). The 545-head "multi-task" run is multi-**drug**, *not* multi-database or
+> response score** (CTRPv2). The full-catalogue "multi-task" run is multi-**drug**, *not* multi-database or
 > multi-metric. The goal of combining CTRPv2 + PRISM + GDSC across efficacy *and* toxicity is
 > [Step 06 · A](./steps/06-planned-work.md#a-cross-database-integration), and the reusable foundation model
 > is [Step 06 · C](./steps/06-planned-work.md#c-foundation-model-and-clinical-fine-tuning). Neither has
@@ -49,13 +49,17 @@ A standalone LaTeX write-up of the current state lives in [`../report/`](../repo
 > figure reproducible only from a target the pipeline no longer writes is not reproducible by a
 > standard run. The same applies to `model_architecture.png`, `loss_02_weights.png` and
 > `loss_03_effect.png`.
-> ✅ **Updated 14.08.2026 — R4 has run and two of the four are back.** `loss_02_weights.png` and
-> `loss_03_effect.png` now build, the latter after `panel_corr()` was repointed off the void 8-drug
-> archive onto `outputs/panel/`. `pipeline.png` and `model_architecture.png` **still skip**, and the
-> reason has changed: their `EXAMPLE_PRED` vector is eight predictions from the void panel, so the
-> drawing would label each bar with another compound's name. Out-of-fold predictions for the rebuilt
-> panel now exist, so this is repairable — but refreshing that vector changes what the figure shows
-> and is Selin's.
+> ✅ **Updated 14.08.2026 — R4 has run and all four are back.** `loss_02_weights.png` and
+> `loss_03_effect.png` build once the cache was rebuilt on `auc_cc`, the latter after `panel_corr()`
+> was repointed off the void 8-drug archive onto `outputs/panel/`. `pipeline.png` and
+> `model_architecture.png` build too, once Selin settled the example arm and
+> `_example_predictions()` began deriving the vector from `panel_oof_predictions.csv`.
+> *(An earlier version of this note, written the same morning, said those two **still skip** and that
+> refreshing the vector was Selin's call. Both were true when written; she made the call that
+> afternoon.)* What the repair found and fixed, including a hardcoded head count that had been
+> dropping three panel drugs from the drawing, is owned by
+> [`docs/figures/archive/README.md`](./figures/archive/README.md) and the audit block in
+> `docs/make_figures.py`.
 
 What the pipeline does, stage by stage — the sparse (cell line × drug) response matrix, the drug panel
 funnel, the cell-line-grouped folds, the two representations that are compared, the per-cell MLP,
@@ -83,22 +87,28 @@ corrected and re-rendered on 12.08.2026 without touching a frozen artifact.
 | `figures/pipeline_overview.png` | status against the written plan | this file |
 | `figures/loss_01_objective.png` | what the objective is made of | working report §4 |
 
-**[Archived](./figures/archive/) 12.08.2026 — derived from data, and not reproducible today:**
+**Derived from data — archived 12.08.2026, and live again at `figures/` since 14.08.2026:**
 
-| figure | shows | why it is archived |
+| figure | shows | why it *was* archived |
 |---|---|---|
-| `figures/archive/pipeline.png` | the pipeline, stage by stage | needs the targets cache *and* the panel CSVs |
-| `figures/archive/model_architecture.png` | one cell in, one AUC per panel drug out | needs the targets cache |
-| `figures/archive/loss_02_weights.png` | one drug's label density and the weight curve it produces | needs the targets cache |
-| `figures/archive/loss_03_effect.png` | what the weighting did: spread up, ranking flat | needs a **training output**, so no h5ad can rebuild it |
+| `figures/pipeline.png` | the pipeline, stage by stage | needed the targets cache *and* the panel CSVs |
+| `figures/model_architecture.png` | one cell in, one AUC per panel drug out | needed the targets cache |
+| `figures/loss_02_weights.png` | one drug's label density and the weight curve it produces | needed the targets cache |
+| `figures/loss_03_effect.png` | what the weighting did: spread up, ranking flat | needed a **training output**, so no h5ad could rebuild it |
 
-The first three read `figure_data.npz`, rebuilt from the **`auc_cc`** targets h5ad — which has never
-been written, because preprocessing has not re-run under the [freeze](TODO.md). They are deliberately
-**not** built from the retired `auc` h5ad still on disk: a figure reproducible only from a target the
-pipeline no longer writes is not reproducible by a standard run. `uv run docs/make_figures.py` builds
-the current figures and prints a reason for each skip. ⚠️ **As of 14.08.2026 two of the four are
-back** (`loss_02_weights`, `loss_03_effect`); the two that still skip need their example prediction
-vector refreshed off the void panel, which is a change to what the figure shows.
+*(The copies under [`figures/archive/`](./figures/archive/) are the superseded void-panel renders and
+stay there. The third column is past tense on purpose: it is why they were archived, not a live
+status.)*
+
+✅ **All four are live again as of 14.08.2026, and this table is the record of why they were not.**
+The blocker was `figure_data.npz`, which had to come from the **`auc_cc`** targets h5ad that the
+freeze had prevented anything from writing; the 13.08 re-run wrote it, and the last two skips cleared
+when the example prediction vector was repointed onto `panel_oof_predictions.csv`. They are still
+deliberately **not** built from the retired `auc` h5ad on disk: a figure reproducible only from a
+target the pipeline no longer writes is not reproducible by a standard run, and that rule and the
+skip machinery both stay. `uv run docs/make_figures.py` builds the current figures and prints a reason
+for any skip. Status and history are owned by
+[`docs/figures/archive/README.md`](./figures/archive/README.md); this page does not restate them.
 The drug panel is read from `notebooks/outputs/panel/panel.csv` rather than duplicated in
 `make_figures.py`, which is how the old 8-drug copy went stale.
 
@@ -115,7 +125,7 @@ work, kept here so the entire project structure is visible end-to-end.
 | **[02 — Preprocessing & embeddings](./steps/02-preprocessing-and-embeddings.md)** | ✅ Done | AnnData build, scGPT embeddings, UMAP latent validation, HVG-5000, `all_genes` variant, on-disk layout, reproduce commands. |
 | **[03 — Model & training design](./steps/03-model-and-training-design.md)** | ✅ Done | Exact input/output/target/mask of a training example, MSE definition, **supervised** training paradigm. |
 | **[04 — Single-task results](./steps/04-single-task-results.md)** | ✅ Done | Paclitaxel baseline + data-leak fix. **1 database, 1 score, 1 drug.** |
-| **[05 — Multi-task results & versioning](./steps/05-multitask-results.md)** | ✅ Done | Masked-loss across 545 CTRPv2 drugs + run ledger. **Still 1 database, 1 score; multi-*drug* only.** The current **Q1** result — capacity, head count, label supply and objective — is [§Q1 on the rebuilt panel](./steps/05-multitask-results.md#q1-on-the-rebuilt-panel--what-carries-the-pca-lead-13082026); the current **Q2** result is [§Q2 on the rebuilt panel](./steps/05-multitask-results.md#q2-on-the-rebuilt-panel--does-a-per-cell-model-learn-heterogeneity-implicitly-14082026). Neither is covered by that page's void banner. |
+| **[05 — Multi-task results & versioning](./steps/05-multitask-results.md)** | ✅ Done | Masked-loss across 534 CTRPv2 drugs + run ledger. **Still 1 database, 1 score; multi-*drug* only.** The current **Q1** result — capacity, head count, label supply and objective — is [§Q1 on the rebuilt panel](./steps/05-multitask-results.md#q1-on-the-rebuilt-panel--what-carries-the-pca-lead-13082026); the current **Q2** result is [§Q2 on the rebuilt panel](./steps/05-multitask-results.md#q2-on-the-rebuilt-panel--does-a-per-cell-model-learn-heterogeneity-implicitly-14082026). Neither is covered by that page's void banner. |
 | **[06 — Cross-database integration](./steps/06-planned-work.md#a-cross-database-integration)** | ❌ Not started | **The "combine all" goal:** CTRPv2 + PRISM + GDSC, efficacy + toxicity, cross-database masked multi-task. |
 | **[07 — XAI / feature interpretability](./steps/06-planned-work.md#b-xai-and-feature-interpretability)** | ❌ Not started | Stretch goal: feature importance → transcriptomic drivers of resistance. |
 | **[08 — Foundation model & clinical fine-tuning](./steps/06-planned-work.md#c-foundation-model-and-clinical-fine-tuning)** | ❌ Not started | Overarching goal: reusable pan-cancer foundation model, fine-tunable on clinical (binary) outcomes. |
@@ -124,7 +134,7 @@ work, kept here so the entire project structure is visible end-to-end.
 
 ```
 Step 04   1 database · 1 score · 1 drug        (CTRPv2, paclitaxel)
-Step 05   1 database · 1 score · K=545 drugs   (CTRPv2, all drugs)              ← here now
+Step 05   1 database · 1 score · K=534 drugs   (CTRPv2, all drugs)              ← here now
 Step 06   3 databases · 2 metric types         (CTRPv2+PRISM+GDSC, efficacy+toxicity)
 Step 08   + clinical fine-tuning               (continuous pre-train → binary clinical head)
 ```
@@ -159,7 +169,7 @@ All eight runs share the cell-line-grouped split and a **matched trunk** `(128,6
 |---|---|
 | **Gene set** | `all_genes` (full transcriptome) · `hvg5000` (top-5,000 HVG from raw) |
 | **Representation** | `X_pca` (standard single-cell PCA baseline, **512-d** to match scGPT) · `X_scGPT` (512-d embedding) |
-| **Task** | single-task (paclitaxel) · multi-task (all drugs, K = 545) |
+| **Task** | single-task (paclitaxel) · multi-task (all drugs, K = 534) |
 
 **Genes per condition** — PCA uses the full filtered set, scGPT only its in-vocabulary subset. Counts
 per variant: [Step 02](./steps/02-preprocessing-and-embeddings.md#hvg-5000-pipeline-outputs).
@@ -304,14 +314,15 @@ matched to scGPT, removing the dimensionality confound — [Step 05](./steps/05-
 
 **Two things to flag clearly in the writeup:**
 
-1. **Multi-task today = 545 CTRPv2 drugs, not CTRPv2+PRISM+GDSC** — plan-Phase-3 half done
+1. **Multi-task today = 534 CTRPv2 drugs, not CTRPv2+PRISM+GDSC** — plan-Phase-3 half done
    (the real "combine all" is [Step 06](./steps/06-planned-work.md#a-cross-database-integration)).
-2. **Cell-line overlap: 190 vs 180** — 190 = name matches in CTRPv2's roster; 180 = lines with
-   actual post-QC measurements (10 listed-but-unscreened lines drop out). It's **data availability,
-   not normalization** (verified 14.06). Use 180 (the trainable set) — **181 after the next sweep**,
-   since the join audit found one screened line that name matching had been dropping
-   ([Step 01](./steps/01-datasets-and-harmonization.md#the-join-dropped-a-screened-cell-line-h292-10082026),
-   10.08.2026).
+2. **Cell-line overlap: 190 vs 181** — 190 = name matches in CTRPv2's roster; 181 = lines with
+   actual post-QC measurements (10 listed-but-unscreened lines drop out, and the `H292` alias
+   recovers one that name matching had been dropping). It's **data availability, not normalization**
+   (verified 14.06). Use 181 — the trainable set, and what `splits/split_ctrp.csv` now contains.
+   *(Read "190 vs 180 … 181 after the next sweep" until 14.08.2026; the sweep has since run.
+   The whole funnel is owned by
+   [Step 01](./steps/01-datasets-and-harmonization.md#the-join-dropped-a-screened-cell-line-h292-10082026).)*
 
 ---
 
@@ -389,6 +400,6 @@ weights (they estimate residual variance, mixing label noise with model error).
   exception is a superseded number, which lives only in [Corrections](./steps/corrections-and-dead-ends.md).
 - **Every claim names the code that produced it** — the script and function, or the notebook and section,
   plus the `outputs/` artifact a number was read from.
-- **The 190-vs-180 cell-line overlap** is resolved and written up where it belongs, in
+- **The 190-vs-181 cell-line overlap** is resolved and written up where it belongs, in
   [Step 01](./steps/01-datasets-and-harmonization.md) — with the roster-vs-screened distinction and the
   ten unscreened lines. It used to be restated here in full, which contradicted the two rules above.

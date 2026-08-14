@@ -79,8 +79,21 @@ class TrainConfig:
     # standard grouping -- HuggingFace transformers' `Trainer.create_optimizer`
     # (`no_decay = ["bias", "LayerNorm.weight"]`), inherited from the BERT reference
     # implementation -- and it is on by default because it is the convention, not because this
-    # target needs it. It happens to matter more than usual here: `auc_cc` is centred near 0.9,
-    # so each head bias must sit at its drug's mean and decay pulls it toward 0.
+    # target needs it.
+    #
+    # It WOULD matter more than usual here, if decay were ever switched on: `auc_cc` sits near 0.9
+    # and its centre differs by drug (per-drug means run 0.58-0.99 across the panel), each head bias
+    # is initialized to its own drug's mean by `OncoMLP.init_head_bias_`, and decay pulls exactly
+    # that toward 0. **Today it binds on nothing**, because `weight_decay` is 0.0 -- the decayed
+    # group is decayed by zero, so this grouping exempts the biases from nothing at all.
+    #
+    # Phrasing corrected 14.08.2026 (Selin), and it is the same defect that was fixed on
+    # `model_architecture.png` the same day: the old wording -- "It happens to matter more than
+    # usual here ... decay pulls it toward 0" -- stated an inert mechanism in the present tense, so
+    # it read as a live reason the grouping is on when the reason it is on is the line above. The
+    # grouping is kept so that enabling decay is one coefficient rather than a second decision about
+    # what to decay. Argued with citations in report/sections/03_methods.tex, §Representation and
+    # model.
     #
     # Replaced `exclude_output_from_decay` (12.08.2026), which exempted the whole output
     # `Linear` -- its weight matrix included -- and left the LayerNorm parameters and the hidden

@@ -189,12 +189,24 @@ Two mechanics follow from a target sitting near 0.9 rather than 0. Both are sile
 errors, the model simply trains against a handicap — so they are recorded with the code that causes them.
 
 1. **Weight decay is applied to the weight matrices, not to the biases and normalization parameters.**
-   `optim.Adam(..., weight_decay=1e-3)` decays **every** parameter it is given, head biases included,
-   and each head's bias must sit near its drug's mean. The grouping is the standard one —
+   An optimizer given a decay coefficient decays **every** parameter it is handed, head biases
+   included, and each head's bias must sit near its drug's mean. The grouping is the standard one —
    HuggingFace `transformers`' `Trainer.create_optimizer` (`no_decay = ["bias", "LayerNorm.weight"]`),
    inherited from the BERT reference implementation — and it is on because it is the convention, not
    because this target invented a need for it: `TrainConfig.no_decay_bias_and_norm`, default **on**,
    implemented in `training_utils._decay_param_groups`.
+   ⚠️ **Corrected 14.08.2026 (Selin) — and this is a register correction, not only a stale name.**
+   The sentence read *"`optim.Adam(..., weight_decay=1e-3)` decays every parameter it is given"*,
+   which contradicted [this same page](#model-architecture--regularization-oncomlppy-25052026) 330
+   lines below, where the 14.08 correction records that the optimizer is **`AdamW`** and
+   `weight_decay` is **0.0**. Worse than the stale name: with the coefficient at 0.0 the decayed
+   group is decayed by zero, so **this grouping currently exempts the biases from nothing** — the
+   bullet presented a live protection where there is an inert one. It is kept rather than deleted
+   because the condition is live: whether this model needs weight decay at all is
+   [open](../TODO.md), and the grouping means enabling it is one coefficient rather than a second
+   decision about what to decay. Argued with citations in `report/sections/03_methods.tex`,
+   §*Representation and model*. The identical wording was corrected the same day on
+   `model_architecture.png` (moved to that Methods section) and in `TrainConfig`'s own comment.
 2. **Head biases are initialized at the fitting-fold per-drug means** (`OncoMLP.init_head_bias_`), so
    the model does not spend its first epochs climbing from `nn.Linear`'s ±0.125 to ~0.9. Initializing a
    final layer at the base rate is standard for exactly this reason — Lin et al., *Focal Loss for Dense
@@ -478,8 +490,11 @@ After the fix, the *model* fit is a textbook grouped 5-fold CV — every line he
 checkpoint chosen on lines the scored fold does not contain. Four things around it are not, and are
 stated here so no reader has to infer them:
 
-1. **It covers 153 of the 180 labelled lines.** The 27 fixed `test` lines are outside CV entirely
-   (`eligible_splits=("train","val")`), and the 18 lines with no CTRPv2 label are outside everything.
+1. **It covers 153 of the 181 labelled lines.** The 28 fixed `test` lines are outside CV entirely
+   (`eligible_splits=("train","val")`), and the 17 lines with no CTRPv2 label are outside everything.
+   *(Read 153 of **180**, **27** test and **18** unlabelled until 14.08.2026. All three moved together
+   when the `H292` alias added a screened line: it enters `test`, and leaves the unlabelled set.
+   Verified against the committed `splits/split_ctrp.csv` — 181 rows, 126/27/28.)*
 2. **The folds are unshuffled and unseeded.** `GroupKFold` assigns whole lines greedily to balance
    *cell* counts, so the folds hold out 29/31/31/31/31 lines rather than equal numbers
    (`outputs/archive/panel_void_8drug/panel_training_folds.csv`). Deterministic, but not the shuffled `KFold` the phrase

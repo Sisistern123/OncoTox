@@ -433,7 +433,11 @@ is **180**, not the audit's 190 — and the reason is **data availability, not n
 > ([below](#the-join-dropped-a-screened-cell-line-h292-10082026)), giving the **181** it produces today.
 > **190 is only a name-match count and is never the trainable set.**
 >
-> ⚠️ Every committed artifact, and `\NLines` in `report/results_numbers.tex`, still rests on **180**.
+> ✅ **Discharged 14.08.2026.** `splits/split_ctrp.csv` is committed and holds **181** rows
+> (126 train / 27 val / 28 test), `\NLines` reads **181**, and `docs/make_figures.py` derives the
+> figure's count from that file rather than typing it. *(This read: "Every committed artifact, and
+> `\NLines` in `report/results_numbers.tex`, still rests on **180**" — true until the re-run
+> produced the split.)*
 > Code and artifacts agree again only after the [clean sweep](../TODO.md).
 
 ### The target moved to DrEval's reprocessed CTRPv2 (11.08.2026)

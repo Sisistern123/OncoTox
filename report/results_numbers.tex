@@ -66,7 +66,7 @@
 \newcommand{\NLinesCV}{153}        % cell lines inside the cross-validation: train+val, test
                                    % held out. 70+15% of \NLines. Stated as fact in
                                    % sections/03_methods.tex Evaluation, docs/steps/03
-                                   % ("covers 153 of the 180 labelled lines") and docs/steps/05.
+                                   % ("covers 153 of the 181 labelled lines") and docs/steps/05.
                                    % THIS is what the effective sample size means here
                                    % (Selin, 12.08.2026): 03_methods Evaluation names the 153
                                    % train+val lines and cites the effective sample size for the
@@ -131,10 +131,12 @@
 % What remains ABOVE is DATA, not results -- counts and provenance of the two
 % sources, which no model run produced. Four caveats on them, added/extended
 % 12.08.2026 by the docs-vs-code audit:
-%   * \NLines is 180 and becomes 181 at the sweep (the H292 alias recovers a
-%     screened cell line); it stays at 180 until an artifact supports 181.
-%     The line count is Selin's own open item as of 12.08.2026 -- this audit
-%     changed no line-count number here or in the sections.
+%   * CLOSED 14.08.2026. This read "\NLines is 180 and becomes 181 at the
+%     sweep (the H292 alias recovers a screened cell line); it stays at 180
+%     until an artifact supports 181." The sweep ran, the artifact exists --
+%     splits/split_ctrp.csv, committed, 181 rows, 126/27/28 -- and \NLines
+%     is 181. docs/make_figures.py derives the same count from that file, so
+%     the figure and the report cannot drift apart on it.
 %   * the replicate-disagreement macros were computed on CTRPv2's own 2015
 %     distribution, which is no longer the target source, so they are stale in
 %     the same way and are due for re-derivation.

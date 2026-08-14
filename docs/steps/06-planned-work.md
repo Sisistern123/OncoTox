@@ -30,9 +30,9 @@ run.
 |---|---|---|
 | **Database** | CTRPv2 only | CTRPv2 **+ PRISM + GDSC** |
 | **Response metric** | one CTRPv2 score | viability **+ LN_IC50 / AUC + toxicity** |
-| **What "multi-task" means** | multi-**drug** (545 heads, one metric) | multi-**database / multi-metric** heads |
+| **What "multi-task" means** | multi-**drug** (one head per compound, one metric) | multi-**database / multi-metric** heads |
 
-So the 545-head run in [Step 05](05-multitask-results.md) is multi-task across the drugs of a single
+So the full-catalogue run in [Step 05](05-multitask-results.md) is multi-task across the drugs of a single
 source. It validates the masked-loss machinery on intra-CTRPv2 sparsity and nothing more.
 
 **Planned approach.**
