@@ -35,8 +35,10 @@ commit that retired it. That is the step every instance above skipped.
 * Notebooks are read as **source cells only**. A retired value printed into a stored output is a
   record of a past run and is not flagged — which also means a stale number that exists *only*
   in an output is invisible here.
-* ``docs/final_presentation*.md`` and ``docs/progress_report_*.md`` are **not scanned**: they are
-  untracked by design and one is a dated historical record.
+* ``docs/final_presentation*`` and ``docs/progress_report_*`` are **not scanned**: they are untracked
+  by design and one is a dated historical record. Both are matched as **prefixes**, mirroring
+  ``.gitignore:56`` — a hardcoded filename list stopped covering the set once a fourth presentation
+  file appeared.
 * Numbers too generic to grep (``0.31``, ``0.7``) are deliberately absent — matching them would drown
   the check in false positives, which is how a check gets ignored.
 
@@ -114,8 +116,12 @@ SCAN_SUFFIXES = {".md", ".tex", ".py", ".ipynb"}
 SKIP_DIRS = {".git", ".venv", ".claude", "node_modules", ".ipynb_checkpoints", "__pycache__",
              "archive"}
 #: Untracked by design, or a dated historical record: not part of the live claim surface.
-SKIP_FILES = {"docs/final_presentation.md", "docs/final_presentation_slides.md",
-              "docs/final_presentation_supplement.md", "docs/gate5-rerun-report.md"}
+#: ⚠️ ``docs/final_presentation*`` is matched as a **prefix**, deliberately — it used to be three
+#: hardcoded filenames, and on 14.08.2026 a fourth was added (an archive of the superseded deck,
+#: full of retired one-seed numbers) that the hardcoded list would silently have started scanning.
+#: The prefix is exactly the ``.gitignore:56`` glob, so the two cannot drift apart.
+SKIP_FILES = {"docs/gate5-rerun-report.md"}
+SKIP_PREFIXES = ("docs/progress_report_", "docs/final_presentation")
 
 
 def _text_of(p: Path) -> str:
@@ -146,7 +152,7 @@ def _files(root: Path):
         if SKIP_DIRS & set(p.parts):
             continue
         rel = str(p.relative_to(root))
-        if rel in SKIP_FILES or rel.startswith("docs/progress_report_"):
+        if rel in SKIP_FILES or rel.startswith(SKIP_PREFIXES):
             continue
         yield rel, p
 
