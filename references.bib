@@ -362,3 +362,48 @@
   year    = {2022},
   doi     = {10.1038/s41467-022-34277-7}
 }
+
+@inproceedings{lin2017focal,
+  author    = {Lin, Tsung-Yi and Goyal, Priya and Girshick, Ross and He, Kaiming and
+               Doll{\'a}r, Piotr},
+  title     = {Focal Loss for Dense Object Detection},
+  booktitle = {Proceedings of the IEEE International Conference on Computer Vision (ICCV)},
+  pages     = {2980--2988},
+  year      = {2017},
+  doi       = {10.1109/ICCV.2017.324},
+  note      = {Section 4.1, ``prior'' initialization: the final layer's bias is set from the base
+               rate so that early training is not spent moving the output to the marginal level.
+               Cited here for that practice only --- it is done there for a class prior under a
+               classification loss, and the analogue used in this work is a per-drug regression
+               mean}
+}
+
+@inproceedings{loshchilov2019adamw,
+  author    = {Loshchilov, Ilya and Hutter, Frank},
+  title     = {Decoupled Weight Decay Regularization},
+  booktitle = {Proceedings of the 7th International Conference on Learning Representations (ICLR)},
+  year      = {2019},
+  note      = {Passing a weight-decay coefficient to Adam adds an L2 term to the gradient, which
+               Adam's per-parameter scaling then divides through, so the effective decay depends on
+               gradient history; the decoupled form applied directly to the parameters is what
+               ``weight decay'' is normally taken to mean. Cited for the distinction, which is why
+               the coefficient inherited from Adam does not carry over to AdamW}
+}
+
+@inproceedings{wolf2020transformers,
+  author    = {Wolf, Thomas and Debut, Lysandre and Sanh, Victor and Chaumond, Julien and
+               Delangue, Clement and Moi, Anthony and Cistac, Pierric and Rault, Tim and
+               Louf, R{\'e}mi and Funtowicz, Morgan and Davison, Joe and Shleifer, Sam and
+               von Platen, Patrick and Ma, Clara and Jernite, Yacine and Plu, Julien and
+               Xu, Canwen and Le Scao, Teven and Gugger, Sylvain and Drame, Mariama and
+               Lhoest, Quentin and Rush, Alexander M.},
+  title     = {Transformers: State-of-the-Art Natural Language Processing},
+  booktitle = {Proceedings of the 2020 Conference on Empirical Methods in Natural Language
+               Processing: System Demonstrations},
+  pages     = {38--45},
+  year      = {2020},
+  doi       = {10.18653/v1/2020.emnlp-demos.6},
+  note      = {Cited as the source of a software convention rather than a result: this library's
+               \texttt{Trainer.create\_optimizer} exempts parameters matching \texttt{bias} and
+               \texttt{LayerNorm.weight} from weight decay, which is the grouping this work adopts}
+}

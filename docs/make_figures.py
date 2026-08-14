@@ -92,13 +92,19 @@ ref.
         The clause after the dash is a strapline; "Model architecture" is the caption.
   ``draw_loss_objective``   "The objective — a weighted, masked mean error"     (written 12.08, mine)
   ``draw_loss_objective``   "per-drug scaling belongs here, in the loss, rather than in the labels"
-  ⚠️ ``draw_architecture``  "The target is uncentred: each head's bias is initialized to …"
-        Four lines of reasoning set as a caption, which **still** belongs in Methods where it can be
-        cited — that half is open and is Selin's. A *different passage* from the PLOTTED provenance
-        line below, in the same function; the two sit ten lines apart and have been confused once
-        already.
-        ⛔ **This entry called the passage "Accurate", and it was not — corrected 14.08.2026
-        (Selin).** Two defects sat inside it while this list vouched for it:
+  ✅ ``draw_architecture``  ~~"The target is uncentred: each head's bias is initialized to …"~~
+        **MOVED TO METHODS 14.08.2026 (Selin), and gone from the figure.** It was four lines of
+        reasoning set as a caption, which is rule 2 exactly: a sentence needing a citation in prose
+        needs one here too, and therefore belongs there. It now sits in
+        ``report/sections/03_methods.tex`` §Representation and model with the three citations it
+        always needed and a PNG could not carry — Lin et al. 2017 §4.1 (prior init), Loshchilov &
+        Hutter 2019 (why an Adam-era decay coefficient does not carry to AdamW), and the
+        ``transformers`` library (the bias/LayerNorm exemption). The figure keeps the PLOTTED
+        provenance line, which is a *different passage* ten lines away in the same function and has
+        been confused with this one once already.
+        ⛔ **Before it moved, this entry called the passage "Accurate", and it was not — both defects
+        were repaired first so the corrected text is what travelled (moving a passage is not a way
+        to stop owning what it says):**
           · **"(~0.7)"**, a single hardcoded value for a per-drug quantity spanning **0.58–0.99**.
             It was below the panel's own mean (0.790), well below the full catalogue's (0.893), and
             it contradicted ``OncoMLP.init_head_bias_``'s own docstring — *"``auc_cc`` sits near
@@ -540,12 +546,12 @@ def draw_architecture(ax, *, compact: bool = False):
     fs = 0.70 if compact else 1.0
     xc, xe, lx, x0, span = ((4.5, 9.5, [16, 23, 29, 35], 49.0, 10.5) if compact else
                             (6.0, 14.0, [26, 39, 51, 62], 76.0, 17.0))
-    # Non-compact lower bound dropped 14 -> 11 on 12.08.2026 to make room for the "plotted" note
-    # below the uncentred-target paragraph, and 11 -> 10 on 14.08.2026 when that paragraph went from
-    # two lines to three: at 11 the note sat one line-height below the paragraph and read as its
-    # fourth line rather than as a separate provenance note. Compact is untouched: it is embedded in
-    # pipeline.png, which has its own layout, and it draws neither of those notes.
-    ax.set_xlim(0, 62 if compact else 100); ax.set_ylim(23 if compact else 10, 47 if compact else 52)
+    # Non-compact lower bound: 14 -> 11 on 12.08.2026 to fit the "plotted" note under the
+    # uncentred-target paragraph, 11 -> 10 earlier on 14.08.2026 when that paragraph grew to three
+    # lines, and back to 14 once the paragraph moved to Methods the same day -- the note is now the
+    # only thing below the legends and sits where the paragraph began. Compact is untouched: it is
+    # embedded in pipeline.png, which has its own layout, and it draws neither note.
+    ax.set_xlim(0, 62 if compact else 100); ax.set_ylim(23 if compact else 14, 47 if compact else 52)
     ax.set_aspect("equal"); ax.axis("off")
 
     if not compact:
@@ -688,16 +694,24 @@ def draw_architecture(ax, *, compact: bool = False):
     #    own comment records that "whether this model needs weight decay is OPEN, not settled", the
     #    evidence that used to close it being void. The grouping is insurance against a decision not
     #    yet taken, and saying exactly that is both accurate today and still accurate if it is.
-    lo, hi = _panel_drug_mean_range()
-    ax.text(0, 16.0,
-            "The target is uncentred:  each head's bias is initialized to that drug's own mean AUC "
-            f"over the fold's fitting lines — across the panel those means run {lo:.2f} to {hi:.2f} —\n"
-            "because an untouched Linear starts near 0 and the first epochs would be spent climbing "
-            "to the drug means rather than separating cell lines.\n"
-            "Biases and LayerNorm are held out of weight decay; decay is 0.0 in every run here, so "
-            "that grouping binds only if it is switched on.  Any per-drug scaling belongs in the "
-            "loss, not in the target.",
-            ha="left", va="top", fontsize=8.2, color=INK)
+    # ---- the uncentred-target paragraph lived here until 14.08.2026 ----
+    #
+    # MOVED TO report/sections/03_methods.tex, §Representation and model (Selin's decision). It was
+    # four lines of reasoning set as a caption, which is this module's rule 2: a sentence that would
+    # need a citation in prose needs one here too, and therefore belongs in prose. In Methods it now
+    # carries the three it always needed and could not have -- Lin et al. 2017 §4.1 for prior init,
+    # Loshchilov & Hutter 2019 for why an Adam-era decay coefficient does not carry to AdamW, and
+    # the transformers library for the bias/LayerNorm exemption it follows.
+    #
+    # Both defects the passage was carrying were repaired first and travelled with it, so what moved
+    # is the corrected text: the "~0.7" became a derived RANGE (\PanelMeanLo..\PanelMeanHi in
+    # report/results_numbers.tex, from :func:`_panel_drug_mean_range`), and the inert "decay would
+    # pull it to 0" became the honest statement that the coefficient is zero and the grouping
+    # therefore binds on nothing. Moving a passage is not a way to stop owning what it says.
+    #
+    # :func:`_panel_drug_mean_range` is deliberately KEPT even though no figure draws it now. It is
+    # what re-derives the two macros when the run changes, and the macro file says so; deleting it
+    # would leave the report's only copy of the number hand-maintained with nothing to check it.
 
     # Rewritten 14.08.2026, and it is a REPLACEMENT rather than an edit, because every clause of the
     # old sentence had gone false at once. It read "PLOTTED: the superseded run -- auc winsorized at
@@ -713,7 +727,7 @@ def draw_architecture(ax, *, compact: bool = False):
     # field is read from EXAMPLE_ARM and PANEL, so it cannot drift from the vector it describes --
     # the same reason the vector itself is derived. Colour drops from RED to MUTED with the change
     # of job. Plain ASCII: matplotlib's default font renders the warning emoji as a tofu box.
-    ax.text(0, 11.8,
+    ax.text(0, 16.0,
             f"PLOTTED: one arm of the current sweep — target auc_cc, the {len(PANEL)}-drug panel; "
             f"{EXAMPLE_ARM['rep']}, alpha = {EXAMPLE_ARM['alpha']:g} (unweighted: every observed "
             f"pair weighs 1), {EXAMPLE_ARM['loss'].upper()}, seed {EXAMPLE_ARM['seed']}"

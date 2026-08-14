@@ -47,6 +47,16 @@
                                    % recorded as arbitrary in docs/steps/01, section "The
                                    % 50-cell-line drug cut". This is the h5ad's width
                                    % (53,513 x 534), uns["ctrp_drugs"], and K in Results.
+% Per-DRUG mean auc_cc across the panel -- the levels the output-layer biases are initialized to.
+% A range, not a mean, because the point they make is that the centre is per drug: initializing
+% every head at one value is the thing the per-head initialization exists to avoid. Computed over
+% the out-of-fold rows of the plotted arm in notebooks/outputs/panel/panel_oof_predictions.csv
+% (X_scGPT, alpha=0, mse, seed 42), grouped by drug -- docs/make_figures.py::_panel_drug_mean_range.
+% Moved into the report 14.08.2026 (Selin) from a caption on model_architecture.png, where it had
+% been a hardcoded "~0.7" -- below the panel's own mean of 0.790 and contradicting
+% OncoMLP.init_head_bias_'s own docstring ("auc_cc sits near 0.9").
+\newcommand{\PanelMeanLo}{0.58}    % lowest per-drug mean (paclitaxel)
+\newcommand{\PanelMeanHi}{0.99}    % highest per-drug mean (cisplatin, recorded as `platin`)
 \newcommand{\NCells}{53{,}513}     % single cells
 \newcommand{\NGenes}{22{,}722}     % genes in the distributed SCP542 matrix
 % \NIndep was RETIRED 12.08.2026 (Selin) -- it named two different quantities at once

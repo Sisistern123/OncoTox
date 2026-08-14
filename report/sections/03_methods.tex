@@ -411,6 +411,35 @@ splits are three-way. The fifteen per cent is arbitrary --- it was preferred to 
 neighbouring fold, which would have cost twenty per cent of the training lines.
 \end{revisionblock}
 
+\begin{revisionblock}
+\textbf{The target is uncentred, and the output layer is initialised for it (moved here 14.08.2026).}
+Viability is not centred on zero, and its centre is not one number: across the eleven panel compounds
+the mean response runs from \PanelMeanLo{} to \PanelMeanHi{}. A freshly initialised linear layer
+predicts near zero, so a model left to discover those levels by gradient descent spends its first
+epochs climbing to them rather than separating cell lines --- and under early stopping that is not
+merely slow, since the checkpoint can be selected before the between-line structure has been fitted at
+all. Each output head's bias is therefore initialised at its own drug's mean, computed on the lines
+that fold fits on and never on the lines it is scored against. Initialising a final bias at the base
+rate is standard practice for exactly this reason \cite{lin2017focal}, where it is done for a class
+prior rather than a regression mean. It does not start the model at a constant predictor: the head's
+weight rows are still randomly initialised, so the predictions scatter from the outset.
+
+Biases and normalisation parameters are held out of weight decay, following the convention of the
+\code{transformers} library, whose optimiser construction exempts precisely these
+\cite{wolf2020transformers}. It should be said plainly that the grouping currently binds on nothing,
+because the decay coefficient is zero. It is zero because the value the project had inherited was
+chosen for Adam, which couples the decay into the gradient and lets the adaptive scaling divide
+through it, whereas the decoupled form used here applies it directly to the parameters
+\cite{loshchilov2019adamw}; the same nominal coefficient does not mean the same thing under the two,
+and no sourced value exists for either. Whether this model needs weight decay at all is open, and the
+grouping is retained so that the question can be settled by changing one coefficient rather than by
+also having to decide what ought to be decayed.
+
+No per-drug rescaling is applied to the target itself. Where a drug's scale has to enter, it enters
+the objective as a weight, so that the quantity predicted and the quantity reported remain the
+published response value.
+\end{revisionblock}
+
 \subsection{Response target}
 \label{sec:target}
 
