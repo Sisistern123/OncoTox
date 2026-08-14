@@ -328,32 +328,27 @@ does not survive a re-run, and it does not survive a change of scoring conventio
 `notebooks/outputs/mil/mil_oof_predictions.csv`, a separate file this comparison does not read, so
 the bag-objective axis is not re-scored under the four conventions.
 
-### Reproducibility — eight executions, and the instability is one *configuration*
+### Reproducibility — the instability is one *configuration*
 
-> ⛔ **LIMITATION — six of the eight executions behind `panel_execution_band.csv` cannot be
-> reproduced (found 14.08.2026).** `scripts/evaluation/build_execution_band.py` composes eight runs.
-> **Two** are replayed from git (`from_git('9732b6f^')`, `from_git('9732b6f')`) and are reproducible
-> by anyone. **Six** are read from `/Users/selin/.claude/jobs/ce8d4fe5/tmp/` — an **agent session's
-> scratch directory** — as `pre_warmup_leaderboard_band_{1,2,3}.csv`, `leaderboard_reversed.csv` and
-> `leaderboard_band_{1,2}.csv`. None of the six is committed. That directory is one of ten job
-> directories on this machine and holds 367 loose files; it is transient by construction, exists on
-> no other machine, and when it is cleaned the artifact becomes unrebuildable.
-> `scripts/evaluation/first_fit_order_test.py` and `input_scale_test.py` write into the same place.
+> ✅ **RESOLVED 14.08.2026 (Selin) — the band is now rebuilt from replayable executions only.**
+> It used to be composed of eight, of which **six** were read from an agent session's scratch
+> directory that was never committed, so six eighths of it could not be re-derived by anyone.
+> `scripts/evaluation/build_execution_band.py` now uses only the two executions replayable from
+> committed history (`9732b6f^`, `9732b6f`), and the artifact is regenerable by anyone with the
+> repository.
 >
-> **What this does and does not mean.** It does **not** mean the band is wrong — those executions
-> happened and the artifact records them. It means the artifact is **evidence that cannot be
-> re-derived**, which matters because of what leans on it: this page's reproducibility section, and
-> [OPEN_DECISIONS](../OPEN_DECISIONS.md) §3, where the band **0.2450–0.2541** is the ground for
-> disqualifying `α=0`/`mse`/`X_pca` as item 9A's reference point and re-anchoring on `mae`. **No
-> number moves and no conclusion changes** — but if asked "can I check that band?", the answer today
-> is "only two of its eight columns".
+> **What moved.** The band narrows **0.2450–0.2541 → 0.2473–0.2541** (width 0.0091 → 0.0068), and
+> *"twelve of fourteen arms identical"* becomes **thirteen of fourteen** — fewer executions, so less
+> opportunity to differ. **What did not move is the argument**: the two values
+> [OPEN_DECISIONS](../OPEN_DECISIONS.md) §3 turns on — 0.2541 (*"no challenger wins"*) and 0.2473
+> (*"α=0/mae wins"*) — are exactly the two executions that remain, so the verdict flip it
+> demonstrates is entirely inside the reproducible pair.
 >
-> **This is the fourth instance of the class** — after `arch_facts.py`, `init_spread.py` (closed by
-> committing the measurement) and `mps_smoke2.py` — and the first to sit under a **live** artifact
-> rather than a side measurement. **What would close it:** committing the six CSVs beside the
-> artifact, or rebuilding the band from executions that can be replayed from git as the first two
-> are. **Which of those, and whether six raw leaderboards belong in the repository, is a decision
-> about what enters version control and is not taken here.**
+> The eight-execution measurement is **not deleted** — it happened — it is recorded as superseded in
+> [Corrections](corrections-and-dead-ends.md). ⚠️ **More executions could be added and were not:**
+> seven commits have touched `panel_leaderboard.csv`, but the earlier ones predate the target and
+> panel corrections, so including them would measure pipeline change rather than execution noise.
+> **Which commits count as comparable is an analysis decision and was not taken.**
 
 `4a` §A was executed **eight independent times**: five in normal order, one with `REPS` reversed, and
 two with a device warm-up active. Every arm captured each time —
@@ -398,7 +393,7 @@ records, on the **void 8-drug panel and the retired `auc` target**:
 > (best epoch per fold `[1,1,3,1,1]` vs scGPT `[10,11,2,21,4]`)"*
 
 Tonight's independent measurement, on the **rebuilt 11-drug panel and the `auc_cc` target**, two code
-generations later: the α=0 `X_pca` arm spans 0.2450–0.2541 over eight runs while every other arm
+generations later: the α=0 `X_pca` arm spans 0.2473–0.2541 over the two replayable runs while every other arm
 reproduces exactly, and its best epoch per fold at seed 42 is **`[1,1,3,1,4]`** — against the recorded
 `[1,1,3,1,1]`.
 
@@ -426,7 +421,7 @@ convention decided above) was applied twice and returned two different answers:
 | 0.2541 | no challenger wins — all thirteen blocked |
 | 0.2473 | **`α=0` / `mae` / `X_pca` wins** |
 
-**The verdict flips inside the incumbent's own measured band (0.2450–0.2541).** So the rule as
+**The verdict flips inside the incumbent's own measured band (0.2473–0.2541).** So the rule as
 specified cannot settle item 9A — not because the rule is wrong, but because **its reference point is
 the single unstable configuration in the sweep**.
 
@@ -440,8 +435,8 @@ the single unstable configuration in the sweep**.
 ### ✅ Re-anchored and settled — 14.08.2026 (Selin)
 
 **The incumbent is now `α=0` / `mae` / `X_pca`.** Same α level, so the axis still reads *"does
-weighting help"*, but on the stable loss. It is one of the twelve arms identical to six decimals
-across all eight executions, so **the verdict can no longer flip on a re-run.** The choice is written
+weighting help"*, but on the stable loss. It is one of the thirteen arms identical to six decimals
+across both replayable executions, so **the verdict can no longer flip on a re-run.** The choice is written
 into `5_evaluation` §1.8 as an explicit `INCUMBENT_ARM` with its reasoning, rather than falling out of
 iteration order as it did before.
 

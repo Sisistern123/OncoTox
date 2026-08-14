@@ -1456,3 +1456,30 @@ panel was chosen blind to our labels
 cell-line effect ([refutation](#the-cell-line-effect-is-largely-proliferation)). Both were corrected within
 a day, and the second is kept precisely because it was tested and killed rather than quietly dropped.
 *State confidence at the level the evidence supports, the first time.*
+
+### The eight-execution reproducibility band — superseded 14.08.2026, six of it unreproducible
+
+**Superseded, not retracted: the executions happened.** Until 14.08.2026
+`notebooks/outputs/panel/panel_execution_band.csv` was built from **eight** independent executions of
+`4a` section A, giving the `α=0`/`mse`/`X_pca` arm a band of **0.2450–0.2541** (width 0.0091) with
+**twelve of fourteen** arm × rep rows identical to six decimals.
+
+**Why it was replaced.** Only two of the eight — `9732b6f^` and `9732b6f` — were replayable from
+committed history. The other six were read from `/Users/selin/.claude/jobs/ce8d4fe5/tmp/`, an agent
+session's scratch directory: never committed, one machine, transient by construction. So the artifact
+could not be re-derived by anyone, and the same directory was feeding
+`first_fit_order_test.py` and `input_scale_test.py`.
+
+**What replaced it.** The band rebuilt from the two replayable executions: **0.2473–0.2541**, width
+**0.0068**, **thirteen of fourteen** identical. Fewer executions, so less opportunity to differ.
+
+**What did not change, and it is the load-bearing part.** The two values
+[OPEN_DECISIONS](../OPEN_DECISIONS.md) §3 turns on — 0.2541 (*"no challenger wins"*) and 0.2473
+(*"`α=0`/`mae` wins"*) — **are** the two retained executions. The verdict flip that disqualifies
+`α=0`/`mse`/`X_pca` as item 9A's reference point is entirely inside the reproducible pair, so the
+disqualification stands on evidence anyone can check.
+
+**The eight-execution figures are kept here** because they were measured and because a narrower band
+quoted without its predecessor would look like a different result rather than the same result with
+its unreproducible half removed.
+

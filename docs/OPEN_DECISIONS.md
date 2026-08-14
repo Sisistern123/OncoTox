@@ -78,7 +78,10 @@ Full table: [Step 05](./steps/05-multitask-results.md#the-aggregation-convention
 
 Applied under the line-level pooled convention (§2), the rule returned **two different answers** on
 two runs — "no challenger wins" at an incumbent `order` of 0.2541, and "`α=0`/`mae` wins" at 0.2473.
-**The verdict flips inside the incumbent's own measured band**, 0.2450–0.2541 over eight executions.
+**The verdict flips inside the incumbent's own measured band**, 0.2473–0.2541 over the two
+executions replayable from committed history. *(Was 0.2450–0.2541 over eight until 14.08.2026, when
+six of those eight proved to live only in an agent scratch directory; the two that remain are exactly
+the pair this flip is measured on.)*
 
 The reference point is the problem, and it is a poor one on two measured grounds:
 
@@ -96,7 +99,7 @@ chasing.
 ### ✅ Closed 14.08.2026 — re-anchored on `α=0`/`mae`/`X_pca`
 
 Selin took the reading offered here. The incumbent is now one of the twelve arms identical across all
-eight executions, so the verdict is stable, and it is written into `5_evaluation` §1.8 as an explicit
+both replayable executions, so the verdict is stable, and it is written into `5_evaluation` §1.8 as an explicit
 `INCUMBENT_ARM` rather than falling out of iteration order.
 
 **Result: no challenger wins — all thirteen blocked.** The unweighted MAE arm on `X_pca` stands;
