@@ -50,7 +50,7 @@ Full table: [Step 05](./steps/05-multitask-results.md#the-aggregation-convention
 
 ---
 
-## 3 · ~~The alpha axis / item 9A~~ — SETTLED 14.08.2026, with one narrower question left
+## 3 · ~~The alpha axis / item 9A~~ — SETTLED 14.08.2026, and re-anchored
 
 **The rule cannot select a winner, and the blocker is identified.** Full record in
 [Step 05 §Item 9A](./steps/05-multitask-results.md#item-9a--settled-14082026-the-rule-cannot-select-a-winner-and-why).
@@ -197,3 +197,40 @@ option 1 changes every number in the project and there is no time to re-verify t
 But say it out loud in the talk: it is the strongest remaining threat to Q1, and it is better said by
 you than found by someone in the room.
 
+---
+
+## 7 · `input_dropout` is matched in value but not in effect — what should it be?
+
+**Opened 14.08.2026, from the test of review item 8B.** Measured, 60 fits
+(`notebooks/outputs/diagnostics/input_dropout_test.csv`, §C's linear row, both representations,
+three seeds):
+
+| `input_dropout` | `X_pca` | `X_scGPT` | Q1 margin |
+|---|---|---|---|
+| 0.1 (shipped) | 0.2608 | 0.2291 | **+0.0317** |
+| 0.0 (off) | **0.2746** | 0.2289 | **+0.0457** |
+| cost of the regularizer | **−0.0138** | −0.0002 | −0.0140 |
+
+**The asymmetry is confirmed and one-sided.** It costs `X_pca` 0.0138 and `X_scGPT` nothing —
+**44 % of the Q1 margin**, running in PCA's disfavour. It matters more than when item 8B was written,
+because `weight_decay = 0.0` makes dropout the **only** regularizer in the model.
+
+**The choice.**
+
+- **Keep 0.1 on both.** Matched in value, unmatched in effect. The published margin stays
+  conservative, and every margin must be quoted with the setting named.
+- **Set 0.0 on both.** Removes the asymmetry, and removes a regularizer the model was tuned with —
+  the test changed one thing at a time and did not check whether 0.0 overfits elsewhere.
+- **Per-arm rates**, chosen so the *expected variance removed* matches rather than the nominal rate.
+  Principled, but introduces a second per-arm setting to justify, and `X_pca`'s variance ordering
+  means the matching rate depends on how many components you count.
+
+**The assumption underneath.** That the effect is a regularization effect rather than an
+information-deletion one. `X_pca`'s dimensions are variance-ordered, so a 10 % coordinate dropout
+removes a heavier-tailed share — PC1 alone is 5.9 % of the retained variance — and that may be
+deleting signal rather than regularizing.
+
+**My reading, as a reading.** Keep 0.1 and name it, before the talk: the margin it produces is the
+conservative one, so nothing currently reported is inflated by it. Afterwards, the per-arm option is
+the one worth testing, because it is the only one that removes the asymmetry without removing the
+regularizer.

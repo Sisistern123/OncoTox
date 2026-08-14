@@ -528,7 +528,7 @@ lead. Switching the regularizer off widens the margin from +0.0317 to +0.0457 �
 
 ⚠️ **What this does not settle.** Whether `input_dropout` should be 0.1, 0.0, or per-arm is an
 analysis decision and is not taken here — turning it off also removes a regularizer the model was
-tuned with, and this test changed one thing at a time deliberately. Recorded for Selin.
+tuned with, and this test changed one thing at a time deliberately. Recorded as `docs/OPEN_DECISIONS.md` §7, with the three options and what each costs.
 
 ### E2 · Shrinking the atlas does not shrink the lead — the adaptation explanation is refuted
 
