@@ -552,11 +552,14 @@ regularizer in the model**.
 representations, at `input_dropout` 0.1 as shipped and 0.0 off. 60 fits.
 `scripts/evaluation/input_dropout_test.py` → `notebooks/outputs/diagnostics/input_dropout_test.csv`.
 
+⚠️ **This two-point table is the precursor, kept for the record — read the six-point sweep below
+instead.** Its "effect" row is measured at p = 0.10, which the sweep shows is a low outlier.
+
 | `input_dropout` | `X_pca` | `X_scGPT` | Q1 margin |
 |---|---|---|---|
 | 0.1 (shipped) | 0.2608 | 0.2291 | **+0.0317** |
 | 0.0 (off) | **0.2746** | 0.2289 | **+0.0457** |
-| effect of the regularizer | **−0.0138** | −0.0002 | −0.0140 |
+| difference between these two points | **−0.0138** | −0.0002 | −0.0140 |
 
 ⛔ **Corrected 14.08.2026 by a six-point sweep — the two-point reading overstated it.**
 `p` was swept over {0.00, 0.02, 0.05, 0.10, 0.20, 0.30}, three seeds each
@@ -950,11 +953,17 @@ median of per-seed medians for stage 7); three seeds are present in every stage 
 `median_sd_4a` matches the committed `panel_within_line_spread.csv` at α=0.5/mse exactly for all six
 representation × seed combinations.
 
-⚠️ **Not verified by execution.** `4b` has not been *run* since 13.08.2026 09:47. The above is a
-consistency check against current artifacts, not a fresh run.
+✅ **Verified by execution.** `4b` was re-executed top to bottom on 14.08.2026 (8 min 28 s, clean,
+all twelve cells timestamped). The verdict is unchanged — `Q2(a)` POSITIVE for both representations,
+with stage 1 and stage 2 identical to the committed values. Three numbers moved, all on `X_pca` and
+all in the third decimal: stage 7's median AUROC 0.5209 → **0.5178**, its significant fraction
+0.4600 → **0.4558**, and stage 6's median `R2` 0.0773 → 0.0771 (`r2_adj` unchanged). The direction
+makes the caveat slightly stronger, not weaker.
 
-⛔ **Q2 has no figure.** `notebooks/outputs/mil/` holds eleven CSVs and no images. Every Q2 claim in
-this project is a table or a number.
+✅ **Q2 has a figure since 14.08.2026** — `docs/figures/q2_instrument.png`, also floated in the
+report. It plots the two stages that carry Q2's tension: cross-seed agreement (the structure
+reproduces) against the positive control (the instrument is near chance). Before that date every Q2
+claim in this project was a table or a number.
 
 ---
 

@@ -429,7 +429,7 @@ those drugs were selected using all 180 lines including val/test, and these were
 our labels at all. Lower and more defensible was the deliberate trade.
 
 **Most of the signal survived removing the cell-line effect.** Computed with **zero model fits** from the
-stored out-of-fold predictions → `outputs/dreval/dreval_normalized_panel.csv`.
+stored out-of-fold predictions → `outputs/archive/dreval_normalized_panel_void8drug.csv`.
 
 > ⛔ **The code that produced this table no longer exists (12.08.2026).** It was
 > `scripts/evaluation/dreval_normalize.py`, whose cell-line-effect removal was a **local invention with
