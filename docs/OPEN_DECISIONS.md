@@ -72,18 +72,18 @@ at epoch 1). It barely trains, so its score sits near the head-bias initialisati
 (`e6c087d`); reapplicable from `664f3e8` if the separate, smaller first-fit effect is ever worth
 chasing.
 
-### The one question left, and it is yours
+### ✅ Closed 14.08.2026 — re-anchored on `α=0`/`mae`/`X_pca`
 
-**Which arm should the rule be anchored to instead?** Any of the twelve stable rows makes it
-evaluable. That is a decision about what the comparison is anchored to, not a measurement, so it has
-not been taken.
+Selin took the reading offered here. The incumbent is now one of the twelve arms identical across all
+eight executions, so the verdict is stable, and it is written into `5_evaluation` §1.8 as an explicit
+`INCUMBENT_ARM` rather than falling out of iteration order.
 
-**My reading, as a reading.** Anchor on `α=0`/`mae`/`X_pca` — it is the same α level, so the axis
-still reads as "does weighting help", but on the stable loss; and `mae` was already measured to be
-the better-behaved objective on this data. But note this changes what the rule *asks*, so it is not a
-free substitution.
+**Result: no challenger wins — all thirteen blocked.** The unweighted MAE arm on `X_pca` stands;
+density weighting does not displace it. `α=0.5`/`mae` has the sweep's highest `order` (0.2824 against
+0.2617) and is blocked on `values` and `spread_slope`.
 
-⚠️ **Until then, do not report "α=0 wins" or "MAE wins".** Both are readings of one arm's noise.
+⚠️ It changes what the rule asks — challengers are now judged against `mae` — and that is stated
+where it is used rather than left implicit.
 
 ---
 

@@ -313,11 +313,36 @@ the single unstable configuration in the sweep**.
    cell/per-fold all rank `α=0` bottom on both losses
    (§*The aggregation convention*).
 
-**What is therefore settled.** The six-arm loss comparison **does not select a winner under the rule
-as specified**, and the blocker is identified: an incumbent that neither trains nor reproduces.
-**What is not settled, and is Selin's:** which arm should be the incumbent instead. Any of the twelve
-stable rows would make the rule evaluable; choosing among them is a decision about what the
-comparison is anchored to, not a measurement. Recorded in `docs/OPEN_DECISIONS.md`.
+### ✅ Re-anchored and settled — 14.08.2026 (Selin)
+
+**The incumbent is now `α=0` / `mae` / `X_pca`.** Same α level, so the axis still reads *"does
+weighting help"*, but on the stable loss. It is one of the twelve arms identical to six decimals
+across all eight executions, so **the verdict can no longer flip on a re-run.** The choice is written
+into `5_evaluation` §1.8 as an explicit `INCUMBENT_ARM` with its reasoning, rather than falling out of
+iteration order as it did before.
+
+**The answer: no challenger wins. All thirteen are blocked.**
+
+| challenger | blocked on |
+|---|---|
+| `α=0`/`mse`/`X_pca` | order, values |
+| `α=0.5`/`mae`/`X_pca` | values, spread_slope |
+| `α=0.5`/`mse`/`X_pca` | values, spread_slope |
+| `α=1`/`mae`/`X_pca` | values, spread_slope |
+| `α=1`/`mse`/`X_pca` | order, values, spread_slope |
+| all six `X_scGPT` arms | order and/or spread_slope, values |
+| both MIL arms | order, values, spread_slope |
+
+**So: the unweighted MAE arm on `X_pca` stands, and density weighting does not displace it.**
+`α=0.5`/`mae` has the highest `order` in the sweep (0.2824 against the incumbent's 0.2617) and is
+still blocked — it buys ranking and pays for it in `values` and `spread_slope`. That is the rule
+working as designed: a model that ranks better while calibrating worse and erring more is not
+declared better.
+
+⚠️ **What changed to make this settleable, and what it cost.** Re-anchoring changes what the rule
+asks — every challenger is now judged against `mae`, not `mse`. The previous anchor was not a
+considered choice at all; it was whichever `α=0` `X_pca` arm iteration order produced, and it happened
+to be the one configuration in the sweep that neither trains nor reproduces.
 
 ⚠️ **Do not report "α=0 wins" or "MAE wins".** Both are readings of the same design at different
 points of one arm's noise, and neither is a result.
