@@ -84,6 +84,51 @@ random forest matches the multi-task model to $0.0003$
 external comparison, the multi-task architecture has not been shown to buy anything measurable over a
 simple per-drug model.}
 
+\paragraph{Why the transcript-level arm scores lower.}
+The response label is defined per cell line, so the quantity a model must read is variation
+\emph{between} lines. The two representations differ there before any parameter is fitted: measured on
+the inputs alone, the between-line share of variance is $0.584$ for \code{X\_pca} against $0.539$ for
+\code{X\_scGPT}, a between-to-within ratio of $1.405$ against $1.168$
+(\code{stage0\_input\_ceiling.csv}). The principal-component arm carries about a fifth more of the
+structure the label varies over. The same difference is visible directly in the cancer-type embeddings
+of Section~\ref{sec:data}: the principal-component projection resolves the cell lines as separate
+clusters, while the transcript-level embedding places them on one continuous manifold.
+
+This is the embedding behaving as intended rather than failing. A pretrained single-cell embedding is
+built to map cells onto a shared biological manifold and to suppress batch and cell-line identity;
+that is the property it is valued for. The label used here sits at exactly the granularity that
+suppression removes. The finding is therefore a mismatch between the embedding's training objective
+and this task's label, and it should not be read as a statement about embedding quality in general.
+
+\paragraph{It is not undertraining.}
+The epoch at which validation loss is minimised does not track performance. With a linear head the
+principal-component arm peaks at epoch~12 and scores highest ($0.2608$) while the transcript-level arm
+peaks at epoch~2 ($0.2291$); with a trunk the ordering of epochs reverses ($1$ and $8$) and the
+transcript-level arm scores lowest ($0.2047$). Within \emph{each} representation the linear head wins,
+despite the two having opposite epoch behaviour, and training the transcript-level arm four times
+longer under a trunk scores worse rather than better. A candidate explanation --- that the
+$104\times$ difference in input magnitude between the arms drives this under one shared learning
+rate --- was tested by rescaling the transcript-level embedding to the principal-component arm's
+magnitude and re-running: the mean best epoch was unchanged ($6.73$ against $7.13$). The optimizer is
+AdamW, which normalises each step by a running second moment of the gradient and is therefore
+approximately invariant to a uniform rescaling of its input.
+
+\paragraph{Why no arm scores well in absolute terms.}
+Four measured reasons, none of which is the choice of representation. First, the effective sample is
+\NLinesCV{} cell lines rather than \NCells{} cells: one label per (cell line, compound) is broadcast to
+every cell of that line, so each fold fits on roughly a hundred independent labelled examples. Second,
+the labels disagree with themselves --- \NRepPairs{} (cell line, compound) pairs were screened twice in
+CTRPv2, with a median disagreement of \RepDiffMed{} standard deviations of that compound's spread
+across cell lines and \RepDiffPct\,\% differing by more than a full standard deviation, so a model
+cannot correlate with the target better than the target correlates with itself.\footnote{Measured on
+the response source retired on 11.08.2026; the magnitude is due for re-derivation, but replicate
+disagreement is a property of the assay rather than of the transform applied to it.} Third, over the
+full catalogue the improvement on a per-drug constant lies between $+0.00017$ and $+0.00043$, and is
+negative for one arm. Fourth, a ridge regression on cell-line-mean embeddings and a per-drug random
+forest each match or exceed the multi-task network. Taken together the first two identify the ceiling
+as label supply and label quality, and the fourth confirms that model capacity is not the binding
+constraint.
+
 \subsection{Does a model trained on single cells learn heterogeneity implicitly?}
 \label{sec:results-q2}
 
