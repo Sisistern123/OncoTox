@@ -34,7 +34,8 @@ Three rules, and every one of them was broken somewhere in this file when they w
 
 A fourth, from an unrelated defect class found the same day: **never hardcode a count in a label.**
 Derive it — ``len(PANEL)``, a row count, a config value. ``"the 8 heads"`` was already wrong when it
-was found (the rebuilt panel has 11), and ``180 trainable`` becomes 181 at the sweep. A number typed
+was found (the rebuilt panel has 11); ``180 trainable`` became 181 at the sweep and is now
+derived from the committed split (:func:`_n_trainable_lines`). A number typed
 into a string cannot be checked by anything.
 
 AUDIT AGAINST THOSE RULES — 12.08.2026, not yet applied
@@ -199,11 +200,30 @@ def _n_candidates() -> int:
     return len(pd.read_csv(PANEL_OUT / "literature_panel_candidates.csv"))
 
 
+def _n_trainable_lines() -> int:
+    """Cell lines with post-QC response measurements, read from the committed split.
+
+    Derived rather than typed for the reason the other two tiers are: it was hardcoded ``180`` and
+    became **181** on 13.08.2026, when ``ctrp_to_h5ad`` deduplicated the experiment table and resolved
+    the ``H292`` alias. A status figure carrying a stale count is worse than one carrying none,
+    because it is read as the current state of the project.
+
+    ``splits/split_ctrp.csv`` is the committed frozen split — one row per trainable line, 126 train /
+    27 val / 28 test — so it is the artifact that defines this number rather than a copy of it.
+    """
+    import pandas as pd
+
+    return len(pd.read_csv(ROOT / "splits" / "split_ctrp.csv"))
+
+
 #: The drug panel — the order every figure uses. Read from panel.csv, not maintained here.
 PANEL = _panel()
 
 #: The middle tier of the drug funnel — see :func:`_n_candidates` for why it is not 173.
 N_CANDIDATES = _n_candidates()
+
+#: Trainable cell lines — see :func:`_n_trainable_lines` for why it is not 180.
+N_LINES = _n_trainable_lines()
 
 
 def box(ax, x, y, w, h, title, lines, edge, fill, title_color=None, dashed=False,
@@ -234,7 +254,7 @@ def build_pipeline():
 
     ax.text(50, 98, "OncoTox Pipeline — Status Overview", ha="center", va="top",
             fontsize=17, fontweight="bold", color=INK)
-    ax.text(50, 93.5, "as of 2026-08-12   ·   reference: project_planning_v2.pdf   ·   steps: docs/steps/",
+    ax.text(50, 93.5, "as of 2026-08-14   ·   reference: project_planning_v2.pdf   ·   steps: docs/steps/",
             ha="center", va="top", fontsize=9.5, color=GREY)
     handles = [
         mpatches.Patch(facecolor=GREEN_FILL, edgecolor=GREEN, label="Done / on-plan"),
@@ -247,7 +267,7 @@ def build_pipeline():
 
     box(ax, XS[0], ROW_A, W, H, "01 · Datasets & harmonization",
         ["SCP542 53,513 cells x 22,722 g", "CTRPv2 545 drugs · target: auc_cc",
-         "overlap 190* lines · 180 trainable"], GREEN, GREEN_FILL)
+         f"overlap 190* lines · {N_LINES} trainable"], GREEN, GREEN_FILL)
     box(ax, XS[1], ROW_A, W, H, "02 · Preprocessing & embeddings",
         ["scGPT X_scGPT = 512-d", "gene-set sweep 1k-5k + all_genes",
          "X_pca = 512-d · cancer-type UMAPs"], GREEN, GREEN_FILL)
@@ -263,9 +283,13 @@ def build_pipeline():
         ["paclitaxel, leak-free split", "results WITHDRAWN 12.08.2026",
          "1 DB · 1 score · 1 drug"], GREY, GREY_FILL, title_color=GREY)
 
+    # Re-measured 13.-14.08.2026 and no longer withdrawn: 4a sections A/C/D/E and 4b ran on the
+    # rebuilt 11-drug panel, the auc_cc target and the corrected early stopping, over three seeds.
+    # The box states SCOPE and STATUS only -- what the run showed belongs in prose that can be cited
+    # and disputed, not in a stage label of a pipeline diagram (this file's own audit rule).
     box(ax, XS[0], ROW_B, W, H, "05 · Multi-task + fair eval",
-        ["K=545 · out-of-fold over 153 lines", "results WITHDRAWN 12.08.2026",
-         "re-measured at R4 of the sweep"], GREY, GREY_FILL, title_color=GREY)
+        ["K=545 · out-of-fold over 153 lines", "re-run 13.08.2026 · 3 seeds",
+         "results: docs/steps/05"], GREEN, GREEN_FILL)
     box(ax, XS[1], ROW_B, W, H, "06 · Cross-database  (MISSING)",
         ["CTRPv2 + PRISM + GDSC", "efficacy + toxicity heads",
          "the 'combine all' goal"], RED, RED_FILL, title_color=RED, dashed=True)
@@ -298,7 +322,7 @@ def build_pipeline():
     for i in range(3):
         arrow(ax, XS[i] + W, ROW_B + H / 2, XS[i + 1], ROW_B + H / 2, color=RED, dashed=True)
 
-    ax.text(99.5, 1.2, "* 190 = name-matches in CTRPv2's roster; 180 = lines with actual post-QC measurements",
+    ax.text(99.5, 1.2, f"* 190 = name-matches in CTRPv2's roster; {N_LINES} = lines with actual post-QC measurements",
             ha="right", va="bottom", fontsize=8, color=GREY, style="italic")
 
     out = FIG / "pipeline_overview.png"
