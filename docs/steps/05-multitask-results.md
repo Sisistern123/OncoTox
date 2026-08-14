@@ -330,6 +330,31 @@ the bag-objective axis is not re-scored under the four conventions.
 
 ### Reproducibility — eight executions, and the instability is one *configuration*
 
+> ⛔ **LIMITATION — six of the eight executions behind `panel_execution_band.csv` cannot be
+> reproduced (found 14.08.2026).** `scripts/evaluation/build_execution_band.py` composes eight runs.
+> **Two** are replayed from git (`from_git('9732b6f^')`, `from_git('9732b6f')`) and are reproducible
+> by anyone. **Six** are read from `/Users/selin/.claude/jobs/ce8d4fe5/tmp/` — an **agent session's
+> scratch directory** — as `pre_warmup_leaderboard_band_{1,2,3}.csv`, `leaderboard_reversed.csv` and
+> `leaderboard_band_{1,2}.csv`. None of the six is committed. That directory is one of ten job
+> directories on this machine and holds 367 loose files; it is transient by construction, exists on
+> no other machine, and when it is cleaned the artifact becomes unrebuildable.
+> `scripts/evaluation/first_fit_order_test.py` and `input_scale_test.py` write into the same place.
+>
+> **What this does and does not mean.** It does **not** mean the band is wrong — those executions
+> happened and the artifact records them. It means the artifact is **evidence that cannot be
+> re-derived**, which matters because of what leans on it: this page's reproducibility section, and
+> [OPEN_DECISIONS](../OPEN_DECISIONS.md) §3, where the band **0.2450–0.2541** is the ground for
+> disqualifying `α=0`/`mse`/`X_pca` as item 9A's reference point and re-anchoring on `mae`. **No
+> number moves and no conclusion changes** — but if asked "can I check that band?", the answer today
+> is "only two of its eight columns".
+>
+> **This is the fourth instance of the class** — after `arch_facts.py`, `init_spread.py` (closed by
+> committing the measurement) and `mps_smoke2.py` — and the first to sit under a **live** artifact
+> rather than a side measurement. **What would close it:** committing the six CSVs beside the
+> artifact, or rebuilding the band from executions that can be replayed from git as the first two
+> are. **Which of those, and whether six raw leaderboards belong in the repository, is a decision
+> about what enters version control and is not taken here.**
+
 `4a` §A was executed **eight independent times**: five in normal order, one with `REPS` reversed, and
 two with a device warm-up active. Every arm captured each time —
 `notebooks/outputs/panel/panel_execution_band.csv`, built by

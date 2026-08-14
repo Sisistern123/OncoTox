@@ -116,6 +116,18 @@ property of the backend and stands, but \emph{how large} the resulting band is h
 before any difference is called interpretable or uninterpretable against it.}
 
 \begin{revisionblock}
+\textbf{The run-to-run band is only partly reproducible (added 14.08.2026).} Differences below the
+run-to-run spread are called uninterpretable throughout this report, and that spread is measured over
+eight executions of the same configuration. Two of the eight are replayed from version control and can
+be reproduced by anyone. The remaining six are read from a scratch directory belonging to a working
+session, were never committed, and exist on one machine; when it is cleared, the record of those six
+runs is gone. The measurement itself is not in doubt --- the executions took place and their results
+were tabulated --- but it cannot be re-derived, which is a weaker footing than the rest of the
+evidence here and is the reason for saying so. Closing it means either committing the six tables or
+rebuilding the band from executions replayable from version control, as the first two are.
+\end{revisionblock}
+
+\begin{revisionblock}
 \textbf{A related check cannot be reproduced (added 14.08.2026).} Every scGPT embedding used here was
 produced on the Metal backend, and the decision to move the embedding step onto it rests on a
 comparison against the same batch embedded on the processor, reported at the time as agreeing to
