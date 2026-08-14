@@ -5,6 +5,12 @@
   pipeline_overview.png    status of the whole project against the plan (steps 01-08)
   loss_01_objective.png    what the objective is made of
 
+"Pure" means no expression matrix and no plotting of results: the layout is drawn, not measured.
+Both still read the small committed CSVs the module derives its *counts* from (``panel.csv``,
+``literature_panel_candidates.csv``, ``splits/split_ctrp.csv``, ``panel_heads_summary.csv``), which
+is rule 4 doing its job rather than an exception to it -- a status figure carrying a typed count is
+the failure this module has now had four times.
+
 FIGURE CONVENTIONS — READ BEFORE WRITING ANY TITLE, CAPTION OR ANNOTATION
 =========================================================================
 
@@ -53,19 +59,28 @@ worse than none, because it will be trusted. ``grep -n`` on the quoted words fin
 ref.
 
 ⛔ **Asserts a result — rewrite from what the run shows, not before:**
-  ``build_pipeline_flow``   "one seed — only scGPT clears the ridge control"
-        A finding from the void 8-drug run used as the **stage-8 label of the pipeline diagram**, so
-        the drawing of the pipeline presents an outcome as though it were one of its steps.
+  ✅ ``build_pipeline_flow``   ~~"one seed — only scGPT clears the ridge control"~~
+        **Closed 14.08.2026 (Selin): the claim is dropped and the caption names what is plotted** —
+        "mean per-drug Spearman over N drugs, N seeds — each MLP against its own ridge". Both halves
+        were wrong, in different ways. *"one seed"* was false about the bars, which average three
+        (``panel_corr``); stage 7's scatter is one seed on purpose, stage 8 never was. And the claim
+        half, while true of the plotted bars, put a **+0.0096** margin — against a seed sd of 0.0053
+        — into a PNG, where it can be neither qualified nor retracted; the tallest bar on the panel
+        is in fact the *PCA ridge* (0.2767), so "only scGPT clears" reads as "scGPT wins" and is not
+        that. The finding lives in ``docs/steps/05``, sourced and disputable.
   ``build_loss_effect``     "The weighting fired — and the ranking did not move"
         The 27.07 conclusion, on the figure drawn from the run that re-tests that very claim.
   ``build_loss_effect``     "above the line: the model hedges less" · "on the line: no gain, no loss"
 
 ⛔ **Asserts a swept arm as a fact:**
-  ``draw_architecture``     "per-cell MLP · trained with the density-weighted masked MSE"
-        States both that weighting is on and that the loss is squared error. Under item 9A ``alpha``
-        is in {0.0, 0.5, 1.0} and the loss is MSE / MAE — both are arms.
-  ``build_pipeline_flow``   "unscreened pairs dropped, rare response values weighted up"
-        Same class: true only for ``alpha > 0``.
+  ✅ ``draw_architecture``   ~~"per-cell MLP · trained with the density-weighted masked MSE"~~
+        **Fixed 14.08.2026.** It stated two arms as facts at once, and the bars beneath it are
+        ``alpha = 0`` — so the figure asserted a weighting it does not show. The subtitle now names
+        only what does not vary (the masking); *which* arm the bars are is stated once, with them,
+        from ``EXAMPLE_ARM``.
+  ⚠️ ``build_pipeline_flow``   "unscreened pairs dropped, rare response values weighted up"
+        Same class: true only for ``alpha > 0``, while every panel on the figure plots ``alpha = 0``.
+        **Flagged to Selin 14.08.2026 and deliberately NOT rewritten** — what a loss weights is hers.
 
 ⚠️ **Headline register — true, but the wrong form:**
   ``draw_architecture``     "Model architecture — one cell in, one AUC per panel drug out"
@@ -81,18 +96,35 @@ ref.
   boxes and grey italic asides; ``draw_architecture``'s circles, arrows and heat strips. Both mine
   to redraw at R4.
 
-⚠️ **Hardcoded counts (rule 4).**
-  ``draw_architecture``     "the 8 heads are the 8 rows of one Linear(64 → 8)"  — **already wrong**:
-        it describes the architecture, inside the architecture diagram, and the rebuilt panel has 11.
-  ``build_pipeline``        "CTRPv2 545 drugs" · "overlap 190* lines · 180 trainable" ·
-                            "K=545 · out-of-fold over 153 lines" · "out-of-fold CV over 153 lines" ·
-                            "* 190 = name-matches …"          — ``180`` becomes 181 at the sweep.
-  ``build_pipeline_flow``   "one cell line = 56–1,990 cells" · "545 drugs  →" · "8  the panel"
+⚠️ **Hardcoded counts (rule 4).** Mostly discharged 14.08.2026; what is left is listed as left.
+  ✅ ``draw_architecture``   ~~"the 8 heads are the 8 rows of one Linear(64 → 8)"~~ and the head
+        layer's own ``"heads / 8 drugs"`` caption — **both derived from ``len(PANEL)``**. The far
+        worse defect was underneath them and this checklist had not spotted it: ``counts = [6,5,4,8]``
+        and ``ys = … range(8)`` drew **eight** heads, so ``zip`` truncated the output silently and
+        ``dasatinib``, ``crizotinib`` and ``afatinib`` were missing from a figure titled *"one AUC
+        per panel drug out"*. Spacing, radius and bar height now derive too, with the head *band*
+        held fixed so the drawing around them does not move.
+  ✅ ``build_pipeline``      ~~"K=545 · out-of-fold over 153 lines"~~ — **K is 534**, derived via
+        :func:`_n_heads`; 545 is CTRPv2's catalogue, not the model's head count. ``180 trainable``
+        was already derived (:func:`_n_trainable_lines`) and reads 181.
+  ✅ ``build_pipeline_flow`` ~~"545 drugs  →"~~ — that grid is ``line_mask``, which is
+        ``(lines × 534)``; taken from the array's own shape. ~~"8  the panel"~~ was already derived.
+  ⚠️ **Still hardcoded, and left:** ``build_pipeline``'s "CTRPv2 545 drugs" and "* 190 = name-matches
+        …" (both **correct** — the catalogue and the name-match count), "out-of-fold CV over 153
+        lines"; ``build_pipeline_flow``'s "one cell line = 56–1,990 cells"; ``draw_architecture``'s
+        "Dropout 0.5 · input dropout 0.1 · AdamW, early stopping (patience 10)", which restates
+        ``TrainConfig`` fields — deriving those means importing torch into the figure build, which is
+        a heavier change than this pass is scoped for.
 
 ✅ **Correct as written; do not sweep in:**
-  ``draw_architecture``     "PLOTTED: the superseded run … CURRENT PIPELINE: auc_cc, …"
-        Deliberately contrasts what is plotted against the current pipeline; that disclaimer is what
-        makes the figure readable at all.
+  ⚠️ ``draw_architecture``   ~~"PLOTTED: the superseded run … CURRENT PIPELINE: auc_cc, …"~~
+        **This entry went stale on 14.08.2026 and is the cautionary one.** The sentence was true, and
+        recorded here as true, when the bars were eight hardcoded values from the void run. Deriving
+        them from ``panel_oof_predictions.csv`` made *every clause of it false at once* — the bars
+        now **are** the current pipeline, so a disclaimer contrasting them with it says the opposite
+        of the truth, and this list was still vouching for it. Replaced by a provenance line naming
+        the plotted arm, every field read from ``EXAMPLE_ARM`` and ``PANEL``. **A "correct as
+        written" entry is a claim about code that changes; it expires like any other.**
   ``draw_architecture``     "high AUC = resistant" and its sensitive counterpart — legends.
   ``build_pipeline``        "Results withdrawn" — a plan-status key.
 
@@ -107,7 +139,8 @@ report body, not referenceable by LaTeX) and over a PGF/vector figure (fonts mat
 LaTeX installation in the figure build path). It is committed so a clean checkout still compiles
 the report; a regenerate-and-diff pre-merge check that fails on drift is owned by the gate session.
 
-**Derived from data — currently SKIPPED, and archived (12.08.2026):**
+**Derived from data — all four BUILD again as of 14.08.2026** (they were skipped from 12.08.2026,
+and the archived copies under ``docs/figures/archive/`` are the superseded ones):
 
   pipeline.png             the pipeline as a picture, stage by stage
   model_architecture.png   one cell in, one AUC per panel drug out
@@ -115,13 +148,15 @@ the report; a regenerate-and-diff pre-merge check that fails on drift is owned b
   loss_03_effect.png       what the weighting did, per drug: spread up, ranking flat
 
 The four read either ``figure_data.npz`` -- rebuilt from the ``auc_cc`` targets h5ad -- or a
-training output under ``notebooks/outputs/panel/``. Neither exists on the current target:
-preprocessing has not re-run under the freeze, and the last training run was on the void 8-drug
-panel. **They are not built from the retired ``auc`` h5ad that is still on disk**, because a figure
-that can only be produced from a target the pipeline no longer writes is not reproducible by a
-standard run -- and one that renders anyway is worse than one that is absent, since nothing on its
-face says which target it came from. Each is skipped with a printed reason; the superseded PNGs are
-in ``docs/figures/archive/`` with a README. Every skip clears by itself at R4.
+training output under ``notebooks/outputs/panel/``. Both now exist on the current target: the
+13.08.2026 re-run produced the panel artifacts, and the last two skips (``pipeline.png`` and
+``model_architecture.png``, held by ``_example_matches_panel``) cleared on 14.08.2026 when
+:func:`_example_predictions` began deriving the example vector from ``panel_oof_predictions.csv``.
+
+**They are still not built from the retired ``auc`` h5ad that is on disk**, and the skip machinery
+stays: a figure that can only be produced from a target the pipeline no longer writes is not
+reproducible by a standard run -- and one that renders anyway is worse than one that is absent,
+since nothing on its face says which target it came from. Each skip prints its reason.
 
 The drug panel is read from ``notebooks/outputs/panel/panel.csv`` rather than duplicated here. It
 was a hardcoded 8-compound list until 12.08.2026, which is how it went stale when the panel was
@@ -201,6 +236,33 @@ def _n_candidates() -> int:
     return len(pd.read_csv(PANEL_OUT / "literature_panel_candidates.csv"))
 
 
+def _n_heads() -> int:
+    """How many drugs the multi-task model actually has a head for — **534, not 545**.
+
+    The two are different quantities and the figures conflated them. **545** is CTRPv2's catalogue,
+    and it is right wherever the catalogue is meant — the drug funnel narrows *from* it. **534** is
+    what survives ``ctrp_to_h5ad.DEFAULT_MIN_CELL_LINES`` (:file:`scripts/preprocessing/ctrp_to_h5ad.py:78`,
+    applied at ``:246``): a compound is kept only if it was screened against at least 50 distinct
+    SCP542-overlapping cell lines, and eleven compounds miss that. So the targets h5ad is
+    53,513 x 534, ``uns['ctrp_drugs']`` has 534 entries, and the model has 534 heads.
+
+    ⚠️ **The threshold of 50 carries no source** — see
+    :file:`docs/steps/01-datasets-and-harmonization.md` §*The 50-cell-line drug cut*, which records
+    it as arbitrary rather than leaving it to read as principled. Note it is **not** the other 50 in
+    the pipeline (lines with fewer than 50 assigned *cells*); the two are unrelated cuts that happen
+    to share a number.
+
+    Read from ``outputs/panel/panel_heads_summary.csv``, the artifact behind Step 05 §D's 534-head
+    run, rather than typed — rule 4, and the reason the count was wrong here in the first place.
+    """
+    import pandas as pd
+
+    heads = pd.read_csv(PANEL_OUT / "panel_heads_summary.csv")["heads"].unique()
+    if len(heads) != 1:                  # never quietly pick one
+        raise ValueError(f"panel_heads_summary.csv mixes head counts: {sorted(heads)}")
+    return int(heads[0])
+
+
 def _n_trainable_lines() -> int:
     """Cell lines with post-QC response measurements, read from the committed split.
 
@@ -225,6 +287,9 @@ N_CANDIDATES = _n_candidates()
 
 #: Trainable cell lines — see :func:`_n_trainable_lines` for why it is not 180.
 N_LINES = _n_trainable_lines()
+
+#: Model output heads — see :func:`_n_heads` for why it is 534 and not CTRPv2's 545.
+N_HEADS = _n_heads()
 
 
 def box(ax, x, y, w, h, title, lines, edge, fill, title_color=None, dashed=False,
@@ -288,8 +353,11 @@ def build_pipeline():
     # rebuilt 11-drug panel, the auc_cc target and the corrected early stopping, over three seeds.
     # The box states SCOPE and STATUS only -- what the run showed belongs in prose that can be cited
     # and disputed, not in a stage label of a pipeline diagram (this file's own audit rule).
+    # K corrected 545 -> 534 on 14.08.2026, and derived with it. 545 is CTRPv2's catalogue; the
+    # model's head count is what clears the 50-overlapping-lines cut in ctrp_to_h5ad, which is 534
+    # and is what docs/steps/05 §D reports. See :func:`_n_heads`.
     box(ax, XS[0], ROW_B, W, H, "05 · Multi-task + fair eval",
-        ["K=545 · out-of-fold over 153 lines", "re-run 13.08.2026 · 3 seeds",
+        [f"K={N_HEADS} · out-of-fold over 153 lines", "re-run 13.08.2026 · 3 seeds",
          "results: docs/steps/05"], GREEN, GREEN_FILL)
     box(ax, XS[1], ROW_B, W, H, "06 · Cross-database  (MISSING)",
         ["CTRPv2 + PRISM + GDSC", "efficacy + toxicity heads",
@@ -348,16 +416,45 @@ def _heat_strip(ax, xc, y0, y1, vals, cmap, w=2.4):
 #: fold in which SKES1_BONE was held out). Predicted vs measured AUC for the eight panel drugs. Used
 #: instead of an invented vector so the figure shows the actual output scale -- including the visible
 #: shrinkage (predictions span 0.37-0.75 against a measured 0.04-0.91).
-#: ⚠️ These eight values describe ``EXAMPLE_DRUGS`` -- the **void 8-drug** panel -- and the drawing
-#: labels bar ``j`` with ``PANEL[j]``, the **rebuilt 11-drug** panel. The two share three compounds in
-#: a different order, so every bar carries another drug's name and four name compounds that were never
-#: in that run. Guarded by :func:`_example_matches_panel` rather than repaired: repair needs
-#: out-of-fold predictions for the rebuilt panel, which exist only after R4.
+#: The example cell line the architecture drawing shows. Unchanged from the original figure
+#: (Selin, 27.07.2026) so that repointing it onto the rebuilt panel updates the DATA and not the
+#: editorial choice; ``SKES1_BONE`` is still held out and still carries all eleven panel drugs.
 EXAMPLE_LINE = "SKES1_BONE"
-EXAMPLE_DRUGS = ["methotrexate", "dasatinib", "paclitaxel", "vincristine",
-                 "afatinib", "topotecan", "tanespimycin", "selumetinib"]
-EXAMPLE_PRED = [0.438, 0.663, 0.384, 0.372, 0.748, 0.545, 0.666, 0.739]
-EXAMPLE_TRUE = [0.511, 0.797, 0.122, 0.036, 0.692, 0.177, 0.655, 0.908]
+
+#: The arm those predictions come from: the transcript-level representation, unweighted, squared
+#: error, first seed. One real run rather than a mean across seeds, because the figure exists to show
+#: the actual output scale -- including the visible shrinkage -- and an average is not a run's output.
+EXAMPLE_ARM = dict(rep="X_scGPT", alpha=0.0, loss="mse", seed=42)
+
+
+def _example_predictions():
+    """Real out-of-fold predictions for one held-out cell line, in ``PANEL`` order.
+
+    **Derived, not typed (14.08.2026).** These were eight hardcoded values from the **void 8-drug**
+    run, while the drawing labelled bar ``j`` with ``PANEL[j]`` -- so every bar carried another
+    compound's name and four named compounds that were never in that run. The figure was skipped
+    rather than corrected because repair needed out-of-fold predictions for the rebuilt panel, which
+    did not exist until the 13.08.2026 re-run.
+
+    Reading them from the artifact is what stops the defect recurring: the vector and the panel are
+    now the same file's two views, so they cannot disagree. It is the third quantity in this module
+    to be derived for that reason, after :func:`_panel` and :func:`_n_candidates`.
+    """
+    import pandas as pd
+
+    oof = pd.read_csv(PANEL_OUT / "panel_oof_predictions.csv")
+    sel = oof[(oof.rep == EXAMPLE_ARM["rep"]) & (oof.alpha == EXAMPLE_ARM["alpha"])
+              & (oof.loss == EXAMPLE_ARM["loss"]) & (oof.seed == EXAMPLE_ARM["seed"])
+              & (oof.cell_line == EXAMPLE_LINE)].set_index("drug")
+    missing = [d for d in PANEL if d not in sel.index]
+    if missing:                      # never silently draw a short vector
+        raise ValueError(f"{EXAMPLE_LINE} has no out-of-fold row for {missing}")
+    return ([round(float(sel.loc[d, "y_pred"]), 3) for d in PANEL],
+            [round(float(sel.loc[d, "y_true"]), 3) for d in PANEL])
+
+
+EXAMPLE_DRUGS = list(PANEL)
+EXAMPLE_PRED, EXAMPLE_TRUE = _example_predictions()
 
 
 def _example_matches_panel(name: str) -> bool:
@@ -399,11 +496,13 @@ def draw_architecture(ax, *, compact: bool = False):
     if not compact:
         ax.text(0, 51, "Model architecture — one cell in, one AUC per panel drug out",
                 ha="left", va="top", fontsize=13, fontweight="bold", color=INK)
-        # The bars come from figure_data.npz, built on the superseded run, so "winsorized at 1.1",
-        # "8-drug" and "25 epochs" are accurate about what is PLOTTED and wrong only if read as the
-        # current pipeline. Split into two lines on 12.08.2026 (Selin) so the distinction is on the
-        # figure rather than only in the README caption.
-        ax.text(0, 48.0, "per-cell MLP · trained with the density-weighted masked MSE (loss_01–03)",
+        # Was "trained with the density-weighted masked MSE (loss_01-03)" until 14.08.2026, which
+        # stated two swept arms as facts: `alpha` is in {0.0, 0.5, 1.0} and the loss in {mse, mae},
+        # and the arm actually drawn below is alpha = 0 -- every observed pair weighs exactly 1, so
+        # the figure asserted a weighting it does not show. The subtitle now names only what does
+        # not vary (the masking); which arm the bars come from is stated once, with the bars.
+        ax.text(0, 48.0, "per-cell MLP · a masked objective — only screened (cell line, drug) pairs "
+                         "contribute (loss_01–03)",
                 ha="left", va="top", fontsize=8.5, color=GREY)
 
     # ---------- INPUT: one cell -> embedding vector ----------
@@ -422,26 +521,38 @@ def draw_architecture(ax, *, compact: bool = False):
 
     # ---------- MODEL: MLP drawn as neurons ----------
     layers_x = lx
-    counts = [6, 5, 4, 8]
+    # The first three layers are drawn truncated (a '⋮' says so); the head layer is drawn IN FULL,
+    # one circle per panel drug, so its count is len(PANEL) and never a literal.
+    counts = [6, 5, 4, len(PANEL)]
     cy, r = 37, 1.25 * (0.72 if compact else 1)
     sp = 3.0 if not compact else 2.3
-    head_sp = 2.05 if not compact else 1.62  # 8 heads drawn in full need tighter spacing
+    # Spacing, radius and bar height follow the panel size. All three were fixed at eight heads'
+    # worth (2.05 / 1.62 apart, radius 0.85 / 0.55) until 14.08.2026, and `zip` then truncated the
+    # drawing to the first eight of eleven drugs without a word -- so a figure titled "one AUC per
+    # panel drug out" silently dropped dasatinib, crizotinib and afatinib. What is held constant is
+    # the vertical BAND the heads occupy (7 x 2.05 = 14.35 units, 7 x 1.62 = 11.34 compact), because
+    # it is the band the dashed trunk box and the layer captions below were laid out around: keeping
+    # it fixed lets the head count change without moving anything else on the drawing.
+    head_band = 14.35 if not compact else 11.34
+    head_sp = head_band / max(len(PANEL) - 1, 1)
+    head_r = head_sp * (0.85 / 2.05 if not compact else 0.55 / 1.62)
     pos = []
-    for lx, n in zip(layers_x, counts):
-        s = head_sp if n == 8 else sp
-        pos.append([(lx, cy + (i - (n - 1) / 2) * s) for i in range(n)])
+    for li, (lxx, n) in enumerate(zip(layers_x, counts)):
+        s = head_sp if li == 3 else sp
+        pos.append([(lxx, cy + (i - (n - 1) / 2) * s) for i in range(n)])
     for a, b in zip(pos[:-1], pos[1:]):
         for (x1, y1) in a:
             for (x2, y2) in b:
                 ax.plot([x1, x2], [y1, y2], color="#bcd0e6", lw=0.5, zorder=1)
     for li, layer in enumerate(pos):
-        rr = (0.85 if not compact else 0.55) if li == 3 else r
+        rr = head_r if li == 3 else r
         for (x, y) in layer:
             ax.add_patch(Circle((x, y), rr, facecolor=BLUE_FILL, edgecolor=BLUE, lw=1.5, zorder=3))
-    for lx, n in zip(layers_x[:3], counts[:3]):  # '...' only where neurons are omitted
-        ax.text(lx, cy - ((n - 1) / 2) * sp - r - 0.5, "⋮", ha="center", va="top",
+    for lxx, n in zip(layers_x[:3], counts[:3]):  # '...' only where neurons are omitted
+        ax.text(lxx, cy - ((n - 1) / 2) * sp - r - 0.5, "⋮", ha="center", va="top",
                 fontsize=12 * fs, color=GREY)
-    for lxx, t in zip(layers_x, ["input\n512", "hidden\n128", "hidden\n64", "heads\n8 drugs"]):
+    for lxx, t in zip(layers_x, ["input\n512", "hidden\n128", "hidden\n64",
+                                 f"heads\n{len(PANEL)} drugs"]):
         ax.text(lxx, 25.8, t, ha="center", va="top", fontsize=9 * fs, color=INK)
     ax.add_patch(FancyBboxPatch((layers_x[0] - 3.5, 27.5), layers_x[3] - layers_x[0] + 7, 19,
                  boxstyle="round,pad=0.3,rounding_size=1.2",
@@ -451,10 +562,16 @@ def draw_architecture(ax, *, compact: bool = False):
         # the architecture, and the cap is itself under review (item 10 owns whether TrainConfig's
         # default of 25 moves to the 50 that 4a_percell_training passes). Naming it here made the
         # architecture caption go stale every time the cap moved.
+        # "Adam" corrected to AdamW 14.08.2026: the optimizer has been `optim.AdamW`
+        # (`training_utils.py::train_model`) since Selin's 12.08.2026 switch under review item 10,
+        # and the label had not followed. It names the optimizer only -- `TrainConfig.weight_decay`
+        # is 0.0, which is a *training* setting and belongs with the arm, not in the architecture
+        # caption.
         ax.text(43.2, 22.6, "hidden block  =  Linear → LayerNorm → GELU → Dropout 0.5      ·      "
-                            "input dropout 0.1      ·      Adam, early stopping (patience 10)",
+                            "input dropout 0.1      ·      AdamW, early stopping (patience 10)",
                 ha="center", va="top", fontsize=8.2, color=INK)
-        ax.text(43.2, 19.8, "the 8 heads are the 8 rows of one Linear(64 → 8) over a shared trunk — "
+        ax.text(43.2, 19.8, f"the {len(PANEL)} heads are the {len(PANEL)} rows of one "
+                            f"Linear(64 → {len(PANEL)}) over a shared trunk — "
                             "there is no per-drug sub-network",
                 ha="center", va="top", fontsize=8.2, color=GREY, style="italic")
 
@@ -462,11 +579,14 @@ def draw_architecture(ax, *, compact: bool = False):
     amax = 1.15                                # AUC 0 .. 1.15 maps to x0 .. x0+span
     cm = plt.colormaps["coolwarm"]             # low AUC = sensitive (blue) .. high = resistant (red)
     shade = lambda v: cm(np.clip(0.5 + (v - 0.5) / 1.2, 0, 1))  # white anchored at AUC 0.5
-    ys = [cy + (i - 3.5) * head_sp for i in range(8)][::-1]
+    # One row per head, in the same order and at the same heights as the head circles: PANEL[j],
+    # EXAMPLE_PRED[j] and EXAMPLE_TRUE[j] are three views of one row and are all len(PANEL) long.
+    bar_h = head_sp * 0.75
+    ys = [cy + (i - (len(PANEL) - 1) / 2) * head_sp for i in range(len(PANEL))][::-1]
     for j, (yy, p, t) in enumerate(zip(ys, EXAMPLE_PRED, EXAMPLE_TRUE)):
         arrow(ax, layers_x[3] + 1.0, yy, x0 - (5.5 if compact else 6.5), yy, color="#9db6cf")
         ax.plot([x0, x0 + span], [yy, yy], color="#e4e4e0", lw=0.8, zorder=1)
-        ax.add_patch(Rectangle((x0, yy - 0.62), p / amax * span, 1.24, facecolor=shade(p),
+        ax.add_patch(Rectangle((x0, yy - bar_h / 2), p / amax * span, bar_h, facecolor=shade(p),
                                edgecolor="white", lw=0.6, zorder=3))
         ax.plot([x0 + t / amax * span], [yy], marker="D", ms=3.4, color=INK, zorder=4)
         ax.text(x0 - 0.8, yy, PANEL[j], ha="right", va="center", fontsize=8 * fs, color=INK)
@@ -500,14 +620,26 @@ def draw_architecture(ax, *, compact: bool = False):
             "loss, not in the target.",
             ha="left", va="top", fontsize=8.2, color=INK)
 
-    # The bars come from figure_data.npz, built on the superseded run, so "winsorized at 1.1",
-    # "8-drug" and "25 epochs" are accurate about what is PLOTTED and wrong only if read as the
-    # current pipeline. Stated on the figure rather than only in the README caption. Plain ASCII:
-    # matplotlib's default font has no glyph for the warning emoji and renders it as a tofu box.
+    # Rewritten 14.08.2026, and it is a REPLACEMENT rather than an edit, because every clause of the
+    # old sentence had gone false at once. It read "PLOTTED: the superseded run -- auc winsorized at
+    # 1.1, the void 8-drug panel, 25 epochs. CURRENT PIPELINE: auc_cc, no winsorization, the rebuilt
+    # 11-drug panel, 50 epochs." That was accurate when written and stopped being so the moment
+    # `_example_predictions` repointed the bars onto `panel_oof_predictions.csv`: the bars ARE the
+    # current pipeline now, so a warning contrasting them with it says the opposite of the truth.
+    # (The module docstring listed this string under "Correct as written; do not sweep in" -- that
+    # entry went stale with the repointing and is corrected there too.)
+    #
+    # What replaces it is not a warning but provenance: which of the swept arms these eleven bars
+    # are, since `alpha` and `loss` are both arms and one figure can only show one of them. Every
+    # field is read from EXAMPLE_ARM and PANEL, so it cannot drift from the vector it describes --
+    # the same reason the vector itself is derived. Colour drops from RED to MUTED with the change
+    # of job. Plain ASCII: matplotlib's default font renders the warning emoji as a tofu box.
     ax.text(0, 12.6,
-            "PLOTTED: the superseded run — auc winsorized at 1.1, the void 8-drug panel, 25 epochs."
-            "    CURRENT PIPELINE: auc_cc, no winsorization, the rebuilt 11-drug panel, 50 epochs.",
-            ha="left", va="top", fontsize=8.0, color=RED)
+            f"PLOTTED: one arm of the current sweep — target auc_cc, the {len(PANEL)}-drug panel; "
+            f"{EXAMPLE_ARM['rep']}, alpha = {EXAMPLE_ARM['alpha']:g} (unweighted: every observed "
+            f"pair weighs 1), {EXAMPLE_ARM['loss'].upper()}, seed {EXAMPLE_ARM['seed']}"
+            "    ·    source: notebooks/outputs/panel/panel_oof_predictions.csv",
+            ha="left", va="top", fontsize=8.0, color=MUTED)
 
 
 def build_architecture():
@@ -634,6 +766,19 @@ def panel_corr():
                    "true_std": "mean", "n_lines": "first"}))
 
 
+def _n_seeds() -> int:
+    """How many seeds :func:`panel_corr` averages — read from the file it averages.
+
+    Rule 4, in its other direction: stage 8 of ``pipeline.png`` was captioned *"one seed"* while its
+    bars averaged three, and nothing could catch it because the count was typed rather than taken
+    from the data it described. Any caption stating the aggregation reads it from here.
+    """
+    import pandas as pd
+
+    d = pd.read_csv(PANEL_OUT / "panel_per_drug_correlation.csv")
+    return int(d[d.loss == FIG_LOSS].seed.nunique())
+
+
 def _needs_data(name: str) -> bool:
     """True if ``name`` cannot be built right now; prints why.
 
@@ -721,8 +866,13 @@ def build_pipeline_flow():
                            edgecolor="#d2691e", lw=1.4))
     ax.text(x0 + 10 * cw + 0.9, y0 + 5 * ch + 0.45, "= this line's row", ha="left", va="center",
             fontsize=7.6, color="#d2691e")
-    ax.text(x0 + 5 * cw, y0 + 6 * ch + 0.5, "545 drugs  →", ha="center", va="bottom",
-            fontsize=7.6, color=MUTED)
+    # The grid is a 6x10 corner of `line_mask`, which is (lines x drugs kept by the 50-line cut) --
+    # so its width is 534, not CTRPv2's catalogue of 545. Labelled "545 drugs" until 14.08.2026,
+    # which described a matrix this figure has never drawn. Taken from the array itself, so the
+    # label and the thing it labels are one object. The funnel in stage 2 keeps 545: that tier IS
+    # the catalogue, and narrowing away from it is the funnel's whole point.
+    ax.text(x0 + 5 * cw, y0 + 6 * ch + 0.5, f"{d['line_mask'].shape[1]} drugs  →", ha="center",
+            va="bottom", fontsize=7.6, color=MUTED)
     ax.text(x0 - 0.7, y0 + 3 * ch, "cell lines", ha="center", va="center", fontsize=7.4,
             color=MUTED, rotation=90)
     for dx, (col, lab) in enumerate([(BLUE, "screened"), ("#efefeb", "not screened")]):
@@ -866,8 +1016,17 @@ def build_pipeline_flow():
     ax.tick_params(labelsize=6.5)
 
     # ================================================== 8 · result
+    # Rewritten 14.08.2026 (Selin). Both halves were wrong in different ways. "one seed" was simply
+    # false: the bars come from `panel_corr`, which averages seeds 42/43/44 -- stage 7's scatter is
+    # one seed on purpose, this is not. And "only scGPT clears the ridge control" asserted a result
+    # on a pipeline diagram: true of the plotted bars (scGPT MLP 0.2009 vs its ridge 0.1914,
+    # sign-consistent 3/3 seeds; PCA MLP 0.2473 vs its ridge 0.2767) but a +0.0096 margin against a
+    # seed sd of 0.0053, and the tallest bar on the panel is the PCA ridge -- so a reader takes
+    # "only scGPT clears" for "scGPT wins". The caption now names the axes and the aggregation;
+    # the finding lives in docs/steps/05, where it can be sourced and disputed.
     stage(82.0, ROW2_TITLE, "8", "Result",
-          "one seed — only scGPT clears\nthe ridge control", ROW2_CAP)
+          f"mean per-drug Spearman over {len(PANEL)} drugs,\n"
+          f"{_n_seeds()} seeds — each MLP against its own ridge", ROW2_CAP)
     ax = fig.add_axes([0.868, 0.155, 0.115, 0.255])
     ridge = pd.read_csv(PANEL_OUT / "panel_ridge_baseline.csv")
     bars = [
