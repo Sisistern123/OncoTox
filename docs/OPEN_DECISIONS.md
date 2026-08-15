@@ -342,7 +342,41 @@ it are not interpretable", which a floor supports. It also costs nothing and cha
 
 ---
 
-## Nothing is open
+## §9 · The LPO random forests are unseeded — pin, mark, or drop them (opened 14.08.2026)
 
-**Every entry is settled, dissolved or demoted as of 14.08.2026** — §8 last, by evidence rather than
-by choice. Add the next one as §9.
+**The choice.** `drevalpy`'s default hyperparameter set for `SingleDrugRandomForest` pins no
+`random_state`, so those two rows of the leave-pairs-out benchmark move between executions:
+`(scgpt)` read **0.2401** then **0.2141**, `(pca)` **0.0466** then **0.0271**. Every other row in that
+run — six naive baselines, both elastic nets — was bit-identical across the same two executions.
+Discovered by re-running the script to add a row-count column, not by looking for it.
+
+**The options, and what each implies.**
+
+- **Pin a `random_state`.** Makes the two rows reproducible like everything else. But *which* seed is
+  a free choice, and whichever is picked becomes the reported number — with the values now visible,
+  that is choosing a number after seeing the alternatives. Cheapest, and the least honest of the three
+  unless the seed is fixed by a rule stated first (e.g. "42, as everywhere else in this project",
+  which *is* such a rule and is the obvious candidate).
+- **Run them over ≥3 seeds and report a band**, as `4a` does. Consistent with how every other
+  multi-run number on this page is reported, and it would show whether 0.2401 vs 0.2141 is the whole
+  spread or the middle of a wider one. Costs a re-run of the four `SingleDrug` configurations only.
+- **Mark them as non-reproducible and quote them with that caveat** (what the record does today).
+  Costs nothing, and no conclusion rests on them — both sit below the line-mean baseline under either
+  execution. But it leaves two numbers in a benchmark table that a reader cannot reproduce.
+
+**The assumption underneath.** That the movement is seed noise rather than a difference between the
+two executions. **How you would know:** the two runs are the same commit of `dreval_lpo.py` and every
+non-forest row is identical to the last decimal, which is strong evidence — but it is one comparison,
+and option 2 is what would actually measure it.
+
+**My reading, as a reading.** Option 2, then option 1 with seed 42 if the band turns out narrow. The
+forests are not load-bearing for any claim, so this is a tidiness question — but it is a *benchmark
+table*, and "we ran DrEval's models and here are numbers you cannot reproduce" is the one thing this
+project has been most careful not to say.
+
+---
+
+## Everything else is settled
+
+**Every other entry is settled, dissolved or demoted as of 14.08.2026** — §8 last, by evidence rather
+than by choice. Add the next one as §10.

@@ -159,7 +159,11 @@ def main() -> None:
         scored = DrugResponseDataset(response=te.response, cell_line_ids=te.cell_line_ids,
                                      drug_ids=te.drug_ids, predictions=pred)
         met = evaluate(scored, metric=["Pearson", "Spearman", "R^2", "MSE"])
-        rows.append({"algorithm": name, "fold": i, **met,
+        # n_scored is not decoration. The naive baselines are scored on every test pair; the
+        # per-drug models are scored only where prediction succeeded (the ``ok`` mask below), so
+        # without this column a comparison between the two groups cannot be checked for being
+        # like-for-like. Added 14.08.2026 before the LPO ordering was quoted anywhere.
+        rows.append({"algorithm": name, "fold": i, "n_scored": int(len(pred)), **met,
                      "per_drug_Spearman": per_drug_spearman(te.response, pred, te.drug_ids)})
 
     for name in MODELS:

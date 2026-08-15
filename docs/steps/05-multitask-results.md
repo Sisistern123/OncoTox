@@ -969,25 +969,68 @@ baseline becomes informative. Produced by `scripts/evaluation/dreval_lpo.py` →
 `notebooks/outputs/dreval/dreval_lpo_results.csv`; 5 folds, 1,918 (line, drug) pairs, 181 lines,
 11 drugs.
 
-| baseline (drevalpy's own) | pooled Spearman | **per-drug Spearman** |
+| predictor | pooled Spearman | **per-drug Spearman** |
 |---|---|---|
 | `NaivePredictor` | 0.0000 | — (constant) |
 | `NaiveDrugMeanPredictor` | 0.7413 | — (constant within a drug) |
 | **`NaiveCellLineMeanPredictor`** | 0.0354 | **0.3220** |
 | `NaiveTissueMeanPredictor` | 0.0999 | 0.1835 |
+| `NaiveTissueDrugMeanPredictor` | 0.7356 | 0.1646 |
 | `NaiveMeanEffectsPredictor` | 0.7541 | 0.3220 |
 | `SingleDrugElasticNet` (pca) | 0.7688 | 0.3165 |
-| `SingleDrugRandomForest` (scgpt) | 0.7815 | 0.2401 |
+| `SingleDrugElasticNet` (scgpt) | 0.7413 | — (shrank to the intercept) |
+| `SingleDrugRandomForest` (pca) ⚠️ | 0.7469 | 0.0271 |
+| `SingleDrugRandomForest` (scgpt) ⚠️ | 0.7773 | 0.2141 |
+
+> ⚠️ **The two random forests do not reproduce, and nothing else in this table moved** (found
+> 14.08.2026 on a re-run that added the `n_scored` column). `drevalpy`'s default hyperparameter set
+> pins **no `random_state`**, so a second execution read `(scgpt)` **0.2401 → 0.2141** and `(pca)`
+> **0.0466 → 0.0271**. Every other row — all six naive baselines and both elastic nets — was
+> bit-identical. The two rows are marked wherever they are quoted and are hatched in the figure.
+> **No conclusion on this page rests on them:** both sit below the line-mean baseline under either
+> execution. Pinning a seed would make them reproducible but picks a number, so it is
+> [an open decision](../OPEN_DECISIONS.md) rather than a silent fix.
+
+> ✅ **Every row is scored on the same pairs — checked, not assumed.** The naive baselines are scored
+> on every test pair while the per-drug models are scored only where prediction succeeded, so this
+> could have been false and the comparison not a comparison. `n_scored` is now written per row and is
+> **1,918 for all ten** (383–384 per fold). `build_lpo_bias()` raises rather than draws if that ever
+> stops holding.
 
 **Read the two columns as different questions.** Pooled Spearman is dominated by compound potency —
 predicting each drug's mean alone scores 0.7413 of it, so the raw 0.77-ish numbers say almost nothing.
 This project's metric is the per-drug column, which removes the drug effect by construction.
+**The two columns rank the predictors almost oppositely**, which is the clearest single argument for
+the metric: `SingleDrugRandomForest (scgpt)` is top pooled (0.7773) and mid-table per drug;
+`NaiveCellLineMeanPredictor` is second-from-bottom pooled (0.0354) and **top per drug**.
+
+**Figure:** `docs/figures/lpo_bias.png` (`docs/make_figures.py::build_lpo_bias`).
 
 ### What it establishes
 
 **A predictor that knows only each cell line's average response, and nothing about any compound,
-reaches 0.3220 mean per-drug Spearman.** Lineage alone reaches 0.1835. So **the within-drug ranking of
-cell lines is substantially a line-level property**: broadly fragile lines rank low in most drugs.
+reaches 0.3220 mean per-drug Spearman.** So **the within-drug ranking of cell lines is substantially a
+line-level property**: broadly fragile lines rank low in most drugs.
+
+**Lineage is most of that channel but not all of it.** `NaiveTissueMeanPredictor` reaches **0.1835**,
+which is **57 %** of the line-mean baseline's 0.3220. So the tissue-of-origin bias the project set out
+to remove is real and large — and **cell-line identity beyond lineage is worth about as much again**.
+That matters for the motivating hypothesis: an embedding that suppressed *only* lineage would leave
+the larger half of the channel untouched.
+
+⚠️ **Not a variance decomposition.** 0.1835 and 0.3220 are two predictors' scores, not two shares of
+one quantity; they are nested (a line's tissue is a function of the line) but the metric is a rank
+correlation, so the 57 % is a ratio of scores and does not partition anything. Say *"lineage alone
+recovers 57 % of what line identity recovers"*, not *"lineage explains 57 % of the bias"*.
+
+**No feature-using model clears the line-mean baseline.** The best of the four, `SingleDrugElasticNet`
+on PCA line-means, ties it at **0.3165 against 0.3220** — with **three times** the fold-to-fold spread
+(sd 0.1303 against 0.0397). The other three are below it, one collapsed entirely.
+
+⚠️ **What that does and does not say.** It is evidence about *these four models on this data at this
+scale*, not about our MLP, which has never been run under LPO — the open measurement recorded below.
+It also inherits the RF caveat above for two of the four. What it does support: under the protocol
+where the fragility channel is available to a baseline, nothing here has beaten it.
 
 **Corroborated without `drevalpy` and without any model.** Correlating each drug's truth against the
 line's mean over the *other ten* drugs — leave-one-drug-out, so no self-inclusion — gives mean
@@ -1071,10 +1114,14 @@ two.** Nothing here measures what share of our model's 0.2824 is fragility; that
 decomposition this project has deliberately not built
 ([Corrections](corrections-and-dead-ends.md), and `dreval_normalize.py` on why).
 
-⚠️ **One more thing the run showed.** `SingleDrugElasticNet` on the scGPT line-means **collapsed to the
-drug mean** — pooled 0.7413, exactly `NaiveDrugMeanPredictor`, and a constant within each drug. On
-those features the elastic net shrank to the intercept, finding no usable within-drug signal at all.
-On PCA line-means the same model reaches 0.3165.
+⚠️ **One more thing the run showed, and it is the sharpest per-representation result in it.** The two
+model classes split the two embeddings, consistently. On **scGPT** line-means `SingleDrugElasticNet`
+shrank to the intercept — its pooled score is `NaiveDrugMeanPredictor`'s to four decimals — while the
+random forest is the better of the two arms. On **PCA** line-means the ordering reverses: the elastic
+net is the best feature-using model in the table and the random forest is the worst. **Neither
+representation is simply better; they need different model classes** — and the same split holds under
+LCO (`SingleDrugEN (pca)` 0.2534 / `SingleDrugRF (pca)` 0.0279 normalized against `EN (scgpt)` 0.0000 /
+`RF (scgpt)` 0.2773), so it reproduces across two protocols. Values in the table above.
 
 ---
 

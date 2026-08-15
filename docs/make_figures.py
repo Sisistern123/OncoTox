@@ -5,6 +5,11 @@
   pipeline_overview.png    status of the whole project against the plan (steps 01-08)
   loss_01_objective.png    what the objective is made of
 
+**Plots of committed results — built from an artifact, skipped if it is absent:**
+
+  q2_instrument.png        stage 2 and stage 7 of the Q2 instrument, as distributions
+  lpo_bias.png             mean per-drug Spearman under DrEval leave-pairs-out, by predictor
+
 "Pure" means no expression matrix and no plotting of results: the layout is drawn, not measured.
 Both still read the small committed CSVs the module derives its *counts* from (``panel.csv``,
 ``literature_panel_candidates.csv``, ``splits/split_ctrp.csv``, ``panel_heads_summary.csv``), which
@@ -1696,6 +1701,128 @@ def build_q2_instrument():
     print(f"wrote {out}")
 
 
+def build_lpo_bias():
+    """Where the within-drug ranking comes from: lineage, cell-line identity, or the embeddings.
+
+    **The question.** The project's motivating hypothesis is that a model can score well by
+    recognising tissue of origin rather than by learning drug response. Under the project's own
+    leave-**cell-line**-out protocol that cannot be measured at all -- a held-out line is unseen, so a
+    line-mean baseline emits a constant and scores exactly 0.0000. Under leave-**pairs**-out the
+    held-out pairs come from lines that are in training, so each bias channel can be run as an honest
+    predictor and read off directly.
+
+    **Why these six bars and not the ten the run produced.** Four of the ten are unplottable or
+    uninformative here. ``NaivePredictor`` and ``NaiveDrugMeanPredictor`` are **constant within a
+    drug by definition**, so a within-drug rank correlation is undefined for them -- an absence by
+    construction, not a result. ``NaiveMeanEffectsPredictor`` scores **identically** to
+    ``NaiveCellLineMeanPredictor`` (0.3220 both), and must: within one drug the drug effect is an
+    additive constant, so the two induce the same ranking of cell lines. Drawing it again would
+    suggest two measurements where there is one. ``SingleDrugElasticNet (scgpt)`` **is** drawn, as a
+    zero-height bar labelled *collapsed*, because unlike the first two it is a fitted model that
+    found no within-drug signal and shrank to the intercept -- that is a result and hiding it would
+    flatter the scGPT column.
+
+    **The axis is this project's own metric**, mean Spearman within each drug across held-out cell
+    lines, so the bars are commensurable with the numbers reported everywhere else -- but they are
+    **LPO and the project's headline is LCO**, which is why no OncoTox bar appears here and why the
+    subtitle says so. The model has never been run under this protocol; inventing a bar for it by
+    quoting its LCO score is exactly the comparison the record forbids.
+
+    ⚠️ **The two random-forest bars do not reproduce across executions** and are hatched to say so.
+    ``drevalpy``'s default hyperparameter set pins no ``random_state``, so re-running the script moved
+    ``SingleDrugRandomForest (scgpt)`` 0.2401 -> 0.2141 and ``(pca)`` 0.0466 -> 0.0271 while every
+    other bar was bit-identical. **No claim the figure supports rests on them:** both sit below the
+    line-mean baseline in either execution.
+
+    The title states what is plotted. What it means is prose, per this file's own rule.
+    """
+    import pandas as pd
+
+    src = ROOT / "notebooks" / "outputs" / "dreval" / "dreval_lpo_results.csv"
+    d = pd.read_csv(src)
+    g = d.groupby("algorithm").agg(m=("per_drug_Spearman", "mean"),
+                                   s=("per_drug_Spearman", "std"),
+                                   n=("n_scored", "sum"))
+
+    # Every bar is scored on the same pairs, or the comparison is not one. Checked rather than
+    # assumed: the per-drug models are scored only where prediction succeeded, so this could
+    # silently have been false.
+    if g["n"].nunique() != 1:
+        raise SystemExit(f"algorithms scored on different numbers of pairs: {g['n'].to_dict()}")
+
+    #: (key, label, group, colour, hatched-because-nondeterministic)
+    BARS = [
+        ("NaiveTissueMeanPredictor", "lineage only", 0, GREY, False),
+        ("NaiveCellLineMeanPredictor", "cell-line identity", 0, INK, False),
+        ("SingleDrugElasticNet (pca)", "elastic net · PCA", 1, BLUE, False),
+        ("SingleDrugRandomForest (pca)", "random forest · PCA", 1, BLUE, True),
+        ("SingleDrugElasticNet (scgpt)", "elastic net · scGPT", 1, AMBER, False),
+        ("SingleDrugRandomForest (scgpt)", "random forest · scGPT", 1, AMBER, True),
+    ]
+
+    #: Group headers occupy their own row rather than a footnote, so the two blocks are named where
+    #: they are read. A caption strip under the axes collided with the last bar.
+    HEADERS = {0: "NO EXPRESSION FEATURES", 1: "OUR EMBEDDINGS · DrEval's per-drug models"}
+
+    fig, ax = plt.subplots(figsize=(9.4, 4.6))
+    fig.subplots_adjust(top=0.80, left=0.28)
+    # Title names what is plotted, per rule 1. It read "Where the within-drug ranking of cell lines
+    # comes from" in the first draft -- a conclusion-shaped title, and exactly what rule 1 forbids.
+    fig.suptitle("Mean per-drug Spearman under DrEval leave-pairs-out",
+                 x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.0)
+    fig.text(0.02, 0.915,
+             f"5 folds, {int(g['n'].iloc[0] / 5):,} held-out pairs per fold  ·  "
+             "Spearman within each drug across held-out lines, whiskers = sd over folds  ·  "
+             "hatched = no random_state pinned, does not reproduce\n"
+             "held-out pairs come from cell lines that are in training — not comparable with this "
+             "project's leave-cell-line-out numbers; OncoTox has not been run under this protocol",
+             ha="left", va="top", fontsize=8.6, color=GREY, linespacing=1.5)
+
+    ref = float(g.loc["NaiveCellLineMeanPredictor", "m"])
+    xmax = max(0.46, float((g["m"] + g["s"]).max()) + 0.055)
+    label_x = xmax - 0.004                       # one right-aligned column, so values cannot drift
+
+    rows, y = [], 0.0                            # laid out top-down, then flipped by set_ylim
+    for i, (key, label, grp, colour, hatch) in enumerate(BARS):
+        if i == 0 or BARS[i - 1][2] != grp:      # a header row opening each group
+            ax.text(0.003, y, HEADERS[grp], va="center", ha="left", fontsize=8.2,
+                    color=MUTED, fontweight="bold", zorder=5)
+            y -= 1.0
+        rows.append((y, label))
+        m, s = g.loc[key, "m"], g.loc[key, "s"]
+        if pd.isna(m):                           # fitted, then collapsed to the intercept
+            # Descriptive, not interpretive (rule 2): it read "no within-drug signal", which is the
+            # reading. What is observable is that the fitted model emits one value per drug.
+            ax.text(0.003, y, "shrank to the intercept — constant within each drug",
+                    va="center", ha="left", fontsize=8.4, color=AMBER, style="italic", zorder=5)
+            ax.text(label_x, y, "n/a", va="center", ha="right", fontsize=9,
+                    color=AMBER, fontweight="bold", zorder=5)
+        else:
+            ax.barh(y, m, height=0.62, color=colour, alpha=0.32 if hatch else 0.88,
+                    edgecolor=colour, lw=1.2, hatch="///" if hatch else None, zorder=3)
+            ax.errorbar(m, y, xerr=s, fmt="none", ecolor=INK, elinewidth=1.1, capsize=3, zorder=4)
+            ax.text(label_x, y, f"{m:.3f}", va="center", ha="right", fontsize=9,
+                    color=INK, fontweight="bold", zorder=5)
+        y -= 1.0
+
+    ax.axvline(ref, color=RED, lw=1.2, ls="--", zorder=2)
+    ax.text(ref - 0.006, 0.62, "knowing only which cell line it is",
+            fontsize=8.4, color=RED, va="bottom", ha="right")
+
+    ax.set_yticks([r[0] for r in rows])
+    ax.set_yticklabels([r[1] for r in rows], fontsize=9.2)
+    ax.set_xlabel("mean per-drug Spearman  (this project's metric)", fontsize=9.5)
+    ax.set_xlim(0, xmax)
+    ax.set_ylim(y + 0.45, 1.15)
+    _tidy(ax, grid="x")
+    ax.tick_params(labelsize=8.5)
+
+    out = FIG / "lpo_bias.png"
+    fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
 if __name__ == "__main__":
     FIG.mkdir(parents=True, exist_ok=True)
     build_pipeline()
@@ -1708,3 +1835,4 @@ if __name__ == "__main__":
     build_loss_weights()
     build_loss_effect()
     build_q2_instrument()
+    build_lpo_bias()
