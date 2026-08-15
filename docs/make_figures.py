@@ -1752,14 +1752,22 @@ def build_panel_response():
     order = sorted(range(len(panel)),
                    key=lambda k: np.nanpercentile(auc[:, k], 75) - np.nanpercentile(auc[:, k], 25))
     fig, ax = plt.subplots(figsize=(8.6, 4.8))
-    fig.subplots_adjust(top=0.83, left=0.24)
+    fig.subplots_adjust(top=0.86, left=0.24)
     fig.suptitle("Response (auc_cc) across cell lines, per panel compound",
                  x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.0)
-    fig.text(0.02, 0.915,
-             f"one point per cell line, {int(np.isfinite(auc).any(1).sum())} train+val lines  ·  "
-             "box = quartiles, whiskers 5-95 %  ·  ordered by interquartile range\n"
-             "low = the compound killed this line  ·  1.0 = no effect at any dose",
-             ha="left", va="top", fontsize=8.6, color=GREY, linespacing=1.5)
+    # One line, and only what cannot be inferred from the plot: n, the whisker convention (5-95 is
+    # NOT matplotlib's default 1.5xIQR) and the row ordering. Direction and the meaning of 1.0 were
+    # here too and are gone -- this is an expert audience and the axis carries them.
+    #
+    # Stated as PERCENTILES rather than as "quartiles / whiskers / IQR" (Selin, 15.08.2026, who
+    # asked what they meant). The percentile form is no longer and strictly more precise -- the
+    # jargon does not say *which* whisker convention, which is the one thing here that is
+    # non-default -- and the presenter should not have to define a term to answer a question.
+    fig.text(0.02, 0.905,
+             f"{int(np.isfinite(auc).any(1).sum())} train+val cell lines  ·  "
+             "box = 25th–75th percentile, line = median, whiskers = 5th–95th  ·  "
+             "ordered by box width",
+             ha="left", va="top", fontsize=8.6, color=GREY)
 
     rng = np.random.default_rng(0)                # jitter only, never the values
     for row, k in enumerate(order):
@@ -1853,18 +1861,20 @@ def build_lpo_bias():
     HEADERS = {0: "NO EXPRESSION FEATURES", 1: "OUR EMBEDDINGS · DrEval's per-drug models"}
 
     fig, ax = plt.subplots(figsize=(9.4, 4.6))
-    fig.subplots_adjust(top=0.80, left=0.28)
+    fig.subplots_adjust(top=0.84, left=0.28)
     # Title names what is plotted, per rule 1. It read "Where the within-drug ranking of cell lines
     # comes from" in the first draft -- a conclusion-shaped title, and exactly what rule 1 forbids.
     fig.suptitle("Mean per-drug Spearman under DrEval leave-pairs-out",
                  x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.0)
-    fig.text(0.02, 0.915,
+    # Trimmed to one line on the same rule as build_panel_response(): only what cannot be read off
+    # the plot. The long "held-out pairs come from lines that are in training" clause is gone --
+    # "leave-pairs-out" already says it to anyone who knows the protocol, and the warning that
+    # matters (not comparable with LCO) is kept as a single clause rather than a sentence.
+    fig.text(0.02, 0.905,
              f"5 folds, {int(g['n'].iloc[0] / 5):,} held-out pairs per fold  ·  "
-             "Spearman within each drug across held-out lines, whiskers = sd over folds  ·  "
-             "hatched = no random_state pinned, does not reproduce\n"
-             "held-out pairs come from cell lines that are in training — not comparable with this "
-             "project's leave-cell-line-out numbers; OncoTox has not been run under this protocol",
-             ha="left", va="top", fontsize=8.6, color=GREY, linespacing=1.5)
+             "whiskers = sd over folds  ·  hatched = unseeded, does not reproduce  ·  "
+             "not comparable with leave-cell-line-out numbers",
+             ha="left", va="top", fontsize=8.6, color=GREY)
 
     ref = float(g.loc["NaiveCellLineMeanPredictor", "m"])
     xmax = max(0.46, float((g["m"] + g["s"]).max()) + 0.055)
