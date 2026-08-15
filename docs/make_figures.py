@@ -276,6 +276,27 @@ def _panel() -> list[str]:
     return pd.read_csv(PANEL_OUT / "panel.csv")["drug_key"].tolist()
 
 
+def _panel_display() -> dict[str, str]:
+    """``{drug_key: name a reader recognises}`` — for axis labels, never for indexing data.
+
+    ``panel.csv`` carries both spellings: ``drug_key`` is what CTRPv2 and every artifact are keyed
+    by, ``drug`` is the compound's name. They differ enough to matter on a slide -- ``platin`` is
+    *Cisplatin* -- and an audience reading an internal key off an axis is a defect, not a detail.
+    The salt/formulation suffix is dropped (*Imatinib mesylate* -> *Imatinib*): it is accurate and it
+    is noise at this size.
+    """
+    import pandas as pd
+
+    p = pd.read_csv(PANEL_OUT / "panel.csv")
+    drop = (" hydrochloride", " mesylate", " tosylate")
+    out = {}
+    for key, name in zip(p["drug_key"], p["drug"]):
+        for suffix in drop:
+            name = name.replace(suffix, "")
+        out[key] = name
+    return out
+
+
 def _n_candidates() -> int:
     """How many FDA-approved anticancer compounds CTRPv2 actually screened.
 
@@ -1701,6 +1722,73 @@ def build_q2_instrument():
     print(f"wrote {out}")
 
 
+def build_panel_response():
+    """The target itself, per panel compound: how `auc_cc` is distributed across the cell lines.
+
+    **Why it exists.** The panel slide named eleven compounds and showed nothing about them. What a
+    viewer needs in order to read every later result is *what there is to predict for each* — the
+    label's location and its spread. A compound whose lines all sit at the same response cannot be
+    ranked by any model, and one of the eleven is very close to that.
+
+    **Ordered by interquartile range**, widest at the top. The ordering is a display choice and is
+    stated in the subtitle; nothing downstream depends on it.
+
+    ⚠️ **This figure must not be read as a selection criterion, and the panel is its own proof.**
+    Response spread is a statistic of *our own labels*; selecting on it is what voided two earlier
+    panels ([Step 05](../docs/steps/05-multitask-results.md) and the corrections file). The panel was
+    chosen on approval status, a published resistance determinant, and screen coverage — never on
+    this. **The compound with the narrowest spread of the eleven is in the panel**, which is what
+    selecting on spread would have prevented.
+
+    Population: the train+val cell lines, i.e. the ones every fold is fitted and scored on, not all
+    181 in the overlap. Read from ``figure_data()['panel_auc']``, which is built from the ``auc_cc``
+    targets h5ad.
+
+    The title names what is plotted. What it means is prose, per this file's own rule.
+    """
+    d = figure_data()
+    auc, panel = d["panel_auc"], _panel()
+
+    order = sorted(range(len(panel)),
+                   key=lambda k: np.nanpercentile(auc[:, k], 75) - np.nanpercentile(auc[:, k], 25))
+    fig, ax = plt.subplots(figsize=(8.6, 4.8))
+    fig.subplots_adjust(top=0.83, left=0.24)
+    fig.suptitle("Response (auc_cc) across cell lines, per panel compound",
+                 x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.0)
+    fig.text(0.02, 0.915,
+             f"one point per cell line, {int(np.isfinite(auc).any(1).sum())} train+val lines  ·  "
+             "box = quartiles, whiskers 5-95 %  ·  ordered by interquartile range\n"
+             "low = the compound killed this line  ·  1.0 = no effect at any dose",
+             ha="left", va="top", fontsize=8.6, color=GREY, linespacing=1.5)
+
+    rng = np.random.default_rng(0)                # jitter only, never the values
+    for row, k in enumerate(order):
+        v = auc[:, k][np.isfinite(auc[:, k])]
+        ax.scatter(v, np.full(v.size, row) + rng.uniform(-0.17, 0.17, v.size),
+                   s=5, color=GREY, alpha=0.35, linewidths=0, zorder=2)
+        ax.boxplot(v, positions=[row], vert=False, widths=0.62, whis=(5, 95), showfliers=False,
+                   patch_artist=True, zorder=3,
+                   boxprops=dict(facecolor=BLUE_FILL, edgecolor=BLUE, lw=1.2),
+                   medianprops=dict(color=INK, lw=1.6),
+                   whiskerprops=dict(color=BLUE, lw=1.1), capprops=dict(color=BLUE, lw=1.1))
+
+    ax.axvline(1.0, color=RED, lw=1.2, ls="--", zorder=4)
+    ax.text(1.01, len(panel) - 0.4, "no effect", fontsize=8.4, color=RED, va="center")
+
+    names = _panel_display()
+    ax.set_yticks(range(len(panel)))
+    ax.set_yticklabels([names[panel[k]] for k in order], fontsize=9.2)
+    ax.set_xlabel("auc_cc", fontsize=9.5)
+    ax.set_ylim(-0.7, len(panel) - 0.3)
+    _tidy(ax, grid="x")
+    ax.tick_params(labelsize=8.5)
+
+    out = FIG / "panel_response.png"
+    fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
 def build_lpo_bias():
     """Where the within-drug ranking comes from: lineage, cell-line identity, or the embeddings.
 
@@ -1835,4 +1923,5 @@ if __name__ == "__main__":
     build_loss_weights()
     build_loss_effect()
     build_q2_instrument()
+    build_panel_response()
     build_lpo_bias()
