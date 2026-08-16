@@ -341,7 +341,16 @@ per **cell line**. Two distributions therefore multiply into the weight each lin
 | observed drugs per line | 38 | 465 | 505 |
 
 Combined, `NCIH2110_LUNG` carries **4.37 %** of the total loss and `PANC1_PANCREAS` **0.054 %** — a factor
-of **82**. Equal shares would be 0.56 % each; the top 10 lines carry **18.3 %** instead of 5.6 %. With
+of **82**. Equal shares would be 0.56 % each; the top 10 lines carry **18.3 %** instead of 5.6 %.
+
+> ⚠️ **These four decimals do not reproduce from the artifact they name (found 16.08.2026 in a
+> deck-wide claim audit).** `notebooks/outputs/diagnostics/loss_share_per_line.csv` currently gives
+> **4.34 %**, **0.053 %**, **18.2 %** and an equal share of **0.552 %** over **181** lines; the
+> figures above imply ~178, so the two were computed on different line sets — most likely before the
+> `H292` alias, or on train+val rather than all of the overlap. **The load-bearing number, the factor
+> of ~82, is unaffected** (81.6 in the artifact), and so is every conclusion drawn from it. Recorded
+> rather than silently overwritten because which line set is correct is a question about the
+> measurement, not a typo: re-deriving it is a small job and it has not been done. With
 ~153 independent examples, letting one line count 82× another is indefensible, and most of the imbalance
 is the cell count — a sequencing artifact carrying no information about the label. (The z-scoring code was
 careful about exactly this — "statistics are computed per cell line, not per cell" — the loss was not.)
