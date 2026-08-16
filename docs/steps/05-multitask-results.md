@@ -977,10 +977,10 @@ baseline becomes informative. Produced by `scripts/evaluation/dreval_lpo.py` →
 | `NaiveTissueMeanPredictor` | 0.0999 | 0.1835 |
 | `NaiveTissueDrugMeanPredictor` | 0.7356 | 0.1646 |
 | `NaiveMeanEffectsPredictor` | 0.7541 | 0.3220 |
-| `SingleDrugElasticNet` (pca) | 0.7688 | 0.3165 |
-| `SingleDrugElasticNet` (scgpt) | 0.7413 | — (shrank to the intercept) |
-| `SingleDrugRandomForest` (pca) ⚠️ | 0.7469 | 0.0271 |
-| `SingleDrugRandomForest` (scgpt) ⚠️ | 0.7773 | 0.2141 |
+| `SingleDrugElasticNet` (pca) ⚠️ | 0.7688 | 0.3165 — **over 5.6 of 11 drugs only** |
+| `SingleDrugElasticNet` (scgpt) ⚠️ | 0.7413 | — (all coefficients zeroed; **penalty-scale artifact**) |
+| `SingleDrugRandomForest` (pca) ⚠️ | 0.7476 | 0.0488 |
+| `SingleDrugRandomForest` (scgpt) ⚠️ | 0.7768 | 0.2101 |
 
 > ⚠️ **The two random forests do not reproduce, and nothing else in this table moved** (found
 > 14.08.2026 on a re-run that added the `n_scored` column). `drevalpy`'s default hyperparameter set
@@ -1023,14 +1023,34 @@ one quantity; they are nested (a line's tissue is a function of the line) but th
 correlation, so the 57 % is a ratio of scores and does not partition anything. Say *"lineage alone
 recovers 57 % of what line identity recovers"*, not *"lineage explains 57 % of the bias"*.
 
-**No feature-using model clears the line-mean baseline.** The best of the four, `SingleDrugElasticNet`
-on PCA line-means, ties it at **0.3165 against 0.3220** — with **three times** the fold-to-fold spread
-(sd 0.1303 against 0.0397). The other three are below it, one collapsed entirely.
+**No feature-using model clears the line-mean baseline.** Of the models scored on **all eleven**
+compounds the best is `SingleDrugRandomForest` on scGPT line-means at **0.2101 against 0.3220** — a
+clear gap, not a tie.
 
-⚠️ **What that does and does not say.** It is evidence about *these four models on this data at this
+> ⛔ **Corrected 16.08.2026 (Selin: *"why is elastic net not available for scGPT but for PCA? this
+> invalidates slide 16's plot"*). She was right, and the defect was larger than the asymmetry she
+> asked about.** This paragraph read: *"The best of the four, `SingleDrugElasticNet` on PCA
+> line-means, ties it at 0.3165 against 0.3220."* **That comparison was not like-for-like.**
+>
+> `drevalpy`'s `SingleDrugElasticNet` is `ElasticNet(alpha=1, l1_ratio=0.2)` with **no feature
+> standardisation anywhere in the pipeline**, and our two arms differ ~37× in feature scale
+> (`X_pca` line-mean sd 1.388 against `X_scGPT`'s 0.044). At a fixed absolute penalty that decides
+> the outcome: on `X_pca` it zeroes **all 512 coefficients for 6 of 11 compounds** and keeps 1–3 for
+> the rest; on `X_scGPT` it zeroes all 512 for **all 11**. The scGPT blank is therefore **a
+> penalty-scale artifact, not a property of the representation.**
+>
+> **And a drug with constant predictions is skipped by the within-drug metric**, so 0.3165 was a mean
+> over **5.6 of 11 compounds** — the ones that survived the penalty — sitting beside bars averaged
+> over all eleven. `n_drugs_scored` is now recorded per row and printed on the figure's tick labels;
+> every other scored algorithm reads 11.
+>
+> **The conclusion is unchanged and now cleaner:** dropping a bar that measured a different thing
+> turns a claimed *tie* into a **gap of 0.11**.
+
+⚠️ **What that does and does not say.** It is evidence about *these models on this data at this
 scale*, not about our MLP, which has never been run under LPO — the open measurement recorded below.
-It also inherits the RF caveat above for two of the four. What it does support: under the protocol
-where the fragility channel is available to a baseline, nothing here has beaten it.
+It also inherits the RF caveat above. What it does support: under the protocol where the fragility
+channel is available to a baseline, nothing here has beaten it.
 
 **Corroborated without `drevalpy` and without any model.** Correlating each drug's truth against the
 line's mean over the *other ten* drugs — leave-one-drug-out, so no self-inclusion — gives mean

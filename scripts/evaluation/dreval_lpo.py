@@ -80,6 +80,30 @@ SINGLE_DRUG = [("SingleDrugElasticNet", "pca"), ("SingleDrugRandomForest", "pca"
                ("SingleDrugElasticNet", "scgpt"), ("SingleDrugRandomForest", "scgpt")]
 
 
+def per_drug_spearman_n(y_true, y_pred, drug_ids) -> tuple[float, int]:
+    """``(mean within-drug Spearman, how many drugs it averaged over)``.
+
+    **The count is not decoration, and this function is why (found 16.08.2026, Selin: "why is
+    elastic net not available for scGPT but for PCA? this invalidates slide 16's plot").** A drug
+    whose predictions are constant has no within-drug rank correlation, so it is skipped -- and a
+    model can be constant on *some* drugs and not others. ``SingleDrugElasticNet`` at drevalpy's
+    default ``alpha=1``, unstandardised, is exactly that: on ``X_pca`` line-means it zeroes every
+    coefficient for **6 of 11** compounds and keeps 1-3 for the rest; on ``X_scGPT``, whose features
+    are ~37x smaller in scale, it zeroes all 512 for **all 11**.
+
+    Without this count the two are a bar at 0.3165 and a blank -- which reads as a representation
+    difference. It is a **penalty-scale** difference, and the surviving bar is a mean over a
+    self-selected subset of compounds. Any figure comparing these means must state the denominator.
+    """
+    from scipy.stats import spearmanr
+    out = []
+    for d in np.unique(drug_ids):
+        m = drug_ids == d
+        if np.unique(y_true[m]).size > 2 and np.unique(y_pred[m]).size > 1:
+            out.append(spearmanr(y_true[m], y_pred[m]).statistic)
+    return (float(np.nanmean(out)) if out else float("nan")), len(out)
+
+
 def per_drug_spearman(y_true, y_pred, drug_ids) -> float:
     """Mean Spearman **within each drug**, across the held-out lines — *this project's* metric.
 
@@ -163,8 +187,9 @@ def main() -> None:
         # per-drug models are scored only where prediction succeeded (the ``ok`` mask below), so
         # without this column a comparison between the two groups cannot be checked for being
         # like-for-like. Added 14.08.2026 before the LPO ordering was quoted anywhere.
+        pd_rho, pd_n = per_drug_spearman_n(te.response, pred, te.drug_ids)
         rows.append({"algorithm": name, "fold": i, "n_scored": int(len(pred)), **met,
-                     "per_drug_Spearman": per_drug_spearman(te.response, pred, te.drug_ids)})
+                     "per_drug_Spearman": pd_rho, "n_drugs_scored": pd_n})
 
     for name in MODELS:
         if name not in MODEL_FACTORY:

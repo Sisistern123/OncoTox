@@ -1780,6 +1780,84 @@ def build_panel_response():
     print(f"wrote {out}")
 
 
+def build_label_quality():
+    """Per-drug score against the share of that compound's dose-response curves that are flat.
+
+    **The claim this exists to carry.** The panel mean hides a ten-fold range across compounds, and
+    that range is a **label** property, not a biological one: a compound whose curves are mostly flat
+    has no ranking in its labels for any model to recover.
+
+    **What "flat" is.** CurveCurator tests each fitted curve against a no-effect null; ``pValue >
+    0.05`` means *"cannot reject: the compound did nothing at any dose"*. The area under such a curve
+    is still a number, and it is still used as a label -- it just summarises noise.
+
+    **Both axes on the same arm** (``X_pca``, mae, alpha=0.5 -- the leaderboard's best), because the
+    slide previously mixed a best-arm spread with a default-arm correlation. The correlation is
+    computed on what is drawn, so the annotation cannot drift from the points.
+
+    ⚠️ **A trend over eleven points, not a law**, and the figure shows the exception rather than
+    hiding it: crizotinib has no flat curves and still sits mid-table. Reported as Spearman because
+    the relationship is monotone rather than linear, and because n=11 makes a fitted line a
+    stronger claim than the data supports -- so none is drawn.
+
+    The title names what is plotted. The reading is prose, per this file's own rule.
+    """
+    import pandas as pd
+    from scipy.stats import spearmanr
+
+    q = pd.read_csv(ROOT / "notebooks/outputs/diagnostics/label_quality_vs_performance.csv")
+    corr = pd.read_csv(PANEL_OUT / "panel_per_drug_correlation.csv")
+    arm = corr[(corr.loss == "mae") & (corr.alpha == 0.5) & (corr.rep == "X_pca")]
+    j = (q.set_index("drug")[["frac_ns"]]
+           .join(arm.groupby("drug")["spearman"].mean().rename("rho")).dropna())
+    if len(j) != len(_panel()):
+        raise SystemExit(f"{len(j)} compounds joined, expected {len(_panel())}")
+
+    names = _panel_display()
+    rho, pval = spearmanr(j.frac_ns, j.rho)
+    x = j.frac_ns * 100
+
+    fig, ax = plt.subplots(figsize=(8.2, 4.6))
+    fig.subplots_adjust(top=0.80, left=0.10, right=0.97, bottom=0.14)
+    fig.suptitle("Per-compound score against the share of its curves that are flat",
+                 x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.0)
+    fig.text(0.02, 0.90,
+             f"one point per panel compound ({len(j)})  ·  score = mean per-drug Spearman, "
+             "out of fold  ·  flat = the fitted dose-response cannot be\ndistinguished from "
+             "no effect (p > 0.05)  ·  log x-axis: the compounds span 0 % to 73 %",
+             ha="left", va="top", fontsize=8.4, color=GREY, linespacing=1.6)
+
+    ax.scatter(np.clip(x, 0.35, None), j.rho, s=46, color=BLUE, alpha=0.85, zorder=3,
+               edgecolor="white", linewidth=0.8)
+    # Hand offsets only where the automatic one collides -- sorafenib and gemcitabine sit within
+    # 0.03 of each other on both axes, and etoposide's label runs into sorafenib's.
+    NUDGE = {"gemcitabine": (-34, -3), "sorafenib": (0, 9), "etoposide": (-18, -13),
+             "imatinib": (20, 2)}
+    for d, xi, yi in zip(j.index, np.clip(x, 0.35, None), j.rho):
+        big = d in ("platin", "dasatinib", "crizotinib")
+        ax.annotate(names[d], (xi, yi), xytext=NUDGE.get(d, (0, 9 if big else 7)),
+                    textcoords="offset points",
+                    ha="center", fontsize=8.4 if big else 7.6,
+                    color=INK if big else MUTED, fontweight="bold" if big else "normal")
+
+    ax.set_xscale("log")
+    ax.set_xticks([0.35, 1, 2, 5, 10, 25, 73])
+    ax.set_xticklabels(["0", "1", "2", "5", "10", "25", "73"])
+    ax.set_xlabel("share of that compound's curves that are flat  (%, log scale)", fontsize=9.5)
+    ax.set_ylabel("mean per-drug Spearman", fontsize=9.5)
+    ax.set_ylim(-0.02, 0.60)
+    # Read from the points that are drawn, so the annotation cannot disagree with the figure.
+    ax.text(0.97, 0.95, f"Spearman  ρ = {rho:+.2f}   p = {pval:.3f}   n = {len(j)}",
+            transform=ax.transAxes, ha="right", va="top", fontsize=9, color=INK)
+    _tidy(ax, grid="both")
+    ax.tick_params(labelsize=8.5)
+
+    out = FIG / "label_quality.png"
+    fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
 def build_lpo_bias():
     """Where the within-drug ranking comes from: lineage, cell-line identity, or the embeddings.
 
@@ -1830,7 +1908,9 @@ def build_lpo_bias():
     d = pd.read_csv(src)
     g = d.groupby("algorithm").agg(m=("per_drug_Spearman", "mean"),
                                    s=("per_drug_Spearman", "std"),
-                                   n=("n_scored", "sum"))
+                                   n=("n_scored", "sum"),
+                                   k=("n_drugs_scored", "mean"))
+    n_panel = int(d["n_drugs_scored"].max())
 
     # Every bar is scored on the same pairs, or the comparison is not one. Checked rather than
     # assumed: the per-drug models are scored only where prediction succeeded, so this could
@@ -1888,9 +1968,17 @@ def build_lpo_bias():
             ax.text(m + s + 0.008, y, f"{m:.3f}", va="center", fontsize=8.8, color=INK, zorder=4)
         ax.axvline(ref, color=RED, lw=1.1, ls="--", zorder=2)
         ax.set_yticks(range(len(rows)))
-        ax.set_yticklabels([f"{b[1]} *" if b[4] else
-                            (f"{b[1]}" if not pd.isna(g.loc[b[0], "m"]) else b[1])
-                            for b in rows][::-1], fontsize=9)
+        # The denominator rides on the tick label whenever a model was scored on fewer than the
+        # full panel. Without it a bar averaged over half the compounds sits beside bars averaged
+        # over all of them and reads as comparable -- which is exactly how EN (pca) was misread.
+        labs = []
+        for b in rows:
+            lab = b[1] + (" *" if b[4] else "")
+            n_drug = g.loc[b[0], "k"]
+            if not pd.isna(g.loc[b[0], "m"]) and round(n_drug) < n_panel:
+                lab += f"   ({n_drug:.0f}/{n_panel} drugs)"
+            labs.append(lab)
+        ax.set_yticklabels(labs[::-1], fontsize=9)
         ax.set_title(PANEL_TITLE[k], loc="left", fontsize=9, color=MUTED, fontweight="bold", pad=4)
         ax.set_xlim(0, xmax)
         ax.set_ylim(-0.6, len(rows) - 0.4)
@@ -1918,4 +2006,5 @@ if __name__ == "__main__":
     build_loss_effect()
     build_q2_instrument()
     build_panel_response()
+    build_label_quality()
     build_lpo_bias()
