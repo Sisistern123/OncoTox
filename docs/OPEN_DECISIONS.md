@@ -150,7 +150,15 @@ tested and is wrong.**
 
 `X_scGPT` was rescaled by 103.4× to `X_pca`'s exact magnitude and the α=0/mse arm re-run over three
 seeds and five folds. Mean `best_epoch` went **6.73 → 7.13** — unchanged, with several folds
-identical fold-for-fold. **AdamW normalises each step by a running second moment of the gradient, so
+identical fold-for-fold.
+
+> ⚠️ **The performance number belongs here too, and was not quoted until 16.08.2026** (Selin, on the
+> slide: *"das mit den 104x größer ist doch keine erklärung warum es besser ist wenn es trotzdem
+> nicht besser ist mit vergrößerung"*). The hypothesis is about **score**, so `best_epoch` — a
+> *timing* statistic — supports the refutation without being it. The direct measurement is in the
+> same artifact: **best validation objective 0.01744 → 0.01761**, i.e. **+0.96 % against a seed
+> spread of 0.0034**. Rescaling does not make the arm better, which is what the hypothesis predicts
+> it should. `notebooks/outputs/diagnostics/input_scale_test.csv`. **AdamW normalises each step by a running second moment of the gradient, so
 it is approximately invariant to a uniform input rescale**, which makes review item 4A's premise
 (*"one learning rate is not one setting"*) a statement about SGD-like updates rather than about this
 optimizer.
