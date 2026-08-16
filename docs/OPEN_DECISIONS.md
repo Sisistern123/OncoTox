@@ -389,8 +389,25 @@ vectors, `X_pca` unnormalised scores of mean norm 38.6), so one shared `logspace
 > arm-comparable in this form.**"*
 
 **It lands on an endpoint in 8 of 55 `X_pca` fits and 4 of 55 `X_scGPT` fits**
-(`panel_ridge_baseline.csv`, `ridge_alpha_at_edge`). The two arms sit at **opposite ends** of the
-shared grid: PCA's selections pile up at 1000–10000, scGPT's at 0.03–10.
+(`panel_ridge_baseline.csv`, `ridge_alpha_at_edge`; 55 = 11 drugs × 5 folds, each fit choosing its
+own penalty by leave-one-out CV from the 13 candidates).
+
+> ⛔ **Corrected hours after this entry was written — the direction was wrong.** It read *"the two
+> arms sit at opposite ends of the shared grid"*. **They do not: every endpoint hit in both arms is
+> at the CEILING, and neither arm has a single fit at the floor.** What differs by arm is the
+> *median* selected penalty (PCA ~1000, scGPT ~0.1), which is a different thing.
+>
+> **And a log-spaced grid is scale-fair.** Rescaling features by *c* moves ridge's optimum by *c²*,
+> which on a log grid is a **shift** at identical relative resolution — so the four-orders-of-
+> magnitude gap between the arms is the expected consequence of the 39× scale difference, not an
+> unfairness in itself. *(`4a`'s phrase "~1500× tighter for one arm" describes that shift, not the
+> resolution.)*
+>
+> **What is genuinely wrong is where the grid is centred.** PCA's optimum sits near the top (10³
+> against a 10⁴ ceiling) and truncates in **8** fits; scGPT's sits mid-grid and truncates in **4**.
+> Ceiling truncation means leave-one-out CV wanted *more* penalty than the grid allows —
+> **under-regularised, so that ridge is weaker than a fair one.** The artifact therefore **depresses
+> PCA's ridge more than scGPT's**, the opposite of what this entry first claimed.
 
 **What this invalidates, and what it does not.**
 
@@ -401,8 +418,10 @@ shared grid: PCA's selections pile up at 1000–10000, scGPT's at 0.03–10.
 - ✅ **The ridge as a control *within* `X_pca` stands**, which is the comparison that actually binds:
   a line-level linear model reaching 0.2767 against the per-cell network's 0.2824, and beating every
   `X_pca` MLP arm under matched loss. Nothing there crosses arms.
-- ⚠️ **Why scGPT's ridge scores 0.1914 is therefore not established.** An over-penalised fit is a live
-  explanation and has not been separated from a genuine representation difference.
+- ⚠️ **Why scGPT's ridge scores 0.1914 remains unexplained.** The grid truncation does **not**
+  account for it — scGPT truncates *less* than PCA, so it is the less handicapped of the two. A real
+  representation difference is now the leading explanation rather than an artifact, but nothing
+  isolates it.
 
 **The options.**
 
@@ -415,11 +434,13 @@ shared grid: PCA's selections pile up at 1000–10000, scGPT's at 0.03–10.
   nothing to run, but leaves the scGPT column in the leaderboard unusable and needs saying wherever
   that table appears.
 
-**My reading, as a reading.** Standardise, because the pre-registered rule was written in
-anticipation of this and standardising is what it named as the remedy. It is a small re-run of the
-ridge cell only. But it moves a number that appears in the leaderboard, slides 14 and 17, `steps/05`
-and the report, so it is a re-verify, not a one-line change — which is why it is parked here rather
-than done.
+**My reading, as a reading — and it changed once the direction was checked.** The cheapest fix is
+**widen the grid upward**, not standardise: the measured defect is ceiling truncation in both arms,
+and extending to `logspace(-2, 6, 17)` would let every fit find its own optimum without touching the
+features. Standardising also works and is what the pre-registration named, but it changes the
+features rather than the search, and on a log grid the scale difference alone was never the problem.
+Either way it moves a number that appears in the leaderboard, slides 14 and 17, `steps/05` and the
+report, so it is a re-verify rather than a one-line change — which is why it is parked here.
 
 ---
 
