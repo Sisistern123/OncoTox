@@ -1821,10 +1821,13 @@ def build_label_quality():
     fig.subplots_adjust(top=0.80, left=0.10, right=0.97, bottom=0.14)
     fig.suptitle("Per-compound score against the share of its curves that are flat",
                  x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.0)
+    # The arm is named on the figure, not only in this docstring: the deck's own rule is that no
+    # score is quoted without its arm, and "mean per-drug Spearman" alone names none.
     fig.text(0.02, 0.90,
-             f"one point per panel compound ({len(j)})  ·  score = mean per-drug Spearman, "
-             "out of fold  ·  flat = the fitted dose-response cannot be\ndistinguished from "
-             "no effect (p > 0.05)  ·  log x-axis: the compounds span 0 % to 73 %",
+             f"one point per panel compound ({len(j)})  ·  y = that compound's mean per-drug "
+             "Spearman, out of fold, on the best arm (X_pca · MAE · alpha 0.5)\n"
+             "x = share of that compound's curves whose fitted dose-response cannot be "
+             "distinguished from no effect (p > 0.05), log scale",
              ha="left", va="top", fontsize=8.4, color=GREY, linespacing=1.6)
 
     ax.scatter(np.clip(x, 0.35, None), j.rho, s=46, color=BLUE, alpha=0.85, zorder=3,
@@ -1844,11 +1847,15 @@ def build_label_quality():
     ax.set_xticks([0.35, 1, 2, 5, 10, 25, 73])
     ax.set_xticklabels(["0", "1", "2", "5", "10", "25", "73"])
     ax.set_xlabel("share of that compound's curves that are flat  (%, log scale)", fontsize=9.5)
-    ax.set_ylabel("mean per-drug Spearman", fontsize=9.5)
+    ax.set_ylabel("mean per-drug Spearman\n(X_pca · MAE · alpha 0.5)", fontsize=9.5)
     ax.set_ylim(-0.02, 0.60)
     # Read from the points that are drawn, so the annotation cannot disagree with the figure.
-    ax.text(0.97, 0.95, f"Spearman  ρ = {rho:+.2f}   p = {pval:.3f}   n = {len(j)}",
-            transform=ax.transAxes, ha="right", va="top", fontsize=9, color=INK)
+    # Spelled out because it is a correlation OF correlations: each point's y is itself a per-drug
+    # Spearman, and these eleven are then rank-correlated against the eleven flat-fractions. Written
+    # as "across the 11 compounds" so it cannot be read as a within-compound quantity.
+    ax.text(0.97, 0.95,
+            f"across the {len(j)} compounds:\nSpearman ρ = {rho:+.2f}  (p = {pval:.3f})",
+            transform=ax.transAxes, ha="right", va="top", fontsize=9, color=INK, linespacing=1.5)
     _tidy(ax, grid="both")
     ax.tick_params(labelsize=8.5)
 
