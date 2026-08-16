@@ -415,6 +415,28 @@ Two conditions carry over from the last comparison, which failed because it lack
 rule is fixed *before* the run, and ≥3 seeds are needed for any difference to be readable against the
 ±0.04 seed band.
 
+### ⚠️ `TrainConfig.loss` stays `mse` although item 9A selected `mae` (Selin, 16.08.2026)
+
+**The two answers to "which loss does this project use" are different, deliberately, and both are
+correct in their own scope.** Item 9A's rule, re-anchored on `α=0`/`mae`/`X_pca`, selects the
+**unweighted MAE** arm ([OPEN_DECISIONS §3](../OPEN_DECISIONS.md)). `TrainConfig.loss` **remains
+`"mse"`**, so a fresh `train_multitask.py` run still trains MSE.
+
+**Kept rather than aligned, on purpose.** Changing the default changes what every future run does
+without re-running anything already reported, which would put the shipped configuration and the
+recorded results in a *new* disagreement instead of removing the current one. Every reported number
+names its arm, so nothing is ambiguous in the record; what is ambiguous is only the bare phrase *"our
+loss"*, and that is answered by naming the scope.
+
+**Recorded because it is exactly the kind of thing a later reader — or a later agent — will
+'fix'.** It is not an oversight.
+
+⚠️ **Separately observed, and not adjudicated by any rule: MAE beats MSE in all six matched
+comparisons** (`panel_leaderboard.csv`, both representations × three α levels), by +0.007 to +0.014 on
+`X_pca` and **+0.018 to +0.047 on `X_scGPT`** — three to five times larger on the transcript arm.
+Item 9A ran on the **α** axis, so this is an observation from the same table rather than a selected
+result, and it is stated that way wherever it appears.
+
 > ⚠️ **MAE and MSE are not two points on a robustness axis here — they differ in how hard they charge
 > for within-line variation (13.08.2026).** The decomposition that makes `4a` and `4b` differ by
 > exactly `Var_c(p)` holds for **squared error only**. For absolute error there is just Jensen,

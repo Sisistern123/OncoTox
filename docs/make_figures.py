@@ -614,17 +614,7 @@ def draw_architecture(ax, *, compact: bool = False):
     ax.set_xlim(0, 62 if compact else 100); ax.set_ylim(23 if compact else 14, 47 if compact else 52)
     ax.set_aspect("equal"); ax.axis("off")
 
-    if not compact:
-        ax.text(0, 51, "Model architecture — one cell in, one AUC per panel drug out",
-                ha="left", va="top", fontsize=13, fontweight="bold", color=INK)
-        # Was "trained with the density-weighted masked MSE (loss_01-03)" until 14.08.2026, which
-        # stated two swept arms as facts: `alpha` is in {0.0, 0.5, 1.0} and the loss in {mse, mae},
-        # and the arm actually drawn below is alpha = 0 -- every observed pair weighs exactly 1, so
-        # the figure asserted a weighting it does not show. The subtitle now names only what does
-        # not vary (the masking); which arm the bars come from is stated once, with the bars.
-        ax.text(0, 48.0, "per-cell MLP · a masked objective — only screened (cell line, drug) pairs "
-                         "contribute (loss_01–03)",
-                ha="left", va="top", fontsize=8.5, color=GREY)
+
 
     # ---------- INPUT: one cell -> embedding vector ----------
     ax.add_patch(Circle((xc, 37), 2.4 * (0.85 if compact else 1), facecolor="#fde0c5", edgecolor="#d2691e", lw=1.8, zorder=3))
@@ -722,9 +712,7 @@ def draw_architecture(ax, *, compact: bool = False):
         ax.text(x0 + span / 2, 24.3, "low = sensitive · high = resistant",
                 ha="center", va="top", fontsize=6.6, color=GREY)
         return
-    ax.text(x0 - 4.5, 24.0, "low AUC = sensitive (the drug kills this line)", ha="left", va="top",
-            fontsize=8, color=BLUE)
-    ax.text(x0 - 4.5, 21.8, "high AUC = resistant", ha="left", va="top", fontsize=8, color=RED)
+
     ax.text(x0 - 4.5, 19.6, f"bars: out-of-fold prediction for {EXAMPLE_LINE}\n"
                             "◆ = the measured CTRPv2 value (never seen in training)",
             ha="left", va="top", fontsize=7.6, color=GREY)
@@ -787,12 +775,7 @@ def draw_architecture(ax, *, compact: bool = False):
     # field is read from EXAMPLE_ARM and PANEL, so it cannot drift from the vector it describes --
     # the same reason the vector itself is derived. Colour drops from RED to MUTED with the change
     # of job. Plain ASCII: matplotlib's default font renders the warning emoji as a tofu box.
-    ax.text(0, 16.0,
-            f"PLOTTED: one arm of the current sweep — target auc_cc, the {len(PANEL)}-drug panel; "
-            f"{EXAMPLE_ARM['rep']}, alpha = {EXAMPLE_ARM['alpha']:g} (unweighted: every observed "
-            f"pair weighs 1), {EXAMPLE_ARM['loss'].upper()}, seed {EXAMPLE_ARM['seed']}"
-            "    ·    source: notebooks/outputs/panel/panel_oof_predictions.csv",
-            ha="left", va="top", fontsize=8.0, color=MUTED)
+
 
 
 def build_architecture():
@@ -1043,7 +1026,7 @@ def build_pipeline_flow():
     # as well as the wrong number.
     for i, (n, lab, col) in enumerate([(545, "545  CTRPv2 compounds", "#c3dcef"),
                                        (N_CANDIDATES,
-                                        f"{N_CANDIDATES}  FDA-approved, screened by CTRPv2",
+                                        f"{N_CANDIDATES}  FDA-approved",
                                         "#6ba7d6"),
                                        (len(PANEL), f"{len(PANEL)}  the panel", BLUE)]):
         half = 4.6 * (0.55 + 0.45 * (n / 545) ** 0.35)
