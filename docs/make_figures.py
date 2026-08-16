@@ -1859,133 +1859,87 @@ def build_label_quality():
 
 
 def build_lpo_bias():
-    """Where the within-drug ranking comes from: lineage, cell-line identity, or the embeddings.
+    """How much of the within-drug ranking a predictor gets from lineage, and from line identity.
 
     **The question.** The project's motivating hypothesis is that a model can score well by
     recognising tissue of origin rather than by learning drug response. Under the project's own
     leave-**cell-line**-out protocol that cannot be measured at all -- a held-out line is unseen, so a
     line-mean baseline emits a constant and scores exactly 0.0000. Under leave-**pairs**-out the
-    held-out pairs come from lines that are in training, so each bias channel can be run as an honest
-    predictor and read off directly.
+    held-out pairs come from lines that are in training, so each bias channel runs as an honest
+    predictor and is read off directly.
 
-    **Why these six bars and not the ten the run produced.** Four of the ten are unplottable or
-    uninformative here. ``NaivePredictor`` and ``NaiveDrugMeanPredictor`` are **constant within a
-    drug by definition**, so a within-drug rank correlation is undefined for them -- an absence by
-    construction, not a result. ``NaiveMeanEffectsPredictor`` scores **identically** to
-    ``NaiveCellLineMeanPredictor`` (0.3220 both), and must: within one drug the drug effect is an
-    additive constant, so the two induce the same ranking of cell lines. Drawing it again would
-    suggest two measurements where there is one. ``SingleDrugElasticNet (scgpt)`` **keeps its row**,
-    marked ``n/a``, because unlike the first two it is a *fitted* model that found no within-drug
-    signal and shrank to the intercept -- that is a result, and dropping the row would flatter the
-    scGPT column by hiding it.
+    **Two bars, and every other algorithm in the run is deliberately absent** (Selin, 16.08.2026:
+    *"if we dont have proper results for this, just remove it. i dont want to show faulty results."*).
+    What was dropped, and why:
 
-    **Redrawn 16.08.2026 (Selin: the first version was "unclear and has too much stuff floating
-    around", and she was right).** It put the two group headers, the reference-line caption, an
-    italic prose note where a bar should be, and a right-aligned value column all *inside* one axes
-    -- four text treatments floating over the bars, plus hatching carrying a footnote's job. Now:
-    **two stacked axes** carry the grouping, so the group names are axis titles rather than text at
-    x=0.003; **values sit at their own bar's end**, not in a distant column; **non-reproducibility is
-    an asterisk on the tick label** and ``n/a`` is a tick-label state, both explained once in the
-    subtitle. Every mark is an axis title, a tick label, a bar, a whisker or a value -- rule 3.
+    * ``NaivePredictor`` and ``NaiveDrugMeanPredictor`` are **constant within a drug by definition**,
+      so a within-drug rank correlation is undefined -- an absence by construction, not a result.
+    * ``NaiveMeanEffectsPredictor`` scores **identically** to ``NaiveCellLineMeanPredictor`` and must:
+      within one drug the drug effect is an additive constant, so the two induce the same ranking.
+      Drawing it would show two measurements where there is one.
+    * ``NaiveTissueDrugMeanPredictor`` is a lineage x compound interaction, a fifth channel the slide
+      does not argue about; it scores 0.1646 and is in the artifact.
+    * **Both ``SingleDrugElasticNet`` arms: a penalty artifact, not a measurement.** drevalpy fixes
+      ``alpha=1`` with **no feature standardisation**, and our arms differ ~37x in feature scale
+      (line-mean sd 1.388 against 0.044). Measured over the penalty: unstandardised, ``X_pca`` fits
+      5/11 compounds at alpha=1 and 11/11 at 0.1, while ``X_scGPT`` fits **0/11 at every alpha tried**
+      (1, 0.1, 0.01); standardised, **alpha=1 kills both arms (0/11 each)**. So the PCA bar existed
+      only because its raw scale was large enough to survive an absolute penalty -- it measured
+      feature magnitude, not representation content.
+    * **Both ``SingleDrugRandomForest`` arms: not reproducible.** drevalpy pins no ``random_state``;
+      three executions gave scGPT 0.2401 / 0.2141 / 0.2101 and PCA 0.0466 / 0.0271 / 0.0488, spreads
+      of the same size as the effects under discussion.
 
-    **The axis is this project's own metric**, mean Spearman within each drug across held-out cell
-    lines, so the bars are commensurable with the numbers reported everywhere else -- but they are
-    **LPO and the project's headline is LCO**, which is why no OncoTox bar appears here and why the
-    subtitle says so. The model has never been run under this protocol; inventing a bar for it by
-    quoting its LCO score is exactly the comparison the record forbids.
+    ⚠️ **The cost of that honesty, stated because it is a real loss:** with every feature-using model
+    excluded, this run **cannot** say whether features beat the bias baselines under LPO. The earlier
+    claim *"no feature-using model clears the line-mean baseline"* is **withdrawn**, not weakened.
+    What the figure still supports is the decomposition it was built for, on two deterministic
+    predictors scored on all eleven compounds.
 
-    ⚠️ **The two random-forest bars do not reproduce across executions**, which the asterisk says.
-    ``drevalpy``'s default hyperparameter set pins no ``random_state``, so re-running the script moved
-    ``SingleDrugRandomForest (scgpt)`` 0.2401 -> 0.2141 and ``(pca)`` 0.0466 -> 0.0271 while every
-    other bar was bit-identical. **No claim the figure supports rests on them:** both sit below the
-    line-mean baseline in either execution.
-
-    The title states what is plotted. What it means is prose, per this file's own rule.
+    The title names what is plotted. The reading is prose, per this file's own rule.
     """
     import pandas as pd
 
     src = ROOT / "notebooks" / "outputs" / "dreval" / "dreval_lpo_results.csv"
     d = pd.read_csv(src)
-    g = d.groupby("algorithm").agg(m=("per_drug_Spearman", "mean"),
-                                   s=("per_drug_Spearman", "std"),
-                                   n=("n_scored", "sum"),
-                                   k=("n_drugs_scored", "mean"))
+    g = d.groupby("algorithm").agg(m=("per_drug_Spearman", "mean"), s=("per_drug_Spearman", "std"),
+                                   n=("n_scored", "sum"), k=("n_drugs_scored", "mean"))
     n_panel = int(d["n_drugs_scored"].max())
 
-    # Every bar is scored on the same pairs, or the comparison is not one. Checked rather than
-    # assumed: the per-drug models are scored only where prediction succeeded, so this could
-    # silently have been false.
-    if g["n"].nunique() != 1:
-        raise SystemExit(f"algorithms scored on different numbers of pairs: {g['n'].to_dict()}")
+    BARS = [("NaiveCellLineMeanPredictor", "which cell line it is", INK),
+            ("NaiveTissueMeanPredictor", "lineage only", GREY)]
 
-    #: (key, label, panel, colour, non-deterministic). Panel 0 = no features, panel 1 = ours.
-    #: Ordered within each panel by score, descending -- set here, not sorted at draw time, so the
-    #: reading order is a stated choice rather than an accident of the groupby.
-    BARS = [
-        ("NaiveCellLineMeanPredictor", "cell-line identity", 0, INK, False),
-        ("NaiveTissueMeanPredictor", "lineage only", 0, GREY, False),
-        ("SingleDrugElasticNet (pca)", "elastic net · PCA", 1, BLUE, False),
-        ("SingleDrugRandomForest (scgpt)", "random forest · scGPT", 1, AMBER, True),
-        ("SingleDrugRandomForest (pca)", "random forest · PCA", 1, BLUE, True),
-        ("SingleDrugElasticNet (scgpt)", "elastic net · scGPT", 1, AMBER, False),
-    ]
-    PANEL_TITLE = {0: "no expression features", 1: "our embeddings · DrEval's per-drug models"}
+    # Both bars must be scored on the same pairs AND the same compounds, or they are not a
+    # comparison. Equal pairs was checked from the start; equal compounds was the hole that let an
+    # elastic-net bar averaged over 5.6 of 11 compounds sit beside bars averaged over all of them.
+    sub = g.loc[[b[0] for b in BARS]]
+    if sub["n"].nunique() != 1 or sub["k"].nunique() != 1 or round(sub["k"].iloc[0]) != n_panel:
+        raise SystemExit(f"bars are not commensurable: {sub[['n', 'k']].to_dict()}")
 
-    # Two stacked axes rather than one with floating group headers. The earlier version put the
-    # group names, the reference-line caption, an italic prose note and a right-aligned value column
-    # all *inside* a single axes -- four text treatments floating over the bars. Structure carries
-    # the grouping here and every annotation is either an axis title, a tick label or a value at a
-    # bar end.
-    ref = float(g.loc["NaiveCellLineMeanPredictor", "m"])
-    # headroom for the value label that sits beyond the widest whisker (elastic net PCA,
-    # whose sd is ~4x the others) -- without it that label collides with the axes edge.
-    xmax = max(0.40, float((g["m"] + g["s"]).max()) + 0.075)
-    counts = [sum(1 for b in BARS if b[2] == k) for k in (0, 1)]
-    fig, axes = plt.subplots(2, 1, figsize=(8.4, 4.3), sharex=True,
-                             gridspec_kw=dict(height_ratios=counts, hspace=0.42))
-    fig.subplots_adjust(top=0.76, left=0.30, right=0.97, bottom=0.14)
-
+    fig, ax = plt.subplots(figsize=(7.8, 2.9))
+    fig.subplots_adjust(top=0.72, left=0.27, right=0.97, bottom=0.24)
     fig.suptitle("Mean per-drug Spearman under DrEval leave-pairs-out",
-                 x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.0)
-    fig.text(0.02, 0.90,
-             f"5 folds, {int(g['n'].iloc[0] / 5):,} held-out pairs per fold  ·  whiskers = sd over "
-             "folds  ·  dashed = cell-line identity\n"
-             "* unseeded, does not reproduce   ·   n/a constant within each drug, so undefined   ·   "
-             "not comparable with leave-cell-line-out",
-             ha="left", va="top", fontsize=8.2, color=GREY, linespacing=1.6)
+                 x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.02)
+    fig.text(0.02, 0.88,
+             f"predictors using no expression at all  ·  5 folds, {int(g['n'].iloc[0] / 5):,} "
+             f"held-out pairs per fold, all {n_panel} compounds  ·  whiskers = sd over folds\n"
+             "not comparable with this project's leave-cell-line-out numbers",
+             ha="left", va="top", fontsize=8.4, color=GREY, linespacing=1.6)
 
-    for k, ax in enumerate(axes):
-        rows = [b for b in BARS if b[2] == k]
-        for i, (key, label, _, colour, nd) in enumerate(rows):
-            y = len(rows) - 1 - i
-            m, s = g.loc[key, "m"], g.loc[key, "s"]
-            if pd.isna(m):                      # fitted, then collapsed to the intercept
-                ax.text(0.004, y, "n/a", va="center", ha="left", fontsize=8.8,
-                        color=MUTED, style="italic", zorder=4)
-                continue
-            ax.barh(y, m, height=0.6, color=colour, alpha=0.9, zorder=3)
-            ax.errorbar(m, y, xerr=s, fmt="none", ecolor=INK, elinewidth=1.0, capsize=2.5, zorder=4)
-            ax.text(m + s + 0.008, y, f"{m:.3f}", va="center", fontsize=8.8, color=INK, zorder=4)
-        ax.axvline(ref, color=RED, lw=1.1, ls="--", zorder=2)
-        ax.set_yticks(range(len(rows)))
-        # The denominator rides on the tick label whenever a model was scored on fewer than the
-        # full panel. Without it a bar averaged over half the compounds sits beside bars averaged
-        # over all of them and reads as comparable -- which is exactly how EN (pca) was misread.
-        labs = []
-        for b in rows:
-            lab = b[1] + (" *" if b[4] else "")
-            n_drug = g.loc[b[0], "k"]
-            if not pd.isna(g.loc[b[0], "m"]) and round(n_drug) < n_panel:
-                lab += f"   ({n_drug:.0f}/{n_panel} drugs)"
-            labs.append(lab)
-        ax.set_yticklabels(labs[::-1], fontsize=9)
-        ax.set_title(PANEL_TITLE[k], loc="left", fontsize=9, color=MUTED, fontweight="bold", pad=4)
-        ax.set_xlim(0, xmax)
-        ax.set_ylim(-0.6, len(rows) - 0.4)
-        _tidy(ax, grid="x")
-        ax.tick_params(labelsize=8.5)
+    for i, (key, label, colour) in enumerate(BARS):
+        y = len(BARS) - 1 - i
+        m, s = g.loc[key, "m"], g.loc[key, "s"]
+        ax.barh(y, m, height=0.55, color=colour, alpha=0.9, zorder=3)
+        ax.errorbar(m, y, xerr=s, fmt="none", ecolor=INK, elinewidth=1.0, capsize=2.5, zorder=4)
+        ax.text(m + s + 0.008, y, f"{m:.3f}", va="center", fontsize=9.5, color=INK, zorder=4)
 
-    axes[1].set_xlabel("mean per-drug Spearman  (this project's metric)", fontsize=9.5)
+    ax.set_yticks(range(len(BARS)))
+    ax.set_yticklabels([b[1] for b in BARS][::-1], fontsize=10)
+    ax.set_xlabel("mean per-drug Spearman  (this project's metric)", fontsize=9.5)
+    ax.set_xlim(0, 0.42)
+    ax.set_ylim(-0.55, len(BARS) - 0.45)
+    _tidy(ax, grid="x")
+    ax.tick_params(labelsize=8.5)
 
     out = FIG / "lpo_bias.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")

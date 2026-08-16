@@ -1023,29 +1023,24 @@ one quantity; they are nested (a line's tissue is a function of the line) but th
 correlation, so the 57 % is a ratio of scores and does not partition anything. Say *"lineage alone
 recovers 57 % of what line identity recovers"*, not *"lineage explains 57 % of the bias"*.
 
-**No feature-using model clears the line-mean baseline.** Of the models scored on **all eleven**
-compounds the best is `SingleDrugRandomForest` on scGPT line-means at **0.2101 against 0.3220** — a
-clear gap, not a tie.
-
-> ⛔ **Corrected 16.08.2026 (Selin: *"why is elastic net not available for scGPT but for PCA? this
-> invalidates slide 16's plot"*). She was right, and the defect was larger than the asymmetry she
-> asked about.** This paragraph read: *"The best of the four, `SingleDrugElasticNet` on PCA
-> line-means, ties it at 0.3165 against 0.3220."* **That comparison was not like-for-like.**
+> ⛔ **WITHDRAWN 16.08.2026 — this paragraph claimed *"no feature-using model clears the line-mean
+> baseline"*, and this run cannot support it.** Selin: *"if we dont have proper results for this,
+> just remove it. i dont want to show faulty results."* **All four feature-using models are
+> disqualified**, each for its own reason, and none of the reasons is about the representations:
 >
-> `drevalpy`'s `SingleDrugElasticNet` is `ElasticNet(alpha=1, l1_ratio=0.2)` with **no feature
-> standardisation anywhere in the pipeline**, and our two arms differ ~37× in feature scale
-> (`X_pca` line-mean sd 1.388 against `X_scGPT`'s 0.044). At a fixed absolute penalty that decides
-> the outcome: on `X_pca` it zeroes **all 512 coefficients for 6 of 11 compounds** and keeps 1–3 for
-> the rest; on `X_scGPT` it zeroes all 512 for **all 11**. The scGPT blank is therefore **a
-> penalty-scale artifact, not a property of the representation.**
+> * **Both `SingleDrugElasticNet` arms — a penalty artifact.** drevalpy fixes `alpha=1` with **no
+>   feature standardisation**, and the arms differ ~37× in feature scale (line-mean sd 1.388 against
+>   0.044). Swept: unstandardised, `X_pca` fits 5/11 compounds at α=1 and 11/11 at α=0.1, while
+>   `X_scGPT` fits **0/11 at every α tried** (1, 0.1, 0.01); standardised, **α=1 kills both arms
+>   (0/11 each)**. The PCA bar existed only because its raw scale survived an absolute penalty.
+>   Compounding it, a drug with constant predictions is skipped by the within-drug metric, so its
+>   0.3165 was a mean over **5.6 of 11 compounds** beside bars averaged over eleven.
+> * **Both `SingleDrugRandomForest` arms — not reproducible.** No `random_state` is pinned; three
+>   executions gave scGPT **0.2401 / 0.2141 / 0.2101** and PCA **0.0466 / 0.0271 / 0.0488**.
 >
-> **And a drug with constant predictions is skipped by the within-drug metric**, so 0.3165 was a mean
-> over **5.6 of 11 compounds** — the ones that survived the penalty — sitting beside bars averaged
-> over all eleven. `n_drugs_scored` is now recorded per row and printed on the figure's tick labels;
-> every other scored algorithm reads 11.
->
-> **The conclusion is unchanged and now cleaner:** dropping a bar that measured a different thing
-> turns a claimed *tie* into a **gap of 0.11**.
+> **What survives is the decomposition, on the two deterministic baselines** — and that is what the
+> figure now shows. Whether features beat the bias channel under LPO is **not measured here**, and is
+> part of the same open item as running our own model under this split.
 
 ⚠️ **What that does and does not say.** It is evidence about *these models on this data at this
 scale*, not about our MLP, which has never been run under LPO — the open measurement recorded below.
