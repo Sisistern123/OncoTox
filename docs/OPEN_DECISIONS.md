@@ -9,7 +9,7 @@ items, `docs/steps/` for the scientific record) and delete it here, so this file
 second place where a decision lives.
 
 Ranked by what it blocks for the 14.08.2026 lab meeting. ⚠️ *That date has passed; the one
-remaining entry (§7) blocks nothing, so the ranking no longer orders anything.*
+remaining entries (§7, §9, §10) block nothing for a talk, so the ranking no longer orders anything.*
 
 ---
 
@@ -376,7 +376,54 @@ project has been most careful not to say.
 
 ---
 
+## §10 · The ridge baseline is not arm-comparable — its own pre-registered test says so (16.08.2026)
+
+**The trigger fired and nobody acted on it.** `4a`'s ridge cell fixed the rule *before* the run
+(Selin, 13.08.2026): ridge's penalty is not scale-invariant — the eigenvalues of `EᵀE` go with the
+**square** of input magnitude, and the arms differ ~39× there (`X_scGPT` ships L2-normalised unit
+vectors, `X_pca` unnormalised scores of mean norm 38.6), so one shared `logspace(-2, 4, 13)` grid is
+**~1500× tighter for one arm**. The recorded test:
+
+> *"If the selected alpha never lands on a grid endpoint, the data chose the penalty in both arms and
+> the asymmetry is inert; **if it does, the GRID chose it for that arm, and the ridge baseline is not
+> arm-comparable in this form.**"*
+
+**It lands on an endpoint in 8 of 55 `X_pca` fits and 4 of 55 `X_scGPT` fits**
+(`panel_ridge_baseline.csv`, `ridge_alpha_at_edge`). The two arms sit at **opposite ends** of the
+shared grid: PCA's selections pile up at 1000–10000, scGPT's at 0.03–10.
+
+**What this invalidates, and what it does not.**
+
+- ⛔ **Any cross-arm reading of the ridge row** — `0.2767` against `0.1914` — including the
+  observation that the scGPT network beats its own ridge in 6 of 6 arms while PCA manages 1 of 6.
+  That was in the presentation as *"scGPT is where the architecture earns its place"* and has been
+  **withdrawn**.
+- ✅ **The ridge as a control *within* `X_pca` stands**, which is the comparison that actually binds:
+  a line-level linear model reaching 0.2767 against the per-cell network's 0.2824, and beating every
+  `X_pca` MLP arm under matched loss. Nothing there crosses arms.
+- ⚠️ **Why scGPT's ridge scores 0.1914 is therefore not established.** An over-penalised fit is a live
+  explanation and has not been separated from a genuine representation difference.
+
+**The options.**
+
+- **Standardise `E` before fitting** — the obvious fix, and the option `4a` deferred pending exactly
+  this evidence. Makes the grid mean the same thing in both arms. ⚠️ It changes the ridge numbers, so
+  every place the ridge is quoted must be re-checked.
+- **Widen the grid per arm** — cheaper, keeps the raw features, but "which grid" then becomes a
+  per-arm choice that has to be justified rather than shared.
+- **Report the ridge only within `X_pca`** and drop the scGPT ridge from cross-arm claims. Costs
+  nothing to run, but leaves the scGPT column in the leaderboard unusable and needs saying wherever
+  that table appears.
+
+**My reading, as a reading.** Standardise, because the pre-registered rule was written in
+anticipation of this and standardising is what it named as the remedy. It is a small re-run of the
+ridge cell only. But it moves a number that appears in the leaderboard, slides 14 and 17, `steps/05`
+and the report, so it is a re-verify, not a one-line change — which is why it is parked here rather
+than done.
+
+---
+
 ## Everything else is settled
 
-**Every other entry is settled, dissolved or demoted as of 14.08.2026** — §8 last, by evidence rather
-than by choice. Add the next one as §10.
+**Every other entry is settled, dissolved or demoted** — §8 on 14.08.2026 by evidence rather
+than by choice, §9 and §10 opened 16.08.2026. Add the next one as §11.
