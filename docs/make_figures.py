@@ -1796,10 +1796,19 @@ def build_lpo_bias():
     construction, not a result. ``NaiveMeanEffectsPredictor`` scores **identically** to
     ``NaiveCellLineMeanPredictor`` (0.3220 both), and must: within one drug the drug effect is an
     additive constant, so the two induce the same ranking of cell lines. Drawing it again would
-    suggest two measurements where there is one. ``SingleDrugElasticNet (scgpt)`` **is** drawn, as a
-    zero-height bar labelled *collapsed*, because unlike the first two it is a fitted model that
-    found no within-drug signal and shrank to the intercept -- that is a result and hiding it would
-    flatter the scGPT column.
+    suggest two measurements where there is one. ``SingleDrugElasticNet (scgpt)`` **keeps its row**,
+    marked ``n/a``, because unlike the first two it is a *fitted* model that found no within-drug
+    signal and shrank to the intercept -- that is a result, and dropping the row would flatter the
+    scGPT column by hiding it.
+
+    **Redrawn 16.08.2026 (Selin: the first version was "unclear and has too much stuff floating
+    around", and she was right).** It put the two group headers, the reference-line caption, an
+    italic prose note where a bar should be, and a right-aligned value column all *inside* one axes
+    -- four text treatments floating over the bars, plus hatching carrying a footnote's job. Now:
+    **two stacked axes** carry the grouping, so the group names are axis titles rather than text at
+    x=0.003; **values sit at their own bar's end**, not in a distant column; **non-reproducibility is
+    an asterisk on the tick label** and ``n/a`` is a tick-label state, both explained once in the
+    subtitle. Every mark is an axis title, a tick label, a bar, a whisker or a value -- rule 3.
 
     **The axis is this project's own metric**, mean Spearman within each drug across held-out cell
     lines, so the bars are commensurable with the numbers reported everywhere else -- but they are
@@ -1807,7 +1816,7 @@ def build_lpo_bias():
     subtitle says so. The model has never been run under this protocol; inventing a bar for it by
     quoting its LCO score is exactly the comparison the record forbids.
 
-    ⚠️ **The two random-forest bars do not reproduce across executions** and are hatched to say so.
+    ⚠️ **The two random-forest bars do not reproduce across executions**, which the asterisk says.
     ``drevalpy``'s default hyperparameter set pins no ``random_state``, so re-running the script moved
     ``SingleDrugRandomForest (scgpt)`` 0.2401 -> 0.2141 and ``(pca)`` 0.0466 -> 0.0271 while every
     other bar was bit-identical. **No claim the figure supports rests on them:** both sit below the
@@ -1829,74 +1838,66 @@ def build_lpo_bias():
     if g["n"].nunique() != 1:
         raise SystemExit(f"algorithms scored on different numbers of pairs: {g['n'].to_dict()}")
 
-    #: (key, label, group, colour, hatched-because-nondeterministic)
+    #: (key, label, panel, colour, non-deterministic). Panel 0 = no features, panel 1 = ours.
+    #: Ordered within each panel by score, descending -- set here, not sorted at draw time, so the
+    #: reading order is a stated choice rather than an accident of the groupby.
     BARS = [
-        ("NaiveTissueMeanPredictor", "lineage only", 0, GREY, False),
         ("NaiveCellLineMeanPredictor", "cell-line identity", 0, INK, False),
+        ("NaiveTissueMeanPredictor", "lineage only", 0, GREY, False),
         ("SingleDrugElasticNet (pca)", "elastic net · PCA", 1, BLUE, False),
+        ("SingleDrugRandomForest (scgpt)", "random forest · scGPT", 1, AMBER, True),
         ("SingleDrugRandomForest (pca)", "random forest · PCA", 1, BLUE, True),
         ("SingleDrugElasticNet (scgpt)", "elastic net · scGPT", 1, AMBER, False),
-        ("SingleDrugRandomForest (scgpt)", "random forest · scGPT", 1, AMBER, True),
     ]
+    PANEL_TITLE = {0: "no expression features", 1: "our embeddings · DrEval's per-drug models"}
 
-    #: Group headers occupy their own row rather than a footnote, so the two blocks are named where
-    #: they are read. A caption strip under the axes collided with the last bar.
-    HEADERS = {0: "NO EXPRESSION FEATURES", 1: "OUR EMBEDDINGS · DrEval's per-drug models"}
+    # Two stacked axes rather than one with floating group headers. The earlier version put the
+    # group names, the reference-line caption, an italic prose note and a right-aligned value column
+    # all *inside* a single axes -- four text treatments floating over the bars. Structure carries
+    # the grouping here and every annotation is either an axis title, a tick label or a value at a
+    # bar end.
+    ref = float(g.loc["NaiveCellLineMeanPredictor", "m"])
+    # headroom for the value label that sits beyond the widest whisker (elastic net PCA,
+    # whose sd is ~4x the others) -- without it that label collides with the axes edge.
+    xmax = max(0.40, float((g["m"] + g["s"]).max()) + 0.075)
+    counts = [sum(1 for b in BARS if b[2] == k) for k in (0, 1)]
+    fig, axes = plt.subplots(2, 1, figsize=(8.4, 4.3), sharex=True,
+                             gridspec_kw=dict(height_ratios=counts, hspace=0.42))
+    fig.subplots_adjust(top=0.76, left=0.30, right=0.97, bottom=0.14)
 
-    fig, ax = plt.subplots(figsize=(9.4, 4.6))
-    fig.subplots_adjust(top=0.84, left=0.28)
-    # Title names what is plotted, per rule 1. It read "Where the within-drug ranking of cell lines
-    # comes from" in the first draft -- a conclusion-shaped title, and exactly what rule 1 forbids.
     fig.suptitle("Mean per-drug Spearman under DrEval leave-pairs-out",
                  x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.0)
-    # Trimmed to one line on the same rule as build_panel_response(): only what cannot be read off
-    # the plot. The long "held-out pairs come from lines that are in training" clause is gone --
-    # "leave-pairs-out" already says it to anyone who knows the protocol, and the warning that
-    # matters (not comparable with LCO) is kept as a single clause rather than a sentence.
-    fig.text(0.02, 0.905,
-             f"5 folds, {int(g['n'].iloc[0] / 5):,} held-out pairs per fold  ·  "
-             "whiskers = sd over folds  ·  hatched = unseeded, does not reproduce  ·  "
-             "not comparable with leave-cell-line-out numbers",
-             ha="left", va="top", fontsize=8.6, color=GREY)
+    fig.text(0.02, 0.90,
+             f"5 folds, {int(g['n'].iloc[0] / 5):,} held-out pairs per fold  ·  whiskers = sd over "
+             "folds  ·  dashed = cell-line identity\n"
+             "* unseeded, does not reproduce   ·   n/a constant within each drug, so undefined   ·   "
+             "not comparable with leave-cell-line-out",
+             ha="left", va="top", fontsize=8.2, color=GREY, linespacing=1.6)
 
-    ref = float(g.loc["NaiveCellLineMeanPredictor", "m"])
-    xmax = max(0.46, float((g["m"] + g["s"]).max()) + 0.055)
-    label_x = xmax - 0.004                       # one right-aligned column, so values cannot drift
+    for k, ax in enumerate(axes):
+        rows = [b for b in BARS if b[2] == k]
+        for i, (key, label, _, colour, nd) in enumerate(rows):
+            y = len(rows) - 1 - i
+            m, s = g.loc[key, "m"], g.loc[key, "s"]
+            if pd.isna(m):                      # fitted, then collapsed to the intercept
+                ax.text(0.004, y, "n/a", va="center", ha="left", fontsize=8.8,
+                        color=MUTED, style="italic", zorder=4)
+                continue
+            ax.barh(y, m, height=0.6, color=colour, alpha=0.9, zorder=3)
+            ax.errorbar(m, y, xerr=s, fmt="none", ecolor=INK, elinewidth=1.0, capsize=2.5, zorder=4)
+            ax.text(m + s + 0.008, y, f"{m:.3f}", va="center", fontsize=8.8, color=INK, zorder=4)
+        ax.axvline(ref, color=RED, lw=1.1, ls="--", zorder=2)
+        ax.set_yticks(range(len(rows)))
+        ax.set_yticklabels([f"{b[1]} *" if b[4] else
+                            (f"{b[1]}" if not pd.isna(g.loc[b[0], "m"]) else b[1])
+                            for b in rows][::-1], fontsize=9)
+        ax.set_title(PANEL_TITLE[k], loc="left", fontsize=9, color=MUTED, fontweight="bold", pad=4)
+        ax.set_xlim(0, xmax)
+        ax.set_ylim(-0.6, len(rows) - 0.4)
+        _tidy(ax, grid="x")
+        ax.tick_params(labelsize=8.5)
 
-    rows, y = [], 0.0                            # laid out top-down, then flipped by set_ylim
-    for i, (key, label, grp, colour, hatch) in enumerate(BARS):
-        if i == 0 or BARS[i - 1][2] != grp:      # a header row opening each group
-            ax.text(0.003, y, HEADERS[grp], va="center", ha="left", fontsize=8.2,
-                    color=MUTED, fontweight="bold", zorder=5)
-            y -= 1.0
-        rows.append((y, label))
-        m, s = g.loc[key, "m"], g.loc[key, "s"]
-        if pd.isna(m):                           # fitted, then collapsed to the intercept
-            # Descriptive, not interpretive (rule 2): it read "no within-drug signal", which is the
-            # reading. What is observable is that the fitted model emits one value per drug.
-            ax.text(0.003, y, "shrank to the intercept — constant within each drug",
-                    va="center", ha="left", fontsize=8.4, color=AMBER, style="italic", zorder=5)
-            ax.text(label_x, y, "n/a", va="center", ha="right", fontsize=9,
-                    color=AMBER, fontweight="bold", zorder=5)
-        else:
-            ax.barh(y, m, height=0.62, color=colour, alpha=0.32 if hatch else 0.88,
-                    edgecolor=colour, lw=1.2, hatch="///" if hatch else None, zorder=3)
-            ax.errorbar(m, y, xerr=s, fmt="none", ecolor=INK, elinewidth=1.1, capsize=3, zorder=4)
-            ax.text(label_x, y, f"{m:.3f}", va="center", ha="right", fontsize=9,
-                    color=INK, fontweight="bold", zorder=5)
-        y -= 1.0
-
-    ax.axvline(ref, color=RED, lw=1.2, ls="--", zorder=2)
-    ax.text(ref - 0.006, 0.62, "knowing only which cell line it is",
-            fontsize=8.4, color=RED, va="bottom", ha="right")
-
-    ax.set_yticks([r[0] for r in rows])
-    ax.set_yticklabels([r[1] for r in rows], fontsize=9.2)
-    ax.set_xlabel("mean per-drug Spearman  (this project's metric)", fontsize=9.5)
-    ax.set_xlim(0, xmax)
-    ax.set_ylim(y + 0.45, 1.15)
-    _tidy(ax, grid="x")
-    ax.tick_params(labelsize=8.5)
+    axes[1].set_xlabel("mean per-drug Spearman  (this project's metric)", fontsize=9.5)
 
     out = FIG / "lpo_bias.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
