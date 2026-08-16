@@ -1222,9 +1222,14 @@ is something the model **imposed**, not something it was shown. `4b` therefore d
 model right about individual cells" — it cannot — but "does the model produce within-line structure
 that is more than noise, and is that structure anything other than technical artefact".
 
-**The instrument.** Seven staged tests, each a null, a comparison or a collapse test, run over three
+**The instrument.** Five staged tests, each a null, a comparison or a collapse test, run over three
 seeds on both representations. Source: `notebooks/4b_mil_training.ipynb` →
-`notebooks/outputs/mil/q2_verdict.csv` and `stage0`–`stage7`.
+`notebooks/outputs/mil/q2_verdict.csv` and the `stage{0,1,2,6,7}_*.csv` tables.
+
+> **Corrected 17.08.2026 — this said *seven*.** There are five stages; the numbering runs 0, 1, 2, 6, 7
+> and 3–5 do not exist, a leftover from a draft criterion that was cut. `4b` §2 has carried five rows
+> throughout. The same miscount stood in the presentation deck and its appendix and is fixed in both.
+> No number moved.
 
 | stage | question | `X_pca` | `X_scGPT` |
 |---|---|---|---|
@@ -1251,6 +1256,11 @@ there with the qualifier that matters, *"at a measured instrument sensitivity of
 > a reader who checks the deck's figure against the deck's table finds two numbers for one thing with
 > only one of them explained. **The table above, and the report and presentation that quote it, take
 > the verdict artifact's aggregation.**
+>
+> **Update 17.08.2026 — the two numbers can no longer meet.** `q2_instrument.png` was cut to the
+> stage-7 control alone and carries no medians at all, so stage 2 now appears in one place only, at
+> the verdict artifact's aggregation. Both derivations still reproduce; the pooled value is simply
+> no longer displayed anywhere.
 
 ### The stage-6 veto was evaluated, and it does not fire (settled 14.08.2026)
 
