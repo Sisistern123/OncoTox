@@ -69,7 +69,7 @@ single cells supports prediction on **held-out cell lines** at all.
 | | value | source |
 |---|---|---|
 | best arm, 11 panel drugs | **0.2824** (α=0.5/mae, `X_pca`) | `panel_metrics.csv` |
-| `RidgeCV` on cell-line-mean embeddings | **0.2767** | `panel_arch_summary.csv` |
+| `RidgeCV` on cell-line-mean embeddings | **0.2725** | `panel_ridge_baseline.csv` |
 | best over **all 534** drugs | **0.1019** | `panel_heads_summary.csv` |
 | … against the per-drug constant | **+0.00043** at best | `panel_heads_summary.csv` |
 | external, DrEval normalized | **0.2776** | `dreval_lco_results.csv` |
@@ -90,8 +90,31 @@ all for others — and §*label quality* shows part of that spread is the labels
 selected for coverage and literature evidence; it is not representative of what the method does on an
 unselected compound set.
 
-⚠️ **And a simple baseline matches it.** `RidgeCV` on cell-line-mean embeddings scores **0.2767**
-against the best per-cell arm's 0.2824 — a difference of 0.0057. **So whatever Q0's positive answer
+⚠️ **And a simple baseline matches it.** `RidgeCV` on cell-line-mean embeddings scores **0.2725**
+against the best per-cell arm's 0.2824 — a difference of 0.0099.
+
+> ⛔ **Re-fitted 16.08.2026; the ridge read 0.2767 (`X_pca`) and 0.1914 (`X_scGPT`) until then, and
+> the old value was produced by a search the grid cut short.** `4a` pre-registered the test — *if the
+> selected penalty lands on a grid endpoint, the grid chose it and the ridge is not arm-comparable* —
+> and it fired: **8 of 55 `X_pca` fits and 4 of 55 scGPT fits at the ceiling** of
+> `logspace(-2, 4, 13)`, unnoticed in a committed column for three days. Re-fitted on
+> `logspace(-2, 6, 17)` by `scripts/evaluation/ridge_grid_refit.py`, which **first reproduces the
+> committed table on the original grid to six decimals** so the change is attributable to the grid
+> and nothing else.
+>
+> **Both arms fall slightly** — 0.2767 → **0.2725**, 0.1914 → **0.1884** — because the truncated fits
+> were under-regularised. **The cross-arm gap is unchanged** (0.0853 → 0.0842), so nothing about Q1
+> moves. **Five fits still saturate the ceiling and always will:** at 10⁶ and 10⁸ alike, leave-one-out
+> CV wants an unbounded penalty for them, which is *"no usable signal in this drug × fold — predict
+> the intercept"*, an outcome rather than an artifact.
+>
+> ⚠️ **Two claims elsewhere weaken and were corrected with it.** *"Only 1 of 6 `X_pca` arms clears the
+> ridge"* becomes **3 of 6**. And *"under matched loss the ridge beats every MLP arm"* is now
+> **false** — the α=0.5 squared-error arm at 0.2754 clears 0.2725. **The control still binds** (a
+> line-level linear fit within 0.0099 of the network) but it binds less hard than the record claimed.
+>
+> `panel_arch_summary.csv`'s derived `ridge` and `minus_ridge` columns were recomputed in the same
+> run; its `mean` column is asserted untouched. **So whatever Q0's positive answer
 is worth, it is not evidence that the single-cell treatment is buying anything over a line-level
 one.** That is the finding that most constrains how the rest of this page should be read.
 
@@ -120,10 +143,10 @@ eleven panel drugs.
 
 | arch | rep | mean | band | vs ridge |
 |---|---|---|---|---|
-| linear | `X_pca` | 0.2608 | ±0.0072 | **−0.0158** |
-| linear | `X_scGPT` | 0.2291 | ±0.0019 | +0.0378 |
-| trunk (128,64) | `X_pca` | 0.2429 | ±0.0173 | **−0.0337** |
-| trunk (128,64) | `X_scGPT` | 0.2047 | ±0.0011 | +0.0133 |
+| linear | `X_pca` | 0.2608 | ±0.0072 | **−0.0117** |
+| linear | `X_scGPT` | 0.2291 | ±0.0019 | +0.0407 |
+| trunk (128,64) | `X_pca` | 0.2429 | ±0.0173 | **−0.0296** |
+| trunk (128,64) | `X_scGPT` | 0.2047 | ±0.0011 | +0.0163 |
 
 **The Q1 margin survives the capacity change and moves little:** `X_pca` − `X_scGPT` is **+0.0317**
 with a linear head and **+0.0383** with the trunk, both outside the wider of the two seed bands. The
@@ -145,7 +168,7 @@ about the trunk rather than the representation — median best epoch, from the s
 | trunk | 1 | 8 |
 
 **⚠️ Neither representation clears the ridge control on `X_pca`.** `RidgeCV` on line-mean embeddings
-scores 0.2767, above both PCA arms. A linear model on averaged embeddings beats the per-cell network
+scores 0.2725, above both PCA arms. A linear model on averaged embeddings beats the per-cell network
 on the representation that wins Q1 — recorded here because it bounds what the per-cell model has
 been shown to buy, and it is visible in `panel_alpha_response.png` as the dashed ridge line sitting
 above the PCA median at every `alpha`.
@@ -863,7 +886,7 @@ that both drivers are properties of the **labels** rather than of the model or t
 `vs_null` runs **+0.00017 to +0.00043**, and is **−0.00005** for linear/`X_pca` — worse than a
 constant (`panel_heads_summary.csv`).
 
-**4 · Simple models match or beat the network.** `RidgeCV` on cell-line-mean embeddings scores 0.2767
+**4 · Simple models match or beat the network.** `RidgeCV` on cell-line-mean embeddings scores 0.2725
 against 0.2608 for the best per-cell `X_pca` arm, and on DrEval a per-drug random forest matches the
 multi-task model to 0.0003. **Whatever is limiting performance is not model capacity**, which is
 consistent with 1 and 2: the ceiling is label supply and label quality.

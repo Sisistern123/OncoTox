@@ -102,10 +102,10 @@ hyperparameter; what the rate should be is left open.
 \paragraph{Everything sits near the per-drug null.}
 Across all \NDrugsModelled{} compounds the improvement over a per-drug constant runs $+0.00017$ to $+0.00043$, and
 for the linear principal-component arm it is $-0.00005$, worse than the constant
-(\code{panel\_heads\_summary.csv}). A ridge regression on cell-line-mean embeddings scores $0.2767$
+(\code{panel\_heads\_summary.csv}). A ridge regression on cell-line-mean embeddings scores $0.2725$
 against $0.2608$ for the best per-cell principal-component arm, and on an external protocol a per-drug
 random forest matches the multi-task model to $0.0003$
-(\code{panel\_arch\_summary.csv}; \code{dreval\_lco\_results.csv}). \textbf{On both an internal and an
+(\code{panel\_ridge\_baseline.csv}; \code{dreval\_lco\_results.csv}). \textbf{On both an internal and an
 external comparison, the multi-task architecture has not been shown to buy anything measurable over a
 simple per-drug model.}
 
