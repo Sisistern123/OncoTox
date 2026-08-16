@@ -260,13 +260,15 @@ whether it predicts which cells survive, are not addressed and cannot be with th
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\textwidth]{q2_instrument.png}
-\caption{Q2's instrument. \textbf{Left:} cross-seed Spearman correlation of per-cell predictions,
-one point per (compound, cell line, seed pair); the dashed line is zero. \textbf{Right:} the positive
-control --- within-bag AUROC on a between-line difference known to be present, one point per
-(compound, line pair, seed); the dashed line is chance. The right panel is close to uniform, so the
-instrument is not merely weak on average. Read from \code{stage2\_cross\_seed\_agreement.csv} and
-\code{stage7\_positive\_control.csv}.}
+\includegraphics[width=0.78\textwidth]{q2_instrument.png}
+\caption{Q2's positive control: within-bag AUROC on a between-line difference known to be present,
+one point per (compound, line pair, seed), $17{,}427$ per arm; the dashed line is chance.
+\code{X\_pca} is close to uniform across the whole range and \code{X\_scGPT} is bimodal at $0$ and
+$1$, so neither instrument is merely weak on average --- a distinction the medians of $0.518$ and
+$0.537$ do not carry. Read from \code{stage7\_positive\_control.csv}.
+\textbf{Changed 17.08.2026:} this figure previously carried a second panel showing cross-seed
+agreement, dropped when the presentation needed the width; that quantity is reported in
+Section~\ref{sec:results-q2} and in \code{stage2\_cross\_seed\_agreement.csv}.}
 \label{fig:q2instrument}
 \end{figure}
 

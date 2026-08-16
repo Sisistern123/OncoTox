@@ -7,7 +7,7 @@
 
 **Plots of committed results — built from an artifact, skipped if it is absent:**
 
-  q2_instrument.png        stage 2 and stage 7 of the Q2 instrument, as distributions
+  q2_instrument.png        Q2's positive control, as a distribution over line pairs
   lpo_bias.png             mean per-drug Spearman under DrEval leave-pairs-out, by predictor
 
 "Pure" means no expression matrix and no plotting of results: the layout is drawn, not measured.
@@ -1630,74 +1630,57 @@ def build_loss_effect():
 
 
 def build_q2_instrument():
-    """Q2's two halves in one figure: the structure reproduces, the instrument is near chance.
+    """Q2's positive control: how well the method separates cells whose lines are known to differ.
 
     **Why this figure exists.** Until 14.08.2026 Q2 had no figure at all -- eleven CSVs and no
     image -- while being one of the two questions the project is organised around.
 
-    **What is on the axes, and why these two stages of the seven.** Q2's verdict is ``POSITIVE`` and
-    its weakness is measured, and both facts live in different stage tables, so quoting either alone
-    misrepresents it. Stage 2 asks whether the within-line structure the model imposes *reproduces
-    across seeds* -- if it did not, there would be nothing to discuss. Stage 7 is the **positive
-    control**: it asks whether the instrument can detect a between-line gap it already knows is
-    there. Putting them side by side is the honest statement, because the second bounds what the
-    first is worth.
+    **Why the control and nothing else** (Selin, 17.08.2026). An earlier version put cross-seed
+    agreement beside it, which duplicated a number the slide's own table already carries. This one
+    does not: the control's *distribution* is the argument, and no median can make it. ``X_pca``'s
+    mass lies flat across the entire AUROC range -- the profile of a coin flip, not of a weak
+    detector -- and ``X_scGPT``'s piles up at both 0 and 1, confident per pair and wrong about half
+    the time. Both medians sit within 0.04 of chance and would read as "slightly positive" alone.
 
-    Distributions rather than the medians alone: the medians are in
-    ``notebooks/outputs/mil/q2_verdict.csv`` and a bar chart of four numbers would hide that stage
-    7's mass sits against its null.
+    **What is on the axis.** One point per (drug, line pair, seed): two cell lines whose measured
+    responses differ by an amount in the bottom quartile of that drug's pairwise gaps, their cells
+    pooled into one bag, scored by whether the more resistant line's cells rank above the other's.
+    Only pairs held out by the same fold, so no offset between two fold-models can pass as signal.
 
     The title says what is plotted. What it means belongs in prose that can be cited and disputed --
     this file's own rule against asserting results inside a drawing.
     """
     import pandas as pd
 
-    s2 = pd.read_csv(MIL_OUT / "stage2_cross_seed_agreement.csv")
     s7 = pd.read_csv(MIL_OUT / "stage7_positive_control.csv")
 
     reps = [("X_pca", BLUE, "PCA"), ("X_scGPT", AMBER, "scGPT")]
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.0, 4.5))
-    fig.subplots_adjust(top=0.80, wspace=0.28)
-    fig.suptitle("Q2 instrument: cross-seed agreement, and the positive control",
-                 x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=0.99)
-    fig.text(0.02, 0.90,
-             "left: stage 2, one point per (drug, cell line, seed pair).   "
-             "right: stage 7, one point per (drug, line pair, seed).   "
-             "dashed = the null each is measured against",
-             ha="left", va="top", fontsize=8.6, color=GREY)
+    fig, ax = plt.subplots(figsize=(7.2, 3.8))
+    # Titled by what the panel measures, not by its stage number: the numbering is `4b`'s internal
+    # bookkeeping and carries nothing for a reader of the figure.
+    ax.set_title("can the method see a gap known to be there?", fontsize=12, fontweight="bold",
+                 color=INK, loc="left", pad=10)
 
     for rep, c, name in reps:
-        a1.hist(s2[s2.rep == rep]["rho"].dropna(), bins=60, range=(-1, 1), histtype="step",
+        ax.hist(s7[s7.rep == rep]["auroc"].dropna(), bins=60, range=(0, 1), histtype="step",
                 lw=1.8, color=c, label=name, density=True)
-    a1.axvline(0.0, color="#9a9a95", lw=1.1, ls="--", zorder=1)
-    a1.set_xlabel("cross-seed Spearman of per-cell predictions", fontsize=9)
-    a1.set_ylabel("density", fontsize=9)
-    a1.set_xlim(-1, 1)
+    ax.axvline(0.5, color="#9a9a95", lw=1.1, ls="--", zorder=1)
+    ax.set_xlabel("AUROC separating the two lines' cells inside one mixed bag", fontsize=9)
+    ax.set_xlim(0, 1)
 
-    for rep, c, name in reps:
-        a2.hist(s7[s7.rep == rep]["auroc"].dropna(), bins=60, range=(0, 1), histtype="step",
-                lw=1.8, color=c, label=name, density=True)
-    a2.axvline(0.5, color="#9a9a95", lw=1.1, ls="--", zorder=1)
-    a2.set_xlabel("within-bag AUROC, known between-line gap", fontsize=9)
-    a2.set_ylabel("density", fontsize=9)
-    a2.set_xlim(0, 1)
+    # The null is named at the line rather than in the legend: a reader should not have to carry
+    # which of two entries is the reference.
+    ax.annotate("chance", xy=(0.5, 1.0), xycoords=("data", "axes fraction"),
+                xytext=(4, -2), textcoords="offset points", ha="left", va="top",
+                fontsize=8.4, color=GREY)
 
-    # Medians read from the same rows that are plotted, so the annotation cannot drift from the bars.
-    for ax, df, col in ((a1, s2, "rho"), (a2, s7, "auroc")):
-        lines = []
-        for rep, _, name in reps:
-            med = df[df.rep == rep][col].median()
-            lines.append(f"{name} median {med:.3f}")
-        # Labelled "pooled" on purpose. q2_verdict.csv's headline medians aggregate PER SEED
-        # (and, for stage 7, take the median of per-seed medians), so a pooled median over every
-        # point drawn here differs in the third decimal. Saying which statistic this is keeps the
-        # figure self-consistent with what it plots instead of appearing to contradict the verdict.
-        ax.text(0.03, 0.97, "pooled median of points shown\n" + "\n".join(lines),
-                transform=ax.transAxes, ha="left", va="top",
-                fontsize=8.5, color=MUTED, linespacing=1.5)
-        ax.legend(frameon=False, fontsize=8.5, loc="upper right")
-        _tidy(ax, grid="y")
-        ax.tick_params(labelsize=8)
+    # No median annotation. Both medians are in the slide's table and in `q2_verdict.csv`, they sit
+    # 0.02 apart, and printing them here put two nearly equal numbers on top of each other and of
+    # the axis label. The shape is what this figure adds over them.
+    _tidy(ax, grid="y")
+    ax.set_ylabel("density", fontsize=9)
+    ax.tick_params(labelsize=8)
+    ax.legend(frameon=False, fontsize=9, loc="upper left", bbox_to_anchor=(0.14, 1.0))
 
     out = FIG / "q2_instrument.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
