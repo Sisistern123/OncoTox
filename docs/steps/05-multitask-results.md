@@ -948,9 +948,12 @@ of the internal finding that `RidgeCV` on line-mean embeddings beats both per-ce
 
 ⚠️ **Two things the same table says about the baseline suite rather than about us.**
 `SingleDrugEN (scgpt)` scores **exactly** what `NaiveDrugMeanPredictor` scores, raw and normalized —
-it collapsed to the per-drug mean, so it is not a live comparator. And `SingleDrugRF (pca)` at 0.0279
-± 0.0640 is indistinguishable from zero, so the RF's performance is representation-dependent in a way
-the EN's is not.
+it collapsed to the per-drug mean, so it is not a live comparator. ⚠️ **Bit-identical in all five
+folds on every metric** — the cause is the fixed `alpha=1` on unstandardised features, the same
+penalty artifact recorded for the LPO run below (17.08.2026). And `SingleDrugRF (pca)` at 0.0279
+± 0.0640 is indistinguishable from zero. **Only the RF contrast is interpretable**: trees are
+invariant to per-feature rescaling, so its representation-dependence cannot be a scale effect, while
+the EN's collapse is nothing else.
 
 ⚠️ **The raw panel is the reason the normalized one exists.** Every non-degenerate model scores
 0.74–0.78 raw, clustered just above `NaiveMeanEffects` — pooled Spearman is dominated by drug potency
@@ -1152,14 +1155,32 @@ two.** Nothing here measures what share of our model's 0.2824 is fragility; that
 decomposition this project has deliberately not built
 ([Corrections](corrections-and-dead-ends.md), and `dreval_normalize.py` on why).
 
-⚠️ **One more thing the run showed, and it is the sharpest per-representation result in it.** The two
-model classes split the two embeddings, consistently. On **scGPT** line-means `SingleDrugElasticNet`
-shrank to the intercept — its pooled score is `NaiveDrugMeanPredictor`'s to four decimals — while the
-random forest is the better of the two arms. On **PCA** line-means the ordering reverses: the elastic
-net is the best feature-using model in the table and the random forest is the worst. **Neither
-representation is simply better; they need different model classes** — and the same split holds under
-LCO (`SingleDrugEN (pca)` 0.2534 / `SingleDrugRF (pca)` 0.0279 normalized against `EN (scgpt)` 0.0000 /
-`RF (scgpt)` 0.2773), so it reproduces across two protocols. Values in the table above.
+⚠️ **One more thing the run showed — and half of it is an artifact of the baseline, not a property of
+the embeddings.** The two model classes do split the two embeddings: on **PCA** line-means
+`SingleDrugElasticNet` is the best feature-using model in the table while the random forest is the
+worst; on **scGPT** line-means the ordering reverses, the elastic net shrinking to the intercept while
+the forest is the better of the two arms. The same pattern appears under LCO — `SingleDrugEN (pca)`
+0.2534 / `SingleDrugRF (pca)` 0.0279 normalized against `EN (scgpt)` 0.0000 / `RF (scgpt)` 0.2773.
+Values in the table above. **What that licenses is narrower than it looks:**
+
+> **Corrected 17.08.2026 — this concluded *"neither representation is simply better; they need
+> different model classes"*, and that does not follow from the elastic-net half.** drevalpy fixes
+> `SingleDrugElasticNet` at `alpha: [1]` with `l1_ratio` ∈ {0.2, 0.5, 0.9} and applies **no feature
+> standardisation** (`drevalpy/models/baselines/hyperparameters.yaml`; the estimator is built in
+> `models/baselines/sklearn_models.py`), while `X_scGPT`'s dimensions are about **two orders of
+> magnitude smaller** than `X_pca`'s. Every coefficient is soft-thresholded to zero and only the
+> intercept survives, so the model **is** the per-drug mean: in `dreval_lco_results.csv` it is
+> **bit-identical to `NaiveDrugMeanPredictor` in all five folds on every metric**, which is why its
+> normalized score is exactly 0.0000 rather than merely small. **`EN (scgpt)` did not lose — it never
+> fitted**, so it says nothing about the representation, and *"it reproduces across two protocols"* is
+> precisely what a deterministic penalty artifact does. **What survives is the random-forest half** —
+> 0.2773 on scGPT against 0.0279 on PCA — which **cannot** be explained the same way, because
+> axis-aligned trees are invariant to per-feature rescaling. ⚠️ The forests are **unseeded** (0.2401 /
+> 0.2141 / 0.2101 across three LPO runs), so the **direction** is quotable and the value is not.
+> `SingleDrugEN (pca)` at **0.2534** stands on its own as a legitimate fit — a third line-level model
+> landing near our 0.2776, which belongs with the ceiling argument rather than with this one.
+> ⚠️ The bit-identity check ran in a shell session over the committed CSV, **not yet from committed
+> code**. The same claim stood in the presentation deck and is fixed there too.
 
 ---
 
