@@ -1,0 +1,81 @@
+macro,value,source,reduction
+NCurves,1971.0,DrEval CTRPv2 response table,curves of panel compounds x split lines (label_quality.py filter); count
+CurveMedRsq,0.867381196827339,DrEval CTRPv2 response table,curves of panel compounds x split lines (label_quality.py filter); median R2
+CurveFracLowRsq,22.22222222222222,DrEval CTRPv2 response table,curves of panel compounds x split lines (label_quality.py filter); % R2 < 0.5
+CurveFracNs,10.908168442415016,DrEval CTRPv2 response table,curves of panel compounds x split lines (label_quality.py filter); % pValue > 0.05 (flat)
+NCtrpLines,886.0,DrEval CTRPv2 response table,distinct ccl_name
+IcDefinedPct,59.73662359755356,DrEval CTRPv2 response table,% rows with an IC50
+TargetDensity,84.74144887950835,"targets h5ad (hvg5000, auc_cc)","% of (labelled line, compound) pairs with M_ctrp = 1"
+CellsMin,56.0,"targets h5ad (hvg5000, auc_cc)",fewest cells in a labelled line
+CellsMax,1990.0,"targets h5ad (hvg5000, auc_cc)",most cells in a labelled line
+CellsPerLineMean,262.09944751381215,"targets h5ad (hvg5000, auc_cc)",mean cells per labelled line
+SwPcaMseZero,0.24734814485058054,panel/panel_per_drug_correlation.csv,"X_pca mse alpha=0.0: mean over compounds per seed, then over seeds"
+SwPcaMseHalf,0.27541459556570763,panel/panel_per_drug_correlation.csv,"X_pca mse alpha=0.5: mean over compounds per seed, then over seeds"
+SwPcaMseOne,0.26791364813603274,panel/panel_per_drug_correlation.csv,"X_pca mse alpha=1.0: mean over compounds per seed, then over seeds"
+SwPcaMaeZero,0.2617455752461679,panel/panel_per_drug_correlation.csv,"X_pca mae alpha=0.0: mean over compounds per seed, then over seeds"
+SwPcaMaeHalf,0.28235597130247947,panel/panel_per_drug_correlation.csv,"X_pca mae alpha=0.5: mean over compounds per seed, then over seeds"
+SwPcaMaeOne,0.2764617828885946,panel/panel_per_drug_correlation.csv,"X_pca mae alpha=1.0: mean over compounds per seed, then over seeds"
+SwScgptMseZero,0.2009190887901131,panel/panel_per_drug_correlation.csv,"X_scGPT mse alpha=0.0: mean over compounds per seed, then over seeds"
+SwScgptMseHalf,0.19273495023863776,panel/panel_per_drug_correlation.csv,"X_scGPT mse alpha=0.5: mean over compounds per seed, then over seeds"
+SwScgptMseOne,0.20310902143651732,panel/panel_per_drug_correlation.csv,"X_scGPT mse alpha=1.0: mean over compounds per seed, then over seeds"
+SwScgptMaeZero,0.24032665547516907,panel/panel_per_drug_correlation.csv,"X_scGPT mae alpha=0.0: mean over compounds per seed, then over seeds"
+SwScgptMaeHalf,0.239527677851924,panel/panel_per_drug_correlation.csv,"X_scGPT mae alpha=0.5: mean over compounds per seed, then over seeds"
+SwScgptMaeOne,0.22142052918836594,panel/panel_per_drug_correlation.csv,"X_scGPT mae alpha=1.0: mean over compounds per seed, then over seeds"
+SpDrugLo,0.0512485640002418,panel/panel_per_drug_correlation.csv,"best configuration, lowest compound (platin)"
+SpDrugHi,0.5311211804345299,panel/panel_per_drug_correlation.csv,"best configuration, highest compound (dasatinib)"
+FlatRho,-0.7818181818181819,diagnostics/label_quality_vs_performance.csv + panel/panel_per_drug_correlation.csv,"Spearman(frac_ns, best-configuration score) over compounds"
+FlatP,0.004473162252783042,diagnostics/label_quality_vs_performance.csv + panel/panel_per_drug_correlation.csv,its p-value
+PlatinFracNs,73.33330000000001,diagnostics/label_quality_vs_performance.csv,"cisplatin frac_ns, %"
+PlatinMedRsq,0.166473,diagnostics/label_quality_vs_performance.csv,cisplatin median_R2
+SwPcaMseZeroAlt,0.2541,panel/panel_execution_band.csv,"X_pca mse alpha=0, first execution"
+RidgePca,0.2725397950650712,panel/panel_ridge_baseline.csv,mean spearman over compounds
+RidgeScgpt,0.18835387554617988,panel/panel_ridge_baseline.csv,mean spearman over compounds
+SpAllDrugs,0.1019412204799148,panel/panel_heads_summary.csv,"all compounds, linear head, X_pca"
+NullGainMax,0.0004281633061406,panel/panel_heads_summary.csv,largest vs_null over the four all-compound rows
+DrMlpNorm,0.27755257960754576,dreval/dreval_lco_results.csv,"normalized Spearman, mean over folds"
+DrRfNorm,0.2772835986470167,dreval/dreval_lco_results.csv,"normalized Spearman, mean over folds"
+DrMlpSd,0.04739148519811268,dreval/dreval_lco_results.csv,"normalized Spearman, SD over folds"
+DrRfSd,0.039241363518005716,dreval/dreval_lco_results.csv,"normalized Spearman, SD over folds"
+DrDrugMean,0.7413250167243458,dreval/dreval_lco_results.csv,"raw Spearman, mean over folds"
+LpoLineMean,0.3219647076018759,dreval/dreval_lpo_results.csv,"per_drug_Spearman, mean over folds"
+LpoTissueMean,0.1835327331844608,dreval/dreval_lpo_results.csv,"per_drug_Spearman, mean over folds"
+FragRhoPca,0.16023333333333334,dreval/bias_accounting.csv,mean over six configurations
+FragRawPca,0.26853333333333335,dreval/bias_accounting.csv,mean spearman_raw_per_drug over six configurations
+FragPartialPca,0.21375,dreval/bias_accounting.csv,mean partial_rho over six configurations
+FragCostPca,20.400943396226424,dreval/bias_accounting.csv,"1 - partial/raw, %"
+FragBestPca,0.2276,dreval/bias_accounting.csv,"partial_rho, best configuration"
+FragRhoScgpt,0.11721666666666668,dreval/bias_accounting.csv,mean over six configurations
+FragRawScgpt,0.21631666666666668,dreval/bias_accounting.csv,mean spearman_raw_per_drug over six configurations
+FragPartialScgpt,0.17333333333333334,dreval/bias_accounting.csv,mean partial_rho over six configurations
+FragCostScgpt,19.870560135603675,dreval/bias_accounting.csv,"1 - partial/raw, %"
+FragBestScgpt,0.1933,dreval/bias_accounting.csv,"partial_rho, best configuration"
+SpPooled,0.768,dreval/bias_accounting.csv,"pooled raw Spearman, best configuration"
+BtwSharePca,0.584167155555848,mil/stage0_input_ceiling.csv,1 - within_line_share
+BtwRatioPca,1.4048124465413745,mil/stage0_input_ceiling.csv,(1 - w) / w
+BtwShareScgpt,0.5386613438069872,mil/stage0_input_ceiling.csv,1 - within_line_share
+BtwRatioScgpt,1.1676050479967244,mil/stage0_input_ceiling.csv,(1 - w) / w
+CurveGainPca,0.12345239889771542,panel/panel_curve_summary.csv,full minus 25 lines
+CurveGainScgpt,0.09531954852261199,panel/panel_curve_summary.csv,full minus 25 lines
+CurveMarginLo,0.003560835614406288,panel/panel_curve_summary.csv,PCA minus scGPT at 25 lines
+CurveMarginHi,0.03169368598950972,panel/panel_curve_summary.csv,"PCA minus scGPT, full"
+ArchLinPca,0.2608301475172463,panel/panel_arch_summary.csv,linear head
+ArchTrunkPca,0.2429086725544818,panel/panel_arch_summary.csv,"(128,64) trunk"
+ArchLinScgpt,0.2291418459056503,panel/panel_arch_summary.csv,linear head
+ArchTrunkScgpt,0.2046554654071909,panel/panel_arch_summary.csv,"(128,64) trunk"
+InputScaleRatio,103.52028866291553,diagnostics/input_scale.csv,ratio of median per-dimension SD
+DropRangePca,0.014494520309678682,diagnostics/input_dropout_test.csv + diagnostics/input_dropout_sweep_extra.csv,range over the six rates
+DropRangeScgpt,0.0019769823889445592,diagnostics/input_dropout_test.csv + diagnostics/input_dropout_sweep_extra.csv,range over the six rates
+DropBestPca,0.27530772385682695,diagnostics/input_dropout_test.csv + diagnostics/input_dropout_sweep_extra.csv,X_pca at rate 0.02
+DropShippedPca,0.26081320354714826,diagnostics/input_dropout_test.csv + diagnostics/input_dropout_sweep_extra.csv,X_pca at rate 0.1
+QSpreadPca,100.0,mil/q2_verdict.csv,"% pairs, stage 1"
+QSeedRhoPca,0.2556,mil/q2_verdict.csv,median cross-seed rho
+QAurocPca,0.5178,mil/q2_verdict.csv,median within-bag AUROC
+QConfPca,0.0533,mil/q2_verdict.csv,median adjusted R2 of the confounds
+QReprPca,0.06533135999999999,mil/q2_verdict.csv,squared stage2_median_rho (median over seed pairs of each pair's median)
+QBarPca,81.58409682578169,mil/q2_verdict.csv,"confound share of the veto bar, %"
+QSpreadScgpt,82.28999999999999,mil/q2_verdict.csv,"% pairs, stage 1"
+QSeedRhoScgpt,0.8605,mil/q2_verdict.csv,median cross-seed rho
+QAurocScgpt,0.5373,mil/q2_verdict.csv,median within-bag AUROC
+QConfScgpt,0.2656,mil/q2_verdict.csv,median adjusted R2 of the confounds
+QReprScgpt,0.74046025,mil/q2_verdict.csv,squared stage2_median_rho (median over seed pairs of each pair's median)
+QBarScgpt,35.86958246577044,mil/q2_verdict.csv,"confound share of the veto bar, %"
