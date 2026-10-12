@@ -1,5 +1,61 @@
 # OncoTox — TODO
 
+> # 12.10.2026 — where the project stands
+>
+> **The rerun is done and the final presentation has been given (17.08.2026).** R1–R5 ran 13.–16.08.2026
+> on the rebuilt 11-drug panel and the `auc_cc` target; the results are in
+> [Step 05](./steps/05-multitask-results.md) and in `report/` (rewritten 12.10.2026 to the presentation,
+> every number a macro in `report/results_numbers.tex` naming its source CSV). **What is next is no
+> longer this file's review checklist** but the next steps named in the presentation —
+> [Step 06 §Next steps as presented](./steps/06-planned-work.md#next-steps-as-presented--final-presentation-17082026-added-12102026).
+> Open decisions: [OPEN_DECISIONS](./OPEN_DECISIONS.md) — one entry, §9.
+>
+> Unchecked items further down are either still open (item 12's extraction script, the drug-panel counts
+> as macros, the FAIR items D–H, the PCA component count) or were never re-read after the rerun;
+> **they are not re-verified here** — check an item against the artifacts before acting on it. The
+> banners below are kept as the record of what was believed when.
+
+## Report — what the writing guidelines still need (opened 12.10.2026)
+
+The report was revised 12.10.2026 against Selin's writing guidelines using **only what existed**
+(Selin: *"wir ändern gerade nur das was wir haben und generieren nichts neues"*). What the guidelines
+ask for beyond that is listed here, not done.
+
+- [ ] **`pipeline.png` is unreadable at text width** (Figure 2). Its panel text is several times smaller
+      than the caption, against the rule that figure text be about the size of the legend. Options: a
+      report-specific layout with larger fonts, splitting it into two figures, or a landscape page.
+- [ ] **In-figure titles and subtitles** (`pipeline`, `label_quality`, `lpo_bias`) duplicate what the
+      caption now says; report versions without them.
+- [ ] **One colour scheme.** PCA is blue in `q2_instrument.png` but grey in panel 8 of `pipeline.png`;
+      `lpo_bias.png` uses black/grey, `label_quality.png` a single blue. Fix one PCA/scGPT pair (scGPT is
+      gold everywhere) and one neutral for baselines.
+- [ ] **Figure wording against report wording.** Figures say `X_pca`/`X_scGPT`, `platin`, "per-drug",
+      "best arm"; the report says PCA/scGPT, cisplatin, "per-compound", "highest-scoring configuration".
+- [ ] **`pipeline.png` content:** panel 8 shows the unweighted MSE configuration (0.247 / 0.201), not
+      the highest-scoring one; panel 2's funnel skips the coverage stage (57 → 45 → 11).
+- [ ] **Visualise instead of tabulate / describe** — candidates: Table 1 as a dot plot (configurations ×
+      arm, ridge as a reference line); the four alternative-explanation tests (Results Q2, now text);
+      the MIL stage results (Results Q3, now text); per-compound PCA vs scGPT vs ridge (Selin's note on
+      the final-presentation notes page, "slide 15").
+- [ ] **Numbers in the report without a committed artifact** — *A open, B–D closed* (listed 12.10.2026; the first version of this
+      item named only two, which undercounted).
+      *A — not reproducible from the repo:* `input_scale_test.py` writes to a session tmp path (best epoch
+      6.73 vs 7.13, quoted in Results Q2 and marked there); the CPU-vs-MPS embedding check (script never
+      committed; a limitation in the report); the per-compound fragility values of slide 16 (not in the
+      report — `bias_accounting.py` writes arm means only).
+      *B — printed, not written:* the global label-quality figures (1,971 curves, median R² 0.867, 22.2 %
+      below 0.5, 10.9 % flat) from `label_quality.py`, which writes only the per-compound table.
+      *C — computed ad hoc on 12.10.2026 and now report macros:* `\NCtrpLines` (886), `\IcDefinedPct`
+      (59.7 %), `\TargetDensity` (84.7 %), `\CellsMin`/`\CellsMax`/`\CellsPerLineMean` (56 / 1,990 / 262).
+      Each macro comment names the file and reduction, but no script produces them.
+      *D — derived from committed CSVs, reduction only in macro comments:* the flat-curve ρ (computed by
+      `make_figures.py`, not saved), input ratio, DrEval fold SDs, fragility means, dropout ranges,
+      label-budget differences. ✅ **B–D closed 12.10.2026** by `scripts/evaluation/report_numbers.py`, which recomputes 80 macros, writes `notebooks/outputs/report/report_numbers.csv` and fails on any mismatch; its first run corrected two mis-rounded macros (`\PlatinMedRsq` 0.167 → 0.166, `\QReprScgpt` 0.741 → 0.740). **A remains open** — it needs runs, not a reduction.
+- [ ] **Verify the 26 references added 12.10.2026** at the end of `references.bib` against Zotero /
+      the publisher; they were entered from memory. The guidelines ask for a literature manager.
+- [ ] `docs/final_presentation.md` (slide text) says CTRPv2 covers "~1,100" lines; the DrEval CTRPv2
+      table has **886** (`\NCtrpLines`). Corrected in the report only.
+
 > # ⛔ 28.07.2026 — THE CURRENT DRUG PANEL IS VOID
 >
 > ## ✅ LIFTED 13.08.2026 (Selin) — the release condition this banner names is met
@@ -1349,7 +1405,7 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       like-for-like**, so the "not like-for-like" warning above describes a state that never reached
       the committed artifacts. Read from `notebooks/outputs/embeddings/hvg_sweep_auc.csv`
       (commit `02f0fe6`), written by `analysis/qc/verify_variants.ipynb` §9.
-- [ ] **R2 · Re-run preprocessing end to end.** Driver: the notebooks —
+- [x] **R2 · Re-run preprocessing end to end.** ✅ **Done 13.–16.08.2026** (the Gate 5 rerun, commits `ffe13be` → `7ee329d`; recorded 12.10.2026). Driver: the notebooks —
       `notebooks/1_data.ipynb` (`fetch`, `convert`) then `notebooks/3_representations.ipynb`
       (`scgpt`, `targets`, `splits`, `pca`), both calling `scripts/preprocessing/pipeline.py`. Needs
       `overwrite=True` on the guarded steps and the separate scGPT venv as `SCGPT_PYTHON`.
@@ -1363,12 +1419,12 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
     ranking scale, and `uns["pca_fits"]` (item 4B)
   - `ctrp_to_h5ad.py` (audit 02): deduplicated experiment table + the `H292` alias → **180 → 181** lines,
     213 cells and 454 labels gained, 460 of `NCIH1299`'s targets changed
-  - [ ] **Commit `splits/split_ctrp.csv` once this run writes it** (item 7B). The file has never existed,
+  - [x] ✅ *Committed — `splits/split_ctrp.csv`, 181 rows, 126 / 27 / 28.* **Commit `splits/split_ctrp.csv` once this run writes it** (item 7B). The file has never existed,
         so `frozen_split` has redrawn on every run; `create_splits` writes it when it is missing, and
         committing it is what makes the guard real from then on. The 181st line means this draw shares
         nothing with the current assignment — expected, and the reason the file is committed *after* R2
         rather than before.
-- [ ] **R3 · Refresh the committed read-only artifacts.** Held back only because they overwrite tracked
+- [x] **R3 · Refresh the committed read-only artifacts.** ✅ **Done 13.–16.08.2026** (the Gate 5 rerun, commits `ffe13be` → `7ee329d`; recorded 12.10.2026). Held back only because they overwrite tracked
       files. `gene_symbol_rescue.ipynb` → `gene_symbol_rescue.csv` (773 vs 775 — no effect at quoted
       precision; on re-run it should import `load_rename_map` from `gene_symbols.py` rather than rebuild
       the map, and it reads only the vocabulary and HGNC so it could be released early).
@@ -1408,14 +1464,14 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
 > Written down here rather than left in commit bodies because a reader finding six bundled changes with
 > no stated reason reaches for carelessness first, and would be right to.
 
-- [ ] **R4 · Retrain.** The `DataLoader`s now take an explicit generator and the inputs change under R2,
+- [x] **R4 · Retrain.** ✅ **Done 13.–16.08.2026** (the Gate 5 rerun, commits `ffe13be` → `7ee329d`; recorded 12.10.2026). The `DataLoader`s now take an explicit generator and the inputs change under R2,
       so no run under `runs/` is reproducible from current code. Requires the target (item 5) and the
       panel (item 6) settled first, and **never both in one run**. Scope: the 8-run matrix + 5-fold CV
       (`4a_percell_training.ipynb` (§B), `train_multitask.py`) — expected to **overturn** the Steps 04–05 numbers, not
       refresh them; `4a_percell_training.ipynb` on the rebuilt panel; ridge / `NaiveMeanEffects` on the same
       folds; `verify_variants.ipynb` §9; and 4A below. Blockers already recorded: **≥ 3 seeds** before any
       scGPT − PCA margin is quoted, and train-only drug selection inside each fold.
-  - [ ] **The loss comparison** (item 9A, 12.08.2026): **MSE / MAE** × density weighting
+  - [x] ✅ *Settled 14.08.2026 — [Step 05 §Item 9A](./steps/05-multitask-results.md).* **The loss comparison** (item 9A, 12.08.2026): **MSE / MAE** × density weighting
         `alpha` ∈ {off, 0.5, 1.0} — **six arms**, on the per-cell architecture only; ranking losses wait
         for MIL, where one bag is one cell line and they are well-posed. Two conditions, both from the
         failure of the last comparison: **the decision rule is fixed before the run**, and **≥3 seeds**.
@@ -1459,26 +1515,26 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
         axis**, which is what the comparison is testing; what is given up is only the ability to say a
         middle ground was tried. `MAE` is implemented for this (it has no parameter, which is part of
         why it survives the same objection Huber does not).
-  - [ ] **The minimal capacity re-derivation** (item 8C, 12.08.2026): trunk `(128,64)` vs a bare linear
+  - [x] ✅ *Run — `panel_arch_summary.csv`, `4a` §C.* **The minimal capacity re-derivation** (item 8C, 12.08.2026): trunk `(128,64)` vs a bare linear
         head (`hidden_dims=()`), both representations, against `RidgeCV` on the *same* folds via
         `cv.grouped_folds`, on the rebuilt panel. ~20 fits. It re-establishes the one claim that carries
         weight — *scGPT needs the nonlinearity and PCA does not* — whose current evidence is void. Do not
         widen it into the four-knob sweep; that question is not what the load-bearing claim rests on.
-  - [ ] **Two settings change here that no run on record used** (item 8A): every training path now
+  - [x] **Two settings change here that no run on record used** (item 8A): every training path now
         initializes head biases at the fitting-fold per-drug means, and weight decay skips the biases and
         the LayerNorm parameters while now applying to the output weight matrix, which
         `exclude_output_from_decay` had exempted. So the panel run's configuration also changed, not only
         the matrix's — `4a_percell_training` §6 is not a like-for-like predecessor of its own next execution.
-  - [ ] **Expect every CV number to move down, for two reasons at once** (item 7, 12.08.2026): the
+  - [x] **Expect every CV number to move down, for two reasons at once** (item 7, 12.08.2026): the
         optimistic epoch selection is gone, and each fold now fits on ~104 lines instead of 122. A drop
         is the change working, not a regression. The two causes cannot be separated after the fact, so
         if the size of the drop matters, it needs `INNER_VAL_FRACTION` varied deliberately — not
         inferred from the difference to the old numbers, which also change target and panel.
-  - [ ] **Lift the 28.07 panel-void banner here** (decided 12.08.2026, Selin). Item 6 rebuilt the panel,
+  - [x] ✅ *Lifted 13.08.2026 — see the banner.* **Lift the 28.07 panel-void banner here** (decided 12.08.2026, Selin). Item 6 rebuilt the panel,
         but the banner's live consequence is that *numbers* computed on the old one are void, and that
         stays true until a run exists on `outputs/panel/panel.csv`. Lifting it when the panel changed
         would have declared the numbers current a run too early.
-- [ ] **R5 · Re-run the analysis notebooks that read the retrained outputs.**
+- [x] **R5 · Re-run the analysis notebooks that read the retrained outputs.** ✅ **Done 13.–16.08.2026** (the Gate 5 rerun, commits `ffe13be` → `7ee329d`; recorded 12.10.2026).
       `analysis/evaluation/`: `diagnostics` (§5 dispersion) and `dreval_benchmark`. Both are held by
       **data, not code** — each reads `outputs/panel/panel_oof_predictions.csv`, which R4 writes and
       which does not exist (`outputs/panel/` holds `panel.csv` and `literature_panel_candidates.csv`
@@ -1511,7 +1567,7 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       (`alpha=0.5`, `cap=3`); **item 9 must re-derive it or drop the weighting**, since the notebook
       that evidenced it is no longer live.
       **Render every figure and look at it before anything is reported from it.**
-- [ ] **R6 · Update the docs and the report from the refreshed artifacts.** Nothing is re-run here;
+- [ ] **R6 · Update the docs and the report from the refreshed artifacts.** ✅ *The report was rewritten 12.10.2026 to the final presentation, every result as a macro in `results_numbers.tex` naming its source; the training configuration, the swept loss and the per-fold PCA are now in `03_methods.tex`.* **Drug-panel counts made macros 12.10.2026, each re-read from `2_drug_selection`'s stored output and the panel CSVs. Still open: item 12's extraction script.** Nothing is re-run here;
       everything is re-read from what R2–R5 produced. `report/results_numbers.tex`: `\NLines` 180 → 181,
       `\NVocab` 4,576 → measured (`\NVocabRepaired` then goes), every ρ / gap / DrEval macro — ideally
       via the extraction script from item 12 rather than by hand. `report/sections/03_methods.tex`: the
@@ -1535,7 +1591,7 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
       `03_methods.tex` §Drug panel selection (150 / 120 / 57 / 44 / 11, the 90 % cut, 91.2–98.3 %
       coverage, 102 and 15 unmatched compounds, 13 parent-CID matches) — via item 12's extraction
       script, since adding them by hand is the defect that item exists to remove.
-  - [ ] **Re-read every number *derived* from the cell-line count — not just `\NLines` itself**
+  - [x] ✅ *Checked 12.10.2026: `\NLinesCV` stays 153 (126 + 27 in `splits/split_ctrp.csv`), not 154.* **Re-read every number *derived* from the cell-line count — not just `\NLines` itself**
         (added 12.08.2026 by the docs audit, on Selin's ruling). R6's list above is **instance-based**:
         it names `\NLines`, the ⚠️ 181 markers and the `project_progress.md` note, i.e. the places
         180 appears *as itself*. A second class moves with it and is named nowhere — numbers **computed
@@ -1545,7 +1601,7 @@ finished and Selin says so (03.08 banner); R1 is a decision, not a run.*
         adjusting it by hand.** Hand-adjustment is exactly the defect item 12 exists to remove, and a
         derived number is the easiest place for it to hide — nothing in the text looks stale.
         Known instances, to start from and not to stop at:
-    - [ ] `\NLinesCV` (**153**) and `\NLinesFit` (**126**) in `report/results_numbers.tex` — both are
+    - [x] `\NLinesCV` (**153**) and `\NLinesFit` (**126**) in `report/results_numbers.tex` — both are
           70+15 % and 70 % of `\NLines`, so both move; 153 becomes ~154. They are cited in
           `02_introduction`, `03_methods` (§Data and §Evaluation) and `05_discussion`.
     - [ ] Prose of the shape *"X of the 180 …"*, where the 180 is load-bearing rather than decorative —

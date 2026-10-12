@@ -9,7 +9,15 @@ Reference plan: `~/Desktop/OncoTox/project_plan/project_planning_v2.pdf`.
 Plan-alignment is marked **✅ on-plan** or **⚠️ deviation/addition** inside each step file.
 A standalone LaTeX write-up of the current state lives in [`../report/`](../report/) (→ `main.pdf`).
 
-> ## ⛔ 28.07.2026 — no number on this page is currently quotable
+> ## ✅ 12.10.2026 — the banner below is superseded
+>
+> The rebuilt 11-drug panel has been run (13.–16.08.2026), and those results are what the final
+> presentation of 17.08.2026 reported. They live in
+> [Step 05](./steps/05-multitask-results.md); the report states them in `report/sections/04_results.tex`,
+> with every value as a macro in `report/results_numbers.tex` naming its source CSV. What stays void is
+> everything computed on the old panel. The banner is kept below as the record of 28.07–13.08.2026.
+>
+> ## ⛔ 28.07.2026 — no number on this page is currently quotable *(superseded, see above)*
 >
 > **The drug panel was rebuilt on 12.08.2026, and every number computed on the old one is still void.**
 > The previous panel's candidate list had been ranked on our own response values before the literature

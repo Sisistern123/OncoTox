@@ -8,8 +8,10 @@ acted on. When one is settled, move it into the file that owns the topic (`docs/
 items, `docs/steps/` for the scientific record) and delete it here, so this file never becomes a
 second place where a decision lives.
 
-Ranked by what it blocks for the 14.08.2026 lab meeting. ⚠️ *That date has passed; the one
-remaining entries (§7, §9, §10) block nothing for a talk, so the ranking no longer orders anything.*
+*Status 12.10.2026:* the final presentation (17.08.2026) has been given and the report rewritten to
+it. **One entry is open — §9.** Everything else is settled; §10 was settled by the grid refit of
+16.08.2026. The entries were once ranked by what they blocked for the 14.08.2026 lab meeting; that
+ranking no longer orders anything.
 
 ---
 
@@ -384,7 +386,19 @@ project has been most careful not to say.
 
 ---
 
-## §10 · The ridge baseline is not arm-comparable — its own pre-registered test says so (16.08.2026)
+## §10 · ~~The ridge baseline is not arm-comparable~~ — SETTLED 16.08.2026 (Selin: "so do the ridge")
+
+**Settled by widening the grid upward**, the option the reading below recommended:
+`scripts/evaluation/ridge_grid_refit.py` re-fitted `4a`'s ridge cell on `logspace(-2, 6, 17)` after
+asserting it reproduces the original grid to six decimals (commit `7ee329d`). Ridge moved
+**0.2767 → 0.2725** (`X_pca`) and **0.1914 → 0.1884** (`X_scGPT`); fits at the ceiling 8 → 1 and
+4 → 4, the remaining five saturating at 10⁶ and 10⁸ alike, i.e. leave-one-out CV wants the intercept.
+The new values are what slides 14 and 17 and the report quote. Completed 12.10.2026: the refit now
+also rewrites the ridge row of `panel_leaderboard.csv`, which it had missed, and `4a`'s own grid is
+the widened one, so a re-run of the notebook reproduces the committed ridge. The entry is kept below
+as the record of what was open.
+
+### The original entry (16.08.2026)
 
 **The trigger fired and nobody acted on it.** `4a`'s ridge cell fixed the rule *before* the run
 (Selin, 13.08.2026): ridge's penalty is not scale-invariant — the eigenvalues of `EᵀE` go with the
@@ -455,4 +469,5 @@ report, so it is a re-verify rather than a one-line change — which is why it i
 ## Everything else is settled
 
 **Every other entry is settled, dissolved or demoted** — §8 on 14.08.2026 by evidence rather
-than by choice, §9 and §10 opened 16.08.2026. Add the next one as §11.
+than by choice, §10 on 16.08.2026 by the grid refit. **§9 is the one open entry.** Add the next one
+as §11.

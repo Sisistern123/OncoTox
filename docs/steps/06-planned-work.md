@@ -16,6 +16,27 @@ them is a candidate for "next" while the panel and target are still being settle
 
 ---
 
+## Next steps as presented — final presentation, 17.08.2026 (added 12.10.2026)
+
+The panel and the target are settled now, and the final presentation named what comes next (slide 23,
+plus the feedback ideas on its notes page). These are **nearer** than A–C and are what "next" means
+today. The argument for each is in the report, `report/sections/06_limitations_and_outlook.tex`
+§Outlook; this list only places them against A–C.
+
+| next step | source | relation to A–C |
+|---|---|---|
+| **MIL as the primary model, with a ranking loss** | slide 23 | none — a change to the model on the current data; the MIL instrument exists (`notebooks/4b_mil_training.ipynb`) |
+| **Bulk pretraining / domain adaptation** against the label bottleneck — concretely PERCEPTION's bulk-pretrained pipeline applied to single cells as a feature extractor | slide 23; notes page | uses the bulk screens of **A** as the pretraining corpus, without the cross-database *labels* A is about |
+| **Fine-tune scGPT** — needs more data | slide 23 | a step toward **C**; the direct test of the granularity account of Q2 |
+| **Explainability of cellular heterogeneity, made explicit** — resistance-driving subpopulations within lines | slide 23; notes page | this is **B**, re-aimed from gene-level drivers to subpopulations |
+| **Benchmark against the expression matrix itself** — does PCA or scGPT help over the selected genes at all? | notes page | none — a missing control on the current data |
+| **Proliferation as a further bias to extract**, as fragility is | notes page | none — the transcriptional cell-cycle test was refuted on a retired target ([Corrections](corrections-and-dead-ends.md#the-cell-line-effect-is-largely-proliferation)); measured doubling times are the open version |
+
+Not adopted as a next step from the notes page: *"show how the models perform per drug (PCA vs scGPT vs
+ridge)"* — that is a figure for the existing results, and figure design is Selin's call.
+
+---
+
 ## A: Cross-database integration
 
 *CTRPv2 + PRISM + GDSC, efficacy and toxicity.* This is the plan's actual **Goal Option B** — *"simultaneously predict multiple response metrics
