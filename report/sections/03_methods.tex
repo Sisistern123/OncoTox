@@ -34,7 +34,8 @@ All experiments used the intersection of the SCP542 atlas \cite{scp542} and CTRP
 \cite{ctrpv2,ctrp_rees} as reprocessed by DrEval \cite{dreval}. Of the \NLinesAtlas{} cell lines in
 the atlas, \NLinesRoster{} matched a name in the screen's roster, ten of these had never been screened,
 and one further screened line was recovered by an explicit alias where the two sources spell it
-differently, which left \NLines{} lines with response measurements and \NCells{} cells. Of CTRPv2's
+differently, which left \NLines{} lines with response measurements and \NCells{} cells from \NCancerTypes{} cancer
+types. Of CTRPv2's
 \NDrugs{} compounds, \NDrugsModelled{} entered the target matrix; the other eleven had been screened
 against fewer than \NCovMinLines{} of the overlapping lines. That cut kept output heads with almost no support out of
 the shared model, but the threshold of \NCovMinLines{} was set rather than derived, follows no published convention
@@ -139,7 +140,8 @@ operations distinguishes it from CTRPv2's published AUC \cite{ctrpv2}: the stand
 the replicate plates, normalises the averages and fits one curve, whereas DrEval normalises each plate
 to its own drug-free control wells and fits one curve through all of them. Since every plate has its own
 baseline, averaging first mixes two baselines and divides by neither \cite{dreval}. A higher value means
-a less sensitive line, and 1.0 is the no-effect level. DrEval's target was preferred to CTRPv2's for
+a less sensitive line, and 1.0 is the no-effect level; the median over all screened pairs of the
+\NDrugsModelled{} compounds was \AucMedian{}, so the typical pair barely responds. DrEval's target was preferred to CTRPv2's for
 three reasons: no normalisation was performed here, and the source was pinned to one Zenodo record
 (\code{scripts/layout.py}), so the labels are version-fixed and re-derivable; it is defined for every
 curve, whereas the IC50 from the same fit is defined for only about \IcDefinedPct\,\%, missing mostly for compounds
@@ -355,12 +357,13 @@ grid end --- fired in \RidgeEdgePca{} of 55 PCA fits and \RidgeEdgeScgpt{} of 55
 (\code{scripts/evaluation/ridge\_grid\_refit.py}). Second, a model with all \NDrugsModelled{} heads was
 scored on every compound against a per-compound constant, to test the panel against the unselected catalogue
 (\code{notebooks/4a\_percell\_training.ipynb} \S D). Third, the model was evaluated with DrEval 1.5.1
-\cite{dreval} in its leave-cell-line-out (LCO) mode, using its splits, its naive baselines, its
+\cite{dreval} in its leave-cell-line-out (LCO) mode, using its splits, its naive baselines --- predicting the global mean, the compound mean, the
+cell-line mean, or both mean effects together --- its
 per-compound random forest \cite{breiman2001} and elastic net, and its normalised metric, unmodified. That
 metric subtracts a fitted overall mean, cell-line effect and compound effect from truth and prediction; under
 LCO a scored line is absent from training, so its effect is zero and only the compound effect is removed.
 DrEval's leave-pairs-out (LPO) mode, in which held-out pairs belong to lines seen in training, was run
-for its baselines to measure how much a line's average response alone predicts
+for its baselines, which there include the tissue mean, to measure how much a line's average response alone predicts
 (\code{scripts/evaluation/dreval\_lpo.py}).
 
 Since LCO cannot remove the cell-line effect, its share was measured directly on held-out labels. A

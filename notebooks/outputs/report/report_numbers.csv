@@ -6,6 +6,8 @@ CurveFracNs,10.908168442415016,DrEval CTRPv2 response table,curves of panel comp
 NCtrpLines,886.0,DrEval CTRPv2 response table,distinct ccl_name
 IcDefinedPct,59.73662359755356,DrEval CTRPv2 response table,% rows with an IC50
 TargetDensity,84.74144887950835,"targets h5ad (hvg5000, auc_cc)","% of (labelled line, compound) pairs with M_ctrp = 1"
+NCancerTypes,22.0,"targets h5ad (hvg5000, auc_cc)",distinct Cancer_type
+AucMedian,0.9254664182662964,"targets h5ad (hvg5000, auc_cc)","median auc_cc over screened (labelled line, compound) pairs, all compounds"
 CellsMin,56.0,"targets h5ad (hvg5000, auc_cc)",fewest cells in a labelled line
 CellsMax,1990.0,"targets h5ad (hvg5000, auc_cc)",most cells in a labelled line
 CellsPerLineMean,262.09944751381215,"targets h5ad (hvg5000, auc_cc)",mean cells per labelled line

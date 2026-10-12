@@ -80,6 +80,8 @@ def data_counts() -> list[dict]:
     labelled = m.sum(axis=1) > 0
     line = a.obs["Cell_line"].to_numpy()
     line_mask = pd.DataFrame(m[labelled]).groupby(line[labelled]).max()
+    first = pd.Series(np.arange(len(line)))[labelled].groupby(line[labelled]).first().to_numpy()
+    y_line, m_line = np.asarray(a.obsm["Y_ctrp"])[first], m[first].astype(bool)
     per_line = pd.Series(line[labelled]).value_counts()
     src_r, src_t = "DrEval CTRPv2 response table", "targets h5ad (hvg5000, auc_cc)"
     return [
@@ -87,6 +89,9 @@ def data_counts() -> list[dict]:
         row("IcDefinedPct", 100 * resp.IC50_curvecurator.notna().mean(), src_r, "% rows with an IC50"),
         row("TargetDensity", 100 * line_mask.to_numpy().mean(), src_t,
             "% of (labelled line, compound) pairs with M_ctrp = 1"),
+        row("NCancerTypes", a.obs["Cancer_type"].nunique(), src_t, "distinct Cancer_type"),
+        row("AucMedian", np.median(y_line[m_line]), src_t,
+            "median auc_cc over screened (labelled line, compound) pairs, all compounds"),
         row("CellsMin", per_line.min(), src_t, "fewest cells in a labelled line"),
         row("CellsMax", per_line.max(), src_t, "most cells in a labelled line"),
         row("CellsPerLineMean", per_line.mean(), src_t, "mean cells per labelled line"),
