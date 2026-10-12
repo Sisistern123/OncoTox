@@ -15,6 +15,62 @@
 > **they are not re-verified here** — check an item against the artifacts before acting on it. The
 > banners below are kept as the record of what was believed when.
 
+## Final-final presentation — where the deck differs from the report (opened 12.10.2026)
+
+The delivered deck is `~/Desktop/final_presentation.pdf` (17.08.2026); its slide text is
+`docs/final_presentation.md`. The report was rewritten on 12.10.2026 and checked against its sources
+(`scripts/evaluation/report_numbers.py`), and where the two now differ, **the report is the corrected
+version**. Each item says what the deck should change. Slide numbers refer to the PDF.
+
+**Numbers the report corrected**
+- [ ] **Slides 2 and 5 — "~300 cells" per line.** A labelled line has **262** cells on average, range
+      56–1,990 (`\CellsPerLineMean`). Also in the slide text 4×.
+- [ ] **Slide 8 — pipeline figure, panel 8.** It shows the pre-refit ridge, **0.277 / 0.191**. The figure is
+      re-rendered at 0.273 / 0.188 (`docs/figures/pipeline.png`), so swap the image.
+- [ ] **Slide 19 — label supply, "PCA +0.124".** Recomputed at **+0.123** (0.2608 − 0.1374,
+      `panel_curve_summary.csv`). Also in the slide text 1×.
+- [ ] **Slide text only — veto bar 0.741.** Correct value **0.740** (0.8605² = 0.74046; 0.741 came from
+      rounding twice). 3× in `final_presentation.md`; not on a slide.
+- [ ] **Slide text only — "CTRPv2 has ~1,100 lines".** The DrEval CTRPv2 table has **886**. 2× in
+      `final_presentation.md` (outlook, "more independent cell lines").
+- [ ] **Slide text only — the old ridge 0.2767** is still quoted once.
+
+**Wording the report changed**
+- [ ] **Slides 15, 17, 18 — "best config".** Say **highest-scoring configuration**. Under the
+      decision rule settled 14.08.2026 (item 9A), the 0.2824 configuration ranks best but is blocked on
+      absolute error and calibration, and the unweighted-MAE incumbent (0.2617) stands. The deck
+      does not mention the rule at all; the report states it in Results Q1.
+- [ ] **Slide 13 — "naive baselines: global, drug, cell-line, tissue mean".** The LCO run used here has
+      no tissue mean; that baseline exists only in the LPO run. The report matches each name to its run.
+- [ ] **Terminology throughout.** The report uses "compound" for the agent (keeping "drug response",
+      "drug screen" and "drug resistance" as field terms), "per-compound", "configuration" for a loss × α
+      combination and "arm" for one representation's models. The deck uses "drug", "per-drug", "config"
+      and "X_pca"/"X_scGPT" in figures.
+
+**Shown in the deck without a committed artifact**
+- [ ] **Slide 16 — paclitaxel 0.283 → 0.104 (63 %), dasatinib 0.534 → 0.534.** These per-compound
+      fragility values are in no output (`bias_accounting.py` writes arm means only). Either write them to
+      an artifact or drop them. The report leaves them out.
+- [ ] **Slide 19 — input scale, "validation error 0.0174 → 0.0176".** `input_scale_test.py` writes to a
+      session tmp path. The report quotes the best-epoch values and marks them as uncommitted.
+
+**In the report but not in the deck** — add if there is room
+- [ ] **Slide 6:** the median AUC of **0.925** is over all 534 compounds. Over the panel it is
+      **0.815**, which is closer to what the model is trained on.
+- [ ] **Slide 18:** one configuration (PCA, MSE, α = 0) is **not reproducible** across identical runs on MPS
+      (0.2473 / 0.2541). "Stable across seeds" holds for the others.
+- [ ] **Slide 19:** **input dropout** acts on PCA only (range 0.0145 against 0.0020), so the margins are
+      conservative; PCA scores 0.2753 at rate 0.02 against 0.2608 at the 0.1 used.
+- [ ] **Slide 21/22:** the **LPO baselines** (line identity alone 0.322, lineage 0.184) as numbers or as
+      `lpo_bias.png`. The deck names the channel but gives no figure.
+- [ ] **Slide 22:** the report has two more limitations: the **batch size** (128 cells) was never tuned, and
+      the **CPU-vs-MPS embedding check** was never committed.
+- [ ] **Slide 23:** the notes-page ideas are now in the report's outlook: PERCEPTION's bulk-pretrained
+      pipeline as a feature extractor, a benchmark on the expression matrix itself, proliferation as a
+      further bias, and per-arm input dropout.
+- [ ] **Slide 19 spoken text** says scGPT wins on all 534 heads at 5/5 gene-set sizes. The report does not
+      carry this, because the slide does not. Decide whether it belongs in either.
+
 ## Report — what the writing guidelines still need (opened 12.10.2026)
 
 The report was revised 12.10.2026 against Selin's writing guidelines using **only what existed**
