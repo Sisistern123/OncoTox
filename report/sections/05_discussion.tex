@@ -1,47 +1,59 @@
 \section{Discussion}
 \label{sec:discussion}
 
-\revision{\textbf{Rewritten 12.08.2026.} This section previously argued from measurements that have since
-been withdrawn (Section~\ref{sec:results}). What follows is restricted to what does not depend on them:
-the conditions the design must satisfy, each of which was arrived at by a failure rather than by
-foresight. Where a claim would need a number, it is stated as an open question rather than answered.}
+The results are interpreted per research question, followed by a conclusion; the limitations that
+bound these readings are collected in Section~\ref{sec:limitations} \cite{dreval}.
 
-What the work has established so far is a set of prerequisites for the comparison it set out to make, and
-each was found by getting it wrong first.
+\paragraph{Prediction from single cells with bulk labels.} Drug response is predictable from these data,
+but modestly, unevenly, and not demonstrably from single cells. The score is out of fold over held-out
+lines, stable across seeds, and clears DrEval's naive predictors on a protocol this work did not design
+\cite{dreval}. Against that, a ridge regression on cell-line means reaches the per-cell model, and a
+per-compound random forest matches it externally, so two structurally different line-level models reach the
+same score and the single-cell resolution and the network are not what does the work
+\cite{hoerl1970,breiman2001}. On the unselected catalogue the signal nearly vanishes, which marks the
+panel's score as a property of eleven well-covered compounds rather than of the screen
+\cite{ctrpv2,dreval}.
 
-\textbf{The objective must not be captured by a minority of compounds.} In a shared multi-task loss with
-one masked squared-error term per drug, a compound's contribution scales with its response variance, so a
-few high-variance compounds can dominate the shared representation regardless of whether that variance
-carries any learnable signal. An early configuration collapsed to near-zero correlation for this reason
-and was misread as a statement about the representations. Whether the correction belongs in the target,
-in the loss, or in the composition of the panel is not settled --- per-drug standardization of the target
-was adopted and then retired, because it silently rescales a noise-dominated compound up to full weight,
-which is a defect of its own.
+\paragraph{What limits the score.} The spread across compounds is explained on the label side: the share
+of flat curves predicts the per-compound score without recourse to biology, which agrees with the known
+inconsistency of pharmacogenomic labels \cite{haibekains2013,bayer2023curvecurator}. With one label in nine
+carrying no dose--response and roughly \NLinesCV{} independent lines, the binding constraint is the supply
+and quality of labels, not model capacity \cite{lazic2010}. The relation is a trend over eleven points,
+and crizotinib shows it is not a law. Cisplatin's position at the bottom was anticipated by the
+literature on its determinant (Section~\ref{sec:panel}) \cite{friboulet_ercc1}.
 
-\textbf{The control must already absorb the cell-line effect.} A per-drug-mean null is too weak a bar:
-some cell lines are broadly sensitive, and a model can score a respectable per-drug rank correlation by
-learning that alone. The appropriate control is a ridge regression on cell-line mean embeddings, which
-uses no single cells and no network, and the informative question is whether the single-cell apparatus
-clears it. This is the cell-line-effect bias the DrEval study \cite{dreval} was designed to expose. It
-also has a sharp consequence for the metric: under a leave-cell-line-out protocol, DrEval's normalization
-removes only the drug effect, because a held-out line's effect is by construction unknown to the
-baseline. A high normalized score is therefore not evidence of drug-specific signal in this setting, and
-separating the two requires a diagnostic that reads held-out labels rather than a metric.
+\paragraph{How much of the score is compound-specific.} About a fifth of what either representation ranks is
+general cell-line fragility, in nearly the same proportion for both \cite{dreval}. Under LPO, where a
+baseline can use a line's average response, that baseline alone reaches the score of this model; the
+LCO protocol used here hides the channel by construction, because a held-out line has no estimated
+effect \cite{dreval}. The reported score is therefore real but partly not compound-specific.
 
-\textbf{The compounds must be selected without reference to our own labels.} Two successive panels were
-selected on response statistics --- a gate requiring a compound both to kill and to spare cell lines, and
-a literature panel whose candidates had been pre-ranked on the same quantity --- and both were withdrawn.
-The first excluded every cytostatic agent by construction; the second retained the label dependency it
-was built to remove. The panel is now defined by regulatory approval and published determinants
-(Section~\ref{sec:panel}), which is reproducible by someone who never sees our response values.
+\paragraph{scGPT against PCA.} scGPT is a viable representation but falls behind PCA here, and the
+leading account is a mismatch of granularity rather than a deficit of the embedding. The label is
+defined per cell line, so what a model must read is variation between lines; PCA carries about a fifth
+more of that structure before any model is trained, and Figure~\ref{fig:umap} shows the same difference.
+A pretrained single-cell embedding is built to map cells onto a shared manifold and to suppress
+cell-line and batch identity \cite{scgpt}, so on this label it removes exactly the structure the label
+varies over. Four rival accounts are eliminated: the margin grows rather than shrinks with more labels,
+which contradicts label starvation; capacity lowers both arms; rescaling the input does not change
+training, as expected of AdamW, which divides each step by a running second moment of the gradient
+\cite{loshchilov2019adamw}; and PCA stays ahead once fragility is removed. Eliminating rivals does not
+establish the granularity account, whose positive evidence is one variance ratio and one figure. The
+margins are conservative with respect to input dropout, since the shared rate costs the PCA arm and not
+the scGPT arm \cite{srivastava2014}. This is a statement about evaluation design --- a representation
+built to remove cell-line identity scored on a label that is cell-line identity --- not about scGPT in
+general \cite{scgpt,dreval}.
 
-\textbf{The effective sample size is the number of cell lines.} The label is defined per cell line and
-drug, so all cells of a line carry the same broadcast value and act as pseudo-replicates. The task is
-defined on roughly \NLinesCV{} independent examples, not on \NCells{} cells, and treating cells as
-independent understates every uncertainty by roughly the square root of the number of cells per line.
-This bounds what any architecture on this data can be expected to demonstrate, and it is the reason the
-next phase acts on the labels and the data rather than on the model.
+\paragraph{Heterogeneity learned by a single-cell model.} The question remains open. The MIL model
+separates a line's cells reproducibly and not as a sequencing artefact, but it does not separate two
+lines known to differ: its positive control is barely above chance, so the instrument cannot carry a
+negative result and makes the positive one weak \cite{ilse2018,mannwhitney1947}. The PCA arm clears the
+confound veto at \QBarPca\,\% of the bar, so its within-line signal is not confound-dominated rather than
+confound-free, and whether any of the variation is drug-response heterogeneity cannot be decided without
+a per-cell response measurement \cite{scp542}.
 
-Read together, these are not preliminary steps toward the representation comparison. They are the finding
-of this stage, and the comparison is deferred until it can be made under conditions that would let it
-mean something.
+\paragraph{Conclusion.} A general-purpose foundation embedding loses to a dataset-fitted linear reduction
+here because the label sits at the granularity the foundation model is built to suppress, and with
+\NLinesCV{} labels a ridge regression on cell-line means matches everything built in this work: the
+ceiling is the data, and the analysis identifies which part of the data sets it
+\cite{scgpt,hoerl1970,dreval}.

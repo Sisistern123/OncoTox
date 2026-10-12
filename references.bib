@@ -11,8 +11,6 @@
 %   kendall    Multi-task uncertainty weighting. A trace of the loss-weighting passage
 %              withdrawn 12.08.2026; docs/steps/03 records that a spread term, a ranking
 %              term and tuning their weights were all rejected.
-%   hafner     Growth-rate inhibition metrics. A trace of the target discussion closed on
-%              11.08.2026 when the target moved to auc_cc.
 %   fair, fairhealth
 %       FAIR data principles. `fair` is referred to in docs (the FAIRER notes in
 %       docs/TODO.md); neither is cited in the report.
@@ -428,4 +426,228 @@
   note      = {Cited as the source of a software convention rather than a result: this library's
                \texttt{Trainer.create\_optimizer} exempts parameters matching \texttt{bias} and
                \texttt{LayerNorm.weight} from weight decay, which is the grouping this work adopts}
+}
+
+% ---------------------------------------------------------------------------------------------------
+% Methods and statistics -- ADDED 12.10.2026 (Claude, from memory, for the report's one-citation-per-
+% paragraph rule). Standard references whose details are well established, but NOT retrieved from a
+% literature database: verify each against Zotero / the publisher before submission.
+% ---------------------------------------------------------------------------------------------------
+
+@article{hoerl1970,
+  author  = {Hoerl, Arthur E. and Kennard, Robert W.},
+  title   = {Ridge regression: biased estimation for nonorthogonal problems},
+  journal = {Technometrics},
+  volume  = {12},
+  number  = {1},
+  pages   = {55--67},
+  year    = {1970},
+}
+
+@article{breiman2001,
+  author  = {Breiman, Leo},
+  title   = {Random forests},
+  journal = {Machine Learning},
+  volume  = {45},
+  number  = {1},
+  pages   = {5--32},
+  year    = {2001},
+}
+
+@article{pedregosa2011,
+  author  = {Pedregosa, Fabian and others},
+  title   = {Scikit-learn: machine learning in {P}ython},
+  journal = {Journal of Machine Learning Research},
+  volume  = {12},
+  pages   = {2825--2830},
+  year    = {2011},
+}
+
+@book{hastie2009,
+  author    = {Hastie, Trevor and Tibshirani, Robert and Friedman, Jerome},
+  title     = {The Elements of Statistical Learning: Data Mining, Inference, and Prediction},
+  edition   = {2},
+  publisher = {Springer},
+  address   = {New York},
+  year      = {2009},
+}
+
+@article{wolf2018scanpy,
+  author  = {Wolf, F. Alexander and Angerer, Philipp and Theis, Fabian J.},
+  title   = {{SCANPY}: large-scale single-cell gene expression data analysis},
+  journal = {Genome Biology},
+  volume  = {19},
+  pages   = {15},
+  year    = {2018},
+}
+
+@article{satija2015,
+  author  = {Satija, Rahul and Farrell, Jeffrey A. and Gennert, David and Schier, Alexander F. and Regev, Aviv},
+  title   = {Spatial reconstruction of single-cell gene expression data},
+  journal = {Nature Biotechnology},
+  volume  = {33},
+  number  = {5},
+  pages   = {495--502},
+  year    = {2015},
+}
+
+@article{luecken2019,
+  author  = {Luecken, Malte D. and Theis, Fabian J.},
+  title   = {Current best practices in single-cell {RNA}-seq analysis: a tutorial},
+  journal = {Molecular Systems Biology},
+  volume  = {15},
+  number  = {6},
+  pages   = {e8746},
+  year    = {2019},
+}
+
+@article{jolliffe2016,
+  author  = {Jolliffe, Ian T. and Cadima, Jorge},
+  title   = {Principal component analysis: a review and recent developments},
+  journal = {Philosophical Transactions of the Royal Society A},
+  volume  = {374},
+  pages   = {20150202},
+  year    = {2016},
+}
+
+@misc{mcinnes2018umap,
+  author       = {McInnes, Leland and Healy, John and Melville, James},
+  title        = {{UMAP}: Uniform Manifold Approximation and Projection for Dimension Reduction},
+  howpublished = {arXiv:1802.03426},
+  year         = {2018},
+}
+
+@article{zheng2017,
+  author  = {Zheng, Grace X. Y. and others},
+  title   = {Massively parallel digital transcriptional profiling of single cells},
+  journal = {Nature Communications},
+  volume  = {8},
+  pages   = {14049},
+  year    = {2017},
+}
+
+@article{bayer2023curvecurator,
+  author  = {Bayer, Florian P. and Gander, Manuel and Kuster, Bernhard and The, Matthew},
+  title   = {{CurveCurator}: a recalibrated {F}-statistic to assess, classify, and explore significance of dose--response curves},
+  journal = {Nature Communications},
+  volume  = {14},
+  pages   = {7902},
+  year    = {2023},
+}
+
+@article{haibekains2013,
+  author  = {Haibe-Kains, Benjamin and El-Hachem, Nehme and Birkbak, Nicolai Juul and Jin, Andrew C. and Beck, Andrew H. and Aerts, Hugo J. W. L. and Quackenbush, John},
+  title   = {Inconsistency in large pharmacogenomic studies},
+  journal = {Nature},
+  volume  = {504},
+  pages   = {389--393},
+  year    = {2013},
+}
+
+@article{lazic2010,
+  author  = {Lazic, Stanley E.},
+  title   = {The problem of pseudoreplication in neuroscientific studies: is it affecting your analysis?},
+  journal = {BMC Neuroscience},
+  volume  = {11},
+  pages   = {5},
+  year    = {2010},
+}
+
+@article{spearman1904,
+  author  = {Spearman, Charles},
+  title   = {The proof and measurement of association between two things},
+  journal = {The American Journal of Psychology},
+  volume  = {15},
+  number  = {1},
+  pages   = {72--101},
+  year    = {1904},
+}
+
+@article{dietterich1997,
+  author  = {Dietterich, Thomas G. and Lathrop, Richard H. and Lozano-P{\'e}rez, Tom{\'a}s},
+  title   = {Solving the multiple instance problem with axis-parallel rectangles},
+  journal = {Artificial Intelligence},
+  volume  = {89},
+  number  = {1--2},
+  pages   = {31--71},
+  year    = {1997},
+}
+
+@article{srivastava2014,
+  author  = {Srivastava, Nitish and Hinton, Geoffrey and Krizhevsky, Alex and Sutskever, Ilya and Salakhutdinov, Ruslan},
+  title   = {Dropout: a simple way to prevent neural networks from overfitting},
+  journal = {Journal of Machine Learning Research},
+  volume  = {15},
+  pages   = {1929--1958},
+  year    = {2014},
+}
+
+@misc{ba2016layernorm,
+  author       = {Ba, Jimmy Lei and Kiros, Jamie Ryan and Hinton, Geoffrey E.},
+  title        = {Layer normalization},
+  howpublished = {arXiv:1607.06450},
+  year         = {2016},
+}
+
+@misc{hendrycks2016gelu,
+  author       = {Hendrycks, Dan and Gimpel, Kevin},
+  title        = {Gaussian error linear units ({GELUs})},
+  howpublished = {arXiv:1606.08415},
+  year         = {2016},
+}
+
+@incollection{prechelt1998,
+  author    = {Prechelt, Lutz},
+  title     = {Early stopping -- but when?},
+  booktitle = {Neural Networks: Tricks of the Trade},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {1524},
+  pages     = {55--69},
+  publisher = {Springer},
+  year      = {1998},
+}
+
+@inproceedings{pascanu2013,
+  author    = {Pascanu, Razvan and Mikolov, Tomas and Bengio, Yoshua},
+  title     = {On the difficulty of training recurrent neural networks},
+  booktitle = {Proceedings of the 30th International Conference on Machine Learning},
+  series    = {PMLR},
+  volume    = {28},
+  pages     = {1310--1318},
+  year      = {2013},
+}
+
+@inproceedings{burges2005,
+  author    = {Burges, Chris and Shaked, Tal and Renshaw, Erin and Lazier, Ari and Deeds, Matt and Hamilton, Nicole and Hullender, Greg},
+  title     = {Learning to rank using gradient descent},
+  booktitle = {Proceedings of the 22nd International Conference on Machine Learning},
+  pages     = {89--96},
+  year      = {2005},
+}
+
+@inproceedings{ganin2015,
+  author    = {Ganin, Yaroslav and Lempitsky, Victor},
+  title     = {Unsupervised domain adaptation by backpropagation},
+  booktitle = {Proceedings of the 32nd International Conference on Machine Learning},
+  series    = {PMLR},
+  volume    = {37},
+  pages     = {1180--1189},
+  year      = {2015},
+}
+
+@book{scott1992,
+  author    = {Scott, David W.},
+  title     = {Multivariate Density Estimation: Theory, Practice, and Visualization},
+  publisher = {Wiley},
+  address   = {New York},
+  year      = {1992},
+}
+
+@article{vancalster2016,
+  author  = {Van Calster, Ben and Nieboer, Daan and Vergouwe, Yvonne and De Cock, Bavo and Pencina, Michael J. and Steyerberg, Ewout W.},
+  title   = {A calibration hierarchy for risk models was defined: from utopia to empirical data},
+  journal = {Journal of Clinical Epidemiology},
+  volume  = {74},
+  pages   = {167--176},
+  year    = {2016},
 }

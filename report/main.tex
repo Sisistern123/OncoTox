@@ -11,29 +11,11 @@
 \graphicspath{{figures/}}
 \setlength{\parskip}{0.4em}
 \setlength{\parindent}{0pt}
+% long \code{} paths cannot hyphenate; let TeX stretch interword space instead of overrunning the margin
+\setlength{\emergencystretch}{3em}
 
 % inline monospace for code / notebook / variable references
 \newcommand{\code}[1]{\texttt{\small #1}}
-
-% ---- proposed additions, marked in colour so they can be reviewed -------------
-% Everything wrapped in \suggestion{...} was added on 27.07.2026 and is not yet
-% part of the accepted text. To accept all of them, redefine the command as
-%   \newcommand{\suggestion}[1]{#1}
-% To reject, delete the wrapped blocks. Search the sections for "\suggestion".
-\definecolor{suggestioncol}{RGB}{176,0,102}
-% \suggestion{...} for a single paragraph; the environment for multi-paragraph blocks
-% (\textcolor cannot span a paragraph break).
-\newcommand{\suggestion}[1]{\textcolor{suggestioncol}{#1}}
-\newenvironment{suggestionblock}{\color{suggestioncol}}{\ignorespacesafterend}
-
-% ---- pipeline-review revisions, 03.-05.08.2026, marked in red ----------------
-% \revision{...} / revisionblock wraps text added or corrected during the
-% preprocessing review. Deliberately a different colour from \suggestion above:
-% that batch is a proposal from 27.07 awaiting acceptance, this one records
-% changes already made to the code, so the two must be reviewable separately.
-\definecolor{revisioncol}{RGB}{200,0,0}
-\newcommand{\revision}[1]{\textcolor{revisioncol}{#1}}
-\newenvironment{revisionblock}{\color{revisioncol}}{\ignorespacesafterend}
 
 % single source of truth for the headline numbers (see results_numbers.tex)
 \input{results_numbers}
@@ -45,9 +27,9 @@
 
 \title{\textbf{Prediction of Anti-Cancer Drug Efficacy Scores}\\[0.4em]
 \large Single-Cell Drug-Response Prediction with Foundation-Model Embeddings\\[0.4em]
-\normalsize Preliminary Report}
+\normalsize Final Report}
 \author{Selin Türko\u{g}lu}
-\date{15 July 2026}
+\date{17 August 2026}
 
 \begin{document}
 \maketitle

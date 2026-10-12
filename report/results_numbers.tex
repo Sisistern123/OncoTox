@@ -16,15 +16,21 @@
 %   e.g. "\NLines{}", never as a literal digit. So a number appears in exactly
 %   one place; editing it here updates every mention.
 %
-%   As of 12.08.2026 this file defines DATA ONLY -- see the withdrawal note at
-%   the end. No macro here carries a model result.
+%   From 12.08 to 12.10.2026 this file defined DATA ONLY. The results of the
+%   final presentation (17.08.2026) were re-added 12.10.2026 (Selin), in the
+%   RESULTS block below the data; the withdrawal note at the end records what
+%   was removed on 12.08 and why.
 %
 % HOW TO UPDATE
 %   1. Re-run the relevant notebook -> refreshed CSV in notebooks/outputs/.
 %   2. Read the value from that CSV and edit the matching macro below.
 %   3. Recompile (pdflatex main.tex, twice). No section file needs touching.
-%   Results macros are NOT re-added by hand: review item 12 replaces this file
-%   with an extraction script, and hand-transcription is what it exists to end.
+%   Results macros are transcribed by hand until review item 12's extraction
+%   script exists; each names the CSV and reduction it was re-computed from.
+%   CHECKED BY CODE since 12.10.2026: scripts/evaluation/report_numbers.py recomputes
+%   80 of these macros from their sources, writes them with source and reduction to
+%   notebooks/outputs/report/report_numbers.csv, and fails on any macro that no
+%   longer matches its source at the macro's own rounding. Run it after any re-run.
 % =============================================================================
 
 % === dataset (docs/project_progress.md, notebooks/04) 
@@ -86,6 +92,8 @@
                                    % train+val lines and cites the effective sample size for the
                                    % same protocol two sentences later, so they cannot differ.
                                    % Becomes ~154 at the sweep -- do not hand-adjust, see R6.
+\newcommand{\NLinesVal}{27}          % fixed validation split (splits/split_ctrp.csv)
+\newcommand{\NLinesTest}{28}         % fixed test split, never used
 \newcommand{\NLinesFit}{126}       % cell lines in the fixed TRAIN split alone (70% of \NLines),
                                    % i.e. what remains once BOTH val and test are removed.
                                    % A training-set size: no uncertainty reported here is taken
@@ -122,6 +130,190 @@
 \newcommand{\RepDiffMed}{0.49}     % median disagreement, in units of the drug's across-line SD
 \newcommand{\RepDiffPct}{27.3}     % % of repeated pairs differing by more than that SD
 
+% === source quality control (03_methods.tex, Data) -- made macros 12.10.2026. As REPORTED by Kinker
+% et al. 2020 (\cite{scp542}) and recorded in docs/steps/01, section on SCP542 design and QC; not
+% recomputed here. \CellsPerLineMean below IS recomputed and differs (270 over all 198 lines).
+\newcommand{\NPools}{nine}             % multiplexed pools (spelled: prose use)
+\newcommand{\SrcCellsPerLine}{280}     % average cells per line, as reported
+\newcommand{\QcGenesLo}{2{,}000}       % detected-gene window, lower bound
+\newcommand{\QcGenesHi}{9{,}000}       % upper bound
+\newcommand{\QcMinCells}{50}           % lines with fewer assigned cells were removed
+\newcommand{\SrcUmiMean}{19{,}264}     % mean UMIs per cell
+\newcommand{\SrcGenesMean}{3{,}802}    % mean detected genes per cell
+% === recomputed 12.10.2026 from the targets h5ad (hvg5000, auc_cc): obs Cell_line, obsm M_ctrp
+\newcommand{\CellsMin}{56}             % fewest cells in a line
+\newcommand{\CellsMax}{1{,}990}        % most cells in a line
+\newcommand{\CellsPerLineMean}{262}    % mean cells per LABELLED line (181 lines)
+\newcommand{\TargetDensity}{84.7}      % % of (labelled line, compound) pairs screened, 181 x 534
+% === DrEval CTRPv2 response table (scripts/layout.py ctrp_response_csv), recomputed 12.10.2026
+\newcommand{\NCtrpLines}{886}          % distinct cell lines in the table. The report said "roughly
+                                       % 1,100" until 12.10.2026 -- wrong for CTRPv2.
+\newcommand{\IcDefinedPct}{60}         % % of curves with a defined IC50 (59.7)
+% === gene-set sweep: notebooks/analysis/qc/verify_variants.ipynb, stored outputs of cells 25 and 33
+\newcommand{\SweepRangePca}{5.8}       % range over the five sizes of the PCA arm's mean count of
+                                       % heads beating the per-drug baseline (284.0 - 278.2)
+\newcommand{\SweepFoldSd}{27.2}        % mean fold-to-fold SD of that count, PCA arm
+\newcommand{\GenesSeenHvg}{672}        % genes scGPT reads per cell, mean, hvg5000. Was 589 in the
+                                       % report until 12.10.2026 -- a pre-rebuild value.
+\newcommand{\GenesSeenAll}{1{,}199}    % same, all_genes (every cell at the 1,200 cap)
+% === configuration (scripts/training/training_utils.py TrainConfig, scripts/model/OncoMLP.py,
+%     scripts/training/cv.py, scripts/training/density_weighting.py, gen_embeds.py). Settings, not
+%     measurements: none was tuned (see 06_limitations_and_outlook.tex).
+\newcommand{\CfgInDrop}{0.1}           \newcommand{\CfgDrop}{0.5}
+\newcommand{\CfgHidA}{128}             \newcommand{\CfgHidB}{64}
+\newcommand{\CfgBatch}{128}            \newcommand{\CfgEpochs}{50}
+\newcommand{\CfgPatience}{10}          \newcommand{\CfgSchedPatience}{three}
+\newcommand{\CfgClip}{1}               \newcommand{\CfgZClip}{10}
+\newcommand{\CfgHoldoutPct}{15}        % inner early-stopping hold-out, % of a fold's training lines
+\newcommand{\CfgExtraPct}{18}          % = 1/(1-0.15) - 1: extra cells PCA would see on the whole side
+\newcommand{\CfgFoldPct}{20}           % one of five folds, the rejected alternative hold-out
+\newcommand{\CfgCap}{3}                % density-weight cap c (arbitrary)
+\newcommand{\CfgBins}{51}              % scGPT expression bins
+\newcommand{\CfgMaxGenes}{1{,}200}     % scGPT genes per cell cap
+\newcommand{\CfgTopK}{20}              % k of the top-of-order quantity
+\newcommand{\CfgGridN}{17}             % ridge penalty grid, values (widened)
+\newcommand{\CfgGridOldN}{13}          % original grid
+\newcommand{\RidgeEdgePca}{8}          % fits at the original grid's ceiling, of 55
+\newcommand{\RidgeEdgeScgpt}{4}
+
+% === drug panel funnel (03_methods.tex, Drug panel selection) -- made macros 12.10.2026 (Selin),
+% each re-read 12.10.2026 from the stored output of notebooks/2_drug_selection.ipynb (cells 3, 5, 7,
+% 11) or computed from notebooks/outputs/panel/literature_panel_candidates.csv (57 rows) and
+% panel.csv (11 rows). Data, not model results: no training run produces them.
+\newcommand{\NFdaDrugs}{150}       % Sun et al. FDA list, 1949-2014 (cell 3)
+\newcommand{\NFdaSmall}{120}       % with a PubChem structure (cell 3)
+\newcommand{\NFdaBiologic}{30}     % biologics, no structure (cell 3)
+\newcommand{\NFdaScreened}{57}     % screened by CTRPv2 = rows of literature_panel_candidates.csv
+\newcommand{\PanelCovCut}{90}      % coverage threshold, % of the intersection's lines
+\newcommand{\NFdaCovered}{45}      % candidates with coverage >= 90 %
+\newcommand{\CovLowestIn}{91.2}    % lowest coverage at or above the cut, %
+\newcommand{\CovNextOut}{69.1}     % highest coverage below the cut, %
+\newcommand{\CovTail}{28.7}        % lowest coverage among the 57, %
+\newcommand{\PanelCovLo}{91.2}     % panel coverage range, % (panel.csv)
+\newcommand{\PanelCovHi}{98.3}
+\newcommand{\NameMismatch}{102}    % compounds named differently in the two CTRPv2 files (cell 5)
+\newcommand{\NameMismatchFda}{15}  % of those, single-agent FDA/clinical (cell 5)
+\newcommand{\NParentMatch}{13}     % candidates matched only via PubChem's parent relation (matched_by)
+\newcommand{\PanelIcLo}{14}        % cell lines with a defined IC50, lowest panel compound (panel.csv)
+\newcommand{\PanelIcHi}{174}       % highest
+\newcommand{\NCovMinLines}{50}     % minimum screened lines for a compound to enter the target
+                                   % matrix (ctrp_to_h5ad.py DEFAULT_MIN_CELL_LINES) -- arbitrary
+
+% =============================================================================
+% RESULTS -- re-added 12.10.2026 (Selin: "die zahlen sollen makros sein"), as the numbers of
+% the final presentation (17.08.2026). Each was re-computed from the committed CSV named beside
+% it on 12.10.2026, not copied from the slides. Hand-transcribed: item 12's extraction script
+% does not exist, so a re-run must be followed by re-reading these.
+% Paths are under notebooks/outputs/. Producer: notebooks/4a_percell_training.ipynb unless noted.
+% =============================================================================
+\newcommand{\NPanel}{11}           % compounds in the panel (panel/panel.csv)
+% --- the six-arm sweep: panel/panel_per_drug_correlation.csv, mean over the 11 drugs per seed,
+%     then over seeds 42/43/44. Same values as panel/panel_leaderboard.csv's MLP rows.
+\newcommand{\SwPcaMseZero}{0.2473}  \newcommand{\SwScgptMseZero}{0.2009}
+\newcommand{\SwPcaMseHalf}{0.2754}  \newcommand{\SwScgptMseHalf}{0.1927}
+\newcommand{\SwPcaMseOne}{0.2679}   \newcommand{\SwScgptMseOne}{0.2031}
+\newcommand{\SwPcaMaeZero}{0.2617}  \newcommand{\SwScgptMaeZero}{0.2403}
+\newcommand{\SwPcaMaeHalf}{0.2824}  \newcommand{\SwScgptMaeHalf}{0.2395}
+\newcommand{\SwPcaMaeOne}{0.2765}   \newcommand{\SwScgptMaeOne}{0.2214}
+% panel/panel_execution_band.csv: the one arm that differs between two identical executions on
+% the MPS backend (13.08.2026). The table reports the second (the full rerun).
+\newcommand{\SwPcaMseZeroAlt}{0.2541}
+\newcommand{\SpBest}{\SwPcaMaeHalf}    % best arm: X_pca, loss=mae, alpha=0.5
+\newcommand{\SpSweepLo}{\SwPcaMseZero} % lowest X_pca arm: loss=mse, alpha=0
+\newcommand{\SpDrugLo}{0.05}       % best arm, lowest compound: cisplatin (`platin`), 0.0512
+\newcommand{\SpDrugHi}{0.53}       % best arm, highest compound: dasatinib, 0.5311
+% --- ridge on cell-line means: panel/panel_ridge_baseline.csv, mean spearman over the 11 drugs.
+%     The refit of 16.08.2026 (scripts/evaluation/ridge_grid_refit.py, commit 7ee329d, grid
+%     logspace(-2, 6, 17)). panel/panel_leaderboard.csv's ridge row still holds the pre-refit
+%     0.2767 / 0.1914 -- the refit script did not update it; NOT the value to quote.
+\newcommand{\RidgePca}{0.2725}
+\newcommand{\RidgeScgpt}{0.1884}
+% --- DrEval leave-cell-line-out: dreval/dreval_lco_results.csv, "Spearman: normalized", mean
+%     over the five folds.
+\newcommand{\DrMlpNorm}{0.2776}    % OncoMLP (X_pca)
+\newcommand{\DrRfNorm}{0.2773}     % SingleDrugRF (scgpt) -- the best DrEval baseline
+\newcommand{\DrMlpSd}{0.047}       % fold SD of DrMlpNorm (0.0474)
+\newcommand{\DrRfSd}{0.039}        % fold SD of DrRfNorm (0.0392)
+% --- DrEval leave-pairs-out: dreval/dreval_lpo_results.csv (scripts/evaluation/dreval_lpo.py),
+%     per_drug_Spearman, mean over five folds. Held-out pairs belong to lines seen in training.
+\newcommand{\LpoLineMean}{0.322}   % NaiveCellLineMeanPredictor
+\newcommand{\LpoTissueMean}{0.184} % NaiveTissueMeanPredictor
+% --- the unselected catalogue: panel/panel_heads_summary.csv, rows "all 534 drugs".
+\newcommand{\SpAllDrugs}{0.1019}   % linear head, X_pca, spearman 0.10194
+\newcommand{\NullGainMax}{0.0004}  % largest vs_null of the four (trunk, X_scGPT: 0.00043)
+% --- why the metric is per drug (slide 12).
+\newcommand{\SpPooled}{0.77}       % dreval/bias_accounting.csv spearman_raw_pooled, best arm
+                                   % (X_pca, mae, alpha=0.5): 0.768
+\newcommand{\DrDrugMean}{0.74}     % dreval/dreval_lco_results.csv NaiveDrugMeanPredictor, raw
+                                   % Spearman, mean over five folds: 0.7413
+% --- fragility: dreval/bias_accounting.csv, mean over the six (loss, alpha) arms of
+%     spearman_raw_per_drug (before) and partial_rho (fragility controlled out).
+\newcommand{\FragRhoPca}{0.160}    % rho_pred_fragility, mean of the six arms
+\newcommand{\FragRhoScgpt}{0.117}
+\newcommand{\FragBestPca}{0.228}   % partial_rho of the best arm (mae, 0.5): 0.2276
+\newcommand{\FragBestScgpt}{0.193} % same arm, X_scGPT: 0.1933
+\newcommand{\FragRawPca}{0.269}
+\newcommand{\FragPartialPca}{0.214}
+\newcommand{\FragCostPca}{20.4}    % % of the score removed, 1 - partial/raw
+\newcommand{\FragRawScgpt}{0.216}
+\newcommand{\FragPartialScgpt}{0.173}
+\newcommand{\FragCostScgpt}{19.9}
+% --- the inputs alone: mil/stage0_input_ceiling.csv, from within_line_share w.
+\newcommand{\BtwSharePca}{0.584}   % 1 - w
+\newcommand{\BtwShareScgpt}{0.539}
+\newcommand{\BtwRatioPca}{1.405}   % (1 - w) / w
+\newcommand{\BtwRatioScgpt}{1.168}
+% --- label quality: CurveCurator fit statistics of the curves behind the panel, read by
+%     scripts/evaluation/label_quality.py (printed, not written -- section 1 of its output) from the
+%     DrEval CTRPv2 response table; re-computed 12.10.2026.
+\newcommand{\NCurves}{1{,}971}
+\newcommand{\CurveMedRsq}{0.867}
+\newcommand{\CurveFracLowRsq}{22.2} % % with R2 < 0.5
+\newcommand{\CurveFracNs}{10.9}     % % with pValue > 0.05 ("flat": no-effect null not rejected)
+\newcommand{\PlatinFracNs}{73}      % cisplatin's share of flat curves (73.3 %)
+\newcommand{\PlatinMedRsq}{0.166}  % 0.166473; read 0.167 until 12.10.2026 (mis-rounded)
+% flat fraction vs per-drug score, best arm, Spearman over the 11 compounds:
+% docs/make_figures.py::build_label_quality, on diagnostics/label_quality_vs_performance.csv
+% (frac_ns) and panel/panel_per_drug_correlation.csv. label_quality.py itself reports -0.72 on the
+% default arm (mse, alpha=0); the slide and this report use the best arm.
+\newcommand{\FlatRho}{-0.78}
+\newcommand{\FlatP}{0.004}
+% --- Q2, four alternative explanations (slide 19).
+% label supply: panel/panel_curve_summary.csv (4a section E), mean at 25 vs 103 labelled lines.
+\newcommand{\CurveGainPca}{0.123}   % 0.2608 - 0.1374 (the slide rounds to 0.124)
+\newcommand{\CurveGainScgpt}{0.095} % 0.2291 - 0.1338
+\newcommand{\CurveMarginLo}{0.004}  % X_pca - X_scGPT at 25 lines (0.0036)
+\newcommand{\CurveMarginHi}{0.032}  % at 103 lines (0.0317)
+% capacity: panel/panel_arch_summary.csv (4a section C), alpha=0, mse.
+\newcommand{\ArchLinPca}{0.261}   \newcommand{\ArchTrunkPca}{0.243}
+\newcommand{\ArchLinScgpt}{0.229} \newcommand{\ArchTrunkScgpt}{0.205}
+% input scale: diagnostics/input_scale.csv, median per-dimension SD 1.106 vs 0.0107.
+\newcommand{\InputScaleRatio}{104}
+% The rescaling test itself (scripts/evaluation/input_scale_test.py) wrote its table to a session
+% tmp path, not to notebooks/outputs/ -- NO COMMITTED ARTIFACT. Values as recorded in
+% docs/steps/05 ("Input scale is NOT the cause"): mean best epoch 6.73 native vs 7.13 rescaled.
+\newcommand{\ScaleEpochNative}{6.73}
+\newcommand{\ScaleEpochScaled}{7.13}
+% input dropout: diagnostics/input_dropout_test.csv + input_dropout_sweep_extra.csv, alpha=0, mse,
+% linear head, mean over seeds 42-44; range over the six rates {0, .02, .05, .1, .2, .3}.
+\newcommand{\DropRangePca}{0.0145}
+\newcommand{\DropRangeScgpt}{0.0020}
+\newcommand{\DropBestPca}{0.2753}  % X_pca at rate 0.02
+\newcommand{\DropShippedPca}{0.2608} % X_pca at the shipped 0.1
+% --- Q3: mil/q2_verdict.csv (4b), one row per representation.
+\newcommand{\QSpreadPca}{100}        % % of pairs where MIL within-line spread exceeds per-cell
+\newcommand{\QSpreadScgpt}{82.3}
+\newcommand{\QSeedRhoPca}{0.256}     % median cross-seed rho
+\newcommand{\QSeedRhoScgpt}{0.861}
+\newcommand{\QAurocPca}{0.518}       % stage 7 median within-bag AUROC
+\newcommand{\QAurocScgpt}{0.537}
+\newcommand{\QConfPca}{0.053}        % stage 6 median adjusted R2 of the confounds
+\newcommand{\QConfScgpt}{0.266}
+\newcommand{\QReprPca}{0.065}        % squared median cross-seed rho
+\newcommand{\QReprScgpt}{0.740}   % 0.8605^2 = 0.74046; read 0.741 until 12.10.2026 (double rounding via 0.7405)
+\newcommand{\QBarPca}{82}            % QConf / QRepr, %
+\newcommand{\QBarScgpt}{36}
+
 % =============================================================================
 % WITHDRAWN 12.08.2026 -- every macro carrying a MODEL RESULT has been removed.
 %
@@ -140,7 +332,8 @@
 %          \drRfSp, \drPaperRsq.
 % The values themselves are kept, with what each was measured on, in
 % docs/steps/corrections-and-dead-ends.md. They are not restored here: a macro
-% that resolves is a macro that gets used.
+% that resolves is a macro that gets used. The RESULTS block above (12.10.2026)
+% holds new macros under new names, computed on the corrected pipeline.
 %
 % What remains ABOVE is DATA, not results -- counts and provenance of the two
 % sources, which no model run produced. Four caveats on them, added/extended
@@ -172,6 +365,6 @@
 %     until R2-R5 regenerate -- 153 becomes ~154. R6 re-reads them from the
 %     artifact; they are NOT adjusted by hand, which is item 12's whole point.
 %
-% The drug-panel counts in Methods are typed inline rather than defined here,
-% pending the extraction script (review item 12) that should replace this file.
+% The drug-panel counts in Methods were typed inline until 12.10.2026; they are now macros in the
+% "drug panel funnel" block above. Item 12's extraction script is still the intended replacement.
 % =============================================================================

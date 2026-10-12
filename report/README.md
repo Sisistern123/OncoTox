@@ -1,6 +1,6 @@
-# Preliminary Report (LaTeX) — Prediction of Anti-Cancer Drug Efficacy Scores
+# Final Report (LaTeX) — Prediction of Anti-Cancer Drug Efficacy Scores
 
-Modular LaTeX source for the preliminary project report: one `main.tex`, sections `\input`
+Modular LaTeX source for the final project report (state of the final presentation, 17.08.2026): one `main.tex`, sections `\input`
 from `sections/`, and **plain `bibtex`** — `sections/07_bibliography.tex` is
 `\bibliographystyle` + `\bibliography{../references}`, generated from the project's single
 `references.bib`, not a hand-written `thebibliography`. See *Render the PDF* for the build
@@ -33,14 +33,11 @@ a comment naming the source CSV under `notebooks/outputs/` and, for aggregates, 
 is reduced (e.g. mean over per-drug or per-fold rows). To update after re-running a notebook:
 read the value from the refreshed CSV, edit the macro, recompile.
 
-⛔ **As of 12.08.2026 `results_numbers.tex` defines DATA ONLY.** Every macro carrying a model
-result was removed when the results were withdrawn, and the section text with it — so the
-`\rhoFullScgpt` / `\ridgePca` this paragraph used to name as examples no longer exist, and the
-"two results tables carrying their per-cell values inline" it used to describe are gone with
-`04_results.tex`, which is now a withdrawal note. Results macros are **not** re-added by hand:
-TODO item 12 replaces this file with an extraction script, and hand-transcription is the defect
-that item exists to remove. Read the withdrawal block at the foot of `results_numbers.tex`
-before adding anything to it.
+**Results macros (re-added 12.10.2026, Selin).** From 12.08 to 12.10.2026 the file defined data
+only, because the results then on record had been withdrawn. The results of the final presentation
+were re-added as macros in a `RESULTS` block below the data, each re-computed from the committed CSV
+its comment names. They are still transcribed by hand — TODO item 12's extraction script does not
+exist — so after a re-run every macro in that block must be re-read from its source.
 
 ## Render the PDF
 
@@ -78,22 +75,16 @@ this repository produces.
 
 ## Updating figures
 
-The figures are copies from the notebook outputs. **Only one is used by the report** —
-`fig_umap.png`, in `02_introduction.tex`; it is the sole `\includegraphics` in the whole
-document. Refresh it with:
+The figures are copies. **Two are used by the report**: `fig_umap.png` in `02_introduction.tex`
+and `q2_instrument.png` in `04_results.tex`. Refresh them with:
 
 ```sh
 cp ../notebooks/outputs/embeddings/umap_cancertype_pca_vs_scgpt.png figures/fig_umap.png
+cp ../docs/figures/q2_instrument.png figures/q2_instrument.png   # built by docs/make_figures.py
 ```
 
-⚠️ **`figures/fig_rescue.png` and `figures/fig_dreval.png` are orphans** — referenced by no
-`.tex` file, and both left over from the results withdrawn on 12.08.2026. Their sources are
-dead too: `fig_rescue.png` came from `outputs/archive/ablations/rescue_k545.png`, whose notebook
-is archived and cannot be re-run, and `fig_dreval.png` from `outputs/dreval/dreval_lco.png`,
-computed on the retired target and the voided panel. Whether they return, and from which
-artifact, is decided when §Results is rewritten at **R6**; refresh commands for them are not
-documented here in the meantime, because a `cp` from a stale source is how a withdrawn figure
-walks back into a document.
+`fig_rescue.png` and `fig_dreval.png`, orphans left over from the results withdrawn on 12.08.2026,
+were removed 12.10.2026; both are in git history.
 
 Provenance of every number: `../docs/project_progress.md`, `../docs/steps/`, `../docs/TODO.md`,
 and `../notebooks/outputs/*.csv`.

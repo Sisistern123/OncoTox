@@ -1,294 +1,172 @@
 \section{Results}
 \label{sec:results}
 
-\revision{\textbf{This section has been emptied rather than updated (12.08.2026).} Every quantitative
-result it previously carried has been withdrawn, and it is left deliberately bare instead of being
-qualified in place, because a caveated number in a results section is still read as a result. What was
-removed and why is recorded below so that the withdrawal is auditable rather than a silent deletion; the
-superseded values remain in the project record under
-\code{docs/steps/corrections-and-dead-ends.md}, which is the appropriate place for measurements that no
-longer hold.}
+The results are reported per research question. Unless stated otherwise, a score is the mean
+within-compound Spearman correlation of Equation~\ref{eq:metric}, out of fold over held-out cell lines,
+averaged over the \NPanel{} panel compounds and three seeds \cite{spearman1904,dreval}; each value is
+read from a committed artifact under \code{notebooks/outputs/}, named in \code{results\_numbers.tex}.
 
-Three changes, each independent of the others, invalidate every measurement previously reported here.
-
-First, the \textbf{training target was replaced} on 11.08.2026. The results were computed on an
-area-under-the-curve value derived from CTRPv2's published table by dividing by a quantity that does not
-represent the width of the integral, so the target itself was defective; and on a per-drug standardized
-variant of it that has since been retired. The target is now the CurveCurator re-fit described in
-Section~\ref{sec:target}, which is a different quantity rather than a rescaling of the old one.
-
-Second, the \textbf{drug panel was rebuilt} on 12.08.2026 (Section~\ref{sec:panel}). The earlier results
-were reported on compound sets chosen using our own response values --- a differential-response gate, and
-a literature panel whose candidate list had been pre-ranked on the same statistic. Both selections are
-withdrawn, so results reported over them describe a set of compounds that no longer defines the task.
-
-Third, the \textbf{representations on disk predate the preprocessing corrections} recorded in
-Section~\ref{sec:data}. The principal component baseline was computed under a doubly applied library-size
-normalization and without per-gene standardization, and the transcript-level embeddings were produced
-before the gene-symbol repair, which changes which genes reach the model at all.
-
-No attempt is made here to say which of the previous qualitative conclusions will survive. Some plausibly
-will --- the finding that a random split over cells leaks the label, because it follows from the label
-being constant within a cell line rather than from any property of the target, is the clearest candidate.
-But a conclusion that has not been re-measured on the corrected pipeline is a hypothesis about what the
-re-measurement will show, and presenting it as a result is the error this project has already made twice.
-The regeneration is a single pass over the whole pipeline, described in Section~\ref{sec:limitations};
-this section is written once from its output.
-
-\revision{\textbf{Written from the regenerated pipeline, 14.08.2026.} The pass described above has
-run. Every figure below is read from a committed artifact under \code{notebooks/outputs/}, produced by
-the notebook and section named beside it; none is quoted from an earlier run. The withdrawal note is
-kept above rather than deleted, because what was withdrawn and why is part of the record.}
-
-\subsection{Does a transcript-level embedding beat the standard reduction?}
+\subsection{Prediction from single cells with bulk labels}
 \label{sec:results-q1}
 
-Both arms are \NPca-dimensional, so the comparison is at matched width. Scoring is per drug over
-held-out cell lines and then averaged over the eleven panel compounds, aggregated to the cell line and
-pooled across folds; the convention is fixed in Section~\ref{sec:data} and the alternatives are
-reported below.
+Table~\ref{tab:sweep} reports the score of every configuration, to establish whether any configuration
+predicts response and how the per-cell model compares with the ridge control; the focus is the PCA
+column, which holds both the highest score and the control. Rows are the six combinations of loss and
+density exponent $\alpha$ for the MLP, followed by the ridge regression on cell-line means; columns are
+the two representations, and the highest score is set in bold \cite{hoerl1970,denseweight}. All six PCA
+configurations scored between \SpSweepLo{} and \SpBest{}, the highest score being reached with MAE and
+$\alpha = 0.5$, and the ridge regression scored \RidgePca{}. Under the decision rule no configuration
+displaced the incumbent, unweighted MAE at \SwPcaMaeZero{}: the \SpBest{} configuration was better on order
+but worse on values and spread by more than their seed bands (\code{panel\_metrics.csv})
+\cite{vancalster2016}. One configuration (PCA, MSE, $\alpha = 0$) differed between two identical
+executions, \SwPcaMseZeroAlt{} against \SpSweepLo{}; the other thirteen entries agreed to four decimals
+(\code{panel\_execution\_band.csv}).
 
-\paragraph{The principal-component arm leads, and the margin depends on what is being asked.}
-With a per-cell objective, \code{X\_pca} leads \code{X\_scGPT} by $+0.0317$ with a linear head and
-$+0.0383$ with a $(128,64)$ trunk, each outside the wider of the two seed bands
-(\code{panel\_arch\_summary.csv}, \code{4a}~\S C). Capacity therefore moves both arms together and
-leaves the ordering intact. Head count does not disturb it either: a \NDrugsModelled{}-head model scored on the same
-eleven compounds gives $+0.0479$ (linear) and $+0.0252$ (trunk).
+\begin{table}[h]
+\caption{\textbf{Out-of-fold scores of all configurations.} Mean within-compound Spearman correlation
+between predicted and true AUC across held-out cell lines (Equation~\ref{eq:metric}), for the MLP under
+each loss (MSE, MAE) and density exponent $\alpha$ (Equation~\ref{eq:density}; $\alpha = 0$ is
+unweighted), and for the ridge regression on cell-line means, on either representation. Five-fold CV
+grouped by cell line over \NLinesCV{} lines, \NPanel{} compounds, mean over seeds 42--44; higher is
+better, 0 is no ranking skill. Bold: highest score. Read from \code{panel\_per\_drug\_correlation.csv}
+and \code{panel\_ridge\_baseline.csv} (\code{notebooks/4a\_percell\_training.ipynb}).}
+\label{tab:sweep}
+\centering
+\begin{tabular}{llcc}
+\toprule
+Model & Loss, $\alpha$ & PCA & scGPT \\
+\midrule
+MLP & MSE, 0   & \SwPcaMseZero & \SwScgptMseZero \\
+MLP & MSE, 0.5 & \SwPcaMseHalf & \SwScgptMseHalf \\
+MLP & MSE, 1   & \SwPcaMseOne  & \SwScgptMseOne \\
+MLP & MAE, 0   & \SwPcaMaeZero & \SwScgptMaeZero \\
+MLP & MAE, 0.5 & \textbf{\SwPcaMaeHalf} & \SwScgptMaeHalf \\
+MLP & MAE, 1   & \SwPcaMaeOne  & \SwScgptMaeOne \\
+\midrule
+Ridge (line means) & --- & \RidgePca & \RidgeScgpt \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\paragraph{The scoring set moves the answer further than either architectural axis.}
-The same \NDrugsModelled{}-head model scored on all \NDrugsModelled{} compounds gives $+0.0231$ with a linear head and
-$-0.0077$ with a trunk --- inside the seed band, with the sign reversed
-(\code{panel\_heads\_summary.csv}, \code{4a}~\S D). The panel and the full catalogue disagree about
-which compounds are measured, not about the model.
+Figure~\ref{fig:labelquality} breaks the highest-scoring configuration down by compound, to test
+whether the variation between compounds follows the quality of their labels; the focus is the relation
+between the two axes rather than any single compound \cite{bayer2023curvecurator}. Each point is one
+compound, placed by the share of its dose--response curves that are flat (logarithmic axis) and by its
+score; the compounds at the extremes and the exception are labelled in bold. Scores ranged from
+\SpDrugLo{} for cisplatin to \SpDrugHi{} for dasatinib, and the share of flat curves from $0$ to
+\PlatinFracNs\,\%. The two were correlated, Spearman $\rho = \FlatRho$ ($p = \FlatP$, $n = 11$):
+compounds with more flat curves scored lower, cisplatin having both the largest share and the lowest
+score, while crizotinib had no flat curves and a middling score. Across all \NCurves{} curves behind the
+panel, the median $R^2$ of the fits was \CurveMedRsq{}, \CurveFracLowRsq\,\% had $R^2 < 0.5$, and
+\CurveFracNs\,\% were flat; cisplatin's median $R^2$ was \PlatinMedRsq{}.
 
-\paragraph{The objective is the largest single axis.}
-At $\alpha=0.5$ with squared error, the margin is $+0.0827$ under the per-cell objective and
-$+0.0265$ under the bag objective, so $68.0\,\%$ of it does not survive the change
-(\code{panel\_metrics.csv}, \code{5\_evaluation}~\S1.8). The transcript-level arm \emph{gains} under
-multiple-instance learning while the principal-component arm loses.
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\textwidth]{label_quality.png}
+\caption{\textbf{Per-compound score against label quality.} One point per panel compound
+($n = \NPanel$). Vertical axis: mean within-compound Spearman correlation, out of fold, of the
+highest-scoring configuration (PCA, MAE, $\alpha = 0.5$, labelled with its code name
+\code{X\_pca} in the figure). Horizontal axis: share of the compound's CurveCurator fits that are flat, i.e.\ cannot reject a
+no-effect null ($p > 0.05$), on a logarithmic scale. Bold labels mark the highest (dasatinib) and
+lowest (cisplatin) scores and the exception to the trend (crizotinib). The inset reports the Spearman
+correlation over the eleven compounds. Generated by \code{docs/make\_figures.py} from
+\code{diagnostics/label\_quality\_vs\_performance.csv} and \code{panel\_per\_drug\_correlation.csv}.}
+\label{fig:labelquality}
+\end{figure}
 
-\paragraph{The lead is not an artefact of how few labels there are.}
-Thinning the label supply inside each fold while holding the input, the architecture and the loss
-fixed, the margin runs $+0.0036$ at 25 labelled lines and $+0.0090$ at 50 --- inside the seed band in
-both cases, so the arms are indistinguishable there --- then $+0.0505$ at 75 and $+0.0317$ at the full
-budget (\code{panel\_curve\_summary.csv}, \code{4a}~\S E). A small-data account predicts a margin that
-\emph{shrinks} as labels are added; it grows.
+The share of the score that reflects general cell-line fragility rather than compound-specific
+response was measured next, because LCO cannot remove it \cite{dreval}. Averaged over the six
+configurations, the predictions correlated with fragility at \FragRhoPca{} in the PCA arm and
+\FragRhoScgpt{} in the scGPT arm, and controlling for it by Equation~\ref{eq:partial} lowered the score
+from \FragRawPca{} to \FragPartialPca{} ($-\FragCostPca\,\%$) and from \FragRawScgpt{} to
+\FragPartialScgpt{} ($-\FragCostScgpt\,\%$) (\code{bias\_accounting.csv}).
+Figure~\ref{fig:lpo} shows how much a line's identity alone predicts when the protocol allows it to;
+the focus is the size of that baseline relative to the scores above. The two bars are DrEval's LPO
+baselines that use no expression: the mean response of the line (black) reached a mean within-compound
+correlation of \LpoLineMean{}, and the mean response of its lineage (grey) \LpoTissueMean{}
+(\code{dreval\_lpo\_results.csv}).
 
-\paragraph{Nor is it an artefact of how much data the projection was fitted on.}
-The principal-component arm is fitted on these cells while the transcript-level embedding is frozen,
-which raises the possibility that its advantage is adaptation to this atlas rather than a property of
-the representation. Dropping cell lines entirely --- so that their cells leave the folds, the batches
-and the projection's fitting set alike --- leaves the margin unchanged: $+0.0353$ with 62 lines
-retained, $+0.0279$ with 94, and $+0.0336$ with all \NLinesCV{}. Halving the atlas does not erode the lead.
-At 31 lines both arms score below zero, which reports the collapse of the study rather than a small
-margin, and is not evidence either way. The full-size row reproduces the standard configuration
-($+0.0336$ against $+0.0317$), so the comparison is measuring what it should. Removing cells is far
-more damaging than removing their labels: at roughly twenty fitting lines this design scores $-0.05$
-where thinning labels alone scored $+0.14$.
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\textwidth]{lpo_bias.png}
+\caption{\textbf{What cell-line identity alone predicts.} Mean within-compound Spearman correlation of
+two DrEval baselines under leave-pairs-out (LPO) evaluation, in which held-out (line, compound) pairs
+belong to lines seen in training: predicting each line's mean response (black, ``which cell line it
+is'') and each lineage's mean response (grey, ``lineage only''). Neither uses expression. Five folds of
+about 383 held-out pairs over the \NPanel{} compounds; whiskers are the SD over folds. LPO scores are not
+comparable with the LCO scores of Table~\ref{tab:sweep}. Generated by \code{docs/make\_figures.py} from
+\code{dreval\_lpo\_results.csv} (\code{scripts/evaluation/dreval\_lpo.py}).}
+\label{fig:lpo}
+\end{figure}
 
-\paragraph{One regularizer penalizes one arm, and it makes the reported margin conservative.}
-Input dropout zeroes each input coordinate independently at a rate of $0.1$. The transcript-level
-embedding's dimensions are entangled and comparable in magnitude; the principal components are
-variance-ordered, so the same nominal rate removes a heavier-tailed share. Sweeping the rate over
-$\{0, 0.02, 0.05, 0.1, 0.2, 0.3\}$ leaves the transcript-level arm flat --- a range of $0.0020$
-against a per-seed standard deviation of $0.0021$ --- while the principal-component arm varies over
-$0.0145$, so the regularizer acts on one arm and not the other. The shipped rate of $0.1$ is the least
-favourable of the six to the leading arm, and no rate above zero improves on $p=0$ by more than a
-tenth of a seed standard deviation, so the setting is not doing the work a regularizer is meant to do. Every margin in this
-section is therefore quoted at input dropout $0.1$ and is conservative with respect to this setting.
-Because weight decay is zero, dropout is the model's only regularizer, so this is not a minor
-hyperparameter; what the rate should be is left open.
+Finally, the per-cell model was set against the two line-level controls and the unselected catalogue
+\cite{hoerl1970,breiman2001}. The ridge regression on cell-line means scored \RidgePca{} against
+\SpBest{}. On DrEval's LCO benchmark the per-compound random forest scored \DrRfNorm{} on the normalised
+metric against \DrMlpNorm{} for the MLP, with a fold SD of \DrRfSd{} against \DrMlpSd{}, and both exceeded
+DrEval's naive baselines, which score zero on that metric \cite{dreval}. Over all \NDrugsModelled{}
+compounds the score was \SpAllDrugs{}, at most \NullGainMax{} above a per-compound constant
+(\code{panel\_heads\_summary.csv}).
 
-\paragraph{Everything sits near the per-drug null.}
-Across all \NDrugsModelled{} compounds the improvement over a per-drug constant runs $+0.00017$ to $+0.00043$, and
-for the linear principal-component arm it is $-0.00005$, worse than the constant
-(\code{panel\_heads\_summary.csv}). A ridge regression on cell-line-mean embeddings scores $0.2725$
-against $0.2608$ for the best per-cell principal-component arm, and on an external protocol a per-drug
-random forest matches the multi-task model to $0.0003$
-(\code{panel\_ridge\_baseline.csv}; \code{dreval\_lco\_results.csv}). \textbf{On both an internal and an
-external comparison, the multi-task architecture has not been shown to buy anything measurable over a
-simple per-drug model.}
-
-\paragraph{Why the transcript-level arm scores lower.}
-The response label is defined per cell line, so the quantity a model must read is variation
-\emph{between} lines. The two representations differ there before any parameter is fitted: measured on
-the inputs alone, the between-line share of variance is $0.584$ for \code{X\_pca} against $0.539$ for
-\code{X\_scGPT}, a between-to-within ratio of $1.405$ against $1.168$
-(\code{stage0\_input\_ceiling.csv}). The principal-component arm carries about a fifth more of the
-structure the label varies over. The same difference is visible directly in the cancer-type embeddings
-of Section~\ref{sec:data}: the principal-component projection resolves the cell lines as separate
-clusters, while the transcript-level embedding places them on one continuous manifold.
-
-This is the embedding behaving as intended rather than failing. A pretrained single-cell embedding is
-built to map cells onto a shared biological manifold and to suppress batch and cell-line identity;
-that is the property it is valued for. The label used here sits at exactly the granularity that
-suppression removes. The finding is therefore a mismatch between the embedding's training objective
-and this task's label, and it should not be read as a statement about embedding quality in general.
-
-\paragraph{It is not undertraining.}
-The epoch at which validation loss is minimised does not track performance. With a linear head the
-principal-component arm peaks at epoch~12 and scores highest ($0.2608$) while the transcript-level arm
-peaks at epoch~2 ($0.2291$); with a trunk the ordering of epochs reverses ($1$ and $8$) and the
-transcript-level arm scores lowest ($0.2047$). Within \emph{each} representation the linear head wins,
-despite the two having opposite epoch behaviour, and training the transcript-level arm four times
-longer under a trunk scores worse rather than better. A candidate explanation --- that the
-$104\times$ difference in input magnitude between the arms drives this under one shared learning
-rate --- was tested by rescaling the transcript-level embedding to the principal-component arm's
-magnitude and re-running: the mean best epoch was unchanged ($6.73$ against $7.13$). The optimizer is
-AdamW, which normalises each step by a running second moment of the gradient and is therefore
-approximately invariant to a uniform rescaling of its input.
-
-\paragraph{Why no arm scores well in absolute terms.}
-Four measured reasons, none of which is the choice of representation. First, the effective sample is
-\NLinesCV{} cell lines rather than \NCells{} cells: one label per (cell line, compound) is broadcast to
-every cell of that line, so each fold fits on roughly a hundred independent labelled examples. Second, label quality
-varies and measurably constrains what can be predicted. The response is a curve fitted by CurveCurator,
-which reports the quality of each fit: across the 1{,}971 curves behind this panel the median $R^2$ is
-$0.867$, but $22.2\,\%$ fall below $0.5$ and $10.9\,\%$ of the fits are not statistically significant,
-so roughly one label in nine comes from a curve that does not establish a dose-response. Per compound,
-the fraction of non-significant fits predicts out-of-fold performance ($\rho = -0.718$, $p = 0.013$ for
-the principal-component arm over eleven compounds), and the spread of the label across cell lines
-predicts it independently ($\rho \approx +0.60$, $p \approx 0.05$; the two are uncorrelated,
-$p = 0.50$). One panel compound, cisplatin, has $73\,\%$ non-significant fits and a median $R^2$ of
-$0.167$, and is among the worst predicted.\footnote{An earlier analysis of
-\NRepPairs{} doubly screened (cell line, compound) pairs reported a median disagreement of
-\RepDiffMed{} standard deviations. It does not transfer, for two reasons. It covers six cell lines
-across the full compound catalogue rather than the panel --- only 62 of those pairs involve a panel
-compound, where the disagreement is smaller --- and it was computed on the response source retired on
-11.08.2026, under which two experiments produced two numbers that the pipeline averaged. The present
-source re-fits every dose-response curve with CurveCurator, including replicate variability in the fit
-rather than averaging replicates beforehand, so there is one fit per (cell line, compound) and no pair
-remains to disagree. Measuring the ceiling on the current target would require CurveCurator's per-curve
-fit uncertainty, or re-deriving replicate disagreement from the raw dose-response data.} Third, over the
-full catalogue the improvement on a per-drug constant lies between $+0.00017$ and $+0.00043$, and is
-negative for one arm. Fourth, a ridge regression on cell-line-mean embeddings and a per-drug random
-forest each match or exceed the multi-task network. Taken together the first two identify the ceiling
-as label supply and label quality, and the fourth confirms that model capacity is not the binding
-constraint.
-
-\subsection{Does a model trained on single cells learn heterogeneity implicitly?}
+\subsection{scGPT against PCA}
 \label{sec:results-q2}
 
-No per-cell labels exist: one response value per (cell line, compound) is broadcast onto every cell of
-that line, so any within-line structure in the predictions is imposed by the model rather than shown to
-it. The instrument is a staged set of nulls and comparisons
-(\code{4b}, \code{q2\_verdict.csv}), run over three seeds on both representations.
+The two arms were compared first on the trained models and then on their inputs \cite{scgpt,jolliffe2016}.
+The PCA arm scored higher than the scGPT arm in all six configurations (Table~\ref{tab:sweep}), under
+all four scoring conventions --- cell or line level, pooled or per fold
+(\code{panel\_aggregation\_comparison.csv}) --- and after fragility was controlled out. On the inputs
+alone, before training, the between-line share of variance was \BtwSharePca{} for PCA and
+\BtwShareScgpt{} for scGPT, a between-to-within ratio of \BtwRatioPca{} against \BtwRatioScgpt{}
+(\code{mil/stage0\_input\_ceiling.csv}).
 
-Predicted within-line spread exceeds the per-cell model's on $100\,\%$ (\code{X\_pca}) and
-$82.3\,\%$ (\code{X\_scGPT}) of (compound, line) pairs on all three seeds, and that structure
-reproduces across seeds with median $\rho$ of $0.256$ and $0.861$. On the criterion as specified this
-is positive for both arms.
+Four alternative explanations of the difference were then tested, each on the same folds
+\cite{hoerl1970,loshchilov2019adamw}. When the labelled lines per fold were thinned from 103 to 25, the
+PCA arm lost \CurveGainPca{} and the scGPT arm \CurveGainScgpt{}, and the difference between the arms was
+$+\CurveMarginLo$ at 25 and $+\CurveMarginHi$ at 103 lines, the two lying within each other's seed band
+at 25 and 50 lines (\code{panel\_curve\_summary.csv}). Replacing the linear head by the
+$(\CfgHidA,\CfgHidB)$ trunk changed the PCA arm from \ArchLinPca{} to \ArchTrunkPca{} and the scGPT arm
+from \ArchLinScgpt{} to \ArchTrunkScgpt{} (\code{panel\_arch\_summary.csv}). The PCA input was about
+\InputScaleRatio{} times larger in magnitude than the scGPT input (\code{diagnostics/input\_scale.csv});
+rescaling scGPT to the PCA magnitude changed its mean best epoch from \ScaleEpochNative{} to
+\ScaleEpochScaled{}, a result whose output was not committed
+(\code{scripts/evaluation/input\_scale\_test.py}). With fragility controlled out, the highest-scoring
+configuration scored \FragBestPca{} in the PCA arm and \FragBestScgpt{} in the scGPT arm.
 
-\begin{revisionblock}
-\textbf{How much of the ranking is general fragility rather than compound-specific response (added
-14.08.2026).} The external benchmark is run leave-cell-line-out, and under that design the question
-cannot be asked: a held-out line has never been seen, so the benchmark's own cell-line-mean baseline
-predicts a constant and scores zero, and its normalization has no line effect to remove. Run instead
-in the benchmark's leave-pairs-out mode, where held-out pairs belong to lines present in training,
-that baseline becomes informative. Knowing only each line's average response, and nothing whatever
-about any compound, it reaches a mean within-compound rank correlation of $0.322$; knowing only the
-lineage reaches $0.184$. The same quantity computed without the benchmark, by correlating each
-compound's measured response against the line's mean over the remaining ten, gives $0.361$.
+The input-dropout rate was varied last, because it is the one regulariser applied identically to
+inputs of different structure \cite{srivastava2014}. Over six rates the PCA arm varied by
+\DropRangePca{} and the scGPT arm by \DropRangeScgpt{}; the PCA arm scored \DropBestPca{} at rate 0.02
+and \DropShippedPca{} at the rate of \CfgInDrop{} used for all other results
+(\code{diagnostics/input\_dropout\_test.csv}, \code{input\_dropout\_sweep\_extra.csv}).
 
-\textbf{The ranking of cell lines within a compound is therefore substantially a property of the
-line rather than of the compound:} lines that are broadly sensitive rank low almost everywhere.
-\textbf{These figures are not comparable with those reported above}, which come from the
-leave-cell-line-out design in which the model predicts lines it has never encountered and the same
-baseline scores zero. The comparison is not a contest between the two, and it is not offered as one.
-What it establishes is the size of the channel: general fragility supplies rank information of the
-same order as the total this work reports, so a model that cannot observe a line's mean and
-nevertheless ranks lines may be recovering that fragility from expression rather than any
-compound-specific biology. Separating the two is not attempted here and would require a decomposition
-this work has deliberately not built, for reasons given in the methods.
-\end{revisionblock}
+\subsection{Heterogeneity learned by a single-cell model}
+\label{sec:results-q3}
 
-\begin{revisionblock}
-\textbf{Which representation is the more bias-driven, and whether the comparison survives controlling
-for it (added 14.08.2026).} If the principal-component arm leads because it exploits general
-fragility more effectively, that is a different claim from its carrying more of what the label varies
-over. Taking as a proxy for a line's general sensitivity its mean response over the \emph{other ten}
-compounds, so that the compound being scored never enters its own proxy, the transcript-level arm's
-predictions correlate with that proxy at $0.117$ and the principal-component arm's at $0.160$,
-averaged over compounds, seeds and all six objective settings. \textbf{The transcript-level arm is the
-less bias-driven of the two, in every one of the six}, which is what an embedding built to suppress
-line identity should do and is the same mechanism by which it scores lower here.
+The MIL model was run over three seeds on both representations and evaluated by the five stages of
+Section~\ref{sec:mil}, the positive control last because it calibrates the others
+\cite{dietterich1997,ilse2018} (\code{notebooks/4b\_mil\_training.ipynb}, \code{mil/q2\_verdict.csv}).
+Its within-line spread exceeded that of the per-cell model in \QSpreadPca\,\% (PCA) and
+\QSpreadScgpt\,\% (scGPT) of (compound, line) pairs on all three seeds, and the per-cell predictions
+reproduced across seeds with a median $\rho$ of \QSeedRhoPca{} and \QSeedRhoScgpt{}. The technical
+covariates explained an adjusted $R^2$ of \QConfPca{} against a squared cross-seed correlation of
+\QReprPca{} for PCA, and \QConfScgpt{} against \QReprScgpt{} for scGPT, that is \QBarPca\,\% and
+\QBarScgpt\,\% of the veto bar, so the veto did not fire.
 
-Controlling for the proxy by rank-partial correlation leaves the ordering unchanged: $0.214$ against
-$0.173$, with the principal-component arm ahead in all six settings by between $0.007$ and $0.068$.
-\textbf{The lead is therefore not an artifact of differential fragility exploitation}, which closes
-one further alternative explanation by elimination. The two columns should nevertheless be read
-together: the control costs the principal-component arm $20.4\,\%$ of its raw score and the
-transcript-level arm $19.9\,\%$, so approximately a fifth of each is fragility-aligned and the
-\emph{proportion} is nearly identical. The finding is not that one arm is biased and the other clean.
-The limits are the eleven compounds, a proxy built from those same eleven, and a control that is
-linear in the ranks; the narrowest margin is close to a tie. Read from
-\code{bias\_accounting.csv}, produced by \code{scripts/evaluation/bias\_accounting.py}, whose raw
-within-compound column reproduces \code{panel\_leaderboard.csv} in all twelve arms.
-\end{revisionblock}
-
-\paragraph{The positive is weak, and the positive control is why.}
-Stage 7 asks whether the instrument can detect a between-line difference it already knows is present.
-The median within-bag AUROC is $0.518$ and $0.537$ against a $0.5$ null, with fewer than half of pairs
-reaching significance, and the distribution is close to uniform
-(Figure~\ref{fig:q2instrument}). For the principal-component arm, technical covariates explain
-$82\,\%$ as much variance as the signal reproduces across seeds. The structure is not noise; it is not
-established to be biological.
-
-\begin{revisionblock}
-\textbf{The confound veto was evaluated and does not fire, for either arm (added 14.08.2026).} The
-criterion's final stage regresses each cell's predicted response on sequencing depth, genes detected,
-mitochondrial fraction and cell-cycle score within its line, and vetoes the result if those covariates
-explain as much of the within-line variation as reproduces across seeds. The bar is a comparison
-rather than a constant, and was fixed before any model was trained: the adjusted coefficient of
-determination from that regression is set against the squared cross-seed correlation, so both
-quantities are variance fractions of the same predictions. A permutation null cannot supply such a
-magnitude, because with several hundred cells per line a coefficient far too small to matter is still
-significant against one. Measured, the covariates explain $0.053$ against a reproduced $0.065$ for the
-principal-component arm and $0.266$ against $0.741$ for the transcript-level arm --- $82\,\%$ and
-$36\,\%$ of the bar. Neither is vetoed, which is the condition under which the positive above may be
-stated at all.
-
-Two things follow that are worth stating rather than leaving to be inferred. The principal-component
-arm clears the bar at $82\,\%$, so its within-line signal should be described as not
-confound-\emph{dominated} rather than as confound-\emph{free}. And the two arms order oppositely on
-the two quantities: the transcript-level arm has five times the absolute confound coefficient and
-still clears the bar more comfortably, because what it reproduces across seeds is so much larger. A
-bar stated as an absolute coefficient rather than as a ratio would therefore have reversed which arm
-survives --- which is why the form was fixed in advance rather than after the numbers were visible.
-\end{revisionblock} Whether the variation is genuine \emph{drug-response} heterogeneity, and
-whether it predicts which cells survive, are not addressed and cannot be with this data.
+Figure~\ref{fig:q2instrument} shows the positive control, to establish whether the model can separate
+two populations that are known to differ; the focus is the position of the distributions relative to
+chance \cite{mannwhitney1947}. Each histogram collects the within-bag AUROC of one arm, PCA in blue and
+scGPT in gold, with chance marked by the dashed line. The median was \QAurocPca{} for PCA and
+\QAurocScgpt{} for scGPT, and fewer than half of the pairs separated significantly from the permutation
+null. The PCA distribution was close to uniform, whereas the scGPT distribution was concentrated at 0
+and 1.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.78\textwidth]{q2_instrument.png}
-\caption{Q2's positive control: within-bag AUROC on a between-line difference known to be present,
-one point per (compound, line pair, seed), $17{,}427$ per arm; the dashed line is chance.
-\code{X\_pca} is close to uniform across the whole range and \code{X\_scGPT} is bimodal at $0$ and
-$1$, so neither instrument is merely weak on average --- a distinction the medians of $0.518$ and
-$0.537$ do not carry. Read from \code{stage7\_positive\_control.csv}.
-\textbf{Changed 17.08.2026:} this figure previously carried a second panel showing cross-seed
-agreement, dropped when the presentation needed the width; that quantity is reported in
-Section~\ref{sec:results-q2} and in \code{stage2\_cross\_seed\_agreement.csv}.}
+\caption{\textbf{Positive control of the heterogeneity criterion.} Distribution of the within-bag area
+under the receiver operating characteristic curve (AUROC) with which the MIL model separates the cells of
+two mixed cell lines whose response is known to differ, computed as the Mann--Whitney statistic divided
+by $n_A n_B$ \cite{mannwhitney1947}; one value per (compound, line pair, seed), $17{,}427$ per
+representation, shown as a density histogram for PCA (blue) and scGPT (gold). The dashed line marks
+chance (0.5); a value near 1 or 0 means the two populations are ranked apart. Medians: \QAurocPca{}
+(PCA), \QAurocScgpt{} (scGPT). Read from \code{mil/stage7\_positive\_control.csv}.}
 \label{fig:q2instrument}
 \end{figure}
-
-\subsection{What the comparison cannot settle}
-\label{sec:results-limits}
-
-\paragraph{The loss comparison is unresolved.}
-Under the pre-registered decision rule, no arm of the six-arm sweep displaces the
-unweighted absolute-error arm: all thirteen challengers fail a guard. The arm with the highest rank
-correlation in the sweep ($0.2824$) is among them, failing on calibration and absolute error --- rank
-bought at the cost of both is not declared better. The comparison is additionally not robust to two
-things that ought not to matter: the scoring convention changes which arm ranks first, and one
-configuration ($\alpha=0$ with squared error on \code{X\_pca}) does not reproduce across identical
-runs, spanning $0.2473$--$0.2541$ over two executions while thirteen of fourteen arms are identical to
-six decimals (\code{panel\_execution\_band.csv}).
-
-\paragraph{The two arms are not optimised comparably.}
-\code{X\_pca} reaches the optimizer at $104\times$ the magnitude of \code{X\_scGPT} under one shared
-learning rate (\code{input\_scale.csv}). Training peaks accordingly and inconsistently: with a trunk
-the principal-component arm peaks at epoch~1 and the transcript-level arm at~8, and with a linear head
-the ordering reverses. Label supply is excluded as the cause, since it moves the peak in opposite
-directions for the two arms. This is an optimisation artefact rather than a property of either
-representation, and it is the strongest remaining threat to the comparison in this section.

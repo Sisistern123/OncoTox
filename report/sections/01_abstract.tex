@@ -1,30 +1,26 @@
 \begin{abstract}
 \noindent
-This report investigates whether single-cell RNA-seq, combined with foundation-model embeddings, can
-predict pharmacological response, as a first step toward a reusable pan-cancer single-cell foundation
-model. On the highest-confidence intersection of the SCP542 single-cell atlas and the CTRPv2
-drug-response database (\NLines{} cell lines, \NDrugsModelled{} compounds), we train a shared-trunk multi-task
-regressor on individual cells and evaluate it under a leave-cell-line-out protocol, comparing scGPT
-embeddings against a matched principal component analysis (PCA) baseline. The guiding hypothesis is that
-the foundation model provides a denoised, tissue-agnostic representation of cellular state.
+Relapse is driven by rare surviving subpopulations of tumour cells, yet drug response is measured on
+bulk populations, and no large-scale single-cell drug screen exists. This report asks three questions:
+whether anti-cancer drug response can be predicted from single cells with bulk labels at all; whether
+scGPT embeddings are a viable representation against principal component analysis (PCA) at matched
+width; and whether a model trained on single cells learns cellular heterogeneity implicitly. On the
+intersection of the SCP542 atlas and CTRPv2 as reprocessed by DrEval (\NLines{} cell lines), one
+response value per cell line and compound was broadcast onto every cell of that line, so the effective
+sample size was about \NLinesCV{} lines rather than \NCells{} cells. A per-cell multi-task regressor was
+trained on \NPanel{} compounds chosen by regulatory approval and a published resistance determinant, and
+scored by the mean within-compound Spearman correlation under five-fold leave-cell-line-out
+cross-validation over three seeds.
 
-\revision{\textbf{Quantitative results are withheld in this version.} The response target, the compound
-panel and the preprocessing of both representations were each revised after the previous results were
-produced, and no measurement has yet been repeated on the corrected pipeline; every number is therefore
-withdrawn rather than restated with a caveat (Section~\ref{sec:results}). What the report contains at
-this stage is the design and its justification: the provenance and harmonization of the two data sources,
-the derivation of the response target, the construction of the compound panel from external evidence, and
-the evaluation protocol.}
-
-The methodological argument does not depend on the withdrawn measurements and is the contribution this
-version claims. A representation comparison of this kind is only informative once three conditions hold,
-and none held at the outset of this work: the training objective must not let a minority of compounds
-with large response variance dominate a shared multi-task loss; the evaluation must be scored against a
-control that already absorbs the cell-line effect, since a per-drug-mean null is too weak a bar to
-separate a representation from an average; and the compounds must be selected without reference to the
-response values the model is trained on, or the panel is enriched for exactly the drugs that flatter it.
-Each is a route by which a conventional setup reports a representation advantage that is not one --- the
-mechanism the DrEval study \cite{dreval} identifies across the published literature. Establishing those
-conditions, rather than the comparison they are prerequisites for, is what this stage of the work
-delivers.
+The highest-scoring configuration reached \SpBest{}, ranging from \SpDrugLo{} to \SpDrugHi{} across
+compounds and tracking the share of flat dose--response curves. A ridge regression on cell-line means
+reached \RidgePca{}, and a per-compound random forest matched the model on the DrEval benchmark; over all
+\NDrugsModelled{} compounds the score fell to \SpAllDrugs{}, at most \NullGainMax{} above a per-compound
+constant, and about a fifth of the ranking was general cell-line fragility. PCA led scGPT in all six
+loss and weighting configurations, and before any training it carried more between-line structure
+(between-to-within variance ratio \BtwRatioPca{} against \BtwRatioScgpt{}). The label thus sits at the
+granularity a foundation-model embedding is built to suppress, a statement about evaluation design
+rather than about scGPT. Whether heterogeneity is learned remains open: a multiple-instance model
+separated a line's cells but not two lines known to differ. The binding constraint is the supply and
+quality of labels, not model capacity.
 \end{abstract}

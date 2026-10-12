@@ -1,94 +1,68 @@
 \section{Introduction}
 
-The overarching goal of this project is to develop a domain-specific, pan-cancer single-cell foundation
-model capable of predicting pharmacological response, both efficacy and toxicity, that can subsequently be
-fine-tuned for specific cancer types or for clinical datasets with binary outcomes. Tumor heterogeneity is
-a major driver of drug resistance and treatment failure, yet this resolution is obscured whenever drug
-response is modeled from bulk RNA-seq. Predicting response at the single-cell level would allow a model to
-report a distribution of sensitivities within a sample and, in principle, to identify rare, naturally
-resistant subclones before selection pressure acts on them. The immediate obstacle is that single-cell
-drug-screening data does not exist at scale.
+Tumour heterogeneity is a major driver of drug resistance and treatment failure: relapse is typically
+caused not by the average cell of a tumour but by rare, pre-existing subpopulations that survive
+treatment and repopulate it \cite{scp542,perception}. Bulk RNA sequencing (RNA-seq) averages over
+exactly these subpopulations, whereas single-cell RNA-seq (scRNA-seq) resolves them
+\cite{scp542,luecken2019}. Predicting response per cell would let a model report a distribution of
+sensitivities within a sample and, in principle, identify resistant subclones before treatment selects
+for them \cite{perception,scdeal}. The long-term goal of this project is a pan-cancer single-cell
+foundation model that predicts pharmacological response, both efficacy and toxicity, and can be
+fine-tuned to specific cancer types or to clinical data with binary outcomes \cite{scgpt,perception}.
+The immediate obstacle is that no large-scale single-cell drug screen exists \cite{scdeal}.
 
-\suggestion{This motivates two research questions, and they are the questions the project exists to
-answer. The first is representational: whether a single-cell foundation model, here scGPT, is a viable
-basis for drug-effect prediction at all, as opposed to the standard dimensionality reduction that the
-field defaults to. The second is biological and is the reason the analysis is carried out on individual
-cells rather than on cell-line averages: whether a model trained on single cells learns cellular
-heterogeneity \emph{implicitly}, as a by-product of having to map many distinct transcriptional states
-onto one pharmacological outcome. This second question is the clinically consequential one. Relapse in
-cancer is typically driven not by the average cell of a tumour but by rare, pre-existing subpopulations
-that survive treatment and repopulate it; a model that only reproduces the population mean cannot see
-them, however accurate that mean is. Cell lines are the appropriate testbed for this because they are
-clonal in origin yet demonstrably heterogeneous in expression \cite{scp542}, so any within-line structure
-the model exploits is transcriptional state rather than lineage.}
+The setup is therefore weakly supervised. The response labels of the Cancer Therapeutics Response
+Portal v2 (CTRPv2) \cite{ctrpv2,ctrp_rees}, like those of PRISM \cite{prism} and GDSC \cite{gdsc}, are
+measured on bulk cell populations, and they are mapped onto the individual cells of the corresponding
+cell lines in the SCP542 pan-cancer atlas \cite{scp542}, so that one value per (cell line, compound) is
+broadcast onto several hundred heterogeneous cells. Cell lines do not fully recapitulate tumours, but
+they provide the volume of continuous labels needed to train a representation, and they are clonal in
+origin yet heterogeneous in expression, so any within-line structure is transcriptional state rather
+than lineage \cite{scp542}. The cost is a mismatch of resolution: one bulk value per line adds label
+noise to every cell, and because all cells of a line share it they are pseudo-replicates, so the
+effective sample size is the number of cell lines rather than the number of cells \cite{lazic2010,dreval}.
 
-To make progress despite this, the project adopts a weakly supervised strategy in which bulk
-pharmacological labels are mapped onto the individual cells of the corresponding \emph{in vitro} cell
-lines, and the model is trained to map heterogeneous single-cell inputs to the average bulk response.
-Laboratory cell lines do not fully recapitulate clinical tumors, but they provide the high-volume,
-continuous labels required to train a robust representation that can later be fine-tuned on scarcer
-clinical data. The central methodological difficulty in this setup is a resolution mismatch: standard
-pharmacological labels, including those of CTRPv2 \cite{ctrpv2,ctrp_rees}, PRISM \cite{prism} and GDSC \cite{gdsc}, are
-derived from bulk cell populations, whereas the transcriptomic data from SCP542 \cite{scp542} captures
-individual cellular heterogeneity. Mapping one average bulk score onto hundreds of heterogeneous cells
-introduces substantial label noise, and regressing raw, sparse single-cell counts directly onto these
-labels is unstable.
+Three research questions follow. The first is whether drug response can be predicted from single cells
+with bulk labels at all. The second is whether embeddings from scGPT, a transformer pretrained on
+roughly 33 million human cells \cite{scgpt}, are a viable representation for the task, measured against
+the standard dimensionality reduction, principal component analysis (PCA) \cite{jolliffe2016,luecken2019},
+at matched width. The third is whether a model trained on single cells learns cellular heterogeneity
+\emph{implicitly}, as a by-product of mapping many transcriptional states onto one outcome. The third is
+the clinically relevant question, and it is the reason the analysis is carried out on cells rather than
+on cell-line averages: a model that reproduces only the population mean cannot see a surviving
+subpopulation, however accurate that mean is \cite{scp542,perception}.
 
-This motivates the use of a foundation-model representation as an intermediate prior. An exploratory
-latent-space analysis illustrates the effect (Figure~\ref{fig:umap}). When cells are colored by cancer
-type, full-transcriptome PCA is dominated by tissue-specific markers and separates the data into distinct
-lineage clusters, so that a downstream model could achieve low error simply by classifying the cell line.
-The scGPT embeddings \cite{scgpt} instead project the same cells onto a continuous, shared manifold in
-which tissues are intermixed. \revision{The islands in that baseline are individual cell lines rather
-than tissues, which matters for how the figure should be read: what separates them is the same
-granularity at which the response label is defined. Section~\ref{sec:results} finds that this works
-in the baseline's favour on the present task, so the analysis below motivates the hypothesis without
-confirming it.} The project therefore diverges from prior work such as PERCEPTION
-\cite{perception}, which pre-trained on bulk data to predict PRISM response, by focusing on reusable
-representation learning: it evaluates whether transformer-based single-cell embeddings improve
-drug-response prediction over a standard PCA baseline, and it is designed to extend to multi-task learning
-across several databases. The central hypothesis is that scGPT embeddings act as a denoised biological
-prior that aligns functional cellular states across tissues, so that a regressor trained on this
-representation is encouraged to learn transcriptomic drivers of sensitivity rather than to memorize the
-tissue of origin.
-
-This report covers only the initial phase of the work: a single database (CTRPv2), a single continuous
-response score, single-cell inputs and a supervised regressor. The multi-task run reported here spans
-\NDrugsModelled{} drugs but a single database and metric; cross-database integration, toxicity and clinical
-fine-tuning are left to later work.
-
-\suggestion{A word on what this report can and cannot establish of those two questions. It does not
-settle the \emph{size} of any scGPT advantage over PCA. The data are too thin for that: the labels are
-defined per cell line, so the effective sample is roughly \NLinesCV{} independent observations rather than
-the tens of thousands of cells the model consumes, and the margin the evidence does support is small
-enough to sit within seed-to-seed variation. Reporting such a margin as a result would be precisely the
-kind of claim the DrEval study \cite{dreval} finds the field to be full of. The question this report is
-organized around is a different and, we argue, prior one: \emph{under what conditions could
-foundation-model embeddings help in drug-response prediction at all, and why do the conventional
-evaluation setups fail to test those conditions?} The results below are read in that light. Each central
-finding is a precondition rather than a performance number: that the multi-task objective must be
-standardized per drug before any representation can express itself; that a ridge regression on cell-line
-mean embeddings matches the deep model, so single-cell resolution has not yet earned its place; and that
-the apparent representation advantage largely dissolves once drug and cell-line mean effects are removed.
-Establishing these preconditions is the contribution; the comparison itself becomes answerable only once
-they hold. The second research question, whether heterogeneity is learned implicitly, is likewise not
-settled here, and for a structural reason set out in the limitations: the present objective penalizes the
-very within-line variation it would have to express.}
+The hypothesis behind the second question is that scGPT provides a denoised biological prior which
+aligns cellular states across tissues, so that a regressor is encouraged to learn transcriptomic drivers
+of sensitivity rather than to memorise the tissue or line of origin; regressing sparse single-cell
+counts directly onto bulk labels is, by contrast, unstable \cite{scgpt,luecken2019}. A latent-space
+comparison illustrates the difference between the two representations (Figure~\ref{fig:umap}): PCA
+separates the atlas into compact islands, whereas scGPT places the same cells on one continuous
+manifold. The islands are individual cell lines --- the granularity at which the response label is
+defined --- so the figure motivates the hypothesis without testing it. The approach differs from
+PERCEPTION \cite{perception}, which pretrains on bulk data to predict PRISM response, and from scDEAL
+\cite{scdeal}, which transfers from bulk to single cells, in evaluating a frozen single-cell foundation
+embedding directly against PCA, in a design that extends to multi-task learning across databases.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.9\textwidth]{fig_umap.png}
-\caption{\textbf{PCA resolves individual cell lines; scGPT collapses them onto one shared manifold.}
-Cells embedded by full-transcriptome PCA (left) and by scGPT (right), reduced to two dimensions by UMAP
-and colored by cancer type. PCA separates the atlas into many compact islands; a single color recurs
-across a number of them, so the islands are individual \emph{cell lines} rather than tissues, nested
-within lineage. scGPT projects the same cells onto one continuous manifold in which cancer type is only
-partially organized. \textbf{This figure states the motivating hypothesis, and
-Section~\ref{sec:results} does not bear out the consequence drawn from it.} The structure PCA retains
-is between-line structure, and the response label is defined per cell line --- so it is precisely the
-structure the label varies over, which is why the principal-component arm predicts better here rather
-than worse. The between-to-within variance ratio that quantifies this, and the comparison it explains,
-are in Section~\ref{sec:results}. Produced by
-\code{notebooks/analysis/qc/verify\_variants.ipynb}; regenerated at the 13.08.2026 sweep.}
+\caption{\textbf{Latent space of the SCP542 atlas under the two representations.} All \NCells{} cells
+of the \NLinesAtlas{} cell lines, embedded by full-transcriptome PCA (left) and by scGPT (right), reduced
+to two dimensions by Uniform Manifold Approximation and Projection (UMAP) \cite{mcinnes2018umap} and
+coloured by cancer type. PCA separates the atlas into many compact islands, and a single colour recurs
+across several of them, so the islands are individual cell lines nested within lineage; scGPT projects
+the same cells onto one continuous manifold in which cancer type is only partly organised. The axes are
+UMAP coordinates and carry no units. The between-line share of variance that the figure shows
+qualitatively is quantified in Section~\ref{sec:results-q2}. Produced by
+\code{notebooks/analysis/qc/verify\_variants.ipynb}.}
 \label{fig:umap}
 \end{figure}
+
+The scope of this report is a single database, a single continuous response score and a supervised
+regressor, trained on a panel of \NPanel{} compounds and controlled against the unselected catalogue of
+\NDrugsModelled{} \cite{ctrpv2,dreval}. Every result is read against a ridge regression on cell-line
+means \cite{hoerl1970}, against the naive baselines of the DrEval benchmark, and with general cell-line
+sensitivity controlled out, because DrEval shows that published drug-response models often score well
+through compound and cell-line mean effects alone \cite{dreval}. Cross-database integration, toxicity and
+clinical fine-tuning are left to later work.
