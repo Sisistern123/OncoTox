@@ -197,8 +197,29 @@ def main() -> None:
         assert arch["mean"].equals(before), "the MLP column must not move"
         arch.to_csv(arch_p, index=False)
         print(f"wrote {arch_p.relative_to(ROOT)}  (ridge + minus_ridge only)")
+
+        # panel_leaderboard.csv carries the same ridge mean in its `ridge (line means)` row. Missed
+        # on 16.08.2026, which left the leaderboard quoting the truncated-grid ridge (0.2767 / 0.1914)
+        # beside a baseline table and an arch summary that both say 0.2725 / 0.1884. Added
+        # 12.10.2026 (Selin).
+        update_leaderboard(new)
     else:
         print("\n(dry run, nothing written)")
+
+
+def update_leaderboard(ridge: pd.DataFrame) -> None:
+    """Rewrite the `ridge (line means)` row of panel_leaderboard.csv from `ridge`, as 4a builds it:
+    mean over drugs of spearman and mse, rounded to four decimals. The MLP rows are asserted untouched."""
+    board_p = OUT / "panel_leaderboard.csv"
+    board = pd.read_csv(board_p, header=[0, 1], index_col=0)
+    before = board.drop(index="ridge (line means)").copy()
+    for rep in REPS:
+        r = ridge[ridge.rep == rep]
+        board.loc["ridge (line means)", ("spearman", rep)] = round(r.spearman.mean(), 4)
+        board.loc["ridge (line means)", ("mse", rep)] = round(r.mse.mean(), 4)
+    assert board.drop(index="ridge (line means)").equals(before), "the MLP rows must not move"
+    board.to_csv(board_p)
+    print(f"wrote {board_p.relative_to(ROOT)}  (ridge row only)")
 
 
 if __name__ == "__main__":
