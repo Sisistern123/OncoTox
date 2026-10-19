@@ -1,11 +1,10 @@
-\appendix
-\section{Implementation details}
+\chapter{Implementation details}
 \label{app:implementation}
 
-This appendix holds the implementation details behind three steps of Section~\ref{sec:methods}. They
+This appendix holds the implementation details behind three steps of Chapter~\ref{sec:methods}. They
 are needed to reproduce the analysis but not to follow its results.
 
-\subsection{Compound identifier resolution}
+\section{Compound identifier resolution}
 \label{app:ids}
 
 Matching the approval list to the screen was not done on names, because approval lists use
@@ -19,7 +18,7 @@ on the screen's own compound identifier, which matched all \NDrugs{}. Cisplatin 
 correction: it is recorded under a non-standard name with a structure identifier for elemental
 platinum, and was resolved on the screen's recorded structure and vendor entry.
 
-\subsection{Gene symbols and the scGPT vocabulary}
+\section{Gene symbols and the scGPT vocabulary}
 \label{app:hgnc}
 
 scGPT matches genes to its vocabulary by symbol, and the expression matrix carries an older annotation of
@@ -31,7 +30,7 @@ would have shifted bin as well. The conversion step therefore recorded each gene
 and the embedding step used it where the distributed symbol is not in the vocabulary, which raised the
 \NHvg-gene variant from \NVocabDirect{} to \NVocab{} embedded genes.
 
-\subsection{Confound covariates and cached fits}
+\section{Confound covariates and cached fits}
 \label{app:confounds}
 
 The adjusted $R^2$ was used because the unadjusted one is biased upward by the number of covariates by an

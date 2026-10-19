@@ -1,4 +1,4 @@
-\section{Methods}
+\chapter{Material and Methods}
 \label{sec:methods}
 
 The pipeline ran from the two data sources through compound selection, target construction and the
@@ -30,7 +30,7 @@ Table~\ref{tab:sweep}.
 \label{fig:pipeline}
 \end{figure}
 
-\subsection{Data}
+\section{Data}
 \label{sec:data}
 
 All experiments used the intersection of the SCP542 atlas \cite{scp542} and CTRPv2
@@ -75,7 +75,7 @@ Treating cells as independent would understate every uncertainty by roughly the 
 number of cells per line, since a standard error shrinks with the square root of the number of
 observations and the cells of a line add observations without adding information.
 
-\subsection{Compound panel selection}
+\section{Compound panel selection}
 \label{sec:panel}
 
 The compounds a multi-task model predicts determine what its scores mean, so the panel was selected
@@ -126,7 +126,7 @@ a data-quality rule \cite{hafner,dreval}.
 % \code{panel.csv} under \code{notebooks/outputs/panel/}; identifier resolution was in
 % \code{scripts/annotation/drug\_annotation.py} and \code{scripts/sources/pubchem.py}.
 
-\subsection{Response target}
+\section{Response target}
 \label{sec:target}
 
 The target was the refitted AUC, the AUC (Section~\ref{sec:bg-screens}) as re-fitted by DrEval
@@ -161,7 +161,7 @@ CurveCurator reports per curve: the $p$-value of the fit against a no-effect nul
 A curve with $p > 0.05$ is called \emph{flat} below. This threshold is the report's own, whereas
 CurveCurator's classification of curves also uses the effect size.
 
-\subsection{Representations}
+\section{Representations}
 \label{sec:representations}
 
 SCP542 is distributed as CPM \cite{scp542_portal}, so library-size normalisation
@@ -211,7 +211,7 @@ cross-validated models were fitted per fold, on the fold's fitting cells only --
 the lines withheld for early stopping --- and applied to its held-out lines. Why the fits were scoped this way is discussed with the comparison
 (Section~\ref{sec:rd-q2}).
 
-\subsection{Model and training}
+\section{Model and training}
 \label{sec:model}
 
 Both representations were fed into the same multilayer perceptron (MLP): input dropout at rate \CfgInDrop{}
@@ -301,7 +301,7 @@ have cost \CfgFoldPct\,\% of the training lines. Every configuration was trained
 hyperparameter was tuned for either representation. Training ran on Apple's Metal Performance Shaders
 (MPS) backend.
 
-\subsection{Evaluation}
+\section{Evaluation}
 \label{sec:evaluation}
 
 Cell lines were split about 70/15/15 into training, validation and test, so that all cells of a line
@@ -387,7 +387,7 @@ swept over $\{0, 0.02, 0.05, 0.1, 0.2, 0.3\}$, and label quality was
 related to the per-compound score by a Spearman correlation between the share of flat curves and the
 score over the \NPanel{} compounds \cite{bayer2023curvecurator}.
 
-\subsection{Multiple-instance learning and the heterogeneity criterion}
+\section{Multiple-instance learning and the heterogeneity criterion}
 \label{sec:mil}
 
 The per-cell objective cannot answer the third research question, because it penalises within-line
@@ -455,7 +455,7 @@ correlation was recomputed with mitochondrial fraction controlled by Equation~\r
 program score was correlated within each line with sequencing depth, detected genes and mitochondrial
 fraction.
 
-\subsection{Data and code availability}
+\section{Data and code availability}
 \label{sec:availability}
 
 The single-cell expression data are the processed matrix of study SCP542 on the Broad Institute Single

@@ -1,4 +1,4 @@
-\section{Background}
+\chapter{Background}
 \label{sec:background}
 
 This chapter introduces what the later chapters build on. It begins with the biology and the
@@ -8,7 +8,7 @@ to previous work on predicting drug response, in bulk and at single-cell resolut
 computational approaches this work uses, single-cell foundation models and multiple-instance learning.
 It closes with the objective of this work.
 
-\subsection{Tumour heterogeneity and drug resistance}
+\section{Tumour heterogeneity and drug resistance}
 \label{sec:bg-heterogeneity}
 
 A tumour is not a uniform population of cells. Its malignant cells carry diverse genetic and epigenetic
@@ -41,7 +41,7 @@ their sensitivity to drugs \cite{scp542}. A model that predicts response for ind
 report a distribution of sensitivities within a sample rather than one average
 \cite{perception,scdeal}, which is the motivation for this work.
 
-\subsection{Bulk and single-cell RNA sequencing}
+\section{Bulk and single-cell RNA sequencing}
 \label{sec:bg-rnaseq}
 
 RNA sequencing (RNA-seq) profiles a transcriptome. In the standard workflow, RNA is extracted, enriched
@@ -80,7 +80,7 @@ profile \cite{scp542}. The result is single-cell expression for cell lines that 
 labels, which is the pairing this work rests on: the model reads single-cell profiles, while the labels
 it is trained on remain bulk measurements (Section~\ref{sec:bg-screens}).
 
-\subsection{Representing single-cell data}
+\section{Representing single-cell data}
 \label{sec:bg-representation}
 
 A count matrix is rarely analysed as it comes. A standard analysis first normalises the counts, then
@@ -120,7 +120,7 @@ counter-productive for exploratory biological analysis \cite{chari2023}. They re
 structure, but distances in them are not measurements, so a quantitative claim here rests on the full
 representation and a two-dimensional map only illustrates it.
 
-\subsection{Cancer cell-line drug screens and dose--response measures}
+\section{Cancer cell-line drug screens and dose--response measures}
 \label{sec:bg-screens}
 
 Cancer cell lines derived from tumours recapitulate, in many respects, the tissue type and genomic
@@ -165,7 +165,7 @@ every screen it includes from replicate-level data with CurveCurator, so that re
 estimated consistently across datasets \cite{dreval}. The labels used here are its refit of CTRPv2
 (Section~\ref{sec:target}).
 
-\subsection{Computational drug-response prediction and its evaluation}
+\section{Computational drug-response prediction and its evaluation}
 \label{sec:bg-prediction}
 
 Drug-response prediction models learn the response of a cancer sample to a drug from features of the
@@ -197,7 +197,7 @@ of the tested models do not significantly outperform it, and under LCO no model 
 forest \cite{dreval}. This work adopts those terms: LCO splits, scores computed within each compound, and
 DrEval's naive baselines (Section~\ref{sec:evaluation}).
 
-\subsection{Drug response at single-cell resolution}
+\section{Drug response at single-cell resolution}
 \label{sec:bg-singlecell}
 
 Single-cell chemical screens exist, but they measure a different quantity. sci-Plex was introduced as an
@@ -230,7 +230,7 @@ pretraining gave the weaker result. This work asks
 whether a pretrained single-cell representation can take the place of that pretraining
 (Section~\ref{sec:bg-foundation}).
 
-\subsection{Single-cell foundation models}
+\section{Single-cell foundation models}
 \label{sec:bg-foundation}
 
 A transformer processes a set of tokens with attention mechanisms alone, without recurrence or
@@ -271,7 +271,7 @@ no disease cells, so cancer cell lines were not among them, and its zero-shot em
 weaker than highly variable genes on other tasks. Whether its frozen embedding is the better input for
 predicting drug response is therefore a question to test, not a premise (Section~\ref{sec:representations}).
 
-\subsection{Multiple-instance learning}
+\section{Multiple-instance learning}
 \label{sec:bg-mil}
 
 In multiple-instance learning (MIL), a label is attached not to a single instance but to a bag of
@@ -301,7 +301,7 @@ response is measured only for the bag, while each cell's own response remains un
 (Section~\ref{sec:bg-screens}). Unlike the standard case, however, the label is continuous rather than
 binary. How this work adapts MIL to such a label is described in Section~\ref{sec:mil}.
 
-\subsection{Objective of this work}
+\section{Objective of this work}
 \label{sec:bg-objective}
 
 Drug response is measured on populations of cells, whereas resistance can arise from subpopulations

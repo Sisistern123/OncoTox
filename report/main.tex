@@ -1,22 +1,45 @@
-\documentclass[a4paper,11pt]{article}
+% Layout follows the CompMS "Inofficial Bioinfo Thesis template" (Ayla Schröder), adopted 19.10.2026
+% (Selin): book class, 12 pt, its margins, headings, running headers, captions, two title pages and
+% page numbering. Departures, each because a template package is not installed here: natbib with
+% numeric compressed citations and DOIs instead of biblatex/biber, and no acronym package (the report
+% has no list of abbreviations). Placeholders that need Selin are set in red on the title pages.
+\documentclass[pdftex,12pt,a4paper,oneside,openany]{book}  % oneside/openany: no blank pages (Selin, 19.10.2026)
 
-% === packages (all in BasicTeX or a single tlmgr install; see README) 
-\usepackage[left=2.4cm,right=2.4cm,top=2.2cm,bottom=2.2cm]{geometry}
+% === packages
+\usepackage[pdftex]{graphicx}
+\usepackage{geometry}
+\geometry{a4paper,left=3cm,right=2.5cm,top=3cm,bottom=3cm}
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
 \usepackage[ngerman,english]{babel}  % English main language; ngerman only for the Zusammenfassung
-\usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage[table]{xcolor}
 \usepackage{booktabs}
-\usepackage[colorlinks=true,urlcolor=blue,linkcolor=black,citecolor=black]{hyperref}
+\usepackage{float}
+\usepackage[font=footnotesize,labelfont=bf]{caption}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
 
 \graphicspath{{figures/}}
-\setlength{\parskip}{0.4em}
 \setlength{\parindent}{0pt}
 % long \code{} paths cannot hyphenate; let TeX stretch interword space instead of overrunning the margin
 \setlength{\emergencystretch}{3em}
 
+% === headings and running headers, as in the template
+\usepackage{titlesec}
+\titleformat{\chapter}{\bfseries\LARGE\sffamily}{\thechapter\quad}{0em}{}
+\titleformat{\section}{\bfseries\Large\sffamily}{\thesection}{1em}{}
+\titleformat{\subsection}{\bfseries\large\sffamily}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\bfseries\large\sffamily}{\thesubsubsection}{1em}{}
+\usepackage{fancyhdr}
+\setlength{\headheight}{14.5pt}
+\pagestyle{fancy}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+
 % inline monospace for code / notebook / variable references
 \newcommand{\code}[1]{\texttt{\small #1}}
+% a value Selin still has to supply
+\newcommand{\placeholder}[1]{\textcolor{red}{[#1]}}
 
 % single source of truth for the headline numbers (see results_numbers.tex)
 \input{results_numbers}
@@ -26,28 +49,69 @@
 % generated, committed and read by nothing.
 \input{loss_objective}
 
-\title{\textbf{Prediction of Anti-Cancer Drug Efficacy Scores}\\[0.4em]
-\large Single-Cell Drug-Response Prediction with Foundation-Model Embeddings\\[0.4em]
-\normalsize Final Report\\[1.2em]
-\normalsize\textit{Vorhersage von Wirksamkeitswerten für Krebsmedikamente}\\[0.3em]
-\small\textit{Vorhersage des Ansprechens auf Wirkstoffe auf Einzelzellebene mit Embeddings eines
-Foundation-Modells}}
-\author{Selin Türko\u{g}lu}
-\date{17 August 2026}
-
+\newcommand{\TitleEn}{Prediction of Anti-Cancer Drug Efficacy Scores: Single-Cell Drug-Response
+Prediction with Foundation-Model Embeddings}
 \begin{document}
-\maketitle
 
-% ===- sections (edit these files, not main.tex) 
+% === title page (one page: the template's second, German-titled page was removed, Selin 19.10.2026;
+% its author table moved here)
+\begin{titlepage}
+\sffamily
+\begin{center}
+\includegraphics[width=0.3\textwidth]{titlepage/logo2.jpg}
+\hfill
+\includegraphics[width=0.4\textwidth]{titlepage/logo1.jpg}
+\\[3cm]
+{\Large Bioinformatics Program}\\[0.5cm]
+{\Large Technical University of Munich}\\[0.5cm]
+{\Large Ludwig-Maximilians-Universit\"at M\"unchen}\\[1.5cm]
+{\Large Advanced Lab Course in Bioinformatics}\\[0.3cm]
+{\large Fortgeschrittenen-Praktikum Bioinformatik (IN5073)}\\[1.2cm]
+\HRule \\[0.4cm]
+{\huge \bfseries \TitleEn}\\[0.4cm]
+\HRule \\[1.5cm]
+\end{center}
+\begin{center}\large
+  \begin{tabular}{ll}
+    Author:      & Selin Türko\u{g}lu\\[0.3em]
+    Supervisors: & Prof.\ Dr.\ Mathias Wilhelm, Technical University of Munich\\
+                 & Prof.\ Dr.\ Tatsuhiko Tsunoda, The University of Tokyo\\[0.3em]
+    Advisor:     & Assoc.\ Prof.\ Dr.\ Artem Lysenko, The University of Tokyo\\[0.3em]
+    Submitted:   & \placeholder{date}
+  \end{tabular}
+\end{center}
+\vfill
+\end{titlepage}
+
+% === front matter (statement of originality: not included -- whether it applies to an internship
+% report is Selin's to check)
 \input{sections/01_abstract}
+\clearpage
 \input{sections/01b_acknowledgements}
+\clearpage
+
+\frontmatter
+\setcounter{tocdepth}{2}
+\setcounter{secnumdepth}{3}
+\pagenumbering{roman}
 \input{sections/01c_lists}
+\clearpage
+
+% === main part
+\mainmatter\setcounter{page}{1}
 \input{sections/02_introduction}
 \input{sections/02b_background}
 \input{sections/03_methods}
 \input{sections/04_results_and_discussion}
 \input{sections/05_conclusion_and_outlook}
+\clearpage
+\markboth{Bibliography}{Bibliography}
+\addcontentsline{toc}{chapter}{\protect Bibliography}
 \input{sections/07_bibliography}
+
+% === appendix, roman page numbers as in the template
+\appendix
+\pagenumbering{roman}
 \input{sections/08_appendix}
 
 \end{document}
