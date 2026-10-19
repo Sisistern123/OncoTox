@@ -324,6 +324,23 @@
 \newcommand{\QReprScgpt}{0.740}   % 0.8605^2 = 0.74046; read 0.741 until 12.10.2026 (double rounding via 0.7405)
 \newcommand{\QBarPca}{82}            % QConf / QRepr, %
 \newcommand{\QBarScgpt}{36}
+% --- stage by stage, for the expanded Section 4.3 (19.10.2026): q2_verdict.csv and, for the SD ranges,
+%     stage1_spread_vs_percell.csv (range over the three seeds, no pooling over seeds).
+\newcommand{\QPairs}{1{,}683}         % (compound, line) pairs per seed
+\newcommand{\QSeedSigPca}{83}       % % pairs beating the within-line permutation null, stage 2
+\newcommand{\QSeedSigScgpt}{99}
+\newcommand{\QConfRawPca}{0.077}    % median unadjusted R2 of the confounds, stage 6
+\newcommand{\QConfRawScgpt}{0.285}
+\newcommand{\QAurocSigPca}{45.6}    % % positive-control pairs beating the permutation null, stage 7
+\newcommand{\QAurocSigScgpt}{48.4}
+\newcommand{\QSdMilPcaLo}{0.087}    % median within-line SD of predictions, range over seeds
+\newcommand{\QSdMilPcaHi}{0.112}
+\newcommand{\QSdCellPcaLo}{0.028}
+\newcommand{\QSdCellPcaHi}{0.029}
+\newcommand{\QSdMilScgptLo}{0.033}
+\newcommand{\QSdMilScgptHi}{0.040}
+\newcommand{\QSdCellScgptLo}{0.021}
+\newcommand{\QSdCellScgptHi}{0.022}
 
 % =============================================================================
 % WITHDRAWN 12.08.2026 -- every macro carrying a MODEL RESULT has been removed.

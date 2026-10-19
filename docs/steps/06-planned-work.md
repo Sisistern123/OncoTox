@@ -20,8 +20,7 @@ them is a candidate for "next" while the panel and target are still being settle
 
 The panel and the target are settled now, and the final presentation named what comes next (slide 23,
 plus the feedback ideas on its notes page). These are **nearer** than A–C and are what "next" means
-today. The argument for each is in the report, `report/sections/06_limitations_and_outlook.tex`
-§Outlook; this list only places them against A–C.
+today. The argument for each is in the report, `report/sections/05_conclusion_and_outlook.tex` *(path updated 19.10.2026, when Results and Discussion were merged)*; this list only places them against A–C.
 
 | next step | source | relation to A–C |
 |---|---|---|

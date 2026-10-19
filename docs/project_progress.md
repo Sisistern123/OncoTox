@@ -13,7 +13,7 @@ A standalone LaTeX write-up of the current state lives in [`../report/`](../repo
 >
 > The rebuilt 11-drug panel has been run (13.–16.08.2026), and those results are what the final
 > presentation of 17.08.2026 reported. They live in
-> [Step 05](./steps/05-multitask-results.md); the report states them in `report/sections/04_results.tex`,
+> [Step 05](./steps/05-multitask-results.md); the report states them in `report/sections/04_results_and_discussion.tex` *(path updated 19.10.2026, when Results and Discussion were merged)*,
 > with every value as a macro in `report/results_numbers.tex` naming its source CSV. What stays void is
 > everything computed on the old panel. The banner is kept below as the record of 28.07–13.08.2026.
 >
@@ -283,7 +283,7 @@ identity → should show as **less overfitting (smaller train/val gap) for scGPT
 > ⚠️ The original wording is kept here because it explains why several rows carry no number at all: The target was replaced, the drug panel rebuilt, and the representations on disk
 > predate the preprocessing corrections, so a ✅ here means *"this was the finding on the pipeline as it
 > then stood"*, not *"this currently holds"*. The report withdrew the corresponding numbers rather than
-> caveating them (`report/sections/04_results.tex`); the verdicts are kept because a scorecard that
+> caveating them (then `report/sections/04_results.tex`, now `04_results_and_discussion.tex`); the verdicts are kept because a scorecard that
 > silently emptied would lose the record of what was believed and why. Each is re-decided at **R6** of
 > the sweep, from the regenerated artifacts.
 

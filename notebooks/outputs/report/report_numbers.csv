@@ -79,9 +79,24 @@ QAurocPca,0.5178,mil/q2_verdict.csv,median within-bag AUROC
 QConfPca,0.0533,mil/q2_verdict.csv,median adjusted R2 of the confounds
 QReprPca,0.06533135999999999,mil/q2_verdict.csv,squared stage2_median_rho (median over seed pairs of each pair's median)
 QBarPca,81.58409682578169,mil/q2_verdict.csv,"confound share of the veto bar, %"
+QSeedSigPca,82.95,mil/q2_verdict.csv,"% of (compound, line) pairs beating the within-line permutation null, stage 2"
+QConfRawPca,0.0771,mil/q2_verdict.csv,median unadjusted R2 of the confounds
+QAurocSigPca,45.58,mil/q2_verdict.csv,"% of positive-control pairs beating the permutation null, stage 7"
 QSpreadScgpt,82.28999999999999,mil/q2_verdict.csv,"% pairs, stage 1"
 QSeedRhoScgpt,0.8605,mil/q2_verdict.csv,median cross-seed rho
 QAurocScgpt,0.5373,mil/q2_verdict.csv,median within-bag AUROC
 QConfScgpt,0.2656,mil/q2_verdict.csv,median adjusted R2 of the confounds
 QReprScgpt,0.74046025,mil/q2_verdict.csv,squared stage2_median_rho (median over seed pairs of each pair's median)
 QBarScgpt,35.86958246577044,mil/q2_verdict.csv,"confound share of the veto bar, %"
+QSeedSigScgpt,99.17,mil/q2_verdict.csv,"% of (compound, line) pairs beating the within-line permutation null, stage 2"
+QConfRawScgpt,0.2847,mil/q2_verdict.csv,median unadjusted R2 of the confounds
+QAurocSigScgpt,48.370000000000005,mil/q2_verdict.csv,"% of positive-control pairs beating the permutation null, stage 7"
+QSdMilPcaLo,0.08703,mil/stage1_spread_vs_percell.csv,"min over seeds of median within-line SD, MIL"
+QSdMilPcaHi,0.11158,mil/stage1_spread_vs_percell.csv,"max over seeds, MIL"
+QSdCellPcaLo,0.02828,mil/stage1_spread_vs_percell.csv,"min over seeds, per-cell model"
+QSdCellPcaHi,0.02922,mil/stage1_spread_vs_percell.csv,"max over seeds, per-cell model"
+QSdMilScgptLo,0.03336,mil/stage1_spread_vs_percell.csv,"min over seeds of median within-line SD, MIL"
+QSdMilScgptHi,0.03964,mil/stage1_spread_vs_percell.csv,"max over seeds, MIL"
+QSdCellScgptLo,0.02142,mil/stage1_spread_vs_percell.csv,"min over seeds, per-cell model"
+QSdCellScgptHi,0.02219,mil/stage1_spread_vs_percell.csv,"max over seeds, per-cell model"
+QPairs,1683.0,mil/stage1_spread_vs_percell.csv,"(compound, line) pairs per seed"

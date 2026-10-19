@@ -240,7 +240,23 @@ def heterogeneity() -> list[dict]:
                  row(f"QAuroc{tag}", v.loc[rep, "stage7_median_auroc"], src, "median within-bag AUROC"),
                  row(f"QConf{tag}", conf, src, "median adjusted R2 of the confounds"),
                  row(f"QRepr{tag}", repr_, src, "squared stage2_median_rho (median over seed pairs of each pair's median)"),
-                 row(f"QBar{tag}", 100 * conf / repr_, src, "confound share of the veto bar, %")]
+                 row(f"QBar{tag}", 100 * conf / repr_, src, "confound share of the veto bar, %"),
+                 row(f"QSeedSig{tag}", 100 * v.loc[rep, "stage2_frac_significant"], src,
+                     "% of (compound, line) pairs beating the within-line permutation null, stage 2"),
+                 row(f"QConfRaw{tag}", v.loc[rep, "stage6_median_r2"], src, "median unadjusted R2 of the confounds"),
+                 row(f"QAurocSig{tag}", 100 * v.loc[rep, "stage7_frac_significant"], src,
+                     "% of positive-control pairs beating the permutation null, stage 7")]
+    # Stage 1 per seed (19.10.2026): the range over the three seeds of each seed's median within-line SD,
+    # MIL and per-cell model. A range, not a pooled value, so no aggregation over seeds is chosen here.
+    src = "mil/stage1_spread_vs_percell.csv"
+    s1 = pd.read_csv(OUT / src)
+    for rep, tag in (("X_pca", "Pca"), ("X_scGPT", "Scgpt")):
+        s = s1[s1.rep == rep]
+        rows += [row(f"QSdMil{tag}Lo", s.median_sd_mil.min(), src, "min over seeds of median within-line SD, MIL"),
+                 row(f"QSdMil{tag}Hi", s.median_sd_mil.max(), src, "max over seeds, MIL"),
+                 row(f"QSdCell{tag}Lo", s.median_sd_4a.min(), src, "min over seeds, per-cell model"),
+                 row(f"QSdCell{tag}Hi", s.median_sd_4a.max(), src, "max over seeds, per-cell model")]
+    rows.append(row("QPairs", s1.n_pairs.iloc[0], src, "(compound, line) pairs per seed"))
     return rows
 
 

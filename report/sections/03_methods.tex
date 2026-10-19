@@ -63,9 +63,7 @@ The source study centres expression before its own analyses, and neither of its 
 \cite{scp542}. Centring each gene across all cells is subsumed by the per-gene standardisation below.
 Centring within each cell line removes the between-line variation, and since the label is constant
 within a line, all of its signal is between lines. Per-line centring would therefore remove exactly the
-variance the target depends on. It is nonetheless the natural representation for the third research
-question, and the point to revisit it is a model that pools a line's cells
-(Section~\ref{sec:mil}).
+variance the target depends on.
 
 Because the label is defined per cell line and compound, all cells of a line carry the same value and
 are pseudo-replicates \cite{lazic2010}. The effective sample size was therefore taken to be the number of
@@ -78,13 +76,7 @@ observations and the cells of a line add observations without adding information
 \label{sec:panel}
 
 The compounds a multi-task model predicts determine what its scores mean, so the panel was selected
-without reference to the response values the model is trained on. Two earlier panels of
-this project had been selected on those values and were discarded: a gate requiring a compound to both
-kill and spare cell lines excluded every cytostatic agent by construction, because a compound that
-arrests rather than kills never crosses a viability threshold \cite{hafner}; and a literature panel inherited the same
-dependency because its candidates had been pre-ranked on that statistic. Selecting on the spread of
-one's own labels enriches for compounds that separate these particular lines, flatters every correlation
-measured on them, and reads labels of lines that are later held out \cite{dreval}.
+without reference to the response values the model is trained on (Section~\ref{sec:rd-q1}).
 
 The panel was defined by three conditions, of which only the second used the screen. First, the compound
 had to be approved by the U.S. Food and Drug Administration (FDA) for a cancer indication, according to
@@ -122,8 +114,7 @@ Cisplatin was chosen, and its determinant is recorded as contested rather than s
 mRNA expression, though not protein level, correlates with cisplatin resistance in cervical carcinoma
 lines \cite{britten_ercc1} but not
 across twenty lung cancer lines \cite{shimizu_ercc1}, plausibly because only one of four ERCC1 isoforms
-performs repair and assays cannot separate them \cite{friboulet_ercc1}. Gene-level features cannot
-represent that isoform, so poor performance on cisplatin was anticipated by the literature. It was kept
+performs repair and assays cannot separate them \cite{friboulet_ercc1}. It was kept
 rather than restricting the panel to settled determinants, which would bias the evaluation toward
 compounds whose answer is already known. For the same reason the evidence for doxorubicin and
 etoposide, both substrates of the ABCB1 efflux transporter \cite{skinner_abcb1}, was recorded with its
@@ -224,23 +215,13 @@ The \NHvg-gene set was used throughout. Its size was checked by a sweep over fiv
 1{,}000 genes to the full transcriptome, all embedded with the same code (Section~\ref{sec:results-q2}).
 
 Three quantities were estimated from data before training --- the HVG selection, the per-gene
-standardisation and the PCA rotation --- and none sees a label, but they were decided together because
-they pose one question: how much a fit may see \cite{dreval}. Gene selection used every
-cell. Selecting per fold would have produced five gene sets, so comparisons across folds,
-representations and the gene-set sweep would differ in genes as well as cells. The lines without
-labels, about a ninth of the atlas, were kept in it, since they carry no label to leak, improve the
-variance estimates, and both arms receive the identical set. The standardisation and rotation used by
-the cross-validated models were fitted per fold, on the fold's fitting cells only --- its training lines
-less the lines withheld for early stopping --- and applied to its held-out lines. This was the one place
-the arms differ in what is fitted on the data, so its fitting set was restricted to the cells the model
-itself is fitted on: the whole training side would have given PCA about \CfgExtraPct\,\% more cells than the
-model it feeds, at a cost of about \CfgHoldoutPct\,\% of the cells available to the decomposition. Storing five
-fold-specific matrices was rejected, at about a gigabyte and because it would tie the fold design to the
-preprocessing. The fits were cached per run, keyed by the reproducible fold assignment, in single
-precision like the all-cells decomposition, which was kept for description only. Two asymmetries
-remained: PCA decomposes every selected gene while scGPT reads only those in its vocabulary, and PCA is
-fitted on this atlas while scGPT is frozen, so the comparison is not like-for-like with respect to
-adaptation to the data.
+standardisation and the PCA rotation --- and none sees a label. Gene selection used every cell, including
+the lines without labels, about a ninth of the atlas. The standardisation and rotation used by the
+cross-validated models were fitted per fold, on the fold's fitting cells only --- its training lines less
+the lines withheld for early stopping --- and applied to its held-out lines. The fits were cached per run,
+keyed by the reproducible fold assignment, in single precision like the all-cells decomposition, which
+was kept for description only. Why the fits were scoped this way is discussed with the comparison
+(Section~\ref{sec:rd-q2}).
 
 \subsection{Model and training}
 \label{sec:model}
@@ -452,15 +433,9 @@ which is the per-cell loss at $B = 1$ and contains no variance term only at $B =
 therefore sets how strongly the objective charges for the quantity under study. Complete bags also make
 each line one training example, removing the per-cell objective's weighting of lines by their cell count,
 which ranges from \CellsMin{} to \CellsMax{}, at the cost of one gradient step per line. The bag prediction was the
-mean of its cells' predictions, matching the label's definition. A variance term in the loss was rejected
-because it would make the spread criterion pass by construction and change objective and architecture at
-once. A maximum or quantile aggregator was rejected because it does not force variation either and does
-not match an averaged label. This departs from Ilse et al., who, for binary labels under the assumption
-that a bag is positive if any of its instances is, call the mean a poor pooling of instance scores
-\cite{ilse2018}. Here the label is a continuous average over a line's cells, which the mean matches by
-definition. Mean pooling can be minimised by collapsing a bag onto its
-mean, which is why the criterion leads with a positive control. Had the control failed, the aggregator
-was not to be exchanged for one that passes.
+mean of its cells' predictions, matching the label's definition, and the criterion leads with a
+positive control because mean pooling can be minimised by collapsing a bag onto its mean. The
+alternatives that were rejected are discussed with the results (Section~\ref{sec:rd-q3}).
 
 The criterion had five stages, each passing against a null or a comparison rather than an invented
 threshold. The \emph{input ceiling} measured the within-line share of variance $w$ of each representation
@@ -489,9 +464,7 @@ and the adjusted about $-1\,\%$. Depth and mitochondrial fraction cannot be comp
 from which library size has been divided out and in which only four of 13 mitochondrial genes are
 HVGs, so both were computed from the study's unnormalised UMI matrix over all genes: a total over HVGs
 alone is depth multiplied by a biological share, and a confounder carrying the signal under test could
-veto a true positive \cite{scp542,luecken2019}. The criterion can establish whether per-cell predictions
-vary within a line reproducibly and not as a sequencing artefact. Whether that variation is
-drug-response heterogeneity cannot be established, because no per-cell response was measured.
+veto a true positive \cite{scp542,luecken2019}.
 
 \subsection{Data and code availability}
 \label{sec:availability}

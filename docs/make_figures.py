@@ -9,6 +9,7 @@
 
   q2_instrument.png        Q2's positive control, as a distribution over line pairs
   lpo_bias.png             mean per-drug Spearman under DrEval leave-pairs-out, by predictor
+  label_supply.png         Q2's label-supply test, per-drug Spearman against labelled lines per fold
 
 "Pure" means no expression matrix and no plotting of results: the layout is drawn, not measured.
 Both still read the small committed CSVs the module derives its *counts* from (``panel.csv``,
@@ -1689,6 +1690,51 @@ def build_q2_instrument():
     print(f"wrote {out}")
 
 
+def build_label_supply():
+    """Q2's label-supply test: each arm's score against the number of labelled lines per fold.
+
+    **Why it exists** (Selin, 19.10.2026). The report stated this test as two numbers, the margin at
+    25 and at all labelled lines. The four budgets and the seed spread at each are what the
+    label-starvation argument rests on, so they are shown rather than summarised.
+
+    **Design, as decided 19.10.2026:** one panel; both arms; error bars for the min--max over the
+    three seeds (four measured budgets, so no band implying a continuum between them); PCA blue,
+    scGPT amber as in ``q2_instrument``; x linear in labelled lines. Points are joined by thin lines
+    only to show which belong to one arm.
+
+    Read from ``panel_curve_summary.csv`` (mean, lo, hi over seeds per budget and arm). The training
+    configuration is read from ``panel_curve_folds.csv`` and printed, never typed: this test ran at a
+    fixed configuration that is not the highest-scoring one, and the caption has to say which.
+    """
+    import pandas as pd
+
+    s = pd.read_csv(PANEL_OUT / "panel_curve_summary.csv")
+    f = pd.read_csv(PANEL_OUT / "panel_curve_folds.csv")
+    cfg = f[["model", "loss", "alpha"]].drop_duplicates()
+    assert len(cfg) == 1, f"label-supply runs mix configurations: {cfg.to_dict('records')}"
+    print(f"label supply: {cfg.iloc[0].to_dict()}, seeds {sorted(f.seed.unique())}")
+
+    fig, ax = plt.subplots(figsize=(6.4, 3.8))
+    ax.set_title("Mean per-drug Spearman against labelled lines per fold", fontsize=12,
+                 fontweight="bold", color=INK, loc="left", pad=10)
+    for rep, c, name, dx in (("X_pca", BLUE, "PCA", -0.8), ("X_scGPT", AMBER, "scGPT", 0.8)):
+        d = s[s.rep == rep].sort_values("labelled_lines")
+        x = d.labelled_lines.to_numpy() + dx          # small offset so the two bars do not overlap
+        ax.errorbar(x, d["mean"], yerr=[d["mean"] - d.lo, d.hi - d["mean"]], fmt="o-", ms=5,
+                    lw=1.0, elinewidth=1.3, capsize=3, color=c, label=name)
+    ax.set_xticks(sorted(s.labelled_lines.unique()))
+    ax.set_xlabel("labelled lines per fold", fontsize=9)
+    ax.set_ylabel("mean per-drug Spearman", fontsize=9)
+    _tidy(ax, grid="y")
+    ax.tick_params(labelsize=8)
+    ax.legend(frameon=False, fontsize=9, loc="upper left")
+
+    out = FIG / "label_supply.png"
+    fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
 def build_panel_response():
     """The target itself, per panel compound: how `auc_cc` is distributed across the cell lines.
 
@@ -1720,7 +1766,7 @@ def build_panel_response():
                    key=lambda k: np.nanpercentile(auc[:, k], 75) - np.nanpercentile(auc[:, k], 25))
     fig, ax = plt.subplots(figsize=(8.6, 4.8))
     fig.subplots_adjust(top=0.86, left=0.24)
-    fig.suptitle("Response (auc_cc) across cell lines, per panel compound",
+    fig.suptitle("Response (refitted AUC) across cell lines, per panel compound",
                  x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.0)
     # One line, and only what cannot be inferred from the plot: n, the whisker convention (5-95 is
     # NOT matplotlib's default 1.5xIQR) and the row ordering. Direction and the meaning of 1.0 were
@@ -1753,7 +1799,7 @@ def build_panel_response():
     names = _panel_display()
     ax.set_yticks(range(len(panel)))
     ax.set_yticklabels([names[panel[k]] for k in order], fontsize=9.2)
-    ax.set_xlabel("auc_cc", fontsize=9.5)
+    ax.set_xlabel("refitted AUC", fontsize=9.5)  # not the code name (report, Selin 19.10.2026)
     ax.set_ylim(-0.7, len(panel) - 0.3)
     _tidy(ax, grid="x")
     ax.tick_params(labelsize=8.5)
@@ -1951,5 +1997,6 @@ if __name__ == "__main__":
     build_loss_effect()
     build_q2_instrument()
     build_panel_response()
+    build_label_supply()
     build_label_quality()
     build_lpo_bias()

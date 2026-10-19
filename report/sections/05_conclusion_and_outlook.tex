@@ -1,0 +1,39 @@
+\section{Conclusion and Outlook}
+\label{sec:conclusion}
+
+A general-purpose foundation embedding loses to a dataset-fitted linear reduction
+here, most plausibly because the label is defined per cell line and the frozen embedding carries less
+between-line structure on this atlas, and with
+\NLinesCV{} labels a ridge regression on cell-line means matches everything built in this work: the
+ceiling is the data, and the analysis identifies which part of the data sets it.
+
+The next steps address the label bottleneck, the model's objective and the third research question, in
+that order of directness.
+
+\paragraph{MIL as the primary model, with a ranking loss.} A model trained on bags of a line's cells
+leaves each cell free to differ (Equation~\ref{eq:mil-decomposition}), and since the metric ranks lines
+within a compound, a ranking loss would align the objective with what is scored
+\cite{ilse2018,burges2005}.
+
+\paragraph{Bulk pretraining and domain adaptation.} CTRPv2 alone covers \NCtrpLines{} cell lines
+against the \NLines{} here, so labels exist and single-cell expression is what is missing
+\cite{ctrpv2,scdeal}. Pretraining on bulk expression and aligning bulk and single-cell spaces by domain
+adaptation addresses that gap \cite{scdeal,ganin2015}. The most direct form is to apply PERCEPTION's
+bulk-pretrained response models to these cells and compare their predictions with those from the two
+representations here \cite{perception}.
+
+\paragraph{Fine-tuning scGPT, given more data.} Fine-tuning tests whether the ordering against PCA
+reverses once the encoder may keep line identity, but on about \NLinesCV{} labels a fine-tuned encoder
+may memorise them, so it follows the previous step.
+
+\paragraph{Explicit explainability of heterogeneity.} The question could be reframed from implicit
+learning to explicit explanation: identifying the subpopulations within cell lines that drive resistance
+and relating them to the recurrent heterogeneity programs annotated for this atlas \cite{scp542}.
+
+\paragraph{Missing controls.} Every comparison here is between two reductions of one matrix. A
+line-level model on the \NHvg{} selected genes alone would show whether either reduction helps at all. Division rate is a further bias to extract, as fragility is: a 72-hour viability assay
+confounds compound effect with proliferation \cite{hafner}, and an earlier test against the dataset's
+cell-cycle scores, negative but run on a since-retired target, used a snapshot rather than a rate, so
+measured doubling times are the open version. The input-dropout rate could be matched in effect rather
+than in value, by choosing per arm the rate that removes the same expected variance
+\cite{srivastava2014}.

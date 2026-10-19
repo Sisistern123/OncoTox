@@ -61,7 +61,7 @@ a different dataset closes it.
 > compounds with CellTiter-Glo, and found "113 compounds with differential killing of the
 > subpopulations in at least one cell line". Two lines and two subpopulations, not per cell — but it is
 > the only response measurement below the line level for this atlas, and the report now says so
-> (`05_discussion.tex` Q3 paragraph, `06_limitations_and_outlook.tex` instrument paragraph).
+> (`04_results_and_discussion.tex` §4.3, its discussion and instrument paragraphs) *(path updated 19.10.2026, when Results and Discussion were merged)*.
 > Post-treatment single-cell profiles also exist outside the four sources — sci-Plex (rows below) and
 > Tahoe-100M — but carry no per-cell response label. **None of the below is scoped**; recorded 13.08.2026 so they are not
 rediscovered as shortcuts.

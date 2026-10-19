@@ -267,11 +267,11 @@ number was measured at and is the **conservative** setting — at `X_pca`'s best
 would be ≈0.046 rather than the reported 0.0317.
 
 **Where it now lives, as future work rather than an open decision:**
-`report/sections/06_limitations_and_outlook.tex` and `docs/final_presentation.md` §7. The finding
+`report/sections/05_conclusion_and_outlook.tex` (missing-controls paragraph) *(path updated 19.10.2026, when Results and Discussion were merged)* and `docs/final_presentation.md` §7. The finding
 itself is owned by [Step 05](./steps/05-multitask-results.md).
 
 **Why it is not a decision.** It blocks nothing, the interim course is implemented (0.1, named
-wherever a margin is quoted — `report/sections/04_results.tex`), changing it re-runs every number,
+wherever a margin is quoted — `report/sections/04_results_and_discussion.tex`), changing it re-runs every number,
 and Q1's direction survives every rate in the sweep.
 
 ---

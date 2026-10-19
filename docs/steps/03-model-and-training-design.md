@@ -781,8 +781,8 @@ and the defaults above are at or within noise of the best setting on all of them
 > point. **Left at its values deliberately.** Choosing them now, with the results visible and Q1's
 > margins near 0.03, would be tuning against the answer. The defensible statement is that the
 > comparison is reported at **one untuned setting applied identically to both arms** — which makes it
-> fair, not strong. Also in `report/sections/06_limitations_and_outlook.tex` and
-> `docs/final_presentation.md` §4.
+> fair, not strong. Also in `report/sections/04_results_and_discussion.tex` (§4.1, untuned-hyperparameters
+> paragraph) *(path updated 19.10.2026, when Results and Discussion were merged)* and `docs/final_presentation.md` §4.
 
 **Decision: stop tuning the model** *(on the corrected loss)*. At ~153 independent labels, architecture
 search cannot buy signal. Three findings are worth carrying forward, because each kills a
