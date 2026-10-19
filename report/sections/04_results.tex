@@ -96,7 +96,7 @@ correlation of \LpoLineMean{}, and the mean response of its lineage (grey) \LpoT
 \centering
 \includegraphics[width=0.8\textwidth]{lpo_bias.png}
 \caption{\textbf{What cell-line identity alone predicts.} Mean within-compound Spearman correlation of
-two DrEval baselines under leave-pairs-out (LPO) evaluation, in which held-out (line, compound) pairs
+two DrEval baselines under LPO evaluation, in which held-out (line, compound) pairs
 belong to lines seen in training: predicting each line's mean response (black, ``which cell line it
 is'') and each lineage's mean response (grey, ``lineage only''). Neither uses expression. Five folds of
 about 383 held-out pairs over the \NPanel{} compounds; whiskers are the SD over folds. LPO scores are not
@@ -123,8 +123,14 @@ The PCA arm scored higher than the scGPT arm in all six configurations (Table~\r
 all four scoring conventions --- cell or line level, pooled or per fold
 % (\code{panel\_aggregation\_comparison.csv})
 --- and after fragility was controlled out. On the inputs
-alone, before training, the between-line share of variance was \BtwSharePca{} for PCA and
+alone, before training, the between-line share of variance, one minus the within-line share defined in
+Section~\ref{sec:mil}, was \BtwSharePca{} for PCA and
 \BtwShareScgpt{} for scGPT, a between-to-within ratio of \BtwRatioPca{} against \BtwRatioScgpt{}.
+Resampling the \NLinesCV{} lines with replacement, both representations on the same resample
+(\BtwBootB{} resamples), the difference of the ratios was \BtwRatioDiff{} with a 95\,\% percentile
+interval from \BtwRatioDiffLo{} to \BtwRatioDiffHi{}, and PCA was ahead in \BtwBootPcaAheadPct\,\% of
+resamples \cite{efron1993}. The lines, not the cells, are resampled because they are the independent
+units \cite{lazic2010}.
 % (\code{mil/stage0\_input\_ceiling.csv})
 
 Four alternative explanations of the difference were then tested, each on the same folds. When the labelled lines per fold were thinned from 103 to 25, the

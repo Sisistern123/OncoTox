@@ -1,0 +1,323 @@
+\section{Background}
+\label{sec:background}
+
+\subsection{Tumour heterogeneity and drug resistance}
+\label{sec:bg-heterogeneity}
+
+A tumour is not a uniform population of cells. Its malignant cells carry diverse genetic and epigenetic
+material, on which selection and Darwinian evolution act \cite{mcgranahan2017}, and they differ further in
+phenotype, which integrates genetic, epigenetic and environmental inputs \cite{marusyk2020}. Non-genetic mechanisms are
+argued to shape tumour-cell phenotypes more than mutations do, and tumour cells show high epigenetic and
+phenotypic plasticity \cite{marusyk2020}. This intratumour heterogeneity (ITH) is a key challenge in
+cancer medicine and a key factor in therapeutic failure and drug resistance \cite{mcgranahan2017}, and it
+has long been a barrier to understanding cancer \cite{castro2021}.
+
+Its clinical consequence is resistance. Most advanced cancers, including those that first respond
+strongly, eventually acquire resistance to targeted therapies and relapse, and this acquired resistance
+is the direct consequence of pre-existing heterogeneity and of ongoing diversification during therapy,
+which lets some tumour cells survive treatment \cite{marusyk2020}. Survival need not be genetic: cells can
+pass into a reversible, drug-tolerant state that survives therapy without itself sustaining regrowth, and
+genuine resistance can then arise from such cells by new mutations \cite{marusyk2020}. Single-cell
+profiling has found resistance-associated states before treatment, for example in BRAF-mutant melanoma
+\cite{castro2021}. In a multiple myeloma trial of 28 patients, the predicted response of the most
+resistant transcriptional clone, weighted by its abundance, separated responders from non-responders
+better than an abundance-weighted average over clones (area under the receiver operating characteristic
+curve, AUROC, 0.83 against 0.59), although in cell lines the average performed better \cite{perception}.
+
+Bulk measurements cannot see this structure. Genomic and transcriptomic profiling has traditionally
+measured tumours in bulk, revealing aggregate profiles and masking important aspects of ITH
+\cite{castro2021}, and the drug screens that provide response labels measure bulk populations as well
+(Section~\ref{sec:bg-screens}). The cancer cell lines used in those screens are themselves heterogeneous:
+across the cell lines of the SCP542 atlas, 12 expression programs were recurrently heterogeneous within
+multiple lines, and co-existing subpopulations sorted from two head and neck cancer lines differed in
+their sensitivity to drugs \cite{scp542}. A model that predicts response for individual cells could
+report a distribution of sensitivities within a sample rather than one average
+\cite{perception,scdeal}, which is the motivation for this work.
+
+\subsection{Bulk and single-cell RNA sequencing}
+\label{sec:bg-rnaseq}
+
+RNA sequencing (RNA-seq) profiles a transcriptome. In the standard workflow, RNA is extracted, enriched
+for messenger RNA or depleted of ribosomal RNA, converted to complementary DNA (cDNA) and prepared as an
+adaptor-ligated library, which is sequenced to 10--30 million short reads per sample. The reads are then
+aligned to a transcriptome, counted per gene and normalised between samples \cite{stark2019}. Since its
+introduction \cite{wang2009}, RNA-seq has become the de facto method for measuring transcriptome-wide
+expression, replacing hybridisation microarrays because it is cheaper and easier to implement and, above
+all, because it yields comprehensive, quantitative data across the transcriptome \cite{stark2019}. A bulk
+library needs microgram amounts of total RNA, which corresponds to hundreds of thousands of mammalian
+cells \cite{tang2009}, so each gene is measured as an aggregate over all of them, and differences between
+the cells are masked (Section~\ref{sec:bg-heterogeneity}).
+
+scRNA-seq measures each cell separately. An early assay applied mRNA-seq to
+single mouse blastomeres \cite{tang2009}. Cells are isolated in wells or droplets,
+and their messenger RNA is captured, reverse-transcribed and amplified. Every molecule is labelled with a
+cellular barcode that identifies its well or droplet and, in many protocols, with a unique molecular
+identifier (UMI) that distinguishes amplified copies of one molecule from separate molecules of the same
+gene \cite{luecken2019}. The droplet system of 10x Genomics, on which the SCP542 atlas was profiled
+(Section~\ref{sec:data}), encapsulates cells with barcoded gel beads and counts the 3$'$ ends of
+messenger RNA in tens of thousands of cells per sample \cite{zheng2017}. Droplet systems profile the
+most cells, whereas plate-based methods capture fewer cells but detect more genes per cell
+\cite{stark2019}. The result is a matrix of counts, barcodes by genes, and it is far sparser than bulk
+data. Only 10--20\,\% of a cell's transcripts are reverse-transcribed \cite{stark2019}, so the count
+depth differs between identical cells and many entries are zero \cite{luecken2019}. These zeros were long
+attributed to a separate technical failure, termed dropout, but in droplet data with UMIs their number
+matches what the sampling of molecules predicts, and zeros beyond that reflect biological variation
+\cite{svensson2020}. A barcode may also carry two cells (a doublet) or none \cite{luecken2019}.
+Normalisation for count depth (Section~\ref{sec:bg-representation}) and quality control
+(Section~\ref{sec:data}) address the first and the last of these.
+
+To profile many cancer cell lines simultaneously, Kinker et al.\ pooled lines from diverse lineages,
+sequenced each pool together and assigned each cell to its line afterwards, by single-nucleotide polymorphisms
+detected in the reads and by mapping expression clusters to the line with the most similar bulk RNA-seq
+profile \cite{scp542}. The result is single-cell expression for cell lines that also carry bulk drug-response
+labels, which is the pairing this work rests on: the model reads single-cell profiles, while the labels
+it is trained on remain bulk measurements (Section~\ref{sec:bg-screens}).
+
+\subsection{Representing single-cell data}
+\label{sec:bg-representation}
+
+A count matrix is rarely analysed as it comes. A standard analysis first normalises the counts, then
+reduces their dimension, and only then clusters, visualises or models the cells
+\cite{luecken2019,wolf2018scanpy}. The most common normalisation scales each cell's counts by its count
+depth, to counts per million (CPM) or a similar target. This assumes that all cells initially held the same
+number of messenger RNA molecules and that differences in depth arise only from sampling
+\cite{luecken2019}. The normalised values are then typically transformed as $\log(x+1)$, which has three
+effects: distances become log fold changes, the dependence of a gene's variance on its mean is mitigated
+though not removed, and the skew of the data is reduced towards the normal distribution that many
+downstream methods assume \cite{luecken2019}. Variation that normalisation leaves in place, such as batch
+effects between cells handled in distinct groups, may need separate correction. Pooling cells from
+several samples and assigning them afterwards, for example by genetic variation, can avoid batch effects
+between those samples \cite{luecken2019}, and the SCP542 lines were profiled in such pools
+(Section~\ref{sec:bg-rnaseq}).
+
+Dimension is reduced in two steps. Feature selection keeps the genes that are informative of the
+variability in the data, the highly variable genes (HVGs), typically between 1,000 and 5,000 of them
+\cite{luecken2019}. A widely used criterion computes each gene's mean and dispersion (variance over mean),
+groups genes into bins by mean expression and standardises the dispersion within each bin, so that a gene
+counts as variable relative to genes of similar abundance \cite{satija2015,wolf2018scanpy}. Principal
+component analysis then creates new, uncorrelated variables that successively maximise the variance
+retained. They are found by solving an eigenvalue problem and are defined by the dataset at hand rather
+than fixed in advance \cite{jolliffe2016}. PCA is linear and captures the structure of the data in few
+dimensions less well than non-linear methods, but it is the basis of many tools for clustering and
+further analysis \cite{luecken2019}. A representation learned in advance on many other datasets is the
+alternative that single-cell foundation models offer (Section~\ref{sec:bg-foundation}).
+
+For display, a common workflow reduces the data first to a few dozen principal components and then
+non-linearly to two dimensions \cite{chari2023}. Uniform manifold approximation and projection (UMAP) is
+such a method. It is competitive with t-distributed stochastic neighbour embedding (t-SNE) for
+visualisation and arguably preserves more of the global structure, at lower run time
+\cite{mcinnes2018umap}, and it has been regarded as best practice for exploratory visualisation of
+single-cell data \cite{luecken2019}. Reducing hundreds or thousands of dimensions to two, however,
+inevitably induces significant distortion, and Chari and Pachter argue that such embeddings are
+counter-productive for exploratory biological analysis \cite{chari2023}. They remain useful for showing
+structure, but distances in them are not measurements, so a quantitative claim here rests on the full
+representation and a two-dimensional map only illustrates it.
+
+\subsection{Cancer cell-line drug screens and dose--response measures}
+\label{sec:bg-screens}
+
+Cancer cell lines derived from tumours recapitulate, in many respects, the tissue type and genomic
+context of cancer, and they are a standard tool in molecular biology and drug discovery
+\cite{gdsc_yang2013}. The Cancer Cell Line Encyclopedia (CCLE) compiled gene expression, copy number and
+sequencing data for 947 human cancer cell lines and, with pharmacological profiles of 24 drugs across 479
+of them, identified genetic, lineage and expression-based predictors of drug sensitivity
+\cite{barretina2012}. Its later characterisation extended to 1,072 lines and added RNA-seq for 1,019 of
+them \cite{ghandi2019}. These bulk profiles are what most response models take as input
+(Section~\ref{sec:bg-prediction}).
+
+Several screens measure the response of such lines at scale. GDSC measures viability with fluorescence-based assays after 72 hours of treatment at nine
+concentrations, and at its 2013 description held data for 138 drugs across almost 700 lines
+\cite{gdsc_yang2013}. CTRPv2 measured 860 lines against an
+informer set of 481 compounds --- approved drugs, clinical candidates and probes --- at 16 concentrations
+in duplicate, with cellular ATP after 72 hours as the surrogate for viability \cite{ctrpv2}. PRISM instead labels
+cell lines with DNA barcodes and screens them in pools, with the relative abundance of each barcode as
+the surrogate for viability. Its repurposing screen tested 4,518 drugs against 578 lines at one dose and
+retested 1,448 active drugs at eight doses \cite{corsello2020,prism}. In all of them, the readout comes from a well of many cells, so
+the response of a cell line is a population average (Section~\ref{sec:bg-heterogeneity}).
+
+The measurements at each concentration, relative to untreated controls, are fitted to a sigmoidal
+dose--response curve and summarised by the concentration at which the response is half that of the
+control (IC50), the response at the highest concentration (Emax), or the area under the curve (AUC)
+\cite{hafner}. Where a curve does not fall to half of the control within the tested concentrations, the IC50 has to
+be extrapolated, as the Cancer Genome Project (CGP), the precursor of GDSC, did with a sigmoid model, or replaced by a placeholder such
+as the highest concentration, as CCLE did. The AUC requires no extrapolation and can always be estimated
+\cite{haibekains2013} (Section~\ref{sec:target}). All three depend on how
+many divisions the cells undergo during the assay, which creates artefactual associations with genotype,
+and growth-rate-normalised measures have been proposed to correct for it \cite{hafner}. Fitting itself
+can mislead: a curve fitted to noise yields potency and effect estimates like any other, and treating
+those with the same confidence as true responses can lead to wrong hypotheses and to problems in
+training machine-learning models. CurveCurator therefore fits a log-logistic model and computes, for
+each curve, a $p$-value and false discovery rate against a curve without response
+\cite{bayer2023curvecurator}.
+
+The screens do not agree well with one another. For the 471 lines and 15 drugs that both CGP and CCLE
+assayed, gene expression was well correlated between the
+two studies, whereas drug response was highly discordant: only one drug had a Spearman correlation of
+measured response above 0.6 \cite{haibekains2013}. DrEval addresses part of this by refitting
+every screen it includes from replicate-level data with CurveCurator, so that response measures are
+estimated consistently across datasets \cite{dreval}. The labels used here are its refit of CTRPv2
+(Section~\ref{sec:target}).
+
+\subsection{Computational drug-response prediction and its evaluation}
+\label{sec:bg-prediction}
+
+Drug-response prediction models learn the response of a cancer sample to a drug from features of the
+sample and, in many models, of the drug \cite{partin2023}. Drug-specific models learn from the cancer
+features alone, one model per drug. Multi-task models take the same input and produce one output per
+drug, which lets them learn from more response data and exploit what drugs have in common
+\cite{partin2023}. CCLE already built such predictors with naive Bayes classifiers and elastic-net
+regression \cite{barretina2012}. The NCI-DREAM challenge then compared 44 algorithms on breast cancer
+lines: the best modelled non-linear relationships and used pathway information, gene expression
+microarrays gave the best predictive power of any single profiling data set, and combining data sets
+improved performance further \cite{costello2014}. Gene expression has since been used, alone or with
+mutation, copy-number and other data, in about 90\,\% of the 61 deep-learning models reviewed by Partin
+et al., whose most common targets are the IC50 and the AUC \cite{partin2023}. The task is difficult
+partly because of the data: as models grow in complexity, the number of observations they need grows
+with them, and deep networks need many samples to avoid overfitting \cite{adam2020}.
+
+How such models are evaluated has proved as consequential as how they are built. DrEval identifies
+obstacles that make reported performance overly optimistic \cite{dreval}. First, the split must match
+the intended use: a model meant for unseen patients must be tested on cell lines not used for training
+or tuning (leave-cell-line-out, LCO), whereas splitting random pairs of line and drug (leave-pairs-out, LPO) is warranted
+only for imputing missing values. Second, the measurements are pseudo-replicates: CTRPv2's roughly
+400{,}000 response curves stem from \NCtrpLines{} cell lines and \NDrugs{} compounds, so the effective
+sample size is far smaller than the number of curves. Third, most of the variance in response lies
+between drugs, because drugs act at very different concentrations, so a model that memorises each drug's
+mean explains most of it. This Simpson's paradox inflates global metrics. In one model, a global
+Pearson correlation of 0.91 fell to 0.56 when computed per drug. Evaluated on these terms, deep-learning
+models barely outperform a naive model that predicts only the mean drug and cell-line effects, about half
+of the tested models do not significantly outperform it, and under LCO no model surpasses a tuned random
+forest \cite{dreval}. This work adopts those terms: LCO splits, scores computed within each compound, and
+DrEval's naive baselines (Section~\ref{sec:evaluation}).
+
+\subsection{Drug response at single-cell resolution}
+\label{sec:bg-singlecell}
+
+Single-cell chemical screens exist, but they measure a different quantity. sci-Plex was introduced as an
+alternative to coarse readouts such as cell survival. It quantifies the global transcriptional response
+to thousands of perturbations at single-cell resolution, and its first screen profiled about 650{,}000
+cells of three cancer cell lines exposed to 188 compounds \cite{srivatsan2020}. Tahoe-100M measures how
+1,100 small molecules affect 100 million cells across 50 cancer cell lines \cite{tahoe100m}. Their
+readout is the transcriptome after treatment, which is not a viability label of the kind the screens of
+Section~\ref{sec:bg-screens} provide. Methods that predict response per cell therefore combine
+single-cell expression with bulk labels, and they do so in different ways.
+
+Beyondcell derives drug sensitivity signatures from cell-line screens, by differential expression
+between lines with high and low AUC, scores each cell for its enrichment in these signatures and groups
+cells into therapeutic clusters with distinct predicted responses \cite{beyondcell2021}. scDEAL trains on
+bulk expression and response of cell lines, learns a feature space shared between bulk and single-cell
+data, and transfers the model to individual cells \cite{scdeal}. Its authors name the limited amount of
+benchmark data as the main obstacle. They evaluated it on six scRNA-seq datasets treated with five drugs,
+whose per-cell labels are binary and, in most of the original studies, were assigned to whole groups of
+cells by their treatment condition \cite{scdeal}.
+
+PERCEPTION is the closest to this work, because it uses the same atlas \cite{perception,scp542}. For
+each drug it fits an elastic-net model on bulk expression and PRISM response of cell lines and then
+applies it to single-cell expression, tuning the number of genes on the lines that have both. A line's
+prediction is the mean over its cells, scored with leave-one-line-out cross-validation. Predictive
+models were obtained for 44 of 133 drugs, and a model built on single-cell expression alone, without
+pretraining on bulk data, reached a Pearson correlation of 0.22 against 0.39 on held-out lines
+\cite{perception}. The present work trains on single cells directly, with the bulk label broadcast to
+every cell of a line and no bulk pretraining. In PERCEPTION's linear models, leaving out that
+pretraining gave the weaker result. This work asks
+whether a pretrained single-cell representation can take the place of that pretraining
+(Section~\ref{sec:bg-foundation}).
+
+\subsection{Single-cell foundation models}
+\label{sec:bg-foundation}
+
+A transformer processes a set of tokens with attention mechanisms alone, without recurrence or
+convolution \cite{vaswani2017}. Each token is a vector, and attention replaces it with a weighted sum over
+the values of all tokens, where the weight is computed from the similarity of its query to their keys. In
+scaled dot-product attention, with the queries, keys and values of all tokens stacked into matrices $Q$,
+$K$ and $V$ and keys of dimension $d_k$,
+\begin{equation}
+  \mathrm{Attention}(Q, K, V) = \mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right) V
+  \label{eq:attention}
+\end{equation}
+\cite{vaswani2017}. Several such attention functions run in parallel as multi-head attention, and
+transformer layers are stacked. The representation of each token therefore depends on every other token
+in the input.
+
+Single-cell foundation models apply this architecture to transcriptomes. They follow the transfer
+learning that changed natural language processing and computer vision: a model is pretrained on a large,
+general dataset and then fine-tuned towards downstream tasks that have limited task-specific data
+\cite{theodoris2023}. Geneformer was pretrained on 29.9 million human single-cell transcriptomes from a
+broad range of tissues. It represents each cell by its genes ranked by expression and learns with a
+self-supervised masked objective \cite{theodoris2023}. scGPT was pretrained on 33 million human cells
+under normal, non-disease conditions from the CELLxGENE collection \cite{scgpt}. It treats genes as tokens,
+converts each cell's expression into relative values by binning, and produces cell and gene embeddings
+together. Fine-tuned, it reached strong performance in cell type annotation, multi-batch integration,
+perturbation prediction and gene network inference \cite{scgpt}.
+
+Such models can also be used without fine-tuning, with the embedding taken as it is (zero-shot). In that
+setting their advantage has not held. Separating known cell types across five datasets, scGPT and
+Geneformer performed worse than a selection of highly variable genes and the established methods Harmony
+and scVI, and the highly variable genes outperformed both foundation models on all metrics, although the
+datasets resembled those used in pretraining \cite{kedzierska2025}. The authors of scGPT note that its
+current pretraining does not inherently mitigate batch effects, so its zero-shot performance may be
+limited on data with substantial technical variation \cite{scgpt}.
+
+For this work, scGPT offers a representation learned from far more cells than any drug screen labels,
+and one that was not fitted to the atlas it is applied to. Against that, its pretraining corpus contains
+no disease cells, so cancer cell lines were not among them, and its zero-shot embeddings have been
+weaker than highly variable genes on other tasks. Whether its frozen embedding is the better input for
+predicting drug response is therefore a question to test, not a premise (Section~\ref{sec:representations}).
+
+\subsection{Multiple-instance learning}
+\label{sec:bg-mil}
+
+In multiple-instance learning (MIL), a label is attached not to a single instance but to a bag of
+instances, which have no order among them and whose own labels exist but are unknown during training
+\cite{ilse2018}. The problem was first posed for drug activity. A molecule can adopt several shapes, so a
+bag holds the conformations of one molecule, and the molecule has the desired effect if and only if at
+least one of them binds the target \cite{dietterich1997,ilse2018}. In the standard formulation the bag
+label is therefore binary and equals the maximum of the instance labels, $Y = \max_k y_k$, so a model
+must be invariant to the order of the instances \cite{ilse2018}.
+
+A MIL model consists of a transformation of each instance, a permutation-invariant pooling over the
+bag, and a final transformation to the bag label. In the instance-level approach every instance receives
+its own score and the scores are pooled. In the embedding-level approach the instances are pooled into
+one bag representation first, which is then classified. The embedding-level approach has been argued to
+classify bags better, because an instance-level classifier is trained without instance labels and can
+add error \cite{ilse2018}. Common pooling operators are the maximum and the mean. Ilse et al.\ replace
+them with a learned weighted average of the instance embeddings $h_k$,
+\begin{equation}
+  z = \sum_{k=1}^{K} a_k h_k, \qquad
+  a_k = \frac{\exp\{w^\top \tanh(V h_k^\top)\}}{\sum_{j=1}^{K} \exp\{w^\top \tanh(V h_j^\top)\}},
+  \label{eq:attention-mil}
+\end{equation}
+whose weights show how much each instance contributes to the bag label \cite{ilse2018}.
+
+A cell line fits this frame loosely. Its cells are the instances, the line is the bag, and the drug
+response is measured only for the bag, while each cell's own response remains unknown
+(Section~\ref{sec:bg-screens}). Unlike the standard case, however, the label is continuous rather than
+binary. How this work adapts MIL to such a label is described in Section~\ref{sec:mil}.
+
+\subsection{Objective of this work}
+\label{sec:bg-objective}
+
+Drug response is measured on populations of cells, whereas resistance can arise from subpopulations
+that a population measurement averages away (Section~\ref{sec:bg-heterogeneity}). A model that predicts
+response for individual cells could report the distribution of sensitivities within a sample and, in
+principle, point to resistant cells before treatment selects for them. The long-term goal of this
+project is a pan-cancer single-cell foundation model of pharmacological response, for both efficacy and
+toxicity, that can later be fine-tuned to specific cancer types or to clinical data with binary
+outcomes. Such a model has to be trained on labels that exist at scale, and those labels are bulk
+measurements on cell lines (Section~\ref{sec:bg-screens}).
+
+The objective of this work is the first step towards that goal. It is to establish, on one atlas and one
+screen, whether and how well drug efficacy can be learned from single cells when every label is a bulk
+measurement, and what such a model does and does not capture. Three questions follow from it.
+\begin{enumerate}
+  \item Can drug response be predicted from single cells with bulk labels at all?
+  \item Are scGPT embeddings a viable representation for this task, measured against principal component
+        analysis at matched width?
+  \item Does a model trained on single cells learn cellular heterogeneity implicitly?
+\end{enumerate}
+The first question decides whether the setting supports a model at all. The second asks whether a
+pretrained single-cell representation is a better starting point than one fitted to the data at hand,
+which is the premise of the foundation-model approach (Section~\ref{sec:bg-foundation}). The third is
+the clinically relevant one. A model that reproduces only the population mean cannot see a surviving
+subpopulation, however accurate that mean is, so the value of working at single-cell resolution rests
+on its answer.

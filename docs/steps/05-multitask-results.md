@@ -715,17 +715,34 @@ any model:
 | `X_pca` | 0.4158 | 0.5842 | **1.405** |
 | `X_scGPT` | 0.4613 | 0.5387 | **1.168** |
 
+**Its precision (19.10.2026).** The ratios above are point estimates over one set of lines. A paired
+bootstrap over the 153 lines — lines drawn with replacement, every cell of a drawn line with it, both
+representations recomputed on the same resample, 95 % percentile interval, B = 2,000, seed 0 — puts the
+difference PCA − scGPT at **0.237, interval 0.099 to 0.375**, with PCA ahead in 99.9 % of resamples.
+The marginal intervals overlap (PCA 1.28–1.51, scGPT 0.99–1.33); only the paired one answers whether
+PCA is ahead, and it excludes zero. Resampling unit after Lazic 2010 (*BMC Neurosci* 11:5), interval
+after Efron & Tibshirani 1993 (*An Introduction to the Bootstrap*); level, B and seed are conventions.
+Source: `notebooks/4b_mil_training.ipynb` §3.2b → `notebooks/outputs/mil/stage0_bootstrap.csv`; the
+cell first reproduces §3.2's statistic from per-line sufficient statistics (§3.2 runs in float32 and
+lies ~2e-6 from the float64 value, below every reported digit).
+
 `X_pca` carries **20 % more between-line structure**. Since every label is constant within a cell
 line, that is precisely the axis a model has to read to predict anything at all — so the
 representation that separates lines more cleanly starts ahead, before a single parameter is fitted.
 
-**It is visible directly.** `notebooks/outputs/embeddings/umap_cancertype_pca_vs_scgpt.png`: `X_pca`
+**It is visible directly.** *(Correction 19.10.2026: "visible" is an illustration, not a second
+measurement. A two-dimensional embedding distorts distances (Chari & Pachter 2023, *PLOS Comput Biol*
+19:e1011288), and the figure plots full-transcriptome PCA over all atlas lines, not the 5,000-HVG model
+input over the 153 CV lines that the ratio is computed on. The report now treats it this way.)*
+`notebooks/outputs/embeddings/umap_cancertype_pca_vs_scgpt.png`: `X_pca`
 resolves ~150 discrete islands — one per cell line — while `X_scGPT` collapses them into a single
 continuous manifold with cancer type only partially organised.
 
 ⚠️ **And this is scGPT working as designed, not failing.** A foundation-model embedding maps cells
 onto a shared biological manifold and suppresses batch and line identity; that is the property it is
-built and praised for. This task's label happens to be defined at exactly the granularity scGPT
+built and praised for. *(Correction 19.10.2026: the ratio measures line identity only; nothing here
+measures batch identity, and scGPT's authors note that its pretraining does not inherently mitigate
+batch effects. The report drops "batch" from this claim.)* This task's label happens to be defined at exactly the granularity scGPT
 removes. **The result is therefore about a mismatch between the embedding's objective and this task's
 label, not about embedding quality** — which is a materially different claim, and the defensible one.
 

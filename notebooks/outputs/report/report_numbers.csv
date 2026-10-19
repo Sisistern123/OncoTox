@@ -56,6 +56,10 @@ BtwSharePca,0.584167155555848,mil/stage0_input_ceiling.csv,1 - within_line_share
 BtwRatioPca,1.4048124465413745,mil/stage0_input_ceiling.csv,(1 - w) / w
 BtwShareScgpt,0.5386613438069872,mil/stage0_input_ceiling.csv,1 - within_line_share
 BtwRatioScgpt,1.1676050479967244,mil/stage0_input_ceiling.csv,(1 - w) / w
+BtwRatioDiff,0.2372092957310383,mil/stage0_bootstrap.csv,PCA ratio minus scGPT ratio
+BtwRatioDiffLo,0.0987404381118662,mil/stage0_bootstrap.csv,2.5th percentile of the paired difference
+BtwRatioDiffHi,0.3753005055348978,mil/stage0_bootstrap.csv,97.5th percentile of the paired difference
+BtwBootPcaAheadPct,99.9,mil/stage0_bootstrap.csv,"% of resamples, PCA ratio higher"
 CurveGainPca,0.12345239889771542,panel/panel_curve_summary.csv,full minus 25 lines
 CurveGainScgpt,0.09531954852261199,panel/panel_curve_summary.csv,full minus 25 lines
 CurveMarginLo,0.003560835614406288,panel/panel_curve_summary.csv,PCA minus scGPT at 25 lines

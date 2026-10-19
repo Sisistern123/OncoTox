@@ -189,6 +189,14 @@ def representations() -> list[dict]:
     for rep, tag in (("X_pca", "Pca"), ("X_scGPT", "Scgpt")):
         rows += [row(f"BtwShare{tag}", 1 - w[rep], src, "1 - within_line_share"),
                  row(f"BtwRatio{tag}", (1 - w[rep]) / w[rep], src, "(1 - w) / w")]
+    # The paired line bootstrap of that ratio (4b §3.2b, added 19.10.2026).
+    src = "mil/stage0_bootstrap.csv"
+    bs = pd.read_csv(OUT / src).set_index("quantity")
+    d = bs.loc["ratio_diff_pca_minus_scgpt"]
+    rows += [row("BtwRatioDiff", d.point, src, "PCA ratio minus scGPT ratio"),
+             row("BtwRatioDiffLo", d.ci_lo, src, "2.5th percentile of the paired difference"),
+             row("BtwRatioDiffHi", d.ci_hi, src, "97.5th percentile of the paired difference"),
+             row("BtwBootPcaAheadPct", 100 * d.frac_resamples_pca_ahead, src, "% of resamples, PCA ratio higher")]
 
     src = "panel/panel_curve_summary.csv"
     c = pd.read_csv(OUT / src).pivot(index="budget", columns="rep", values="mean")

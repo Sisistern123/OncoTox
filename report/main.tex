@@ -2,6 +2,7 @@
 
 % === packages (all in BasicTeX or a single tlmgr install; see README) 
 \usepackage[left=2.4cm,right=2.4cm,top=2.2cm,bottom=2.2cm]{geometry}
+\usepackage[ngerman,english]{babel}  % English main language; ngerman only for the Zusammenfassung
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage[table]{xcolor}
@@ -36,7 +37,9 @@
 
 % ===- sections (edit these files, not main.tex) 
 \input{sections/01_abstract}
+\input{sections/01b_acknowledgements}
 \input{sections/02_introduction}
+\input{sections/02b_background}
 \input{sections/03_methods}
 \input{sections/04_results}
 \input{sections/05_discussion}
