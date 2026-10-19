@@ -1,0 +1,4 @@
+\babel@toc {english}{}\relax 
+\babel@toc {ngerman}{}\relax 
+\babel@toc {english}{}\relax 
+\contentsline {table}{\numberline {1}{\ignorespaces \textbf {Out-of-fold scores of all configurations.} Mean within-compound Spearman correlation between predicted and true AUC across held-out cell lines (Equation~\ref {eq:metric}), for the MLP under each loss (MSE, MAE) and density exponent $\alpha $ (Equation~\ref {eq:density}; $\alpha = 0$ is unweighted), and for the ridge regression on cell-line means, on either representation. Five-fold CV grouped by cell line over 153{} lines, 11{} compounds, mean over seeds 42--44; higher is better, 0 is no ranking skill. Bold: highest score. }}{23}{table.1}%

@@ -220,15 +220,8 @@ and the embedding step used it where the distributed symbol is not in the vocabu
 \NHvg-gene variant from \NVocabDirect{} to \NVocab{} embedded genes.
 % (\code{scripts/annotation/gene\_symbols.py})
 
-The \NHvg-gene set was used throughout. A sweep over five gene-set sizes from 1{,}000 genes to the full
-transcriptome, all embedded with the same code, moved the PCA arm by \SweepRangePca{} compounds beating their per-compound
-baseline out of \NDrugsModelled{}, against a fold-to-fold standard deviation (SD) of \SweepFoldSd{}, and was flat
-within error for both representations.
-% (\code{notebooks/analysis/qc/verify\_variants.ipynb}, \S9)
-For scGPT the sweep compared selection rather than count: at \NHvg{} genes it read about
-\GenesSeenHvg{} dispersion-selected genes per cell, in the full-transcriptome variant about \GenesSeenAll{} drawn at random
-under its cap, so the flat result shows only that twice as many random genes do no better than selected
-ones, not that scGPT gains nothing from the full transcriptome.
+The \NHvg-gene set was used throughout. Its size was checked by a sweep over five gene-set sizes from
+1{,}000 genes to the full transcriptome, all embedded with the same code (Section~\ref{sec:results-q2}).
 
 Three quantities were estimated from data before training --- the HVG selection, the per-gene
 standardisation and the PCA rotation --- and none sees a label, but they were decided together because
@@ -357,13 +350,12 @@ over the held-out lines pooled across folds, averaged over compounds and seeds:
   \label{eq:metric}
 \end{equation}
 The correlation is within a compound because pooling all pairs is dominated by differences in potency
-between compounds: pooled, the correlation is about \SpPooled{}, and a predictor knowing only each
-compound's average response reaches \DrDrugMean{} \cite{dreval}. Line level and pooled folds were chosen
-over the alternatives because one point per line is one point per label, whereas cell-level scoring adds
-about \CellsPerLineMean{} points per label without independent information and weights lines by their cell count, which
-varies 36-fold; and averaging per fold, over about 30 lines each, gave a higher score than pooling in every
-configuration and seed, so the pooled value is the more conservative of the two. The
-alternatives --- cell level, and per-fold averaging --- were computed for comparison.
+between compounds (Section~\ref{sec:bg-prediction}) \cite{dreval}. Line level was chosen over cell level
+because one point per line is one point per label, whereas cell-level scoring adds about
+\CellsPerLineMean{} points per label without independent information and weights lines by their cell
+count, which varies 36-fold. Pooling the held-out lines of all folds was chosen over averaging per fold
+as the more conservative of the two (Section~\ref{sec:results-q1}). The alternatives --- pooled pairs,
+cell level and per-fold averaging --- were computed for comparison.
 % (\code{panel\_aggregation\_comparison.csv})
 
 The loss and weighting configurations were compared under a decision rule fixed before the run.
@@ -483,7 +475,7 @@ quartile of a compound's pairwise response differences, and measured the AUROC s
 Mann--Whitney statistic divided by $n_A n_B$ \cite{mannwhitney1947,hanley1982} --- against a null from permuting the
 source labels within the bag. It was scored inside the bag because a bag-level score is reproduced
 exactly by a model that gives all cells the same value. The \emph{spread} stage required the within-line
-SD of MIL predictions to exceed that of the per-cell model, without margin, since
+standard deviation (SD) of MIL predictions to exceed that of the per-cell model, without margin, since
 Equation~\ref{eq:mil-decomposition} makes this a test of the deleted term. The \emph{reproducibility}
 stage correlated per-cell predictions across seeds against a null permuting cells within each line.
 The \emph{confound} stage regressed the predictions within each line on total UMI count, detected genes,
@@ -500,3 +492,13 @@ alone is depth multiplied by a biological share, and a confounder carrying the s
 veto a true positive \cite{scp542,luecken2019}. The criterion can establish whether per-cell predictions
 vary within a line reproducibly and not as a sequencing artefact. Whether that variation is
 drug-response heterogeneity cannot be established, because no per-cell response was measured.
+
+\subsection{Data and code availability}
+\label{sec:availability}
+
+The single-cell expression data are the processed matrix of study SCP542 on the Broad Institute Single
+Cell Portal \cite{scp542_portal}. The response labels are DrEval's reprocessing of CTRPv2, Zenodo record
+21807175 \cite{dreval_data}, published on 5 August 2026 and retrieved on 11 August 2026. The scGPT
+weights and embedding routine are those of the scGPT repository \cite{scgpt_code}. All code, notebooks
+and the output tables from which the reported numbers are read are available at
+\url{https://github.com/Sisistern123/OncoTox}.

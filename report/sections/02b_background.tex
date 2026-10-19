@@ -1,6 +1,13 @@
 \section{Background}
 \label{sec:background}
 
+This chapter introduces what the later chapters build on. It begins with the biology and the
+measurements behind the data, from tumour heterogeneity through bulk and single-cell RNA sequencing to
+the representation of single-cell data and the cell-line screens that supply the labels. It then turns
+to previous work on predicting drug response, in bulk and at single-cell resolution, and to the two
+computational approaches this work uses, single-cell foundation models and multiple-instance learning.
+It closes with the objective of this work.
+
 \subsection{Tumour heterogeneity and drug resistance}
 \label{sec:bg-heterogeneity}
 
@@ -108,7 +115,7 @@ such a method. It is competitive with t-distributed stochastic neighbour embeddi
 visualisation and arguably preserves more of the global structure, at lower run time
 \cite{mcinnes2018umap}, and it has been regarded as best practice for exploratory visualisation of
 single-cell data \cite{luecken2019}. Reducing hundreds or thousands of dimensions to two, however,
-inevitably induces significant distortion, and Chari and Pachter argue that such embeddings are
+inevitably induces substantial distortion, and Chari and Pachter argue that such embeddings are
 counter-productive for exploratory biological analysis \cite{chari2023}. They remain useful for showing
 structure, but distances in them are not measurements, so a quantitative claim here rests on the full
 representation and a two-dimensional map only illustrates it.

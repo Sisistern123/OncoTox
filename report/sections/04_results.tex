@@ -23,6 +23,14 @@ but worse on values and spread by more than their seed bands.
 One configuration (PCA, MSE, $\alpha = 0$) differed between two identical
 executions, \SwPcaMseZeroAlt{} against \SpSweepLo{}; the other thirteen entries agreed to four decimals.
 % (\code{panel\_execution\_band.csv})
+The scoring conventions behaved as expected. Pooled over all (line, compound) pairs rather than within
+each compound, the highest-scoring configuration reached a correlation of about \SpPooled{}, and
+DrEval's predictor that knows only each compound's average response reached \DrDrugMean{}, so a pooled
+score measures mainly the differences in potency between compounds \cite{dreval}. Averaging the
+within-compound score per fold, over about 30 lines each, gave a higher score than pooling the held-out
+lines in every configuration and seed, so the pooled value reported here is the more conservative of
+the two.
+% (\code{dreval/bias\_accounting.csv}, \code{panel\_aggregation\_comparison.csv})
 
 \begin{table}[h]
 \caption{\textbf{Out-of-fold scores of all configurations.} Mean within-compound Spearman correlation
@@ -153,6 +161,15 @@ The input-dropout rate was varied last, because it is the one regulariser applie
 inputs of different structure \cite{srivastava2014}. Over six rates the PCA arm varied by
 \DropRangePca{} and the scGPT arm by \DropRangeScgpt{}; the PCA arm scored \DropBestPca{} at rate 0.02
 and \DropShippedPca{} at the rate of \CfgInDrop{} used for all other results.
+
+The size of the gene set made no difference beyond fold-to-fold variation. Over five sizes from
+1{,}000 genes to the full transcriptome, the PCA arm's number of compounds beating their per-compound
+baseline, out of \NDrugsModelled{}, varied by \SweepRangePca{}, against a fold-to-fold SD of \SweepFoldSd{}, and both representations were flat within error. For scGPT the sweep compared
+selection rather than count: at \NHvg{} genes it read about \GenesSeenHvg{} dispersion-selected genes per
+cell, in the full-transcriptome variant about \GenesSeenAll{} genes drawn at random under its cap. The
+flat result therefore shows only that twice as many random genes do no better than selected ones, not
+that scGPT gains nothing from the full transcriptome.
+% (\code{notebooks/analysis/qc/verify\_variants.ipynb}, \S9)
 % (\code{diagnostics/input\_dropout\_test.csv}, \code{input\_dropout\_sweep\_extra.csv})
 
 \subsection{Heterogeneity learned by a single-cell model}
