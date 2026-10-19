@@ -44,3 +44,115 @@ veto a true positive \cite{scp542,luecken2019}.
 The per-fold standardisation and PCA fits of Section~\ref{sec:representations} were cached per run,
 keyed by the reproducible fold assignment, in single precision like the all-cells decomposition, which
 was kept for description only.
+
+\chapter{Data and preprocessing details}
+\label{app:data}
+
+This appendix holds the details of the data and its preprocessing behind Sections~\ref{sec:data} to
+\ref{sec:representations}.
+
+\section{Quality control of the atlas}
+\label{app:qc}
+
+SCP542 is distributed after the source study's own quality control \cite{scp542}. Cells had been
+profiled in \NPools{} multiplexed pools on the 10x Chromium
+platform \cite{zheng2017}, at about \SrcCellsPerLine{} cells per line, processed with Cell Ranger 3.0.1, and assigned
+to lines by the consensus of a genotype-based and an expression-based method. Cells were retained when
+their number of detected genes lay between \QcGenesLo{} and \QcGenesHi{} --- the floor removes droplets that
+captured almost no RNA, the ceiling droplets holding two cells --- and lines with fewer than \QcMinCells{} cells
+were removed, leaving an average of \SrcUmiMean{} UMIs and \SrcGenesMean{} detected
+genes per cell across \NGenes{} genes \cite{scp542,luecken2019}. A second, generic filter was not
+applied, because the decisive doublet call rests on genotype, which the distributed matrix does not
+carry. An expression-based pass would remove genuine cells at the margins without recovering that
+signal \cite{scp542,luecken2019}. Two consequences were accepted: any statement about heterogeneity
+concerns cells inside that window, which excludes states of low transcript content such as quiescent
+cells near its floor; and the \NLines{} labelled lines, not the \NCtrpLines{} lines the screen covers,
+bound the sample \cite{scp542,dreval}. The metadata also carry per-cell scores for the 12 recurrent
+heterogeneity programs of the source study. The scores for EMT-II and EMT-III are identical in all
+\NCells{} cells of the distributed file, although the source study describes two distinct programs, so
+only eleven distinct programs were available \cite{scp542,scp542_portal}.
+
+\section{Response labels}
+\label{app:labels}
+
+The order of operations distinguishes DrEval's refitted AUC from CTRPv2's published AUC: CTRPv2
+averaged its duplicate measurements during normalisation \cite{ctrpv2}, as is standard practice, whereas
+DrEval normalises each replicate to its own drug-free control and fits one curve across all replicates,
+so that disagreement between replicates enters the fit and its quality control instead of being averaged
+away \cite{dreval,bayer2023curvecurator}. Pairs screened in more than one CTRPv2 experiment arrive as one
+curve fitted across their replicates. The pipeline dropped the exact duplicates this produced and raised
+an error on any pair that was not identical.
+% (\code{scripts/preprocessing/ctrp\_to\_h5ad.py})
+
+\section{scGPT input}
+\label{app:scgpt-input}
+
+Within scGPT's cell-embedding routine the only operation applied to expression was a binning of each
+cell's non-zero values at quantiles computed on that cell alone, into \CfgBins{} bin values of which one
+is reserved for zero, and the model read a sequence of at most \CfgMaxGenes{} tokens: the cell token and
+the cell's non-zero vocabulary genes, drawn at random when there are more \cite{scgpt,scgpt_code}. scGPT
+therefore received the same CPM matrix as PCA without logarithm or standardisation. This asymmetry is
+deliberate: binning is a rank transform within a cell, so any monotone per-cell transformation ---
+library-size division, logarithm, or both --- leaves every bin unchanged, and applying the PCA
+preprocessing to both arms would alter nothing scGPT sees while disguising that the two consume
+different information \cite{scgpt}. It also means the choice of source matrix is open only for PCA:
+substituting the pre-quality-control UMI counts would change gene selection and the components but not
+the scGPT input.
+
+\chapter{Training and evaluation details}
+\label{app:training-eval}
+
+This appendix holds the training settings and the details of the controls behind
+Sections~\ref{sec:model} and \ref{sec:evaluation}.
+
+\section{Training settings}
+\label{app:training}
+
+Table~\ref{tab:training} lists the settings under which every configuration of both arms was trained.
+% (\code{scripts/training/training\_utils.py}, \code{scripts/training/cv.py})
+
+\begin{table}[h]
+\caption{\textbf{Training settings.} Shared by all configurations of the per-cell model on both
+representations. None was tuned. The architecture is given in Section~\ref{sec:model} and
+Figure~\ref{fig:architecture}.}
+\label{tab:training}
+\centering
+\begin{tabular}{ll}
+\toprule
+Setting & Value \\
+\midrule
+Optimiser & AdamW \cite{loshchilov2019adamw}, learning rate $10^{-3}$ \\
+Weight decay & $0$; biases and normalisation parameters excluded \\
+Batch size & \CfgBatch{} cells \\
+Maximum epochs & \CfgEpochs{} \\
+Learning-rate schedule & halved after \CfgSchedPatience{} epochs without improvement \\
+Gradient clipping & norm \CfgClip{} \cite{pascanu2013} \\
+Early stopping & patience \CfgPatience{} \cite{prechelt1998}, inner hold-out of \CfgHoldoutPct\,\% \\
+ & of a fold's training lines, grouped by line \\
+Seeds & 42, 43, 44 \\
+Hardware & Apple Metal Performance Shaders (MPS) backend \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Weight decay was zero because the inherited value had been chosen for Adam, which couples decay into the
+adaptive gradient, whereas AdamW applies it to the parameters directly, so the same coefficient means
+different things and no sourced value existed \cite{loshchilov2019adamw}. Biases and normalisation
+parameters were nonetheless excluded from decay, following the convention of the \code{transformers}
+library's trainer \cite{wolf2020transformers}, so that the question can later be settled by one coefficient.
+Early stopping restored the checkpoint of lowest error on the inner hold-out. The per-compound
+means and head initialisation used the remaining fitting lines. This three-way split follows the DrEval
+benchmark \cite{dreval}. The \CfgHoldoutPct\,\% is arbitrary and was preferred to reusing a whole fold, which would
+have cost \CfgFoldPct\,\% of the training lines.
+
+\section{Controls}
+\label{app:controls}
+
+The ridge regression on cell-line means chose its penalty from \CfgGridN{} log-spaced values between
+$10^{-2}$ and $10^{6}$ by efficient leave-one-out error \cite{hastie2009,pedregosa2011}. Features entered
+unscaled, since a log-spaced grid is invariant to feature scale up to a shift. The grid was widened from
+\CfgGridOldN{} values ending at $10^{4}$ after a test fixed before the run --- whether any selected penalty lies on a
+grid end --- fired in \RidgeEdgePca{} of 55 PCA fits and \RidgeEdgeScgpt{} of 55 scGPT fits, all at the ceiling.
+% (\code{scripts/evaluation/ridge\_grid\_refit.py})
+DrEval's normalised metric subtracts a fitted overall mean, cell-line effect and compound effect from
+truth and prediction \cite{dreval}.
