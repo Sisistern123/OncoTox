@@ -266,6 +266,33 @@ def heterogeneity() -> list[dict]:
     rows += [row("QProgDegraScgpt", d.rho.median(), src, "median within-line rho, prediction vs program"),
              row("QProgDegraScgptPartial", d.rho_partial_mito.median(), src,
                  "median within-line partial rho, mitochondrial fraction controlled")]
+    # E2, the smaller-study test (scripts/evaluation/section_e2_smaller_study.py; added to the report
+    # 19.10.2026): PCA minus scGPT, mean over seeds, at each number of lines kept.
+    src = "panel/panel_curve_e2.csv"
+    e2 = pd.read_csv(OUT / src).groupby(["n_lines_kept", "rep"]).order.mean().unstack("rep")
+    m2 = e2["X_pca"] - e2["X_scGPT"]
+    ks = sorted(e2.index)
+    rows += [row("EtwoKeepMin", ks[0], src, "fewest lines kept"),
+             row("EtwoKeepA", ks[1], src, "second budget"), row("EtwoKeepB", ks[2], src, "third budget"),
+             row("EtwoPcaMin", e2.loc[ks[0], "X_pca"], src, "X_pca at the fewest lines"),
+             row("EtwoScgptMin", e2.loc[ks[0], "X_scGPT"], src, "X_scGPT at the fewest lines"),
+             row("EtwoMarginA", m2[ks[1]], src, "PCA minus scGPT, second budget"),
+             row("EtwoMarginB", m2[ks[2]], src, "PCA minus scGPT, third budget"),
+             row("EtwoMarginAll", m2[ks[3]], src, "PCA minus scGPT, all lines")]
+    # The MIL model's own line-level score against the per-cell model at the same alpha and loss.
+    src = "panel/panel_metrics.csv"
+    pm = pd.read_csv(OUT / src)
+    pm = pm[(pm.alpha == 0.5) & (pm.loss == "mse")].groupby(["model", "rep"]).order.mean()
+    rows += [row("MilScorePca", pm["mil", "X_pca"], src, "MIL, alpha 0.5, mse, mean over seeds"),
+             row("MilScoreScgpt", pm["mil", "X_scGPT"], src, "MIL, alpha 0.5, mse, mean over seeds"),
+             row("MilMarginPercell", pm["mlp", "X_pca"] - pm["mlp", "X_scGPT"], src, "PCA minus scGPT, per-cell"),
+             row("MilMarginBag", pm["mil", "X_pca"] - pm["mil", "X_scGPT"], src, "PCA minus scGPT, MIL")]
+    src = "diagnostics/mil_by_within_line_spread.csv"
+    sp = pd.read_csv(OUT / src).set_index(["half", "rep"]).bag_minus_percell
+    rows += [row("MilGapLowPca", sp["low", "X_pca"], src, "MIL minus per-cell, low-spread half"),
+             row("MilGapHighPca", sp["high", "X_pca"], src, "high-spread half"),
+             row("MilGapLowScgpt", sp["low", "X_scGPT"], src, "low-spread half"),
+             row("MilGapHighScgpt", sp["high", "X_scGPT"], src, "high-spread half")]
     src = "mil/closing_program_depth.csv"
     pd_ = pd.read_csv(OUT / src)
     rows.append(row("QProgDegraDepth", pd_[(pd_.program == "ProtDegra_score")

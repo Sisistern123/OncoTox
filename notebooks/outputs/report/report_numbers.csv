@@ -102,4 +102,20 @@ QSdCellScgptHi,0.02219,mil/stage1_spread_vs_percell.csv,"max over seeds, per-cel
 QPairs,1683.0,mil/stage1_spread_vs_percell.csv,"(compound, line) pairs per seed"
 QProgDegraScgpt,-0.2246434835545191,mil/closing_program_partial_mito.csv,"median within-line rho, prediction vs program"
 QProgDegraScgptPartial,-0.1813686092134769,mil/closing_program_partial_mito.csv,"median within-line partial rho, mitochondrial fraction controlled"
+EtwoKeepMin,31.0,panel/panel_curve_e2.csv,fewest lines kept
+EtwoKeepA,62.0,panel/panel_curve_e2.csv,second budget
+EtwoKeepB,94.0,panel/panel_curve_e2.csv,third budget
+EtwoPcaMin,-0.05101315073506396,panel/panel_curve_e2.csv,X_pca at the fewest lines
+EtwoScgptMin,-0.05283152249225657,panel/panel_curve_e2.csv,X_scGPT at the fewest lines
+EtwoMarginA,0.03531439051051236,panel/panel_curve_e2.csv,"PCA minus scGPT, second budget"
+EtwoMarginB,0.027929111651567223,panel/panel_curve_e2.csv,"PCA minus scGPT, third budget"
+EtwoMarginAll,0.03364626022346756,panel/panel_curve_e2.csv,"PCA minus scGPT, all lines"
+MilScorePca,0.24410599346078177,panel/panel_metrics.csv,"MIL, alpha 0.5, mse, mean over seeds"
+MilScoreScgpt,0.21765339549511978,panel/panel_metrics.csv,"MIL, alpha 0.5, mse, mean over seeds"
+MilMarginPercell,0.08267964532706978,panel/panel_metrics.csv,"PCA minus scGPT, per-cell"
+MilMarginBag,0.02645259796566199,panel/panel_metrics.csv,"PCA minus scGPT, MIL"
+MilGapLowPca,0.0001295972398147,diagnostics/mil_by_within_line_spread.csv,"MIL minus per-cell, low-spread half"
+MilGapHighPca,-0.0316002030796717,diagnostics/mil_by_within_line_spread.csv,high-spread half
+MilGapLowScgpt,0.0594527914924673,diagnostics/mil_by_within_line_spread.csv,low-spread half
+MilGapHighScgpt,0.0197689748703875,diagnostics/mil_by_within_line_spread.csv,high-spread half
 QProgDegraDepth,0.0757461900331492,mil/closing_program_depth.csv,"median within-line rho, program score vs total UMI count"

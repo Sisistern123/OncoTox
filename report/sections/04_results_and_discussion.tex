@@ -178,6 +178,26 @@ varies with the number of divisions the cells undergo during the assay, and beca
 normalised to an untreated control that keeps dividing, faster-dividing lines appear more sensitive
 \cite{hafner}. Testing it would need each line's division rate, which this study did not use.
 
+\paragraph{Relation to previous work.} The result agrees with DrEval's benchmark in the setting that
+matches it. DrEval found that about half of the tested models did not significantly outperform a
+predictor of mean drug and cell-line effects, and that under leave-cell-line-out evaluation no model
+surpassed a tuned random forest \cite{dreval}. Here, on DrEval's own protocol and normalised metric, the
+per-cell model and the per-compound random forest scored within each other's fold spread (\DrMlpNorm{}
+against \DrRfNorm{}, fold SD \DrMlpSd{} and \DrRfSd{}). It also agrees with the expectation that more
+complex models need more observations \cite{adam2020}. With about \NLinesCV{} labelled lines, a ridge
+regression on line means reached the network's score. It differs in one respect from the NCI-DREAM
+challenge, whose best methods modelled non-linear relationships \cite{costello2014}, whereas a linear
+model on line means matched the network here. The settings differ, however. The challenge combined
+several bulk profiling data types and pathway information on breast cancer lines, and this work used
+one single-cell representation without either. The closest comparison is PERCEPTION, which used the
+same atlas \cite{perception}. It obtained predictive models for 44 of 133 drugs, and the drugs with
+predictive models had a higher variance in response, which is compatible with the finding here that
+compounds with more flat curves scored lower. Its models built on single-cell expression alone, without
+pretraining on bulk data, were weaker than its bulk-pretrained ones. The per-cell model here was
+trained in that weaker setting, which is one possible reason for its modest score that this work did
+not test. The scores themselves are not comparable, because the screen, the response measure, the
+metric and the drugs differ.
+
 \paragraph{LCO only.} The fragility channel is invisible under the protocol used, and whether the model
 clears a baseline that can use it would require retraining under an LPO split \cite{dreval}.
 
@@ -230,14 +250,19 @@ resamples \cite{efron1993}. The lines, not the cells, are resampled because they
 units \cite{lazic2010}.
 % (\code{mil/stage0\_input\_ceiling.csv})
 
-Four alternative explanations of the difference were then tested, each on the same folds.
+Five alternative explanations of the difference were then tested, each on the same folds.
 Figure~\ref{fig:labelsupply} shows the first, label supply, to establish whether scGPT's deficit is a
 shortage of labels that more labels would close. The focus is the gap between the two arms as the number
 of labelled lines grows. Each point is one arm at one budget, the mean over three seeds, with error bars
 spanning the lowest and highest seed. Both arms scored higher with more labelled lines. When the labelled lines per fold were thinned from 103 to 25, the
 PCA arm lost \CurveGainPca{} and the scGPT arm \CurveGainScgpt{}, and the difference between the arms was
 $+\CurveMarginLo$ at 25 and $+\CurveMarginHi$ at 103 lines, the two lying within each other's seed band
-at 25 and 50 lines. Replacing the linear head by the
+at 25 and 50 lines. Label supply leaves every cell in the fold and in the per-fold PCA, so the second
+test, atlas size, removed whole lines instead: their cells left the folds and the PCA fitting set, so
+that PCA was refitted on a smaller atlas while scGPT stayed frozen. With \EtwoKeepMin{} lines kept both
+arms scored below zero (\EtwoPcaMin{} and \EtwoScgptMin{}). With \EtwoKeepA{}, \EtwoKeepB{} and all
+\NLinesCV{} lines, PCA led by $+\EtwoMarginA$, $+\EtwoMarginB$ and $+\EtwoMarginAll$.
+% (\code{scripts/evaluation/section\_e2\_smaller\_study.py}, \code{panel/panel\_curve\_e2.csv}) Replacing the linear head by the
 % (\code{panel\_curve\_summary.csv})
 $(\CfgHidA,\CfgHidB)$ trunk changed the PCA arm from \ArchLinPca{} to \ArchTrunkPca{} and the scGPT arm
 from \ArchLinScgpt{} to \ArchTrunkScgpt{}. The PCA input was about
@@ -268,7 +293,26 @@ highest-scoring configuration of Table~\ref{tab:sweep}.
 The input-dropout rate was varied last, because it is the one regulariser applied identically to
 inputs of different structure \cite{srivastava2014}. Over six rates the PCA arm varied by
 \DropRangePca{} and the scGPT arm by \DropRangeScgpt{}. The PCA arm scored \DropBestPca{} at rate 0.02
-and \DropShippedPca{} at the rate of \CfgInDrop{} used for all other results.
+and \DropShippedPca{} at the rate of \CfgInDrop{} used for all other results. Table~\ref{tab:capacity} lists both
+tests per arm. The trunk scored below the linear head in both arms, by more than the seed range in
+the scGPT arm, and over the six input-dropout rates the scGPT arm stayed within a range of
+\DropRangeScgpt{}, while the PCA arm was highest at the two lowest rates.
+
+\begin{table}[h]
+\caption{\textbf{Capacity and input-dropout tests.} Mean within-compound Spearman correlation of the
+per-cell model, mean over seeds 42--44 with the lowest and highest seed in brackets, five-fold CV over
+\NLinesCV{} lines and \NPanel{} compounds. All runs used the unweighted MSE objective, not the
+highest-scoring configuration of Table~\ref{tab:sweep}. Capacity: a linear head against the
+(\CfgHidA, \CfgHidB) trunk. Input dropout: the linear head at six rates. Rate \CfgInDrop{}, used for all
+other results, repeats the linear-head row.
+% Body generated by \code{docs/make\_figures.py} (\code{build\_capacity\_dropout\_table}) from
+% \code{panel/panel\_arch\_summary.csv} and \code{diagnostics/input\_dropout\_test.csv},
+% \code{input\_dropout\_sweep\_extra.csv}.
+}
+\label{tab:capacity}
+\centering
+\input{table_capacity_dropout}
+\end{table}
 
 The size of the gene set made no difference beyond fold-to-fold variation. Over five sizes from
 1{,}000 genes to the full transcriptome, the PCA arm's number of compounds beating their per-compound
@@ -291,8 +335,9 @@ chosen in the expectation that its embedding would carry less cell-line identity
 of the atlas gives (Figure~\ref{fig:umap}) and the variance ratio, computed on the model inputs,
 confirms. Its authors note that the current pretraining does not
 inherently mitigate batch effects \cite{scgpt}, so this reduction is an observation on this atlas, not a
-design property of the model. On this label it removes exactly the structure the label varies over. Four rival accounts are eliminated: the margin is larger with more labels than with few, which
-contradicts label starvation; capacity lowers both arms; rescaling the input left
+design property of the model. On this label it removes exactly the structure the label varies over. Five rival accounts are eliminated: the margin is larger with more labels than with few, which
+contradicts label starvation; the margin stays at the same level when PCA is refitted on a smaller
+atlas, wherever the model scores above zero, which contradicts adaptation to this atlas; capacity lowers both arms; rescaling the input left
 the epoch of best validation error almost unchanged, consistent with the Adam update underlying AdamW,
 whose step magnitudes are invariant to rescaling of the gradient \cite{kingma2015adam}, although
 rescaling the input is not the same as rescaling the gradient; and PCA stays ahead once fragility is removed. Eliminating rivals does not
@@ -302,6 +347,19 @@ margins are conservative with respect to input dropout \cite{srivastava2014}, si
 the scGPT arm. This is a statement about evaluation design --- a representation
 that carries less cell-line identity on this atlas, scored on a label that is defined per cell line ---
 not about scGPT in general.
+
+\paragraph{Relation to previous work.} The ordering agrees with the zero-shot evaluation of
+Kedzierska et al., in which frozen scGPT and Geneformer embeddings separated known cell types worse
+than a selection of highly variable genes, and the highly variable genes outperformed both models on all
+metrics, although the datasets resembled those used in pretraining \cite{kedzierska2025}. Here, too, the
+frozen scGPT embedding fell behind a reduction of highly variable genes, on a different task and at a
+different granularity, the cell line rather than the cell type. A property of scGPT's pretraining
+offers a further account that this work did not test. Its corpus consists of human cells under normal,
+non-disease conditions, so cancer cell lines were not among them \cite{scgpt}. Both foundation models
+were designed to be fine-tuned towards downstream tasks with limited task-specific data, and scGPT's
+reported results on cell type annotation, batch integration and perturbation prediction were obtained
+after fine-tuning \cite{scgpt,theodoris2023}. This work therefore tests the zero-shot use of the
+embedding, not the use its authors intended, which is the limitation stated below.
 
 \paragraph{How much the representations were allowed to see.} The HVG selection, the per-gene standardisation and the PCA rotation were decided together because they
 pose one question: how much a fit may see \cite{dreval}. Selecting genes per fold would have produced five gene sets, so comparisons across folds,
@@ -318,7 +376,8 @@ fitted on this atlas while scGPT is frozen, so the comparison is not like-for-li
 adaptation to the data.
 
 \paragraph{Only one representation is fitted on this atlas.} PCA is fitted on these cells and scGPT is
-frozen, so the comparison is not like-for-like with respect to adaptation, and the direct test of the
+frozen, so the comparison is not like-for-like with respect to adaptation. The atlas-size test shows
+that PCA's lead does not depend on how many cells it is fitted on, but the direct test of the
 granularity account, fine-tuning scGPT on the task, has not been run \cite{scgpt}.
 
 \subsection{Heterogeneity learned by a single-cell model}
@@ -377,6 +436,17 @@ chance (0.5). A value near 1 or 0 means the two populations are ranked apart. Me
 \label{fig:q2instrument}
 \end{figure}
 
+The MIL model was also scored like the per-cell model, on the mean prediction of each line. At the
+same density exponent and loss ($\alpha = 0.5$, MSE), it scored \MilScorePca{} for PCA against
+\SwPcaMseHalf{} for the per-cell model, and \MilScoreScgpt{} for scGPT against \SwScgptMseHalf{}. The bag
+objective thus lowered the PCA arm and raised the scGPT arm, and the margin between the arms fell from
+$+\MilMarginPercell$ to $+\MilMarginBag$. Splitting each compound's held-out lines at the median of the
+per-cell model's within-line spread, the MIL model's gain over the per-cell model was \MilGapLowPca{}
+in the low-spread half and \MilGapHighPca{} in the high-spread half for PCA, and \MilGapLowScgpt{} and
+\MilGapHighScgpt{} for scGPT.
+% (\code{panel/panel\_metrics.csv}, \code{diagnostics/mil\_by\_within\_line\_spread.csv},
+% \code{scripts/evaluation/mil\_within\_line\_test.py})
+
 \paragraph{Discussion.} The question remains open. The MIL model
 separates a line's cells reproducibly and not as a sequencing artefact, but it does not separate two
 lines known to differ: its positive control is barely above chance, so the instrument cannot carry a
@@ -396,6 +466,22 @@ the program score itself barely tracked sequencing depth within a line ($\rho = 
 This bears neither on predictive performance, because the scores are computed on line means, nor on
 drug response, because the positive control did not show that the model detects known differences in
 response.
+
+\paragraph{Relation to previous work.} The two prior methods closest to this work also evaluated
+per-cell predictions through labels or outcomes defined for groups of cells. scDEAL scored its
+predictions against binary labels that, in most of the original studies, were assigned to whole groups
+of cells by their treatment condition \cite{scdeal}. PERCEPTION, on the same atlas, scored a line by the
+mean of its cells' predictions and evaluated clone-level summaries against the response of patients
+\cite{perception}. The positive control here follows the same logic, a ground truth defined for groups
+of cells. Its pairs of lines were taken from the lowest quartile of each compound's pairwise response
+differences (Section~\ref{sec:mil}), so it tests the smallest differences in response. Whether the
+model detects larger differences was not tested.
+
+\paragraph{Why the bag objective moves the arms apart is unexplained.} One account was that a per-cell
+objective treats within-line variation as noise, that scGPT carries more of it, and that pooling into a
+bag removes exactly that. It predicted a larger gain where the within-line spread is larger. The gain
+was smaller in the high-spread half for both arms, so the account is refuted, and why the bag objective
+raises the scGPT arm and lowers the PCA arm remains open.
 
 \paragraph{Design of the MIL model.} A variance term in the loss was rejected
 because it would make the spread criterion pass by construction and change objective and architecture at

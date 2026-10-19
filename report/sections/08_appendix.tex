@@ -1,0 +1,47 @@
+\appendix
+\section{Implementation details}
+\label{app:implementation}
+
+This appendix holds the implementation details behind three steps of Section~\ref{sec:methods}. They
+are needed to reproduce the analysis but not to follow its results.
+
+\subsection{Compound identifier resolution}
+\label{app:ids}
+
+Matching the approval list to the screen was not done on names, because approval lists use
+international nonproprietary names, often of salts, while screens use development codes and free bases.
+In addition, CTRPv2's compound annotation \cite{ctrpv2} and DrEval's response file \cite{dreval} name
+\NameMismatch{} of the \NDrugs{} compounds differently, \NameMismatchFda{} of them approved or clinical. Four keys were therefore
+tried and the successful one recorded per compound: both name spaces, the PubChem compound identifier,
+and PubChem's parent-compound relation \cite{pubchem}, which links a salt to the dissolved free base and
+alone accounted for \NParentMatch{} matches, among them imatinib and doxorubicin. The two internal files were joined
+on the screen's own compound identifier, which matched all \NDrugs{}. Cisplatin required one explicit
+correction: it is recorded under a non-standard name with a structure identifier for elemental
+platinum, and was resolved on the screen's recorded structure and vendor entry.
+
+\subsection{Gene symbols and the scGPT vocabulary}
+\label{app:hgnc}
+
+scGPT matches genes to its vocabulary by symbol, and the expression matrix carries an older annotation of
+the HUGO Gene Nomenclature Committee (HGNC) than the vocabulary \cite{hgnc}. Renamed genes would therefore
+have been discarded although the vocabulary holds them under their current name: \NRescuedHvg{} genes of
+the \NHvg-gene variant and \NRescuedAll{} of the full-transcriptome variant, the latter carrying
+\PctRescuedAll\,\% of each cell's transcriptome, and because of the per-cell binning every remaining gene
+would have shifted bin as well. The conversion step therefore recorded each gene's current HGNC symbol,
+and the embedding step used it where the distributed symbol is not in the vocabulary, which raised the
+\NHvg-gene variant from \NVocabDirect{} to \NVocab{} embedded genes.
+
+\subsection{Confound covariates and cached fits}
+\label{app:confounds}
+
+The adjusted $R^2$ was used because the unadjusted one is biased upward by the number of covariates by an
+amount that shrinks with the number of cells, so one bar would differ between a line of \CellsMin{} cells and one
+of \CellsMax{}. On simulated predictions unrelated to the covariates the unadjusted value read about 19\,\%
+and the adjusted about $-1\,\%$. Depth and mitochondrial fraction cannot be computed from the CPM matrix,
+from which library size has been divided out and in which only four of 13 mitochondrial genes are
+HVGs, so both were computed from the study's unnormalised UMI matrix over all genes: a total over HVGs
+alone is depth multiplied by a biological share, and a confounder carrying the signal under test could
+veto a true positive \cite{scp542,luecken2019}.
+The per-fold standardisation and PCA fits of Section~\ref{sec:representations} were cached per run,
+keyed by the reproducible fold assignment, in single precision like the all-cells decomposition, which
+was kept for description only.

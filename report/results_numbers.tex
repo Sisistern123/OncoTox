@@ -346,6 +346,19 @@
 \newcommand{\QProgDegraScgpt}{-0.225}        % median within-line rho, prediction vs program
 \newcommand{\QProgDegraScgptPartial}{-0.181} % same, mitochondrial fraction controlled
 \newcommand{\QProgDegraDepth}{0.076}         % median within-line rho, program score vs total UMIs
+% --- E2, the smaller-study test (19.10.2026): panel/panel_curve_e2.csv, mean over seeds 42-44,
+%     linear head, alpha = 0, mse (scripts/evaluation/section_e2_smaller_study.py).
+\newcommand{\EtwoKeepMin}{31}  \newcommand{\EtwoKeepA}{62}  \newcommand{\EtwoKeepB}{94}
+\newcommand{\EtwoPcaMin}{-0.051}     \newcommand{\EtwoScgptMin}{-0.053}
+\newcommand{\EtwoMarginA}{0.035}     \newcommand{\EtwoMarginB}{0.028}  \newcommand{\EtwoMarginAll}{0.034}
+% --- the MIL model's line-level score (19.10.2026): panel/panel_metrics.csv, alpha 0.5, mse, mean over
+%     seeds; the per-cell values at the same setting are \SwPcaMseHalf and \SwScgptMseHalf.
+\newcommand{\MilScorePca}{0.244}     \newcommand{\MilScoreScgpt}{0.218}
+\newcommand{\MilMarginPercell}{0.083} \newcommand{\MilMarginBag}{0.026}
+% --- diagnostics/mil_by_within_line_spread.csv: MIL minus per-cell, lines split per drug at the median
+%     of the per-cell model's within-line spread (scripts/evaluation/mil_within_line_test.py).
+\newcommand{\MilGapLowPca}{0.000}    \newcommand{\MilGapHighPca}{-0.032}
+\newcommand{\MilGapLowScgpt}{0.059}  \newcommand{\MilGapHighScgpt}{0.020}
 
 % =============================================================================
 % WITHDRAWN 12.08.2026 -- every macro carrying a MODEL RESULT has been removed.
