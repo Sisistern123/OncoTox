@@ -43,6 +43,14 @@
   note    = {Source of the SCP542 single-cell atlas used as model input}
 }
 
+@misc{scp542_portal,
+  author       = {{Broad Institute Single Cell Portal}},
+  title        = {Study {SCP542}: pan-cancer cell line heterogeneity},
+  howpublished = {\url{https://singlecell.broadinstitute.org/single_cell/study/SCP542/pan-cancer-cell-line-heterogeneity}},
+  note         = {Processed matrix \texttt{CPM\_data.txt}; retrieved 30.03.2026},
+  year         = {2020}
+}
+
 @article{ctrpv2,
   author  = {Seashore-Ludlow, Brinton and others},
   title   = {Harnessing connectivity in a large-scale small-molecule sensitivity dataset},
@@ -51,6 +59,7 @@
   number  = {11},
   pages   = {1210--1223},
   year    = {2015},
+  doi     = {10.1158/2159-8290.CD-15-0235},
   note    = {CTRPv2 sensitivity landscape; the source of the drug-response labels}
 }
 
@@ -61,12 +70,13 @@
   volume  = {12},
   pages   = {109--116},
   year    = {2016},
+  doi     = {10.1038/nchembio.1986},
   note    = {CTRPv2 companion analysis: which compounds are predictable from basal expression}
 }
 
 @misc{prism,
   author       = {{DepMap, Broad Institute} and Kocak, Mustafa},
-  title        = {{PRISM} Repurposing Public 24{Q}2},
+  title        = {Repurposing Public 24{Q}2},
   howpublished = {figshare dataset},
   year         = {2024},
   doi          = {10.6084/m9.figshare.25917643.v1}
@@ -76,7 +86,23 @@
   author       = {{Wellcome Sanger Institute}},
   title        = {Genomics of Drug Sensitivity in Cancer ({GDSC}) and Cell Model Passports},
   howpublished = {\url{https://cellmodelpassports.sanger.ac.uk/downloads}},
+  note         = {{GDSC2} release of 27 October 2023 (\texttt{GDSC2\_fitted\_dose\_response\_27Oct23.xlsx});
+                  retrieved 26.03.2026},
   year         = {2023}
+}
+
+% Resource paper for GDSC (metadata checked against Crossref 19.10.2026; the NAR database issue is
+% volume 41, 2013, published online November 2012).
+@article{gdsc_yang2013,
+  author  = {Yang, Wanjuan and Soares, Jorge and Greninger, Patricia and others},
+  title   = {Genomics of Drug Sensitivity in Cancer ({GDSC}): a resource for therapeutic biomarker
+             discovery in cancer cells},
+  journal = {Nucleic Acids Research},
+  volume  = {41},
+  number  = {D1},
+  pages   = {D955--D961},
+  year    = {2013},
+  doi     = {10.1093/nar/gks1111}
 }
 
 % ---------------------------------------------------------------------------------------------------
@@ -136,6 +162,21 @@
   doi     = {10.1038/s41592-024-02201-0}
 }
 
+% Code-only details of the embedding routine (unit-length normalisation, 51 bin values with 0 reserved
+% for zero, a 1,200-token sequence that includes <cls>, binning before random gene sampling) are not in
+% the paper; checked 19.10.2026 in scgpt/tasks/cell_emb.py (embed_data, get_batch_cell_embeddings),
+% scgpt/data_collator.py (n_bins=51, keep_first_n_tokens=1, _sample) and scgpt/preprocess.py (binning).
+% The checkout that produced the embeddings carries one uncommitted change to cell_emb.py:
+% num_workers=min(len(os.sched_getaffinity(0)), batch_size) -> num_workers=0 (os.sched_getaffinity does
+% not exist on macOS); it changes data loading only, not what is computed. pyproject.toml and
+% poetry.lock are also modified locally (dependency versions).
+@misc{scgpt_code,
+  author       = {Cui, Haotian and others},
+  title        = {{scGPT}: software repository},
+  howpublished = {\url{https://github.com/bowang-lab/scGPT}, commit \texttt{05a7c94} (12.11.2025)},
+  year         = {2025}
+}
+
 @article{perception,
   author  = {Sinha, Sanju and others},
   title   = {{PERCEPTION} predicts patient response and resistance to treatment using single-cell
@@ -155,9 +196,14 @@
   volume  = {17},
   pages   = {4238},
   year    = {2026},
-  note    = {Software: \texttt{drevalpy} v1.5.1}
+  doi     = {10.1038/s41467-026-72903-w},
+  note    = {Software used here: \texttt{drevalpy} v1.5.1; the paper archives v1.4.1}
 }
 
+% Density weighting (corrected 19.10.2026). The project's weight is p^(-alpha): alpha = 1 and 0.5 are
+% DIR's inverse (INV) and square-root inverse (SQINV) label-density weightings. DenseWeight is NOT the
+% source of alpha -- its weight is linear in the density, max(1 - alpha*p'(y), eps). Until 19.10.2026
+% its note here read "Source of the compression exponent used in the sample weighting", which was wrong.
 @inproceedings{dir,
   author    = {Yang, Yuzhe and Zha, Kaiwen and Chen, Ying-Cong and Wang, Hao and Katabi, Dina},
   title     = {Delving into deep imbalanced regression},
@@ -176,8 +222,7 @@
   volume  = {110},
   pages   = {2187--2211},
   year    = {2021},
-  doi     = {10.1007/s10994-021-06023-5},
-  note    = {Source of the compression exponent used in the sample weighting}
+  doi     = {10.1007/s10994-021-06023-5}
 }
 
 @inproceedings{kendall,
@@ -348,7 +393,7 @@
 }
 
 @article{skinner_abcb1,
-  author  = {Skinner, Katharine T. and Palkar, Anagha M. and Hong, Andrew L.},
+  author  = {Skinner, Katie T. and Palkar, Antara M. and Hong, Andrew L.},
   title   = {Genetics of {ABCB1} in cancer},
   journal = {Cancers},
   volume  = {15},
@@ -375,12 +420,96 @@
 @article{scdeal,
   author  = {Chen, Junyi and Wang, Xiaoying and Ma, Anjun and Wang, Qi-En and Liu, Bingqiang and
              Li, Lang and Xu, Dong and Ma, Qin},
-  title   = {Deep transfer learning of drug sensitivity by integrating bulk and single-cell {RNA}-seq data},
+  title   = {Deep transfer learning of cancer drug responses by integrating bulk and single-cell {RNA}-seq data},
   journal = {Nature Communications},
   volume  = {13},
   pages   = {6494},
   year    = {2022},
   doi     = {10.1038/s41467-022-34277-7}
+}
+
+% Literature context for the introduction (added 19.10.2026; metadata checked against Crossref,
+% claims against the Europe PMC abstracts).
+@article{costello2014,
+  author  = {Costello, James C. and others},
+  title   = {A community effort to assess and improve drug sensitivity prediction algorithms},
+  journal = {Nature Biotechnology},
+  volume  = {32},
+  number  = {12},
+  pages   = {1202--1212},
+  year    = {2014},
+  doi     = {10.1038/nbt.2877}
+}
+
+@article{partin2023,
+  author  = {Partin, Alexander and Brettin, Thomas S. and Zhu, Yitan and Narykov, Oleksandr and
+             Clyde, Austin and Overbeek, Jamie and Stevens, Rick L.},
+  title   = {Deep learning methods for drug response prediction in cancer: Predominant and emerging
+             trends},
+  journal = {Frontiers in Medicine},
+  volume  = {10},
+  pages   = {1086097},
+  year    = {2023},
+  doi     = {10.3389/fmed.2023.1086097}
+}
+
+@article{theodoris2023,
+  author  = {Theodoris, Christina V. and others},
+  title   = {Transfer learning enables predictions in network biology},
+  journal = {Nature},
+  volume  = {618},
+  pages   = {616--624},
+  year    = {2023},
+  doi     = {10.1038/s41586-023-06139-9}
+}
+
+@article{srivatsan2020,
+  author  = {Srivatsan, Sanjay R. and others},
+  title   = {Massively multiplex chemical transcriptomics at single-cell resolution},
+  journal = {Science},
+  volume  = {367},
+  number  = {6473},
+  pages   = {45--51},
+  year    = {2020},
+  doi     = {10.1126/science.aax6234}
+}
+
+@misc{tahoe100m,
+  author       = {Zhang, Jesse and others},
+  title        = {{Tahoe-100M}: A Giga-Scale Single-Cell Perturbation Atlas for Context-Dependent
+                  Gene Function and Cellular Modeling},
+  howpublished = {bioRxiv preprint},
+  year         = {2025},
+  doi          = {10.1101/2025.02.20.639398}
+}
+
+@article{rabik2007,
+  author  = {Rabik, Cara A. and Dolan, M. Eileen},
+  title   = {Molecular mechanisms of resistance and toxicity associated with platinating agents},
+  journal = {Cancer Treatment Reviews},
+  volume  = {33},
+  number  = {1},
+  pages   = {9--23},
+  year    = {2007},
+  doi     = {10.1016/j.ctrv.2006.09.006}
+}
+
+@inproceedings{kingma2015adam,
+  author    = {Kingma, Diederik P. and Ba, Jimmy},
+  title     = {Adam: A method for stochastic optimization},
+  booktitle = {3rd International Conference on Learning Representations (ICLR)},
+  year      = {2015},
+  note      = {arXiv:1412.6980}
+}
+
+@article{kedzierska2025,
+  author  = {Kedzierska, Kasia Z. and Crawford, Lorin and Amini, Ava P. and Lu, Alex X.},
+  title   = {Zero-shot evaluation reveals limitations of single-cell foundation models},
+  journal = {Genome Biology},
+  volume  = {26},
+  pages   = {101},
+  year    = {2025},
+  doi     = {10.1186/s13059-025-03574-x}
 }
 
 @inproceedings{lin2017focal,
@@ -391,11 +520,21 @@
   pages     = {2980--2988},
   year      = {2017},
   doi       = {10.1109/ICCV.2017.324},
-  note      = {Section 4.1, ``prior'' initialization: the final layer's bias is set from the base
-               rate so that early training is not spent moving the output to the marginal level.
-               Cited here for that practice only --- it is done there for a class prior under a
-               classification loss, and the analogue used in this work is a per-drug regression
-               mean}
+  note      = {Section 3.3 (and 4.1): the final layer's bias is set from a fixed prior,
+               $\pi = 0.01$ for the rare class, to stabilise early training. Cited by analogy only:
+               the prior there is a fixed value under a classification loss, not an empirical base
+               rate, and the analogue used in this work is a per-compound regression mean}
+}
+
+@article{hanley1982,
+  author  = {Hanley, James A. and McNeil, Barbara J.},
+  title   = {The meaning and use of the area under a receiver operating characteristic ({ROC}) curve},
+  journal = {Radiology},
+  volume  = {143},
+  number  = {1},
+  pages   = {29--36},
+  year    = {1982},
+  doi     = {10.1148/radiology.143.1.7063747}
 }
 
 @inproceedings{loshchilov2019adamw,
@@ -423,9 +562,11 @@
   pages     = {38--45},
   year      = {2020},
   doi       = {10.18653/v1/2020.emnlp-demos.6},
-  note      = {Cited as the source of a software convention rather than a result: this library's
-               \texttt{Trainer.create\_optimizer} exempts parameters matching \texttt{bias} and
-               \texttt{LayerNorm.weight} from weight decay, which is the grouping this work adopts}
+  note      = {Cited as the source of a software convention rather than a result; the paper does
+               not describe it. The library's trainer exempts biases and layer-normalisation weights
+               from weight decay (\texttt{Trainer.get\_decay\_parameter\_names}, v4.48.1: every
+               \texttt{nn.LayerNorm} parameter and every parameter named \texttt{bias}), which is the
+               grouping this work adopts}
 }
 
 % ---------------------------------------------------------------------------------------------------
@@ -499,6 +640,7 @@
   number  = {6},
   pages   = {e8746},
   year    = {2019},
+  doi     = {10.15252/msb.20188746}
 }
 
 @article{jolliffe2016,
@@ -524,6 +666,7 @@
   volume  = {8},
   pages   = {14049},
   year    = {2017},
+  doi     = {10.1038/ncomms14049}
 }
 
 @article{bayer2023curvecurator,
@@ -533,6 +676,7 @@
   volume  = {14},
   pages   = {7902},
   year    = {2023},
+  doi     = {10.1038/s41467-023-43696-z}
 }
 
 @article{haibekains2013,
@@ -551,6 +695,7 @@
   volume  = {11},
   pages   = {5},
   year    = {2010},
+  doi     = {10.1186/1471-2202-11-5}
 }
 
 @article{spearman1904,
