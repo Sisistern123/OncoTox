@@ -16,11 +16,12 @@ The highest-scoring configuration reached \SpBest{}, ranging from \SpDrugLo{} to
 compounds and tracking the share of flat dose--response curves. A ridge regression on cell-line means
 reached \RidgePca{}, and a per-compound random forest matched the model on the DrEval benchmark; over all
 \NDrugsModelled{} compounds the score fell to \SpAllDrugs{}, at most \NullGainMax{} above a per-compound
-constant, and about a fifth of the ranking was general cell-line fragility. PCA led scGPT in all six
-loss and weighting configurations, and before any training it carried more between-line structure
-(between-to-within variance ratio \BtwRatioPca{} against \BtwRatioScgpt{}). The label thus sits at the
-granularity a foundation-model embedding is built to suppress, a statement about evaluation design
-rather than about scGPT. Whether heterogeneity is learned remains open: a multiple-instance model
+constant, and about a fifth of the ranking was general cell-line fragility. Response is thus predictable,
+but modestly, unevenly across compounds, and not demonstrably from single cells. scGPT was viable, but
+PCA led it in all six loss and weighting configurations, and before any training PCA carried more
+between-line structure (between-to-within variance ratio \BtwRatioPca{} against \BtwRatioScgpt{}). The
+leading account is that the label sits at the granularity a foundation-model embedding is built to
+suppress, a statement about evaluation design rather than about scGPT. Whether heterogeneity is learned remains open: a multiple-instance model
 separated a line's cells but not two lines known to differ. The binding constraint is the supply and
 quality of labels, not model capacity.
 \end{abstract}
