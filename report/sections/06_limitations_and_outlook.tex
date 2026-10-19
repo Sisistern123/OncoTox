@@ -2,22 +2,24 @@
 \label{sec:limitations}
 
 The conclusions of Section~\ref{sec:discussion} hold within the limits listed first; the outlook then
-names the steps that follow from them \cite{dreval}.
+names the steps that follow from them.
 
 \subsection{Limitations}
 
 Six limitations bound the claims, each traceable to a choice or a property of the data described in
-Section~\ref{sec:data}--\ref{sec:mil} \cite{dreval,lazic2010}.
+Section~\ref{sec:data}--\ref{sec:mil}.
 
 \paragraph{About \NLinesCV{} independent labels, not \NCells{} cells.} Every uncertainty in this report is
-governed by the number of cell lines (Section~\ref{sec:data}), and the work covers one database, one
-response score and \NPanel{} compounds; cross-database integration, toxicity and leave-tissue-out or
-leave-drug-out evaluation are not attempted \cite{dreval,lazic2010}.
+governed by the number of cell lines (Section~\ref{sec:data}) \cite{lazic2010}, and the work covers
+one database, one response score and \NPanel{} compounds; cross-database integration, toxicity and
+leave-tissue-out or leave-drug-out evaluation \cite{dreval} are not attempted.
 
 \paragraph{One label in nine comes from a flat curve, and all labels are weighted alike.} The objective
-gives a flat curve the same weight as a well-determined one. Propagating CurveCurator's fit uncertainty
-into the loss as an inverse-variance weight, alongside the density weight, would let the model discount
-such labels; it has not been done \cite{bayer2023curvecurator,haibekains2013}.
+gives a flat curve the same weight as a well-determined one. Weighting each label by the quality of its
+fit, for example by the $p$-value or $F$-statistic CurveCurator reports per curve
+\cite{bayer2023curvecurator}, alongside the density weight, would let the model discount such labels;
+CurveCurator reports no per-curve variance, so an inverse-variance weight would first need one. This
+has not been done \cite{haibekains2013}.
 
 \paragraph{LCO only.} The fragility channel is invisible under the protocol used, and whether the model
 clears a baseline that can use it would require retraining under an LPO split \cite{dreval}.
@@ -27,12 +29,14 @@ frozen, so the comparison is not like-for-like with respect to adaptation, and t
 granularity account, fine-tuning scGPT on the task, has not been run \cite{scgpt}.
 
 \paragraph{The heterogeneity instrument is barely above chance.} A negative answer to the third question
-would be uninformative, and no per-cell response or post-treatment single-cell profile exists to validate
-a positive one \cite{scp542,mannwhitney1947}.
+would be uninformative, and little exists to validate a positive one: the only response measurement
+below the line level for this atlas is the source study's drug screen of sorted subpopulations of two
+head and neck cancer lines \cite{scp542}, and post-treatment single-cell profiles exist for other lines
+and compounds \cite{srivatsan2020,tahoe100m} but carry no per-cell response label.
 
 \paragraph{Untuned training hyperparameters.} The learning rate, gradient-clipping threshold, scheduler
 patience and factor, early-stopping patience and the batch size of 128 cells are conventional defaults
-from the first prototype, neither sourced nor varied \cite{loshchilov2019adamw,prechelt1998}. The learning
+from the first prototype, neither sourced nor varied. The learning
 rate sets where training peaks and the patience when each run ends, and with about a hundred fitting lines
 per fold the batch size may be large relative to the number of independent labels. They were left
 unchanged rather than chosen after the results were visible, so the comparison is fair, applied
@@ -43,7 +47,7 @@ same cells was never committed.
 \subsection{Outlook}
 
 The next steps address the label bottleneck, the model's objective and the third research question, in
-that order of directness \cite{dreval,scdeal}.
+that order of directness.
 
 \paragraph{MIL as the primary model, with a ranking loss.} A model trained on bags of a line's cells
 leaves each cell free to differ (Equation~\ref{eq:mil-decomposition}), and since the metric ranks lines
@@ -54,19 +58,19 @@ within a compound, a ranking loss would align the objective with what is scored
 against the \NLines{} here, so labels exist and single-cell expression is what is missing
 \cite{ctrpv2,scdeal}. Pretraining on bulk expression and aligning bulk and single-cell spaces by domain
 adaptation addresses that gap \cite{scdeal,ganin2015}; the most direct form is to apply PERCEPTION's
-bulk-pretrained pipeline to single cells as a feature extractor beside PCA and scGPT \cite{perception}.
+bulk-pretrained response models to these cells and compare their predictions with those from the two
+representations here \cite{perception}.
 
 \paragraph{Fine-tuning scGPT, given more data.} Fine-tuning tests whether the ordering against PCA
 reverses once the encoder may keep line identity, but on about \NLinesCV{} labels a fine-tuned encoder
-may memorise them, so it follows the previous step \cite{scgpt}.
+may memorise them, so it follows the previous step.
 
 \paragraph{Explicit explainability of heterogeneity.} The question could be reframed from implicit
 learning to explicit explanation: identifying the subpopulations within cell lines that drive resistance
 and relating them to the recurrent heterogeneity programs annotated for this atlas \cite{scp542}.
 
 \paragraph{Missing controls.} Every comparison here is between two reductions of one matrix; a
-line-level model on the \NHvg{} selected genes alone would show whether either reduction helps at all
-\cite{hoerl1970}. Division rate is a further bias to extract, as fragility is: a 72-hour viability assay
+line-level model on the \NHvg{} selected genes alone would show whether either reduction helps at all. Division rate is a further bias to extract, as fragility is: a 72-hour viability assay
 confounds compound effect with proliferation \cite{hafner}, and an earlier test against the dataset's
 cell-cycle scores, negative but run on a since-retired target, used a snapshot rather than a rate, so
 measured doubling times are the open version. The input-dropout rate could be matched in effect rather

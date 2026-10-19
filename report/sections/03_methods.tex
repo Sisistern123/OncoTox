@@ -41,7 +41,7 @@ types. Of CTRPv2's
 \NDrugs{} compounds, \NDrugsModelled{} entered the target matrix; the other eleven had been screened
 against fewer than \NCovMinLines{} of the overlapping lines. That cut kept output heads with almost no support out of
 the shared model, but the threshold of \NCovMinLines{} was set rather than derived, follows no published convention
-and was not varied, so its effect is unmeasured \cite{dreval}.
+and was not varied, so its effect is unmeasured.
 
 SCP542 is distributed after the source study's own quality control, and no cell-level filtering was
 added here \cite{scp542}. Cells had been profiled in \NPools{} multiplexed pools on the 10x Chromium
@@ -56,7 +56,7 @@ carry; an expression-based pass would remove genuine cells at the margins withou
 signal \cite{scp542,luecken2019}. Two consequences were accepted: any statement about heterogeneity
 concerns cells inside that window, which excludes states of low transcript content such as quiescent
 cells near its floor; and the \NLines{} labelled lines, not the \NCtrpLines{} lines the screen covers,
-bound the sample \cite{scp542,ctrpv2}.
+bound the sample \cite{scp542,dreval}.
 
 The source study centres expression before its own analyses, and neither of its two forms was adopted
 \cite{scp542}. Centring each gene across all cells is subsumed by the per-gene standardisation below.
@@ -68,21 +68,22 @@ question, and the point to revisit it is a model that pools a line's cells
 
 Because the label is defined per cell line and compound, all cells of a line carry the same value and
 are pseudo-replicates \cite{lazic2010}. The effective sample size was therefore taken to be the number of
-cell lines inside the cross-validation (CV), \NLinesCV{}, not \NCells{} cells; treating cells as independent
-would understate every uncertainty by roughly the square root of the number of cells per line
-\cite{lazic2010,dreval}.
+cell lines inside the cross-validation (CV), \NLinesCV{}, not \NCells{} cells \cite{lazic2010,dreval}.
+Treating cells as independent would understate every uncertainty by roughly the square root of the
+number of cells per line, since a standard error shrinks with the square root of the number of
+observations and the cells of a line add observations without adding information.
 
 \subsection{Compound panel selection}
 \label{sec:panel}
 
 The compounds a multi-task model predicts determine what its scores mean, so the panel was selected
-without reference to the response values the model is trained on \cite{dreval}. Two earlier panels of
+without reference to the response values the model is trained on. Two earlier panels of
 this project had been selected on those values and were discarded: a gate requiring a compound to both
 kill and spare cell lines excluded every cytostatic agent by construction, because a compound that
-arrests rather than kills never crosses a viability threshold; and a literature panel inherited the same
+arrests rather than kills never crosses a viability threshold \cite{hafner}; and a literature panel inherited the same
 dependency because its candidates had been pre-ranked on that statistic. Selecting on the spread of
 one's own labels enriches for compounds that separate these particular lines, flatters every correlation
-measured on them, and reads labels of lines that are later held out \cite{dreval,hafner}.
+measured on them, and reads labels of lines that are later held out \cite{dreval}.
 
 The panel was defined by three conditions, of which only the second used the screen. First, the compound
 had to be approved by the U.S. Food and Drug Administration (FDA) for a cancer indication, according to
@@ -101,8 +102,8 @@ imatinib, sorafenib, dasatinib, erlotinib, crizotinib and afatinib among targete
 
 Matching the approval list to the screen was not done on names, because approval lists use
 international nonproprietary names, often of salts, while screens use development codes and free bases;
-in addition, the two CTRPv2 files that carry annotation and responses name \NameMismatch{} of the \NDrugs{}
-compounds differently, \NameMismatchFda{} of them approved or clinical \cite{ctrpv2,pubchem}. Four keys were therefore
+in addition, CTRPv2's compound annotation \cite{ctrpv2} and DrEval's response file \cite{dreval} name
+\NameMismatch{} of the \NDrugs{} compounds differently, \NameMismatchFda{} of them approved or clinical. Four keys were therefore
 tried and the successful one recorded per compound: both name spaces, the PubChem compound identifier,
 and PubChem's parent-compound relation \cite{pubchem}, which links a salt to the dissolved free base and
 alone accounted for \NParentMatch{} matches, among them imatinib and doxorubicin. The two internal files were joined
@@ -110,20 +111,24 @@ on the screen's own compound identifier, which matched all \NDrugs{}. Cisplatin 
 correction: it is recorded under a non-standard name with a structure identifier for elemental
 platinum, and was resolved on the screen's recorded structure and vendor entry.
 
-Platinum agents were represented once. Cisplatin and carboplatin share their carrier ligand, form the
-same adduct and are largely cross-resistant, so both would spend two of eleven positions on one
-resistance mechanism; oxaliplatin's adduct evades mismatch repair and is complementary, but its
-expression-level determinant is the least established of the three \cite{britten_ercc1,friboulet_ercc1}.
+Platinum agents were represented once. Cisplatin and carboplatin share a mechanism of action, form
+identical lesions on DNA and are fully cross-resistant \cite{rabik2007}, so both would spend two of eleven
+positions on one resistance mechanism. Oxaliplatin is not cross-resistant with them, and its cytotoxicity
+does not depend on mismatch repair \cite{rabik2007}, so it would have been complementary; that its
+expression-level determinant is the least established of the three is this project's reading, for which
+no source was found.
 Cisplatin was chosen, and its determinant is recorded as contested rather than supporting: ERCC1
-expression correlates with cisplatin resistance in cervical carcinoma lines \cite{britten_ercc1} but not
+mRNA expression, though not protein level, correlates with cisplatin resistance in cervical carcinoma
+lines \cite{britten_ercc1} but not
 across twenty lung cancer lines \cite{shimizu_ercc1}, plausibly because only one of four ERCC1 isoforms
 performs repair and assays cannot separate them \cite{friboulet_ercc1}. Gene-level features cannot
 represent that isoform, so poor performance on cisplatin was anticipated by the literature. It was kept
 rather than restricting the panel to settled determinants, which would bias the evaluation toward
 compounds whose answer is already known. For the same reason the evidence for doxorubicin and
-etoposide, both substrates of the ABCB1 efflux transporter, was recorded with its setting, and
-topoisomerase expression was not claimed as a determinant, since it does not track sensitivity where it
-was measured \cite{skinner_abcb1,omori_abcb1}.
+etoposide, both substrates of the ABCB1 efflux transporter \cite{skinner_abcb1}, was recorded with its
+setting, and topoisomerase expression was not claimed as a determinant, since TOP1 and TOP2A protein
+levels did not track sensitivity to etoposide or SN-38 across twelve small cell lung cancer lines
+\cite{omori_abcb1}; doxorubicin was not studied there.
 
 The availability of a half-maximal inhibitory concentration (IC50) was excluded as a criterion: an IC50 is
 undefined when a curve never crosses half-maximal viability, so its availability --- \PanelIcLo{} to \PanelIcHi{} lines
@@ -139,46 +144,51 @@ a data-quality rule \cite{hafner,dreval}.
 
 The target was the refitted AUC, the area under the dose--response curve (AUC) as re-fitted by DrEval
 from CTRPv2's raw measurements with CurveCurator \cite{dreval,bayer2023curvecurator}. The order of
-operations distinguishes it from CTRPv2's published AUC \cite{ctrpv2}: the standard procedure averages
-the replicate plates, normalises the averages and fits one curve, whereas DrEval normalises each plate
-to its own drug-free control wells and fits one curve through all of them. Since every plate has its own
-baseline, averaging first mixes two baselines and divides by neither \cite{dreval}. A higher value means
+operations distinguishes it from CTRPv2's published AUC: CTRPv2 averaged its duplicate measurements
+during normalisation \cite{ctrpv2}, as is standard practice, whereas DrEval normalises each replicate to
+its own drug-free control and fits one curve across all replicates, so that disagreement between
+replicates enters the fit and its quality control instead of being averaged away
+\cite{dreval,bayer2023curvecurator}. DrEval's refitted values were used here as published, without any
+further processing. A higher value means
 a less sensitive line, and 1.0 is the no-effect level; the median over all screened pairs of the
-\NDrugsModelled{} compounds was \AucMedian{}, so the typical pair barely responds. DrEval's target was preferred to CTRPv2's for
-three reasons: no normalisation was performed here, and the source was pinned to one Zenodo record,
-% (\code{scripts/layout.py})
-so the labels are version-fixed and re-derivable; it is defined for every
+\NDrugsModelled{} compounds was \AucMedian{}, so the typical pair barely responds. The AUC was used mainly for its coverage: it is defined for every
 curve, whereas the IC50 from the same fit is defined for only about \IcDefinedPct\,\%, missing mostly for compounds
-that arrest rather than kill; and it is the label the external benchmark scores against
-\cite{dreval,bayer2023curvecurator}.
+that arrest rather than kill \cite{dreval,bayer2023curvecurator}. Taking DrEval's reprocessing rather
+than CTRPv2's published values also meant that no normalisation was performed here, and the source was
+pinned to one Zenodo record,
+% (\code{scripts/layout.py})
+so the labels are version-fixed and re-derivable. DrEval itself predicts the logarithm of the IC50 by
+default; the AUC is one of the measures it provides \cite{dreval}.
 
 The response was used as published, without winsorisation or quality filter, as in the benchmark,
-which applies no clipping in order to remain comparable with earlier studies \cite{dreval}. No per-compound
+which applies no quality filter in order to remain comparable with earlier studies and to avoid data
+loss \cite{dreval}. No per-compound
 rescaling was applied either: where a compound's scale enters, it enters the objective as a weight
 (Section~\ref{sec:model}), so the quantity predicted and reported remains the published value. Pairs
 screened in more than one CTRPv2 experiment arrive as one curve fitted across their replicates; the
 pipeline dropped the exact duplicates this produced and raised an error on any pair that was not identical.
 % (\code{scripts/preprocessing/ctrp\_to\_h5ad.py})
 Label quality was read from the fit statistics that
-CurveCurator reports per curve, the coefficient of determination $R^2$ and the $p$-value of the fit
-against a no-effect null \cite{bayer2023curvecurator}; a curve with $p > 0.05$ is called \emph{flat}
-below.
+CurveCurator reports per curve: the $p$-value of the fit against a no-effect null, defined in its paper
+\cite{bayer2023curvecurator}, and the coefficient of determination $R^2$, which its output also reports.
+A curve with $p > 0.05$ is called \emph{flat} below; this threshold is the report's own, whereas
+CurveCurator's classification of curves also uses the effect size.
 
 \subsection{Representations}
 \label{sec:representations}
 
-SCP542 is distributed as counts per million (CPM), so library-size normalisation had already been
-applied once, to the full matrix, and was not repeated \cite{scp542}. For PCA, expression was transformed
+SCP542 is distributed as counts per million (CPM) \cite{scp542_portal}, so library-size normalisation
+had already been applied once, to the full matrix, and was not repeated. For PCA, expression was transformed
 as
 \begin{equation}
   E_{ij} = \log_2\!\left(1 + \mathrm{CPM}_{ij}/10\right),
   \label{eq:log}
 \end{equation}
-the quantification of the dataset's authors, who divide by ten because fewer than $10^5$ UMIs are
-detected per cell \cite{scp542}. A logarithm is needed because PCA weighs each gene by its absolute
-spread, so on the raw scale abundant housekeeping genes would dominate the leading components, whereas
-expression differences are multiplicative and the logarithm makes a fold change the same distance at any
-abundance \cite{luecken2019}. The \NHvg{} highly variable genes (HVGs) were selected on this matrix by
+the quantification of the dataset's authors, who divide by ten because on average fewer than $10^5$
+UMIs are detected per cell \cite{scp542}. A logarithm is used because expression differences are
+multiplicative and the logarithm makes a fold change the same distance at any abundance
+\cite{luecken2019}; on the raw scale, PCA, which weighs each gene by its absolute spread, would in
+addition be dominated by the most abundant genes. The \NHvg{} highly variable genes (HVGs) were selected on this matrix by
 the dispersion-based Seurat criterion \cite{satija2015,wolf2018scanpy}; each gene was standardised to
 zero mean and unit variance with $z$-scores clipped at \CfgZClip, and \NPca{} principal components were kept
 \cite{jolliffe2016}. The number \NPca{} was chosen to match
@@ -187,18 +197,19 @@ scGPT's embedding width, so that the comparison is at equal width; it is not a s
 
 scGPT is a transformer that reads a cell as a set of gene tokens with binned expression values and was
 pretrained on roughly 33 million human cells to predict masked expression values from the rest of the
-cell; the output at a dedicated cell token serves as a \NPca-dimensional, length-normalised cell
-embedding \cite{scgpt}. Cells were embedded with the cell-embedding routine distributed with scGPT, with
+cell; the output at a dedicated cell token serves as a \NPca-dimensional cell embedding \cite{scgpt},
+which the embedding routine normalises to unit length \cite{scgpt_code}. Cells were embedded with the cell-embedding routine distributed with scGPT, with
 the pretrained whole-human weights frozen.
 % entry point \code{embed\_data} (\code{scripts/preprocessing/gen\_embeds.py})
 Within that routine the only operation
-applied to expression was a binning of each cell into \CfgBins{} bins at quantiles of that cell's own non-zero
-values, and the model read at most \CfgMaxGenes{} genes per cell, drawn at random from its non-zero genes
-\cite{scgpt}. scGPT therefore received the same CPM matrix without logarithm or standardisation. This
+applied to expression was a binning of each cell's non-zero values at quantiles computed on that cell
+alone, into \CfgBins{} bin values of which one is reserved for zero, and the model read a sequence of at
+most \CfgMaxGenes{} tokens: the cell token and the cell's non-zero vocabulary genes, drawn at random when
+there are more \cite{scgpt,scgpt_code}. scGPT therefore received the same CPM matrix without logarithm or standardisation. This
 asymmetry is deliberate: binning is a rank transform within a cell, so any monotone per-cell
 transformation --- library-size division, logarithm, or both --- leaves every bin unchanged, and applying
 the PCA preprocessing to both arms would alter nothing scGPT sees while disguising that the two consume
-different information \cite{scgpt,luecken2019}. It also means the choice of source matrix is open only for
+different information \cite{scgpt}. It also means the choice of source matrix is open only for
 PCA: substituting the pre-quality-control UMI counts would change gene selection and the components but
 not the scGPT input.
 
@@ -215,16 +226,16 @@ and the embedding step used it where the distributed symbol is not in the vocabu
 The \NHvg-gene set was used throughout. A sweep over five gene-set sizes from 1{,}000 genes to the full
 transcriptome, all embedded with the same code, moved the PCA arm by \SweepRangePca{} compounds beating their per-compound
 baseline out of \NDrugsModelled{}, against a fold-to-fold standard deviation (SD) of \SweepFoldSd{}, and was flat
-within error for both representations
+within error for both representations.
 % (\code{notebooks/analysis/qc/verify\_variants.ipynb}, \S9)
-\cite{scgpt}. For scGPT the sweep compared selection rather than count: at \NHvg{} genes it read about
+For scGPT the sweep compared selection rather than count: at \NHvg{} genes it read about
 \GenesSeenHvg{} dispersion-selected genes per cell, in the full-transcriptome variant about \GenesSeenAll{} drawn at random
 under its cap, so the flat result shows only that twice as many random genes do no better than selected
 ones, not that scGPT gains nothing from the full transcriptome.
 
 Three quantities were estimated from data before training --- the HVG selection, the per-gene
 standardisation and the PCA rotation --- and none sees a label, but they were decided together because
-they pose one question: how much a fit may see \cite{luecken2019,dreval}. Gene selection used every
+they pose one question: how much a fit may see \cite{dreval}. Gene selection used every
 cell. Selecting per fold would have produced five gene sets, so comparisons across folds,
 representations and the gene-set sweep would differ in genes as well as cells; the lines without
 labels, about a ninth of the atlas, were kept in it, since they carry no label to leak, improve the
@@ -251,7 +262,7 @@ Both representations were fed into the same multilayer perceptron (MLP): input d
 % (\code{scripts/model/OncoMLP.py})
 trunk with $K$ heads was preferred to $K$ separate models because what a cell's representation must
 encode is largely shared across compounds, and separate models would relearn it from about \NLinesCV{} labels
-each \cite{scgpt}. Figure~\ref{fig:architecture} shows this network for one cell.
+each. Figure~\ref{fig:architecture} shows this network for one cell.
 
 \begin{figure}[t]
 \centering
@@ -296,16 +307,20 @@ within-compound, and on lines rather than cells because a line with \CellsMax{} 
 the density while one with \CellsMin{} barely registered. The cap $c = \CfgCap$ is a safety limit against a few extreme
 lines driving a fit over about \NLinesCV{} points; it is arbitrary and was held fixed, since sweeping it with
 $\alpha$ would confound the two. The exponent was not justified in advance but swept,
-$\alpha \in \{0, 0.5, 1\}$, where $\alpha = 0$ gives $w_j \equiv 1$
+$\alpha \in \{0, 0.5, 1\}$, where $\alpha = 0$ gives $w_j \equiv 1$, and $\alpha = 0.5$ and $\alpha = 1$ are
+the square-root inverse and inverse label-density weightings of \cite{dir}, here with a kernel density
+estimate in place of their smoothed histogram. DenseWeight \cite{denseweight}, a related scheme, weights
+linearly in the density rather than by a power and was not used.
 % (\code{scripts/training/density\_weighting.py})
-\cite{denseweight}. Two losses and three exponents gave six
+ Two losses and three exponents gave six
 configurations per representation.
 
 The response is not centred on zero, and its centre differs per compound, from \PanelMeanLo{} to
 \PanelMeanHi{} across the panel. A freshly initialised head predicts near zero and would spend its first
 epochs climbing to those levels, so that early stopping could select a checkpoint before any between-line
 structure was fitted. Each head's bias was therefore initialised at its compound's mean over the fold's
-fitting lines, standard practice for a base rate \cite{lin2017focal}; the weights remained random, so the
+fitting lines, by analogy with the prior initialisation of the output bias in focal-loss training,
+which sets it to a fixed class prior to stabilise early training \cite{lin2017focal}; the weights remained random, so the
 model did not start as a constant predictor.
 
 The optimiser was AdamW \cite{loshchilov2019adamw} with learning rate $10^{-3}$ and weight decay $0$,
@@ -315,8 +330,8 @@ improvement, and gradient clipping at norm \CfgClip \cite{pascanu2013}.
 Weight decay was zero because the inherited value had been chosen for Adam, which couples decay into the
 adaptive gradient, whereas AdamW applies it to the parameters directly, so the same coefficient means
 different things and no sourced value existed \cite{loshchilov2019adamw}; biases and normalisation
-parameters were nonetheless excluded from decay, following the \code{transformers} convention
-\cite{wolf2020transformers}, so that the question can later be settled by one coefficient. Early stopping
+parameters were nonetheless excluded from decay, following the convention of the \code{transformers}
+library's trainer \cite{wolf2020transformers}, so that the question can later be settled by one coefficient. Early stopping
 with patience \CfgPatience{} \cite{prechelt1998} restored the checkpoint of lowest error on an inner hold-out of
 \CfgHoldoutPct\,\% of each fold's training lines, grouped by line; measuring it on the
 % (\code{scripts/training/cv.py})
@@ -349,8 +364,8 @@ between compounds: pooled, the correlation is about \SpPooled{}, and a predictor
 compound's average response reaches \DrDrugMean{} \cite{dreval}. Line level and pooled folds were chosen
 over the alternatives because one point per line is one point per label, whereas cell-level scoring adds
 about \CellsPerLineMean{} points per label without independent information and weights lines by their cell count, which
-varies 36-fold; and per-fold correlations over about 30 lines each are biased upward, which was
-visible in every configuration \cite{spearman1904}. The
+varies 36-fold; and averaging per fold, over about 30 lines each, gave a higher score than pooling in every
+configuration and seed, so the pooled value is the more conservative of the two. The
 alternatives --- cell level, and per-fold averaging --- were computed for comparison.
 % (\code{panel\_aggregation\_comparison.csv})
 
@@ -359,8 +374,9 @@ The loss and weighting configurations were compared under a decision rule fixed 
 Four quantities were computed per compound and averaged:
 \emph{order}, the within-compound Spearman correlation; \emph{top of order}, the share of the \CfgTopK{} most
 sensitive lines that the model also ranks in its top \CfgTopK; \emph{values}, the MAE in the target's units;
-and \emph{spread}, the slope of a regression of truth on prediction, which is 1 for a calibrated model
-\cite{vancalster2016}. A challenger displaced the incumbent only if it was better on order and worse on
+and \emph{spread}, the slope of a regression of truth on prediction, which is 1 for a calibrated model, by analogy with the
+calibration slope of risk prediction models \cite{vancalster2016}. The decision rule itself is this
+project's and has no published source: a challenger displaced the incumbent only if it was better on order and worse on
 no other quantity by more than that quantity's own seed band, the half-range over the three seeds. The
 incumbent was the unweighted MAE configuration on PCA, after the initially designated unweighted MSE
 configuration proved the only one not reproducible across executions.
@@ -386,15 +402,18 @@ DrEval's leave-pairs-out (LPO) mode, in which held-out pairs belong to lines see
 for its baselines, which there include the tissue mean, to measure how much a line's average response alone predicts.
 % (\code{scripts/evaluation/dreval\_lpo.py})
 
-Since LCO cannot remove the cell-line effect, its share was measured directly on held-out labels. A
-line's fragility $f_i$ was defined as its mean response over the other ten panel compounds, so that the
-compound being scored never enters its own proxy, and for each compound the rank-partial correlation
+Since LCO cannot remove the cell-line effect \cite{dreval}, its share was measured directly on held-out
+labels. As a proxy for a line's general sensitivity, its fragility $f_i$ was defined here as its mean
+response over the other ten panel compounds, so that the compound being scored never enters its own
+proxy; this proxy is the project's own construction, not a published method. For each compound the
+partial correlation
 \begin{equation}
   \rho_{yp\cdot f} = \frac{\rho_{yp} - \rho_{yf}\,\rho_{pf}}{\sqrt{\left(1-\rho_{yf}^2\right)\left(1-\rho_{pf}^2\right)}}
   \label{eq:partial}
 \end{equation}
 was computed between truth $y$ and prediction $p$ with fragility $f$ controlled out, all quantities
-ranked \cite{spearman1904,dreval}.
+ranked: the standard first-order partial correlation applied to Spearman correlations
+\cite{spearman1904}.
 % (\code{scripts/evaluation/bias\_accounting.py})
 
 Four alternative explanations of a difference between the representations were tested on the same
@@ -423,7 +442,7 @@ $y$,
   \label{eq:mil-decomposition}
 \end{equation}
 an identity, since $\sum_c (p_c - \bar p) = 0$ removes the cross term. The per-cell loss, regrouped by
-line, is the left-hand side; a mean-pooled multiple-instance learning (MIL) model \cite{dietterich1997}
+line, is the left-hand side; a multiple-instance learning (MIL) model \cite{dietterich1997} with mean pooling
 minimises only the first term. The regrouping is valid because the loss is a sum over cells, and the
 density weight, a function of the label, is constant within a line. No hyperparameter reaches the second
 term; only removing it does. The architecture and the criterion below were fixed on 13.08.2026, before
@@ -447,7 +466,10 @@ which ranges from \CellsMin{} to \CellsMax{}, at the cost of one gradient step p
 mean of its cells' predictions, matching the label's definition. A variance term in the loss was rejected
 because it would make the spread criterion pass by construction and change objective and architecture at
 once; a maximum or quantile aggregator was rejected because it does not force variation either and does
-not match an averaged label \cite{ilse2018}. Mean pooling can be minimised by collapsing a bag onto its
+not match an averaged label. This departs from Ilse et al., who, for binary labels under the assumption
+that a bag is positive if any of its instances is, call the mean a poor pooling of instance scores
+\cite{ilse2018}; here the label is a continuous average over a line's cells, which the mean matches by
+definition. Mean pooling can be minimised by collapsing a bag onto its
 mean, which is why the criterion leads with a positive control; had the control failed, the aggregator
 was not to be exchanged for one that passes.
 
@@ -457,7 +479,7 @@ before training and failed only on collapse; its between-to-within ratio $(1-w)/
 \emph{positive control} mixed the cells of two lines whose response differs, taken from the lowest
 quartile of a compound's pairwise response differences, and measured the area under the receiver
 operating characteristic curve (AUROC) separating the two populations \emph{within} one bag --- the
-Mann--Whitney statistic divided by $n_A n_B$ \cite{mannwhitney1947} --- against a null from permuting the
+Mann--Whitney statistic divided by $n_A n_B$ \cite{mannwhitney1947,hanley1982} --- against a null from permuting the
 source labels within the bag. It was scored inside the bag because a bag-level score is reproduced
 exactly by a model that gives all cells the same value. The \emph{spread} stage required the within-line
 SD of MIL predictions to exceed that of the per-cell model, without margin, since

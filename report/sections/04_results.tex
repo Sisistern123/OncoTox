@@ -14,13 +14,13 @@ Table~\ref{tab:sweep} reports the score of every configuration, to establish whe
 predicts response and how the per-cell model compares with the ridge control; the focus is the PCA
 column, which holds both the highest score and the control. Rows are the six combinations of loss and
 density exponent $\alpha$ for the MLP, followed by the ridge regression on cell-line means; columns are
-the two representations, and the highest score is set in bold \cite{hoerl1970,denseweight}. All six PCA
+the two representations, and the highest score is set in bold \cite{hoerl1970,dir}. All six PCA
 configurations scored between \SpSweepLo{} and \SpBest{}, the highest score being reached with MAE and
 $\alpha = 0.5$, and the ridge regression scored \RidgePca{}. Under the decision rule no configuration
 displaced the incumbent, unweighted MAE at \SwPcaMaeZero{}: the \SpBest{} configuration was better on order
-but worse on values and spread by more than their seed bands
+but worse on values and spread by more than their seed bands.
 % (\code{panel\_metrics.csv})
-\cite{vancalster2016}. One configuration (PCA, MSE, $\alpha = 0$) differed between two identical
+One configuration (PCA, MSE, $\alpha = 0$) differed between two identical
 executions, \SwPcaMseZeroAlt{} against \SpSweepLo{}; the other thirteen entries agreed to four decimals.
 % (\code{panel\_execution\_band.csv})
 
@@ -54,7 +54,7 @@ Ridge (line means) & --- & \RidgePca & \RidgeScgpt \\
 
 Figure~\ref{fig:labelquality} breaks the highest-scoring configuration down by compound, to test
 whether the variation between compounds follows the quality of their labels; the focus is the relation
-between the two axes rather than any single compound \cite{bayer2023curvecurator}. Each point is one
+between the two axes rather than any single compound. Each point is one
 compound, placed by the share of its dose--response curves that are flat (logarithmic axis) and by its
 score; the compounds at the extremes and the exception are labelled in bold. Scores ranged from
 \SpDrugLo{} for cisplatin to \SpDrugHi{} for dasatinib, and the share of flat curves from $0$ to
@@ -118,7 +118,7 @@ compounds the score was \SpAllDrugs{}, at most \NullGainMax{} above a per-compou
 \subsection{scGPT against PCA}
 \label{sec:results-q2}
 
-The two arms were compared first on the trained models and then on their inputs \cite{scgpt,jolliffe2016}.
+The two arms were compared first on the trained models and then on their inputs.
 The PCA arm scored higher than the scGPT arm in all six configurations (Table~\ref{tab:sweep}), under
 all four scoring conventions --- cell or line level, pooled or per fold
 % (\code{panel\_aggregation\_comparison.csv})
@@ -127,8 +127,7 @@ alone, before training, the between-line share of variance was \BtwSharePca{} fo
 \BtwShareScgpt{} for scGPT, a between-to-within ratio of \BtwRatioPca{} against \BtwRatioScgpt{}.
 % (\code{mil/stage0\_input\_ceiling.csv})
 
-Four alternative explanations of the difference were then tested, each on the same folds
-\cite{hoerl1970,loshchilov2019adamw}. When the labelled lines per fold were thinned from 103 to 25, the
+Four alternative explanations of the difference were then tested, each on the same folds. When the labelled lines per fold were thinned from 103 to 25, the
 PCA arm lost \CurveGainPca{} and the scGPT arm \CurveGainScgpt{}, and the difference between the arms was
 $+\CurveMarginLo$ at 25 and $+\CurveMarginHi$ at 103 lines, the two lying within each other's seed band
 at 25 and 50 lines. Replacing the linear head by the
@@ -153,9 +152,9 @@ and \DropShippedPca{} at the rate of \CfgInDrop{} used for all other results.
 \subsection{Heterogeneity learned by a single-cell model}
 \label{sec:results-q3}
 
-The MIL model was run over three seeds on both representations and evaluated by the five stages of
-Section~\ref{sec:mil}, the positive control last because it calibrates the others
-\cite{dietterich1997,ilse2018}.
+The MIL model \cite{dietterich1997,ilse2018} was run over three seeds on both representations and
+evaluated by the five stages of Section~\ref{sec:mil}, the positive control last because it calibrates
+the others.
 % (\code{notebooks/4b\_mil\_training.ipynb}, \code{mil/q2\_verdict.csv})
 Its within-line spread exceeded that of the per-cell model in \QSpreadPca\,\% (PCA) and
 \QSpreadScgpt\,\% (scGPT) of (compound, line) pairs on all three seeds, and the per-cell predictions
@@ -166,7 +165,7 @@ covariates explained an adjusted $R^2$ of \QConfPca{} against a squared cross-se
 
 Figure~\ref{fig:q2instrument} shows the positive control, to establish whether the model can separate
 two populations that are known to differ; the focus is the position of the distributions relative to
-chance \cite{mannwhitney1947}. Each histogram collects the within-bag AUROC of one arm, PCA in blue and
+chance \cite{hanley1982}. Each histogram collects the within-bag AUROC of one arm, PCA in blue and
 scGPT in gold, with chance marked by the dashed line. The median was \QAurocPca{} for PCA and
 \QAurocScgpt{} for scGPT, and fewer than half of the pairs separated significantly from the permutation
 null. The PCA distribution was close to uniform, whereas the scGPT distribution was concentrated at 0
@@ -178,7 +177,7 @@ and 1.
 \caption{\textbf{Positive control of the heterogeneity criterion.} Distribution of the within-bag area
 under the receiver operating characteristic curve (AUROC) with which the MIL model separates the cells of
 two mixed cell lines whose response is known to differ, computed as the Mann--Whitney statistic divided
-by $n_A n_B$ \cite{mannwhitney1947}; one value per (compound, line pair, seed), $17{,}427$ per
+by $n_A n_B$ \cite{mannwhitney1947,hanley1982}; one value per (compound, line pair, seed), $17{,}427$ per
 representation, shown as a density histogram for PCA (blue) and scGPT (gold). The dashed line marks
 chance (0.5); a value near 1 or 0 means the two populations are ranked apart. Medians: \QAurocPca{}
 (PCA), \QAurocScgpt{} (scGPT).

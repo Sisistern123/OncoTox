@@ -1,26 +1,42 @@
 \section{Introduction}
 
-Tumour heterogeneity is a major driver of drug resistance and treatment failure: relapse is typically
-caused not by the average cell of a tumour but by rare, pre-existing subpopulations that survive
-treatment and repopulate it \cite{scp542,perception}. Bulk RNA sequencing (RNA-seq) averages over
+Tumour heterogeneity is a major driver of drug resistance and treatment failure: rare subpopulations of
+tumour cells may underlie resistance \cite{scp542}, the few cells that survive treatment can ultimately
+cause relapse \cite{scdeal}, and in patients the most resistant pre-treatment clone best explains the
+overall response \cite{perception}. Bulk RNA sequencing (RNA-seq) averages over
 exactly these subpopulations, whereas single-cell RNA-seq (scRNA-seq) resolves them
 \cite{scp542,luecken2019}. Predicting response per cell would let a model report a distribution of
 sensitivities within a sample and, in principle, identify resistant subclones before treatment selects
 for them \cite{perception,scdeal}. The long-term goal of this project is a pan-cancer single-cell
 foundation model that predicts pharmacological response, both efficacy and toxicity, and can be
 fine-tuned to specific cancer types or to clinical data with binary outcomes \cite{scgpt,perception}.
-The immediate obstacle is that no large-scale single-cell drug screen exists \cite{scdeal}.
+The immediate obstacle is that no large-scale screen measures drug response per cell: single-cell
+chemical screens profile the transcriptional response to treatment \cite{srivatsan2020,tahoe100m}, while
+viability is measured on bulk populations, and single-cell response data remain limited \cite{scdeal}.
 
 The setup is therefore weakly supervised. The response labels of the Cancer Therapeutics Response
-Portal v2 (CTRPv2) \cite{ctrpv2,ctrp_rees}, like those of PRISM \cite{prism} and GDSC \cite{gdsc}, are
+Portal v2 (CTRPv2) \cite{ctrpv2,ctrp_rees}, like those of PRISM \cite{prism} and GDSC \cite{gdsc_yang2013,gdsc}, are
 measured on bulk cell populations, and they are mapped onto the individual cells of the corresponding
 cell lines in the SCP542 pan-cancer atlas \cite{scp542}, so that one value per (cell line, compound) is
 broadcast onto several hundred heterogeneous cells. Cell lines do not fully recapitulate tumours, but
-they provide the volume of continuous labels needed to train a representation, and they are clonal in
-origin yet heterogeneous in expression, so any within-line structure is transcriptional state rather
-than lineage \cite{scp542}. The cost is a mismatch of resolution: one bulk value per line adds label
+they provide the volume of continuous labels needed to train a representation, and they are
+heterogeneous in expression: in this atlas, distinct genetic subclones were detectable in 26\,\% of the
+lines, and 39\,\% of the discrete expression clusters were associated with them, while the continuous
+expression programs largely were not \cite{scp542}. The cost is a mismatch of resolution: one bulk value per line adds label
 noise to every cell, and because all cells of a line share it they are pseudo-replicates, so the
 effective sample size is the number of cell lines rather than the number of cells \cite{lazic2010,dreval}.
+
+Predicting drug response from bulk profiles of cancer cell lines is an established task. A community
+challenge that compared 44 algorithms on breast cancer cell lines found gene expression the most
+predictive single data type \cite{costello2014}, and a later review of 61 deep-learning models found a
+wide variety of methods but no standardised framework for comparing them \cite{partin2023}. Under such a
+framework, deep-learning models barely outperform a naive model that predicts only the mean effects of
+compound and cell line \cite{dreval}. In parallel, single-cell foundation models such as scGPT and
+Geneformer have been pretrained on tens of millions of transcriptomes and fine-tuned for downstream
+tasks \cite{scgpt,theodoris2023}. Used without fine-tuning, their embeddings have in some settings been
+outperformed by simpler methods, including a selection of highly variable genes
+\cite{kedzierska2025}. Whether such an embedding is the better input for predicting drug response is
+therefore an open question rather than a premise.
 
 Three research questions follow. The first is whether drug response can be predicted from single cells
 with bulk labels at all. The second is whether embeddings from scGPT, a transformer pretrained on
@@ -34,8 +50,9 @@ subpopulation, however accurate that mean is \cite{scp542,perception}.
 
 The hypothesis behind the second question is that scGPT provides a denoised biological prior which
 aligns cellular states across tissues, so that a regressor is encouraged to learn transcriptomic drivers
-of sensitivity rather than to memorise the tissue or line of origin; regressing sparse single-cell
-counts directly onto bulk labels is, by contrast, unstable \cite{scgpt,luecken2019}. A latent-space
+of sensitivity rather than to memorise the tissue or line of origin. Single-cell counts, by contrast,
+are sparse, with many zeros due to sampling \cite{luecken2019}, and the premise was that regressing them
+directly onto bulk labels would be unstable. A latent-space
 comparison illustrates the difference between the two representations (Figure~\ref{fig:umap}): PCA
 separates the atlas into compact islands, whereas scGPT places the same cells on one continuous
 manifold. The islands are individual cell lines --- the granularity at which the response label is
