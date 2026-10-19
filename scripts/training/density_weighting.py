@@ -7,7 +7,9 @@ weight each observation by the inverse of a *smoothed* estimate of the label den
 
     Yang, Zha, Chen, Wang & Katabi. Delving into Deep Imbalanced Regression. ICML 2021 (LDS).
     Steininger, Kobs, Davidson, Krause & Hotho. Density-based weighting for imbalanced regression.
-    Machine Learning 110 (2021) -- DenseWeight, source of the compression exponent ``alpha``.
+    Machine Learning 110 (2021) -- DenseWeight. NOT the source of ``alpha`` (corrected 19.10.2026):
+    DenseWeight's weight is linear in the density, max(1 - alpha*p'(y), eps). The power form here,
+    p^(-alpha), is DIR's: alpha=1 is its inverse (INV), alpha=0.5 its square-root inverse (SQINV).
 
 Gaussian KDE (Scott's rule) stands in for LDS's binned-and-smoothed density; the bandwidth is the one
 real knob and is currently unexamined.

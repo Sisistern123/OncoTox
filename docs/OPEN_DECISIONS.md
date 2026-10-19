@@ -163,7 +163,9 @@ identical fold-for-fold.
 > it should. `notebooks/outputs/diagnostics/input_scale_test.csv`. **AdamW normalises each step by a running second moment of the gradient, so
 it is approximately invariant to a uniform input rescale**, which makes review item 4A's premise
 (*"one learning rate is not one setting"*) a statement about SGD-like updates rather than about this
-optimizer.
+optimizer. ⚠️ *Corrected 19.10.2026:* the normalisation is Adam's (Kingma & Ba 2015), and invariance to
+gradient rescaling does not imply invariance to input rescaling — see the correction in
+[Step 05](steps/05-multitask-results.md). The measurement (6.73 → 7.13) stands; the "so" does not.
 
 **What that dissolves.** The scale gap is **not** a confound on Q1, and §C's capacity comparison is
 not compromised by it. The three options originally listed here — standardise the inputs, per-arm

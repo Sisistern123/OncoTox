@@ -52,7 +52,18 @@ cells as weak supervision ([Step 03](03-model-and-training-design.md)).
 not as an artifact. It cannot establish that the variation is real **drug-response** heterogeneity: no
 per-cell response was ever measured — every CTRPv2 label is one number per (cell line, drug) — and none
 of the four primary sources carries post-treatment single-cell data. A gap in the measurements, so only
-a different dataset closes it. **None of the below is scoped**; recorded 13.08.2026 so they are not
+a different dataset closes it.
+
+> ⚠️ **Correction 19.10.2026 (citation audit).** "No per-cell response was ever measured" holds for
+> CTRPv2, but SCP542's own study did measure response *below* the line level: Kinker et al., *Nat Genet*
+> **52**, 1208–1218 (2020), §"Coexisting subpopulations differ in drug sensitivity", FACS-sorted
+> EpiSen-high and EpiSen-low subpopulations of two head and neck lines (JHU006, SCC47), screened 2,198
+> compounds with CellTiter-Glo, and found "113 compounds with differential killing of the
+> subpopulations in at least one cell line". Two lines and two subpopulations, not per cell — but it is
+> the only response measurement below the line level for this atlas, and the report now says so
+> (`05_discussion.tex` Q3 paragraph, `06_limitations_and_outlook.tex` instrument paragraph).
+> Post-treatment single-cell profiles also exist outside the four sources — sci-Plex (rows below) and
+> Tahoe-100M — but carry no per-cell response label. **None of the below is scoped**; recorded 13.08.2026 so they are not
 rediscovered as shortcuts.
 
 | Candidate | Could establish | Cannot |
@@ -60,6 +71,9 @@ rediscovered as shortcuts.
 | **MIX-seq** — McFarland et al., *Nat Commun* 2020: multiplexed scRNA-seq of ~100 cell lines after drug treatment, same Broad ecosystem as SCP542 (McFarland co-authored the Kinker paper our input comes from, so line identifiers plausibly join). ⚠️ **Unverified — the record has not been opened; nothing may rest on it until it is.** | Subpopulation-level evidence: does the surviving population shift toward the cells the model predicted resistant? | Per-cell truth, ever — sequencing destroys the cell, so no cell is trackable through treatment. |
 | `data/scDrugAtlas/ea472fa4aec64cabaef5194af0ba5ba0.h5ad`, already on disk — palbociclib treated-vs-control with binary response labels. | Nothing usable. **Ruled out**: its study of origin cannot be recovered (below), so it is uncitable. | — |
 | **Lineage barcoding** — e.g. Oren et al., *Nature* 2021, tracking lineages through treatment. | Per-cell truth genuinely, on one cell line. | Validation of a 500-line model; it validates a method. |
+| **Kinker's sorted-subpopulation screen** (added 19.10.2026) — Kinker et al. 2020, Fig. 7, Supplementary Tables 9–10: EpiSen-high vs -low cells of JHU006 and SCC47, 2,198 compounds, 113 with differential killing. | Whether the model's within-line predictions for these two lines point the same way as the measured subpopulation sensitivity. | Anything per cell, or beyond two lines and their EpiSen axis. |
+| **sci-Plex** (added 19.10.2026) — Srivatsan et al., *Science* **367**, 45–51 (2020), doi:10.1126/science.aax6234: ~650,000 single-cell transcriptomes, 3 cancer lines × 188 compounds. | Post-treatment transcriptional state per cell. | A response (viability) label per cell. |
+| **Tahoe-100M** (added 19.10.2026) — Zhang et al., bioRxiv 2025, doi:10.1101/2025.02.20.639398: 100 M transcriptomic profiles, 50 cancer lines × 1,100 compounds. | As sci-Plex, at far larger scale. | As sci-Plex. ⚠️ Preprint; line overlap with SCP542 not checked. |
 
 ### Provenance — what was retrieved, from where, when
 
@@ -782,6 +796,15 @@ carrier and form the same 1,2-intrastrand GpG adduct; they are largely cross-res
 same repair biology, so a second one would spend a panel slot on the same resistance mechanism.
 Oxaliplatin's DACH–Pt adduct evades mismatch repair and is genuinely complementary, but its expression
 determinant is the least established of the three. The class is represented **once**, by cisplatin.
+
+> **Source, added 19.10.2026 (citation audit).** Until now this paragraph carried no reference, and the
+> report cited the ERCC1 papers for it, which do not cover it. The pharmacology is in Rabik, C. A. &
+> Dolan, M. E., *Cancer Treat Rev* **33**, 9–23 (2007), doi:10.1016/j.ctrv.2006.09.006 (read in full,
+> PMC1855222): cisplatin and carboplatin "share a mechanism of action, are fully cross-resistant, and
+> form identical lesions on DNA" — *fully*, not "largely"; oxaliplatin "does not share in
+> cross-resistance", and "Deficiency of MMR does not affect cytotoxicity of oxaliplatin". **"Its
+> expression determinant is the least established of the three" has no source** — it is this project's
+> reading, and the report now says so (`03_methods.tex`, compound panel selection).
 
 **Cisplatin's determinant is contested, and this is recorded rather than smoothed over.** ERCC1 is the
 standard marker of platinum resistance, and the two directly comparable cell-line studies disagree:

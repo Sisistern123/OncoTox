@@ -819,6 +819,15 @@ did not.
 
 **Why, in hindsight:** the optimizer is **AdamW**, which normalises each parameter's step by a running
 second moment of its gradient, so it is approximately invariant to a uniform rescaling of the input.
+
+> ⚠️ **Correction 19.10.2026 (citation audit).** Two things in the sentence above are wrong as stated.
+> (1) The second-moment normalisation is **Adam's** (Kingma & Ba, ICLR 2015: "the magnitudes of
+> parameter updates are invariant to rescaling of the gradient"); AdamW's contribution is the decoupled
+> weight decay. (2) Rescaling the **input** is not rescaling the **gradient**, so "approximately invariant
+> to a uniform rescaling of the input" does not follow — Adam's step size is unchanged, but the effect
+> of a step on the output scales with the input. What the measurement shows is that rescaling barely
+> moved training (`best_epoch` 6.73 → 7.13); Adam's invariance is consistent with that, not a
+> derivation of it. The report now says exactly this (`05_discussion.tex`, scGPT-against-PCA paragraph).
 Review item 4A's premise — *"if one arm reaches the optimizer with values ~78× larger than the other,
 one learning rate is not one setting"* — is a statement about SGD-like updates and is **much weaker
 under AdamW**. The 104× asymmetry is real and is still worth stating as a difference between the arms;

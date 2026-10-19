@@ -71,6 +71,29 @@ version**. Each item says what the deck should change. Slide numbers refer to th
 - [ ] **Slide 19 spoken text** says scGPT wins on all 534 heads at 5/5 gene-set sizes. The report does not
       carry this, because the slide does not. Decide whether it belongs in either.
 
+**Claims the citation audit corrected (added 19.10.2026)** — the report was checked citation by
+citation against the papers; these deck claims rest on sources that do not say them. Locations are
+lines of `docs/final_presentation.md` (FP) and `final_presentation_appendix.md` (FPA); the delivered
+deck itself is left as the record of what was said on 17.08.2026.
+- [ ] **"scGPT is built to suppress cell-line identity"** (FP 1046, 1189, 1215, 1572, 1689). scGPT's
+      authors write that "the current pretraining does not inherently mitigate batch effects"; its batch
+      integration is done by fine-tuning. Say instead: the frozen embedding *carried less between-line
+      structure on this atlas* (UMAP, variance ratio), and that this is an observation, not a design
+      property. Report: abstract, Discussion Q2 and conclusion.
+- [ ] **"The same labels the benchmark scores us against"** (FP 240, 258). False: DrEval predicts lnIC50
+      by default. The reason for the AUC is coverage (defined for every curve; IC50 for ~60 %).
+- [ ] **"No large-scale single-cell drug screen exists"** (FP 73, 80). sci-Plex (2020) and Tahoe-100M
+      (2025) profile transcription after treatment at scale; what is missing is a per-cell *response*
+      label. Report: Introduction, first paragraph.
+- [ ] **"Every plate has its own baseline, so averaging first mixes two baselines"** (FP 231, 249). DrEval
+      does not make this argument; its reason is that averaging replicates hides disagreement between
+      them, which per-replicate normalisation lets enter the fit and its quality control. Report:
+      Methods, response target.
+- [ ] **"AdamW divides each step by a running second moment, so rescaling the input …"** (FP 1232, 1304;
+      FPA 387, 888). The normalisation is Adam's (Kingma & Ba 2015), and invariance to gradient rescaling
+      does not imply invariance to input rescaling. Say: rescaling barely moved training (best epoch
+      6.73 → 7.13), consistent with Adam's invariance. Report: Discussion Q2.
+
 ## Report — what the writing guidelines still need (opened 12.10.2026)
 
 The report was revised 12.10.2026 against Selin's writing guidelines using **only what existed**
@@ -602,7 +625,9 @@ every one of them was a step that looked settled and had never been checked.
       `ctrp_score_scale` keys which existed only to invert it went with it.
       **Left open deliberately, and routed:** the winsorizing threshold is retired (`DEFAULT_WINSOR`,
       11.08.2026 — the benchmark applies no clipping "to maintain comparability to previous studies and
-      avoid data loss"), and "are all statistics per fold?" was answered by items 7 and 8, not here.
+      avoid data loss" ⚠️ *misquoted, corrected 19.10.2026: DrEval's sentence is about applying no
+      **quality filter**, not about clipping; its only clipping is of negative normalised R² in a figure*),
+      and "are all statistics per fold?" was answered by items 7 and 8, not here.
 - [x] **6 · Drug selection — REBUILT 12.08.2026. The panel is 11 drugs.** Full record in
       [Step 01](./steps/01-datasets-and-harmonization.md#the-drug-panel--fda-approved-compounds-this-screen-covers-12082026);
       produced by `notebooks/2_drug_selection.ipynb` → `notebooks/outputs/panel/panel.csv`.

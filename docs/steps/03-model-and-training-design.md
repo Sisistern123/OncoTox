@@ -681,6 +681,12 @@ definition and is fixed before the model exists. A variance term in the loss and
 aggregator were both considered and rejected — reasoning in `4b` §1. If the synthetic control fails, the
 aggregator is *not* swapped for one that passes: that is a forking path moved down one level.
 
+> **Added 19.10.2026 (citation audit).** Ilse, Tomczak & Welling (2018) write that "the mean
+> operator is definitely a bad MIL pooling to aggregate instance scores". Their setting is binary
+> labels under the standard MIL assumption (a bag is positive if any instance is); here the label is a
+> continuous average over a line's cells, which the mean matches by definition. The report now states
+> the departure rather than citing Ilse in support of the choice (`03_methods.tex`, MIL subsection).
+
 ### Bag size is not a batching parameter — settled at full-line (Selin, 13.08.2026)
 
 For a sub-bag of `B` cells drawn from a line of `n`, the expected loss is
