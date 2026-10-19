@@ -2,11 +2,11 @@
 \noindent
 Relapse is driven by rare surviving subpopulations of tumour cells, yet drug response is measured on
 bulk populations, and no large-scale single-cell drug screen exists. This report asks three questions:
-whether anti-cancer drug response can be predicted from single cells with bulk labels at all; whether
+whether anti-cancer drug response can be predicted from single cells with bulk labels at all, whether
 scGPT embeddings are a viable representation against principal component analysis (PCA) at matched
-width; and whether a model trained on single cells learns cellular heterogeneity implicitly. On the
+width, and whether a model trained on single cells learns cellular heterogeneity implicitly. On the
 intersection of the SCP542 atlas and CTRPv2 as reprocessed by DrEval (\NLines{} cell lines), one
-response value per cell line and compound was broadcast onto every cell of that line, so the effective
+CurveCurator-fitted area under the dose--response curve (AUC) per cell line and compound was broadcast onto every cell of that line, so the effective
 sample size was about \NLinesCV{} lines rather than \NCells{} cells. A per-cell multi-task regressor was
 trained on \NPanel{} compounds chosen by regulatory approval and a published resistance determinant, and
 scored by the mean within-compound Spearman correlation under five-fold leave-cell-line-out

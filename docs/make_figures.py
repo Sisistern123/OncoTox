@@ -415,7 +415,7 @@ def build_pipeline():
               ncol=4, fontsize=9.5, frameon=True, framealpha=0.9)
 
     box(ax, XS[0], ROW_A, W, H, "01 · Datasets & harmonization",
-        ["SCP542 53,513 cells x 22,722 g", "CTRPv2 545 drugs · target: auc_cc",
+        ["SCP542 53,513 cells x 22,722 g", "CTRPv2 545 drugs · target: refitted AUC",
          f"overlap 190* lines · {N_LINES} trainable"], GREEN, GREEN_FILL)
     box(ax, XS[1], ROW_A, W, H, "02 · Preprocessing & embeddings",
         ["scGPT X_scGPT = 512-d", "gene-set sweep 1k-5k + all_genes",
@@ -678,11 +678,11 @@ def draw_architecture(ax, *, compact: bool = False):
         # and the label had not followed. It names the optimizer only -- `TrainConfig.weight_decay`
         # is 0.0, which is a *training* setting and belongs with the arm, not in the architecture
         # caption.
-        ax.text(43.2, 22.6, "hidden block  =  Linear → LayerNorm → GELU → Dropout 0.5      ·      "
+        ax.text(43.2, 22.6, "hidden block  =  linear layer → layer normalisation → GELU → dropout 0.5      ·      "
                             "input dropout 0.1      ·      AdamW, early stopping (patience 10)",
                 ha="center", va="top", fontsize=8.2, color=INK)
         ax.text(43.2, 19.8, f"the {len(PANEL)} heads are the {len(PANEL)} rows of one "
-                            f"Linear(64 → {len(PANEL)}) over a shared trunk — "
+                            f"linear layer (64 → {len(PANEL)}) over a shared trunk — "
                             "there is no per-drug sub-network",
                 ha="center", va="top", fontsize=8.2, color=GREY, style="italic")
 
@@ -713,7 +713,8 @@ def draw_architecture(ax, *, compact: bool = False):
                 ha="center", va="top", fontsize=6.6, color=GREY)
         return
 
-    ax.text(x0 - 4.5, 19.6, f"bars: out-of-fold prediction for {EXAMPLE_LINE}\n"
+    ax.text(x0 - 4.5, 19.6, f"bars: out-of-fold prediction for {EXAMPLE_LINE.split('_', 1)[0]} "
+                           f"({EXAMPLE_LINE.split('_', 1)[1].lower()})\n"
                             "◆ = the measured CTRPv2 value (never seen in training)",
             ha="left", va="top", fontsize=7.6, color=GREY)
 
@@ -1096,12 +1097,12 @@ def build_pipeline_flow():
     ax.set_xticks([]); ax.set_yticks([])
     for sp_ in ax.spines.values():
         sp_.set_color("#dededa")
-    ax.set_title("X_pca", fontsize=9, fontweight="bold", color=GREY, pad=3)
+    ax.set_title("PCA", fontsize=9, fontweight="bold", color=GREY, pad=3)
     ax.set_xlabel("linear, unsupervised", fontsize=7.4, color=MUTED, labelpad=2)
 
     ax = fig.add_axes([0.845, 0.655, 0.098, 0.165]); ax.set_xlim(0, 10); ax.set_ylim(0, 12)
     ax.axis("off")
-    ax.set_title("X_scGPT", fontsize=9, fontweight="bold", color=AMBER, pad=3)
+    ax.set_title("scGPT", fontsize=9, fontweight="bold", color=AMBER, pad=3)
     for j in range(6):
         ax.add_patch(Rectangle((1.4 + j * 1.2, 10.2), 0.9, 0.85,
                                facecolor="#f3e2c4", edgecolor=AMBER, lw=0.8))
@@ -1121,7 +1122,7 @@ def build_pipeline_flow():
 
     # ================================================== 5 · model  (the standalone drawing)
     stage(1.5, ROW2_TITLE, "5", "Model",
-          "one cell in, one raw AUC per panel drug out", ROW2_CAP)
+          "one cell in, one refitted AUC per panel drug out", ROW2_CAP)
     ax = fig.add_axes([0.015, 0.135, 0.375, 0.30])
     draw_architecture(ax, compact=True)
 
@@ -1808,7 +1809,7 @@ def build_label_quality():
     # score is quoted without its arm, and "mean per-drug Spearman" alone names none.
     fig.text(0.02, 0.90,
              f"one point per panel compound ({len(j)})  ·  y = that compound's mean per-drug "
-             "Spearman, out of fold, on the best arm (X_pca · MAE · alpha 0.5)\n"
+             "Spearman, out of fold, on the best arm (PCA · MAE · alpha 0.5)\n"
              "x = share of that compound's curves whose fitted dose-response cannot be "
              "distinguished from no effect (p > 0.05), log scale",
              ha="left", va="top", fontsize=8.4, color=GREY, linespacing=1.6)
@@ -1830,7 +1831,7 @@ def build_label_quality():
     ax.set_xticks([0.35, 1, 2, 5, 10, 25, 73])
     ax.set_xticklabels(["0", "1", "2", "5", "10", "25", "73"])
     ax.set_xlabel("share of that compound's curves that are flat  (%, log scale)", fontsize=9.5)
-    ax.set_ylabel("mean per-drug Spearman\n(X_pca · MAE · alpha 0.5)", fontsize=9.5)
+    ax.set_ylabel("mean per-drug Spearman\n(PCA · MAE · alpha 0.5)", fontsize=9.5)
     ax.set_ylim(-0.02, 0.60)
     # Read from the points that are drawn, so the annotation cannot disagree with the figure.
     # Spelled out because it is a correlation OF correlations: each point's y is itself a per-drug
