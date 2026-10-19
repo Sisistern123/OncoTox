@@ -199,6 +199,12 @@ positive value is +0.00017.)*
 
 ### E · The lead is not a small-data effect — the margin grows with labels
 
+> **Correction 19.10.2026 (wording).** "Grows" overstates it. From `notebooks/outputs/panel/panel_curve_summary.csv`
+> the PCA − scGPT margin is +0.004 at 25, +0.009 at 50, +0.051 at 75 and +0.032 at 103 labelled lines: larger
+> with more labels than with few, but not monotonic — it peaks at 75 and narrows at 103. The conclusion
+> (no small-data effect) stands; the report now says "larger with more labels than with few", and the four
+> budgets are plotted in `docs/figures/label_supply.png` (`docs/make_figures.py::build_label_supply`).
+
 `4a` §E, `RUN_SECTION_E = True` → `notebooks/outputs/panel/panel_curve_summary.csv`.
 120 fits (four label budgets x two representations x three seeds x five folds), linear head,
 `alpha=0`, `loss=mse`, executed 13.08.2026 in 14 min 21 s.
@@ -1360,6 +1366,29 @@ own scoping, not a caveat added here. Whether the within-line variation is real 
 heterogeneity (b), and whether it predicts **which cells survive** (c), both need post-treatment
 single-cell data, which this project does not have
 ([Step 01](01-datasets-and-harmonization.md#post-treatment-single-cell-data--what-would-be-needed-for-q2-b-and-what-exists)).
+
+### What the reproducible within-line variation follows — closing description (19.10.2026)
+
+Descriptive; gates nothing and changes no verdict. From `notebooks/4b_mil_training.ipynb` §4: cell 26 →
+`mil/closing_program_correlations.csv` (per-cell prediction against each program score, within line),
+cell 29 → `mil/closing_program_depth.csv` (program scores against depth, detected genes and mitochondrial
+fraction, within line; no predictions), cell 31 → `mil/closing_program_partial_mito.csv` (cell 26's
+correlation with mitochondrial fraction controlled, first-order partial of Spearman correlations,
+reproducing cell 26 row for row before controlling). Eleven distinct programs (EMT-II ≡ EMT-III, see
+[Step 01](./01-datasets-and-harmonization.md)).
+
+- **scGPT:** the predictions follow the proteasomal-degradation program most closely, weakly and
+  negatively — median within-line ρ −0.225 (IQR −0.368 to −0.054), −0.181 with mitochondrial fraction
+  controlled; the largest of the eleven in every seed, before and after the control; negative in 148 of
+  153 lines.
+- **Why the control:** within a line that program score falls with mitochondrial fraction (median ρ
+  −0.37, cell 29) and the scGPT predictions rise with it (+0.16, `stage6_confounds.csv`). Depth and
+  detected genes barely track the program (+0.08, +0.03).
+- **PCA:** −0.065, −0.053 controlled.
+- **What it does not say:** nothing about performance — every score is computed on line means, so the
+  ordering of cells within a line does not enter it — and nothing about drug response, since stage 7
+  failed. Reported in the report's Q3 discussion in two sentences (Selin, 19.10.2026: brief, not as a
+  result section). The cross-drug ordering (cell 27) is not reported.
 
 ### What is verified, and what is not
 

@@ -1705,6 +1705,12 @@ def build_label_supply():
     Read from ``panel_curve_summary.csv`` (mean, lo, hi over seeds per budget and arm). The training
     configuration is read from ``panel_curve_folds.csv`` and printed, never typed: this test ran at a
     fixed configuration that is not the highest-scoring one, and the caption has to say which.
+
+    ⚠️ **The architecture is not in that CSV.** Its ``model`` column reads ``mlp``, which names the model
+    class; the runs used ``CURVE_ARCH = ARCHS['linear']`` (``4a_percell_training.ipynb`` §E), a linear
+    head without the trunk. Found 19.10.2026 when the first caption said "per-cell model" — the caption
+    now states the linear head, and this note is the only place the check can live until §E writes
+    its architecture.
     """
     import pandas as pd
 

@@ -57,7 +57,10 @@ carry. An expression-based pass would remove genuine cells at the margins withou
 signal \cite{scp542,luecken2019}. Two consequences were accepted: any statement about heterogeneity
 concerns cells inside that window, which excludes states of low transcript content such as quiescent
 cells near its floor; and the \NLines{} labelled lines, not the \NCtrpLines{} lines the screen covers,
-bound the sample \cite{scp542,dreval}.
+bound the sample \cite{scp542,dreval}. The metadata also carry per-cell scores for the 12 recurrent
+heterogeneity programs of the source study. The scores for EMT-II and EMT-III are identical in all
+\NCells{} cells of the distributed file, although the source study describes two distinct programs, so
+only eleven distinct programs were available \cite{scp542,scp542_portal}.
 
 The source study centres expression before its own analyses, and neither of its two forms was adopted
 \cite{scp542}. Centring each gene across all cells is subsumed by the per-gene standardisation below.
@@ -465,6 +468,12 @@ from which library size has been divided out and in which only four of 13 mitoch
 HVGs, so both were computed from the study's unnormalised UMI matrix over all genes: a total over HVGs
 alone is depth multiplied by a biological share, and a confounder carrying the signal under test could
 veto a true positive \cite{scp542,luecken2019}.
+
+As a description that gates nothing, the per-cell predictions were correlated within each line with
+the eleven distinct program scores (Spearman). For the program with the largest association, the
+correlation was recomputed with mitochondrial fraction controlled by Equation~\ref{eq:partial}, and the
+program score was correlated within each line with sequencing depth, detected genes and mitochondrial
+fraction.
 
 \subsection{Data and code availability}
 \label{sec:availability}

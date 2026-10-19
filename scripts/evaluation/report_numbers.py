@@ -257,6 +257,20 @@ def heterogeneity() -> list[dict]:
                  row(f"QSdCell{tag}Lo", s.median_sd_4a.min(), src, "min over seeds, per-cell model"),
                  row(f"QSdCell{tag}Hi", s.median_sd_4a.max(), src, "max over seeds, per-cell model")]
     rows.append(row("QPairs", s1.n_pairs.iloc[0], src, "(compound, line) pairs per seed"))
+    # Closing description of Q3 (4b §4, cells 29 and 31; added 19.10.2026): the scGPT arm's within-line
+    # association of per-cell predictions with the proteasomal-degradation program, with and without
+    # mitochondrial fraction controlled, and that program's own within-line relation to depth.
+    src = "mil/closing_program_partial_mito.csv"
+    pp = pd.read_csv(OUT / src)
+    d = pp[(pp.rep == "X_scGPT") & (pp.program == "ProtDegra_score")]
+    rows += [row("QProgDegraScgpt", d.rho.median(), src, "median within-line rho, prediction vs program"),
+             row("QProgDegraScgptPartial", d.rho_partial_mito.median(), src,
+                 "median within-line partial rho, mitochondrial fraction controlled")]
+    src = "mil/closing_program_depth.csv"
+    pd_ = pd.read_csv(OUT / src)
+    rows.append(row("QProgDegraDepth", pd_[(pd_.program == "ProtDegra_score")
+                                           & (pd_.covariate == "total_counts")].rho.median(), src,
+                    "median within-line rho, program score vs total UMI count"))
     return rows
 
 

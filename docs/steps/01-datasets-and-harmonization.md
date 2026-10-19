@@ -274,6 +274,18 @@ Cached at `data/processed/scRNAseq_SCP542/umi_qc_covariates.csv`, **beside** the
 rather than inside one: the covariates are computed over the full gene set, so every variant produces
 identical values and a per-variant cache would scan 3.5 GB twice for one answer.
 
+### EMT-II and EMT-III carry identical scores in the distributed metadata (19.10.2026)
+
+SCP542's own `Metadata.txt` (Single Cell Portal, retrieved 30.03.2026) carries per-cell scores for Kinker
+et al.'s 12 recurrent heterogeneity programs. **`EMTII_score` and `EMTIII_score` are identical in all
+53,513 rows** — same values, correlation 1.000 — although the paper describes EMT-II (mainly HNSCC lines)
+and EMT-III as distinct programs. The duplication is in the source file, not introduced by the pipeline:
+the converted h5ad reproduces it exactly. One of the two scores is therefore missing and which one cannot
+be told; any per-program analysis has **eleven** distinct programs, and the EMT-II/III row cannot be
+named. Found while reading `notebooks/4b_mil_training.ipynb` §4, whose closing table had shown identical
+values for the two (cell 26). Cells 29 and 31 skip `EMTIII_score`; cell 26 still lists both. The report
+states it in Methods §3.1.
+
 ### Design decisions taken with the advisor (27.03–03.04.2026)
 
 The project's framing was settled by asking, not assumed. The three questions put to Artem on 27.03 were:
