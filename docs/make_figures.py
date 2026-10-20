@@ -194,7 +194,11 @@ own header asserted that the report used it. §Representation and model now sets
 the density weighting, which is **off in every arm the report reports** (``alpha = 0``, so ``w_j``
 is identically 1). Typesetting the weighting apparatus in Methods would give formal prominence to a
 mechanism that never fires in the results — the same register error this file's own audit block
-catalogues in its captions. They belong wherever the ``alpha`` sweep is reported. ⚠️ **Still missing:
+catalogues in its captions. They belong wherever the ``alpha`` sweep is reported. ⚠️ **Superseded 20.10.2026:**
+the report now reports the ``alpha`` sweep (Table ``tab:sweep``; highest-scoring configuration PCA,
+MAE, ``alpha = 0.5``), so the weighting does fire in reported results, and 03_methods sets
+``\\LossWeightFn`` as ``eq:density``. ``\\LossDensity`` remains uncited: its content is stated in
+the prose under that equation. ⚠️ **Still missing:
 the regenerate-and-diff pre-merge check** named below as owned by the gate session. It does not exist —
 ``loss_objective`` appears in no script under ``scripts/gate/`` — so nothing yet catches a hand-edit of
 the generated file. Decided
@@ -1312,8 +1316,9 @@ def build_loss_formula_tex():
         "%",
         "%   WIRED IN 14.08.2026: main.tex \\input{loss_objective}s in the preamble and 03_methods",
         "%   sets \\LossObjective and \\LossWeightMatrix as equations (eq:objective, eq:weight).",
-        "%   \\LossWeightFn / \\LossDensity are deliberately NOT cited: they describe the density",
-        "%   weighting, which is off (alpha = 0) in every arm the report reports.",
+        "%   Since 20.10.2026 03_methods also sets \\LossWeightFn (eq:density): the alpha sweep is",
+        "%   reported, and the highest-scoring configuration uses alpha = 0.5. \\LossDensity is not",
+        "%   cited; its content is stated in the prose under eq:density.",
         "%",
         "% WHAT IS DELIBERATELY SYMBOLIC",
         "%   \\ell and \\alpha are left as symbols: the loss comparison (docs/TODO.md item 9A)",

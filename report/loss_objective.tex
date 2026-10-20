@@ -15,8 +15,9 @@
 %
 %   WIRED IN 14.08.2026: main.tex \input{loss_objective}s in the preamble and 03_methods
 %   sets \LossObjective and \LossWeightMatrix as equations (eq:objective, eq:weight).
-%   \LossWeightFn / \LossDensity are deliberately NOT cited: they describe the density
-%   weighting, which is off (alpha = 0) in every arm the report reports.
+%   Since 20.10.2026 03_methods also sets \LossWeightFn (eq:density): the alpha sweep is
+%   reported, and the highest-scoring configuration uses alpha = 0.5. \LossDensity is not
+%   cited; its content is stated in the prose under eq:density.
 %
 % WHAT IS DELIBERATELY SYMBOLIC
 %   \ell and \alpha are left as symbols: the loss comparison (docs/TODO.md item 9A)

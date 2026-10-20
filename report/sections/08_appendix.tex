@@ -156,3 +156,16 @@ grid end --- fired in \RidgeEdgePca{} of 55 PCA fits and \RidgeEdgeScgpt{} of 55
 % (\code{scripts/evaluation/ridge\_grid\_refit.py})
 DrEval's normalised metric subtracts a fitted overall mean, cell-line effect and compound effect from
 truth and prediction \cite{dreval}.
+
+\section{Density weight}
+\label{app:density}
+
+The density $\hat p_j$ of Equation~\ref{eq:density} was fitted per compound because the metric is
+within-compound, and on one label per line rather than per cell because every cell carries its line's
+label: a line with \CellsMax{} cells would otherwise bend the density while one with \CellsMin{} barely
+registered. The cap $c = \CfgCap$ is a safety limit against a few extreme lines driving a fit over about
+\NLinesCV{} points. It is arbitrary and was held fixed, since sweeping it with $\alpha$ would confound
+the two. The exponent was not justified in advance but swept. The weightings of \cite{dir} use a
+smoothed histogram, for which a kernel density estimate was substituted here. DenseWeight
+\cite{denseweight}, a related scheme, weights linearly in the density rather than by a power and was
+not used.

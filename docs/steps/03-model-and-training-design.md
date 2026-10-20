@@ -592,6 +592,25 @@ correctly raises on it. ✅ **`4a_percell_training.ipynb` re-ran on 13.08.2026, 
 
 `OncoMLP` is a deliberately **small** MLP (the plan asks for the smallest functional model):
 input dropout → `[Linear → LayerNorm → GELU → Dropout]` per hidden layer → `Linear(→ output_dim)`.
+
+> **Why a shared MLP trunk, added 20.10.2026 (Selin).** Two design intents, both stated before the
+> result:
+>
+> 1. **Non-linearity.** The network was kept small so that it could model non-linear relations
+>    between expression and response without overfitting the ~153 labelled lines.
+> 2. **Sharing across compounds (multi-task).** One trunk with K heads rather than K separate models,
+>    so that the model learns from how each cell line responds across all compounds: the trunk is
+>    trained on every compound's labels, and what it learns from a line's response to one compound can
+>    inform its predictions for the others. Source: Partin, A. *et al.* 2023 (`partin2023`), the
+>    review the report's Background cites for multi-task drug-response models.
+>
+> **What the test says.** The capacity test (`notebooks/4a_percell_training.ipynb` §C,
+> `panel/panel_arch_summary.csv`; report Table `tab:capacity`) replaces the trunk with a bare
+> `Linear(input_dim, K)` (`scripts/training/cv.py`, comment at the `hidden_dims` default). That
+> variant has **no hidden layer and no parameters shared between compounds**, so it removes both the
+> non-linearity and the sharing at once. It scored **above** the trunk in both arms, so on this data
+> neither intent improved the score, and the test cannot say which of the two did not help. The report
+> states both intents in `report/sections/03_methods.tex` (model and training) and points to that test.
 Defaults encode specific choices for this regime:
 
 - **`hidden_dims` = (128,64) for both reps** (`train_multitask.DEFAULT_HIDDEN_DIMS`, matched

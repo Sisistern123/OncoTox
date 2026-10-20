@@ -1,5 +1,14 @@
 % Table of contents (added 19.10.2026). The CompMS guideline allows at most one page for an internship
 % report; lists of tables, figures and abbreviations are not required for internships (Selin,
 % 19.10.2026) and were removed.
-{\footnotesize\tableofcontents}\normalsize
+% Tightened 20.10.2026 (Selin) so the ToC fits on one page: smaller line spacing, and a smaller
+% gap before each chapter entry than the book class's 1em. All entries are kept.
+{\footnotesize\linespread{0.9}\selectfont
+\makeatletter
+\renewcommand*\l@chapter[2]{\addpenalty{-\@highpenalty}\vskip 0.4em \@plus\p@
+  \setlength\@tempdima{1.5em}\begingroup\parindent\z@ \rightskip\@pnumwidth \parfillskip -\@pnumwidth \leavevmode \bfseries
+  \advance\leftskip\@tempdima \hskip -\leftskip #1\nobreak\hfil \nobreak\hb@xt@\@pnumwidth{\hss #2}\par
+  \penalty\@highpenalty\endgroup}
+\makeatother
+\tableofcontents}\normalsize
 \markboth{Contents}{Contents}
