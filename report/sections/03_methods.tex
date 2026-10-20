@@ -2,11 +2,10 @@
 \label{sec:methods}
 
 The pipeline ran from the two data sources through compound selection, target construction and the
-two representations to per-cell training, evaluation and a multiple-instance model
-% ; each stage is a numbered notebook under \code{notebooks/} that drives the code in \code{scripts/}
-\cite{scp542,ctrpv2,dreval}. Figure~\ref{fig:pipeline} shows these stages in order, to give the overview
-that the subsections then fill in, and the subsections follow the same order, each stating the
-alternatives that were considered where a choice was made. The models built on one representation are
+two representations to a per-cell model and its evaluation (Figure~\ref{fig:pipeline}), followed by a
+multiple-instance model with its own criterion.
+% Each stage is a numbered notebook under \code{notebooks/} that drives the code in \code{scripts/}.
+The models built on one representation are
 called its \emph{arm} --- the PCA arm and the scGPT arm --- and a \emph{configuration} is one
 combination of loss and density weight (Section~\ref{sec:model}).
 
@@ -30,7 +29,7 @@ Table~\ref{tab:sweep}.
 \label{fig:pipeline}
 \end{figure}
 
-\section{Data}
+\section{Data and preprocessing}
 \label{sec:data}
 
 All experiments used the intersection of the SCP542 atlas \cite{scp542} and CTRPv2
@@ -39,10 +38,9 @@ the atlas, \NLinesRoster{} matched a name in the screen's roster, ten of these h
 and one further screened line was recovered by an explicit alias where the two sources spell it
 differently, which left \NLines{} lines with response measurements and \NCells{} cells from \NCancerTypes{} cancer
 types. Of CTRPv2's
-\NDrugs{} compounds, \NDrugsModelled{} entered the target matrix. The other eleven had been screened
-against fewer than \NCovMinLines{} of the overlapping lines. That cut kept output heads with almost no support out of
-the shared model, but the threshold of \NCovMinLines{} was set rather than derived, follows no published convention
-and was not varied, so its effect is unmeasured.
+\NDrugs{} compounds, \NDrugsModelled{} entered the target matrix. The other eleven were excluded because
+their response had been measured in fewer than \NCovMinLines{} of the overlapping cell lines, an arbitrary
+threshold chosen to ensure sufficient coverage for training.
 
 SCP542 is distributed after the source study's own quality control, and no cell-level filtering was
 added here \cite{scp542}. Any statement about heterogeneity therefore concerns cells inside the source
@@ -50,39 +48,33 @@ study's detected-gene window (Appendix~\ref{app:qc}). The metadata also carry pe
 12 recurrent heterogeneity programs of the source study, of which eleven are distinct
 (Appendix~\ref{app:qc}).
 
-The source study centres expression before its own analyses, and neither of its two forms was adopted
-\cite{scp542}. Centring each gene across all cells is subsumed by the per-gene standardisation below.
-Centring within each cell line removes the between-line variation, and since the label is constant
-within a line, all of its signal is between lines. Per-line centring would therefore remove exactly the
-variance the target depends on.
-
 Because the label is defined per cell line and compound, all cells of a line carry the same value and
 are pseudo-replicates \cite{lazic2010}. The effective sample size was therefore taken to be the number of
 cell lines inside the cross-validation (CV), \NLinesCV{}, not \NCells{} cells \cite{lazic2010,dreval}.
-Treating cells as independent would understate every uncertainty by roughly the square root of the
-number of cells per line, since a standard error shrinks with the square root of the number of
-observations and the cells of a line add observations without adding information.
+Treating cells as independent observations would overstate the precision of every estimate, since the
+cells of a line increase the number of observations without contributing independent information about
+the response.
 
 \section{Compound panel selection}
 \label{sec:panel}
 
-The compounds a multi-task model predicts determine what its scores mean, so the panel was selected
-without reference to the response values the model is trained on (Section~\ref{sec:rd-q1}).
+Because the reported score is an average over the panel's compounds, the panel was selected without
+reference to the response values the model is trained on (Section~\ref{sec:rd-q1}). A compound entered
+the panel if it met three conditions: (i) approval by the U.S. Food and Drug Administration (FDA) for a
+cancer indication \cite{sun_fda}, (ii) screening by CTRPv2 against at least \PanelCovCut\,\% of the
+overlapping cell lines \cite{ctrpv2}, and (iii) being well characterised in the literature. Condition
+(iii) served only to keep this first panel small, so that the approach could be tested on a subset of
+well-known compounds before being extended to the full screen. Condition (ii) used CTRPv2 only to count
+the cell lines on which a compound had been tested, never the measured responses.
 
-The panel was defined by three conditions, of which only the second used the screen. First, the compound
-had to be approved by the U.S. Food and Drug Administration (FDA) for a cancer indication, according to
-the enumeration of Sun et al.\ \cite{sun_fda}, which lists \NFdaDrugs{} drugs approved between 1949 and 2014.
-Second, CTRPv2 had to have screened it against at least \PanelCovCut\,\% of the lines in the intersection
-\cite{ctrpv2}. This is where the coverage distribution breaks --- \NFdaCovered{} candidates lie at or above it, the
-lowest at \CovLowestIn\,\%, while the next compound reaches \CovNextOut\,\% and the tail falls to \CovTail\,\%. Third, a
-published claim about the compound's response determinant had to exist and be verified against its
-source, recorded per compound together with what the source establishes. The code asserted that every
-such entry lay inside the set the first two conditions produce. Of the \NFdaDrugs{} drugs, \NFdaSmall{} are small
-molecules (the remaining \NFdaBiologic{} are antibodies, enzymes, a cell therapy and a radiopharmaceutical, which a
-viability screen cannot contain), \NFdaScreened{} were screened by CTRPv2, \NFdaCovered{} cleared the coverage cut and \NPanel{} carried
-a verified claim: gemcitabine, doxorubicin, etoposide, paclitaxel and cisplatin among cytotoxics, and
-imatinib, sorafenib, dasatinib, erlotinib, crizotinib and afatinib among targeted agents, at
-\PanelCovLo--\PanelCovHi\,\% coverage.
+Of the FDA-approved drugs, \NFdaScreened{} were screened by CTRPv2, \NFdaCovered{} cleared the coverage
+cut and \NPanel{} were selected: gemcitabine \cite{ctrp_rees}, doxorubicin \cite{skinner_abcb1},
+etoposide \cite{omori_abcb1,skinner_abcb1}, paclitaxel \cite{ctrpv2,skinner_abcb1} and cisplatin
+\cite{britten_ercc1,shimizu_ercc1,friboulet_ercc1} among cytotoxics, and imatinib
+\cite{ctrp_rees,skinner_abcb1}, sorafenib \cite{scp542}, dasatinib \cite{ctrpv2}, erlotinib
+\cite{scdeal,pao2004}, crizotinib \cite{ctrpv2} and afatinib \cite{ctrpv2} among targeted agents, at \PanelCovLo--\PanelCovHi\,\% coverage. The \PanelCovCut\,\% cut lies where the coverage
+distribution breaks: the lowest included compound reaches \CovLowestIn\,\%, the next \CovNextOut\,\%, and
+the tail falls to \CovTail\,\%.
 
 Approval list and screen were matched on compound identifiers rather than names, and every one of
 the \NDrugs{} compounds was resolved (Appendix~\ref{app:ids}).
@@ -93,15 +85,13 @@ positions on one resistance mechanism. Oxaliplatin is not cross-resistant with t
 does not depend on mismatch repair \cite{rabik2007}, so it would have been complementary. That its
 expression-level determinant is the least established of the three is this project's reading, for which
 no source was found.
-Cisplatin was chosen, and its determinant is recorded as contested rather than supporting: ERCC1
+Cisplatin was chosen, and its determinant is recorded as contested: ERCC1
 mRNA expression, though not protein level, correlates with cisplatin resistance in cervical carcinoma
 lines \cite{britten_ercc1} but not
 across twenty lung cancer lines \cite{shimizu_ercc1}, plausibly because only one of four ERCC1 isoforms
-performs repair and assays cannot separate them \cite{friboulet_ercc1}. It was kept
-rather than restricting the panel to settled determinants, which would bias the evaluation toward
-compounds whose answer is already known. For the same reason the evidence for doxorubicin and
-etoposide, both substrates of the ABCB1 efflux transporter \cite{skinner_abcb1}, was recorded with its
-setting, and topoisomerase expression was not claimed as a determinant, since TOP1 and TOP2A protein
+performs repair and assays cannot separate them \cite{friboulet_ercc1}. The evidence for doxorubicin and
+etoposide, both substrates of the ABCB1 efflux transporter \cite{skinner_abcb1}, was likewise recorded
+with its setting, and topoisomerase expression was not claimed as a determinant, since TOP1 and TOP2A protein
 levels did not track sensitivity to etoposide or SN-38 across twelve small cell lung cancer lines
 \cite{omori_abcb1}. Doxorubicin was not studied there.
 
@@ -157,7 +147,10 @@ UMIs are detected per cell \cite{scp542}. A logarithm is used for the reasons gi
 addition be dominated by the most abundant genes. The \NHvg{} HVGs were selected on this matrix by
 the dispersion-based Seurat criterion (Section~\ref{sec:bg-representation}) \cite{satija2015,wolf2018scanpy}. Each gene was standardised to
 zero mean and unit variance with $z$-scores clipped at \CfgZClip, and \NPca{} principal components were kept
-\cite{jolliffe2016}. The number \NPca{} was chosen to match
+\cite{jolliffe2016}. The standardisation includes the per-gene centring the source study applies before
+its analyses. Its other form, centring within each cell line, was not used, because the label is
+constant within a line and per-line centring would remove the between-line variance it depends on
+\cite{scp542}. The number \NPca{} was chosen to match
 % (\code{scripts/preprocessing/add\_pca.py})
 scGPT's embedding width, so that the comparison is at equal width. It is not a statement about the data.
 

@@ -9,7 +9,7 @@ width, and whether a model trained on single cells learns cellular heterogeneity
 intersection of the SCP542 atlas and CTRPv2 as reprocessed by DrEval (\NLines{} cell lines), one
 CurveCurator-fitted area under the dose--response curve (AUC) per cell line and compound was broadcast onto every cell of that line, so the effective
 sample size was about \NLinesCV{} lines rather than \NCells{} cells. A per-cell multi-task regressor was
-trained on \NPanel{} compounds chosen by regulatory approval and a published resistance determinant, and
+trained on a first panel of \NPanel{} well-characterised compounds and
 scored by the mean within-compound Spearman correlation under five-fold leave-cell-line-out
 cross-validation over three seeds.
 
@@ -47,8 +47,8 @@ implizit lernt. Auf der Schnittmenge des SCP542-Atlas mit CTRPv2 in der Aufberei
 (\NLines{} Zelllinien) wurde ein mit CurveCurator angepasster Wert der Fläche unter der
 Dosis-Wirkungs-Kurve (AUC) pro Zelllinie und Substanz auf jede Zelle dieser Linie übertragen, sodass
 der effektive Stichprobenumfang etwa \NLinesCV{} Zelllinien statt \NCells{} Zellen betrug. Ein
-Multi-Task-Regressor auf Einzelzellebene wurde auf \NPanel{} Substanzen trainiert, die nach
-Zulassungsstatus und einer publizierten Resistenzdeterminante ausgewählt wurden, und anhand der
+Multi-Task-Regressor auf Einzelzellebene wurde auf einem ersten Panel von \NPanel{} gut
+charakterisierten Substanzen trainiert und anhand der
 mittleren Spearman-Korrelation innerhalb jeder Substanz in einer fünffachen Kreuzvalidierung mit
 zurückgehaltenen Zelllinien über drei Seeds bewertet.
 

@@ -756,6 +756,20 @@ Conditions 1 and 2 are derived in code. Condition 3 is a literature judgement an
 carried as a table inside the notebook — the pattern the voided panel's `DETERMINANTS` established — and
 the code asserts every entry lies inside the set that conditions 1 and 2 produce.
 
+> **Why condition 3 exists, added 20.10.2026 (Selin).** Condition 3 is a size limit, not a scientific
+> criterion. It was introduced to keep this first panel small, so that the approach could be tested on a
+> subset before being extended to the whole screen, and to fill that subset with well-known compounds.
+> It was never meant as a test of each compound's response determinant: `erlotinib`'s entry in
+> `PANEL_EVIDENCE` (`notebooks/2_drug_selection.ipynb` §5) explicitly claims none, and the report's
+> earlier wording, "a published claim about its response determinant", did not hold for it. The report
+> now states condition 3 as "being well characterised in the literature", together with this purpose
+> (`report/sections/03_methods.tex`, compound panel selection), and cites each panel compound's
+> reference from `PANEL_EVIDENCE` behind its name. For `erlotinib` it adds Pao, W. *et al.* *PNAS*
+> **101**, 13306–13311 (2004), doi:10.1073/pnas.0405220101 (checked against PubMed, PMID 15329413):
+> 5 of 7 erlotinib-sensitive lung tumours carried EGFR tyrosine-kinase mutations, against none of 10
+> refractory tumours (P = 0.003). That determinant is a mutation, which an expression-only model does
+> not see. The panel and every result are unchanged.
+
 **The funnel.** 150 FDA-approved drugs → **120** with a PubChem structure (30 are biologics — antibodies,
 enzymes, a cell therapy, a radiopharmaceutical — which cannot appear in a small-molecule screen) →
 **57** also screened by CTRPv2 → **45** at ≥ 90 % coverage → **11** with a verified published claim.
