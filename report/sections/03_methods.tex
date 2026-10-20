@@ -215,7 +215,8 @@ where $n$ indexes cells, $j$ compounds, and
 \end{equation}
 combines the mask $M_{nj}$, which is $1$ where the cell's line was screened against compound $j$ and $0$
 otherwise, with a density weight $w_j$. Unscreened pairs therefore enter neither numerator nor
-denominator, which matters because the target matrix is \TargetDensity\,\% dense \cite{dreval}. The error $\ell$
+denominator. Over the CV lines, \PanelDensity\,\% of the (line, compound) pairs of the panel were
+screened. The error $\ell$
 was either squared or absolute, giving a mean squared error (MSE) or mean absolute error (MAE) objective.
 
 The density weight up-weights rare response values so that the sparse extremes are not dominated by the

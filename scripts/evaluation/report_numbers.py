@@ -83,12 +83,20 @@ def data_counts() -> list[dict]:
     first = pd.Series(np.arange(len(line)))[labelled].groupby(line[labelled]).first().to_numpy()
     y_line, m_line = np.asarray(a.obsm["Y_ctrp"])[first], m[first].astype(bool)
     per_line = pd.Series(line[labelled]).value_counts()
+    # The panel's share of screened pairs over the CV lines -- the columns and lines the objective sees
+    # (cv.py: `kcol` from panel.csv, `grouped_folds` eligible splits train + val).
+    panel = list(pd.read_csv(OUT / "panel/panel.csv").drug_key)
+    kcol = [list(a.uns["ctrp_drugs"]).index(d) for d in panel]
+    cv = a.obs["split_ctrp"].isin(("train", "val")).to_numpy()
+    cv_mask = pd.DataFrame(m[cv][:, kcol]).groupby(line[cv]).max()
     src_r, src_t = "DrEval CTRPv2 response table", "targets h5ad (hvg5000, auc_cc)"
     return [
         row("NCtrpLines", resp.ccl_name.nunique(), src_r, "distinct ccl_name"),
         row("IcDefinedPct", 100 * resp.IC50_curvecurator.notna().mean(), src_r, "% rows with an IC50"),
         row("TargetDensity", 100 * line_mask.to_numpy().mean(), src_t,
             "% of (labelled line, compound) pairs with M_ctrp = 1"),
+        row("PanelDensity", 100 * cv_mask.to_numpy().mean(), src_t,
+            "% of (CV line, panel compound) pairs with M_ctrp = 1; CV = split_ctrp train + val"),
         row("NCancerTypes", a.obs["Cancer_type"].nunique(), src_t, "distinct Cancer_type"),
         row("AucMedian", np.median(y_line[m_line]), src_t,
             "median auc_cc over screened (labelled line, compound) pairs, all compounds"),
