@@ -169,3 +169,16 @@ the two. The exponent was not justified in advance but swept. The weightings of 
 smoothed histogram, for which a kernel density estimate was substituted here. DenseWeight
 \cite{denseweight}, a related scheme, weights linearly in the density rather than by a power and was
 not used.
+
+\section{Decision rule}
+\label{app:decision}
+
+Four quantities were computed per compound and averaged: \emph{order}, the within-compound Spearman
+correlation; \emph{top of order}, the share of the \CfgTopK{} most sensitive lines that the model also
+ranks in its top \CfgTopK; \emph{values}, the MAE in the target's units; and \emph{spread}, the slope of
+a regression of truth on prediction, which is 1 for a calibrated model, by analogy with the calibration
+slope of risk prediction models \cite{vancalster2016}. A configuration counted as an improvement on the
+default only if it was better on order and worse on no other quantity by more than that quantity's own
+seed band, the half-range over the three seeds. The default was the unweighted MAE configuration on PCA,
+because unweighted MSE, the initial default, was the only configuration whose score differed between
+two identical runs.

@@ -43,8 +43,8 @@ density exponent $\alpha$ for the MLP, followed by the ridge regression on cell-
 the two representations, and the highest score is set in bold \cite{hoerl1970,dir}. All six PCA
 configurations scored between \SpSweepLo{} and \SpBest{}, the highest score being reached with MAE and
 $\alpha = 0.5$, and the ridge regression scored \RidgePca{}. Under the decision rule no configuration
-improved on the default, unweighted MAE at \SwPcaMaeZero{}: the \SpBest{} configuration was better on order
-but worse on values and spread by more than their seed bands.
+improved on the default, unweighted MAE at \SwPcaMaeZero{}: the \SpBest{} configuration was better at ranking
+but worse on absolute error and calibration by more than their variation across seeds.
 % (\code{panel\_metrics.csv})
 One configuration (PCA, MSE, $\alpha = 0$) differed between two identical
 executions, \SwPcaMseZeroAlt{} against \SpSweepLo{}. The other thirteen entries agreed to four decimals.

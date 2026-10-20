@@ -53,7 +53,7 @@ line on the same side.
 % (\code{splits/split\_ctrp.csv}, written by \code{scripts/preprocessing/create\_splits.py})
 It was reserved for a final evaluation of the chosen configuration, which was not carried out because
 the methods were still being revised at the end of the project. The remaining \NLinesCV{} lines were
-divided into five cross-validation (CV) folds grouped by cell line, so that each line is held out exactly
+divided into five cross-validation (CV) folds grouped by cell line (leave-cell-line-out, LCO), so that each line is held out exactly
 once. Within each fold, \CfgHoldoutPct\,\% of the training lines were withheld for early stopping
 (Section~\ref{sec:model}).
 
@@ -254,38 +254,31 @@ as the more conservative of the two (Section~\ref{sec:results-q1}). The alternat
 cell level and per-fold averaging --- were computed for comparison (Section~\ref{sec:results-q1}).
 % (\code{panel\_aggregation\_comparison.csv})
 
-Whether a different loss or the density weighting improves on the default was decided by a rule
-fixed before the run.
+Whether a different loss or the density weighting improves on the default, the unweighted MAE
+configuration on PCA, was decided by a rule fixed before the run: a configuration counted as an
+improvement only if it ranked lines better and was not clearly worse on absolute error, calibration or
+the recovery of the most sensitive lines (Appendix~\ref{app:decision}).
 % (\code{notebooks/5\_evaluation.ipynb} \S1.3)
-The default was the unweighted MAE configuration on PCA, because unweighted MSE, the initial default, was
-the only configuration whose score differed between two identical runs. Four quantities were computed
-per compound and averaged: \emph{order}, the within-compound Spearman correlation; \emph{top of order},
-the share of the \CfgTopK{} most sensitive lines that the model also ranks in its top \CfgTopK;
-\emph{values}, the MAE in the target's units; and \emph{spread}, the slope of a regression of truth on
-prediction, which is 1 for a calibrated model, by analogy with the calibration slope of risk prediction
-models \cite{vancalster2016}. A configuration counted as an improvement only if it was better on order
-and worse on no other quantity by more than that quantity's own seed band, the half-range over the
-three seeds. This rule is the project's own and has no published source. It answers whether a change
-improves on the default, so the configuration with the highest order score, reported as the
-highest-scoring configuration, need not pass it (Section~\ref{sec:results-q1}).
+The rule therefore need not select the configuration with the highest order score, which is reported as
+the highest-scoring configuration (Section~\ref{sec:results-q1}).
 
-Three controls were computed on the same folds. A ridge regression \cite{hoerl1970} on cell-line means
+Three controls were computed on the same folds. First, a ridge regression \cite{hoerl1970} on cell-line means
 averaged each line's cells into one \NPca-dimensional vector and fitted one model per compound and fold
 on the fitting lines, with the same per-fold PCA, choosing its penalty by leave-one-out error
 (Appendix~\ref{app:controls}). Second, a model with all \NDrugsModelled{} heads was
 scored on every compound against a per-compound constant, to test the panel against the unselected catalogue.
 % (\code{notebooks/4a\_percell\_training.ipynb} \S D)
-Third, the model was evaluated with DrEval 1.5.1
-\cite{dreval} in its LCO mode, using its splits, its naive baselines --- predicting the global mean, the compound mean, the
-cell-line mean, or both mean effects together --- its
-per-compound random forest \cite{breiman2001} and elastic net, and its normalised metric, unmodified
-(Appendix~\ref{app:controls}). Under LCO a scored line is absent from training, so its effect is zero and only the compound effect is removed.
-DrEval's LPO mode, in which held-out pairs belong to lines seen in training, was run
-for its baselines, which there include the tissue mean, to measure how much a line's average response alone predicts.
-% (\code{scripts/evaluation/dreval\_lpo.py})
+Third, the model was evaluated with DrEval \cite{dreval} under its LCO protocol, with its splits, its
+naive baselines --- predicting the global mean, the compound mean, the cell-line mean, or both mean
+effects together --- its per-compound random forest \cite{breiman2001} and elastic net, and its
+normalised metric, unmodified (Appendix~\ref{app:controls}). Because a held-out line is absent from
+training, that metric can remove only the compound effect, not the cell-line effect. DrEval's
+leave-pairs-out (LPO) protocol, in which held-out pairs belong to lines seen in training, was run for its
+baselines, which there include the tissue mean, to measure how much a line's average response alone
+predicts.
+% DrEval version 1.5.1 (\code{scripts/evaluation/dreval\_lpo.py})
 
-Since LCO cannot remove the cell-line effect \cite{dreval}, its share was measured directly on held-out
-labels. As a proxy for a line's general sensitivity, its fragility $f_i$ was defined here as its mean
+The share of the cell-line effect was therefore measured directly on held-out labels. As a proxy for a line's general sensitivity, its fragility $f_i$ was defined here as its mean
 response over the other ten panel compounds, so that the compound being scored never enters its own
 proxy. This proxy is the project's own construction, not a published method. For each compound the
 partial correlation
