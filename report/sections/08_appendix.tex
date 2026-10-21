@@ -148,14 +148,28 @@ have cost \CfgFoldPct\,\% of the training lines.
 \section{Controls}
 \label{app:controls}
 
-The ridge regression on cell-line means chose its penalty from \CfgGridN{} log-spaced values between
-$10^{-2}$ and $10^{6}$ by efficient leave-one-out error \cite{hastie2009,pedregosa2011}. Features entered
-unscaled, since a log-spaced grid is invariant to feature scale up to a shift. The grid was widened from
-\CfgGridOldN{} values ending at $10^{4}$ after a test fixed before the run --- whether any selected penalty lies on a
-grid end --- fired in \RidgeEdgePca{} of 55 PCA fits and \RidgeEdgeScgpt{} of 55 scGPT fits, all at the ceiling.
-% (\code{scripts/evaluation/ridge\_grid\_refit.py})
+The ridge regression on cell-line means was fitted on each fold's fitting lines, the training lines
+less those held out for early stopping, so that it learns from the same lines as the MLP. It chose its
+penalty from \CfgGridN{} log-spaced values between $10^{-4}$ and $10^{6}$ by efficient leave-one-out
+error \cite{hastie2009,pedregosa2011}. Features entered unscaled, since a log-spaced grid is invariant
+to feature scale up to a shift. A test fixed before the run asked whether any selected penalty lies on a
+grid end. It fired for the original \CfgGridOldN{} values ending at $10^{4}$, in \RidgeEdgePca{} of
+\RidgeFitsPerRep{} PCA fits and \RidgeEdgeScgpt{} of \RidgeFitsPerRep{} scGPT fits, all at the ceiling, and the
+grid was widened at the top and, once the fit moved to the fitting lines, at the bottom. It still fires
+for the current grid: \RidgeFloorPca{} PCA fits lie on the floor, and \RidgeCeilPca{} PCA and
+\RidgeCeilScgpt{} scGPT fits on the ceiling, of \RidgeFitsPerRep{} each. A fit on the ceiling predicts
+close to the compound mean. These fits were kept rather than widening the grid further.
+% (\code{scripts/evaluation/ridge\_grid\_refit.py}, \code{--edges} for \code{panel/ridge\_alpha\_per\_fit.csv}.
+% Rewritten 21.10.2026: until then this described the 17-value grid on the whole training side.)
 DrEval's normalised metric subtracts a fitted overall mean, cell-line effect and compound effect from
 truth and prediction \cite{dreval}.
+On DrEval's LCO protocol the MLP was run in the default configuration, the trunk with the unweighted
+MAE objective. It was trained on the cells of each fold's training lines, stopped early on DrEval's
+validation lines and scored on its test lines, once for each of seeds 42--44, and its score is the mean
+over seeds. The PCA was refitted per fold on the training lines' cells, and the random forest received
+the line means of the same projection. DrEval's forest sets no random seed, so it was seeded with 42.
+% (\code{notebooks/analysis/evaluation/dreval\_benchmark.ipynb} cells 8--9, \code{dreval/dreval\_lco\_mlp\_seeds.csv};
+% added 21.10.2026, when the run moved to the CV lines, per-fold PCA, MAE and three seeds)
 
 \section{Density weight}
 \label{app:density}
@@ -179,6 +193,8 @@ ranks in its top \CfgTopK; \emph{values}, the MAE in the target's units; and \em
 a regression of truth on prediction, which is 1 for a calibrated model, by analogy with the calibration
 slope of risk prediction models \cite{vancalster2016}. A configuration counted as an improvement on the
 default only if it was better on order and worse on no other quantity by more than that quantity's own
-seed band, the half-range over the three seeds. The default was the unweighted MAE configuration on PCA,
+seed band, the half-range over the default's three seeds.
+% (\code{notebooks/5\_evaluation.ipynb} cell 6, \code{decide()}: the band pooled the challenger's and the
+% default's six seeds until 21.10.2026, while this text said three) The default was the unweighted MAE configuration on PCA,
 because unweighted MSE, the initial default, was the only configuration whose score differed between
-two identical runs.
+identical runs (Section~\ref{sec:results-q1}).

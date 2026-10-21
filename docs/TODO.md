@@ -1,5 +1,15 @@
 # OncoTox — TODO
 
+> # 21.10.2026 — methods/results audit, re-run
+>
+> Every number in the report's Methods and Results was checked against the code behind it; eleven
+> defects were fixed and re-run in dependency order (runs committed as `157a385`). **No conclusion changed
+> direction**; 31 macros moved, among them the ridge (0.2725 → 0.2610) and the DrEval MLP (0.3304 →
+> 0.3372). The list, with what moved: [Corrections](./steps/corrections-and-dead-ends.md#the-methodsresults-audit-of-21102026-eleven-defects-the-reruns-and-what-moved).
+> **The delivered deck predates all of it**: any slide quoting the ridge, the DrEval scores, the
+> between/within ratio, the label-quality counts or the MIL gaps carries pre-audit values, on top of the
+> 12.10.2026 differences listed below.
+
 > # 12.10.2026 — where the project stands
 >
 > **The rerun is done and the final presentation has been given (17.08.2026).** R1–R5 ran 13.–16.08.2026

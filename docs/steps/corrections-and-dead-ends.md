@@ -64,6 +64,7 @@ so the improvement is auditable.
 
 | Date | What |
 |---|---|
+| 21.10.2026 | [The methods/results audit of 21.10.2026: eleven defects, the reruns, and what moved](#the-methodsresults-audit-of-21102026-eleven-defects-the-reruns-and-what-moved) — test lines in two more inputs, a ridge on more lines than the model, a mis-scoped decision band; **no conclusion changed direction** |
 | 21.10.2026 | [The DrEval benchmark ran on the test lines, an all-cells PCA and unseeded forests](#the-dreval-benchmark-ran-on-the-test-lines-an-all-cells-pca-and-unseeded-forests) — the 28 test lines were in every DrEval fold; **"the random forest matches the MLP" did not survive the fix** |
 | 12.08.2026 | [The same val-split leak, in the code that produced everything else](#the-same-val-split-leak-in-the-code-that-produced-everything-else) — fixed once in the DrEval notebook 14.07.2026 and never carried into `cv.py`; **every out-of-fold prediction and CV metric on record is a minimum over epochs on its own scored data** |
 | 12.08.2026 | [The evidence that closed model-side tuning](#the-evidence-that-closed-model-side-tuning) — the same leak, in the ablation notebook, on a retired target and a discredited drug set; only the MLP rows are flattered and ridge ties them |
@@ -798,6 +799,60 @@ Why it fails on PCA: `scripts/evaluation/dreval_rf_checks.py` → `dreval_rf_che
 first 10 components, 0.265 on 50, 0.046 on all 512, 0.147 on all 512 with `max_samples=1.0`; scGPT
 0.299 / 0.302. The trailing components, not the subsample, are the main cause. k was set after the
 fact and scored on the evaluation folds, so 0.293 is evidence about the cause, not a score.
+
+### The methods/results audit of 21.10.2026: eleven defects, the reruns, and what moved
+
+**Established** by the committed state up to `b0bf143`. **Overturned 21.10.2026 (Selin)** by an audit
+of every number in the report's Methods and Results against the code that produced it, run after the
+DrEval defects above. Every fix was re-run in dependency order (`4a` → diagnostics → `label_quality.py`
+→ `5_evaluation` → DrEval → `4b` → MIL within-line test → dropout → bias accounting → figures →
+`report_numbers.py`); the runs are committed as `157a385`. What each defect was, and what replaced it:
+
+1. **Two more inputs read the all-cells PCA, test lines included.** `4b` stage 0 and its bootstrap, and
+   the input-scale diagnostic (`diagnostics.ipynb` cell 13), used the stored `X_pca`. Now one PCA fitted
+   on the 153 CV lines' cells (`X_pca_cvfit`). PCA's between/within ratio 1.405 → **1.375**, the paired
+   difference 0.237 → **0.207** (interval 0.077–0.336), input scale 104× → **106×**.
+2. **The label-quality measurement read the test lines and missed one alias.** `label_quality.py` →
+   CV lines and `CTRP_CELL_LINE_ALIASES`: 1,971 → **1,699** curves; the flat-share correlation −0.78 →
+   **−0.75** (p 0.004 → 0.008).
+3. **The ridge control fitted on more lines than the model.** It used the whole training side (~122
+   lines) while the MLP learns from the ~104 fitting lines. Now the fitting lines, grid
+   `logspace(-4, 6, 21)`: **0.2725 → 0.2610** (PCA), 0.1884 → **0.1868** (scGPT). The pre-registered edge
+   test still fires for 15 of 110 fits (3 floor, 12 ceiling), kept (Selin).
+4. **The decision rule's band pooled six seeds**, challenger and default, while App. C.4 said three. Now
+   the default's three (`5_evaluation.ipynb` cell 6, option a1). The verdict did not change.
+5. **The DrEval MLP ran one seed under MSE**, not the default. Now MAE, seeds 42–44: 0.3304 → **0.3372**
+   (PCA), 0.2979 → **0.2681** (scGPT, now below the scGPT forest's 0.2988).
+6. **The MIL within-line test pooled the seeds** into one Spearman per drug. Now per seed, then the mean.
+   Same direction: the bag advantage shrinks with spread in both arms.
+7. **Four input-dropout rates had no committed producer.** `input_dropout_test.py` now writes both files.
+8. **The input-scale test used a hard-coded pre-audit factor and wrote to a scratch path.** Now reads the
+   factor (106.1×, was 103.4×) and writes the committed file: best epoch 6.73 / 7.13 → **6.80 / 7.40**.
+   The report had said the output was "not committed", which was also wrong.
+9. **The execution band** held two executions and counted the pre-audit ridge rows. Now three
+   executions (`157a385` the third), MLP rows only; α=0/mse/PCA reads 0.2473, 0.2485, 0.2541.
+10. **Report text that did not match its source** (each fixed with a dated comment beside it):
+    the 534-head score was the linear head, unnamed, beside `NullGainMax`, an MSE difference from a
+    different row (now both architectures, relative error reduction and share of compounds); `DrDrugMean`
+    came from DrEval's splits while `SpPooled` came from ours (now `SpDrugMeanPooled` 0.72 on the same
+    pairs); two "same folds" statements were false for the DrEval control and the smaller-atlas test;
+    "naive baselines score zero" was a property of the metric presented as a result (moved to Methods);
+    `QPairs` was given as the unit of all five MIL stages; half a sentence of the capacity paragraph sat
+    on a comment line; the abstract and conclusion said a random forest matched the model; the LPO
+    baseline was compared with LCO scores while the caption forbade it; the ridge row was captioned a mean
+    over seeds; the gene-set sweep did not say it was one seed; App. C.2 described the old grid.
+11. **Step 05 called a scoring-set comparison the head-count axis** (+0.0479 → +0.0231 is the 534-head
+    model on two drug sets). Corrected in place with the actual head-count margins.
+
+**What it affected.** Thirty-one report macros moved; none changed the direction of a conclusion — PCA
+stays ahead of scGPT on the between-line ratio and in every configuration, the MIL prediction stays
+refuted, the decision rule still keeps the default. New in the report: the full (capacity × head count)
+factorial (the trunk loses score with more heads, in both arms), and the like-for-like pooled baseline.
+
+**A process failure found on the way.** `report_numbers.py` reads only the first brace group of a macro,
+so a corrupted `\NCurves{1{,}699}971}` passed the check. Caught by reading the diff, not by the gate;
+`read_macros` now rejects any text after a definition other than a comment or another definition, and
+was checked against a copy carrying that exact corruption.
 
 ### The first DrEval benchmark — a val-split leak
 

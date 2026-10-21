@@ -176,10 +176,15 @@
 \newcommand{\CfgBins}{51}              % scGPT expression bins
 \newcommand{\CfgMaxGenes}{1{,}200}     % scGPT genes per cell cap
 \newcommand{\CfgTopK}{20}              % k of the top-of-order quantity
-\newcommand{\CfgGridN}{17}             % ridge penalty grid, values (widened)
-\newcommand{\CfgGridOldN}{13}          % original grid
-\newcommand{\RidgeEdgePca}{8}          % fits at the original grid's ceiling, of 55
+\newcommand{\CfgGridN}{21}             % ridge penalty grid, values: logspace(-4, 6, 21) since 21.10.2026
+                                       % (17, logspace(-2, 6, 17), from 16.08.2026 until then)
+\newcommand{\CfgGridOldN}{13}          % original grid, logspace(-2, 4, 13)
+\newcommand{\RidgeEdgePca}{8}          % fits at the original grid's ceiling, of 55 (7ee329d, 16.08.2026)
 \newcommand{\RidgeEdgeScgpt}{4}
+% the current grid's boundary fits, panel/ridge_alpha_per_fit.csv (ridge_grid_refit.py --edges, 21.10.2026):
+\newcommand{\RidgeFitsPerRep}{55}      % 11 compounds x 5 folds
+\newcommand{\RidgeFloorPca}{3}         \newcommand{\RidgeCeilPca}{3}
+\newcommand{\RidgeFloorScgpt}{0}       \newcommand{\RidgeCeilScgpt}{9}
 
 % === drug panel funnel (03_methods.tex, Drug panel selection) -- made macros 12.10.2026 (Selin),
 % each re-read 12.10.2026 from the stored output of notebooks/2_drug_selection.ipynb (cells 3, 5, 7,
@@ -316,8 +321,10 @@
 \newcommand{\PlatinMedRsq}{0.171}  % 0.170717  % 21.10.2026 rerun after the audit; was: PlatinMedRsq 0.166 (0.166473; read 0.167 until 12.10.2026, mis-rounded)
 % flat fraction vs per-drug score, best arm, Spearman over the 11 compounds:
 % docs/make_figures.py::build_label_quality, on diagnostics/label_quality_vs_performance.csv
-% (frac_ns) and panel/panel_per_drug_correlation.csv. label_quality.py itself reports -0.72 on the
-% default arm (mse, alpha=0); the slide and this report use the best arm.
+% (frac_ns) and panel/panel_per_drug_correlation.csv. label_quality.py itself prints the correlation
+% on the mse, alpha=0 arm (-0.69 for X_pca since the 21.10.2026 rerun; -0.72 before); the slide and this
+% report use the best arm. [21.10.2026: this called mse, alpha=0 "the default arm"; the decision rule's
+% default is mae, alpha=0 (5_evaluation.ipynb, INCUMBENT_ARM).]
 \newcommand{\FlatRho}{-0.75}  % 21.10.2026 rerun after the audit; was: FlatRho -0.78
 \newcommand{\FlatP}{0.008}  % 21.10.2026 rerun after the audit; was: FlatP 0.004
 % --- Q2, four alternative explanations (slide 19).

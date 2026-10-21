@@ -1951,8 +1951,11 @@ def build_label_quality():
                     color=INK if big else MUTED, fontweight="bold" if big else "normal")
 
     ax.set_xscale("log")
-    ax.set_xticks([0.35, 1, 2, 5, 10, 25, 73])
-    ax.set_xticklabels(["0", "1", "2", "5", "10", "25", "73"])
+    # The last tick marks the largest flat share (cisplatin), read from the data: it was hard-coded at 73
+    # and stayed there when the 21.10.2026 rerun moved cisplatin to 72.3.
+    top = float(x.max())
+    ax.set_xticks([0.35, 1, 2, 5, 10, 25, top])
+    ax.set_xticklabels(["0", "1", "2", "5", "10", "25", f"{top:.0f}"])
     ax.set_xlabel("share of that compound's curves that are flat  (%, log scale)", fontsize=9.5)
     ax.set_ylabel("mean per-drug Spearman\n(PCA · MAE · alpha 0.5)", fontsize=9.5)
     ax.set_ylim(-0.02, 0.60)

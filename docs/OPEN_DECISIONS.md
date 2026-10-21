@@ -9,7 +9,8 @@ items, `docs/steps/` for the scientific record) and delete it here, so this file
 second place where a decision lives.
 
 *Status 21.10.2026:* the final presentation (17.08.2026) has been given and the report rewritten to
-it. **No entry is open** — §9 was settled 21.10.2026. Everything else is settled; §10 was settled by the grid refit of
+it. **No entry is open** — §9 was settled 21.10.2026, and §8 was extended the same day (a third
+execution, after the methods/results audit). Everything else is settled; §10 was settled by the grid refit of
 16.08.2026. The entries were once ranked by what they blocked for the 14.08.2026 lab meeting; that
 ranking no longer orders anything.
 
@@ -305,6 +306,13 @@ and Q1's direction survives every rate in the sweep.
 >
 > **Nothing moves.** No number, no conclusion; §3's disqualification of `α=0`/`mse`/`X_pca` already
 > sits entirely inside the two retained executions.
+>
+> ⟳ **Extended 21.10.2026 (Selin, options a and i): a third execution, MLP rows only.** The audit
+> re-executed `4a` changing only the ridge, so its MLP arms are a third execution of the same pipeline —
+> evidenced by 11 of 12 MLP rows matching both 13.08 executions to six decimals. It is replayed from
+> `157a385`. The ridge rows were dropped: they described the pre-audit ridge, and the new ridge has a
+> single recorded execution. The band is still 0.2473–0.2541 (the third value, 0.2485, falls inside).
+> Recorded in [Step 05](./steps/05-multitask-results.md), *Reproducibility*.
 
 ## 8 · Which committed executions count as *comparable* for the reproducibility band? *(the original entry, kept)*
 

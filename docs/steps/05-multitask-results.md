@@ -69,16 +69,17 @@ single cells supports prediction on **held-out cell lines** at all.
 | | value | source |
 |---|---|---|
 | best arm, 11 panel drugs | **0.2824** (α=0.5/mae, `X_pca`) | `panel_metrics.csv` |
-| `RidgeCV` on cell-line-mean embeddings | **0.2725** | `panel_ridge_baseline.csv` |
+| `RidgeCV` on cell-line-mean embeddings | **0.2610** (21.10.2026, fitting lines, `logspace(-4, 6, 21)`; was 0.2725) | `panel_ridge_baseline.csv` |
 | best over **all 534** drugs | **0.1019** | `panel_heads_summary.csv` |
-| … against the per-drug constant | **+0.00043** at best | `panel_heads_summary.csv` |
-| external, DrEval normalized | **0.3304** (recomputed 21.10.2026; was 0.2776 — [Corrections](corrections-and-dead-ends.md#the-dreval-benchmark-ran-on-the-test-lines-an-all-cells-pca-and-unseeded-forests)) | `dreval_lco_results.csv` |
+| … against the per-drug constant | **+0.00043** at best (MSE units, trunk/`X_scGPT`; see the 21.10.2026 note under point 3) | `panel_heads_summary.csv` |
+| external, DrEval normalized | **0.3372** (MAE, mean of seeds 42–44, 21.10.2026; 0.3304 one seed MSE earlier that day; 0.2776 before the leak fix — [Corrections](corrections-and-dead-ends.md#the-dreval-benchmark-ran-on-the-test-lines-an-all-cells-pca-and-unseeded-forests)) | `dreval_lco_results.csv` |
 
 **The answer, in three parts.**
 
 **1 · On a curated panel, modestly — about 0.28 mean per-drug Spearman.** That is a real signal and
 not noise: it is stable across seeds, survives out-of-fold scoring over held-out cell lines, and
-clears DrEval's naive predictors on an external protocol (normalised 0.3304, a different scale).
+clears DrEval's naive predictors on an external protocol (normalised 0.3372, a different scale; 0.3304
+until the 21.10.2026 rerun at the default configuration over three seeds).
 
 **2 · Very unevenly across drugs.** On `X_pca` at α=0/mse the eleven panel compounds run from
 **+0.0177** (`imatinib`) to **+0.5134** (`dasatinib`). **Five of eleven fall below 0.20 and two below
@@ -90,8 +91,27 @@ all for others — and §*label quality* shows part of that spread is the labels
 selected for coverage and literature evidence; it is not representative of what the method does on an
 unselected compound set.
 
+> ⟳ **21.10.2026 (audit): 0.1019 is the linear head, and +0.00043 is a different row, in MSE units.**
+> The report now gives both architectures and, per row, the relative MSE reduction against the
+> per-drug constant (ratio of means) and the share of drugs on which the model beats it:
+> linear/`X_pca` 0.1019, −0.5 %, 35 %; trunk/`X_pca` 0.064, +2.4 %, 46 % (`HdGain*`, `HdBeat*` in
+> `report/results_numbers.tex`, computed by `scripts/evaluation/report_numbers.py::heads_vs_constant`
+> on `panel/panel_heads_oof.csv`). The point stands: over all 534 drugs no model is meaningfully better
+> than the per-drug constant.
+
 ⚠️ **And a simple baseline matches it.** `RidgeCV` on cell-line-mean embeddings scores **0.2725**
 against the best per-cell arm's 0.2824 — a difference of 0.0099.
+
+> ⟳ **21.10.2026 (audit): the ridge now fits on each fold's fitting lines, and reads 0.2610 / 0.1868.**
+> It fitted on the whole training side (~122 lines) while the MLP learns from the ~104 fitting lines
+> (the rest stop it early), and Methods said "fitting lines". Re-fitted by
+> `scripts/evaluation/ridge_grid_refit.py` on `logspace(-4, 6, 21)` — two decades lower, because the
+> fitting lines put fits on the old 10⁻² floor — and by `4a` itself, re-executed the same day with the
+> same result. The gap to the best arm widens to **0.0214**; the ridge now sits level with the default
+> arm (α=0/mae, 0.2617), and **5 of 6 `X_pca` arms clear it** (all but α=0/mse). The pre-registered edge
+> test still fires: **3 `X_pca` fits on the floor, 3 `X_pca` and 9 `X_scGPT` on the ceiling, of 55 each**
+> (`panel/ridge_alpha_per_fit.csv`, `ridge_grid_refit.py --edges`), kept rather than widening further
+> (Selin, 21.10.2026). The paragraphs below are the record before this refit.
 
 > ⛔ **Re-fitted 16.08.2026; the ridge read 0.2767 (`X_pca`) and 0.1914 (`X_scGPT`) until then, and
 > the old value was produced by a search the grid cut short.** `4a` pre-registered the test — *if the
@@ -172,6 +192,9 @@ scores 0.2725, above both PCA arms. A linear model on averaged embeddings beats 
 on the representation that wins Q1 — recorded here because it bounds what the per-cell model has
 been shown to buy, and it is visible in `panel_alpha_response.png` as the dashed ridge line sitting
 above the PCA median at every `alpha`.
+
+> ⟳ **21.10.2026:** with the ridge on the fitting lines (0.2610, see Q0) the linear `X_pca` arm (0.2608)
+> and the ridge are level, 0.0002 apart; the trunk (0.2429) is still below it.
 
 ### D · The evaluation set moves the answer, not the head count
 
@@ -256,6 +279,17 @@ different representations.**
 from +0.0479 to +0.0231 with a linear head and to **−0.0077** with a trunk, where the sign reverses
 toward `X_scGPT`; and on the gene-set sweep's heads-beating metric over 534 drugs `X_scGPT` is ahead
 at **all five** gene-set sizes.
+
+> ⛔ **Corrected 21.10.2026: those three margins are not the head-count axis.** +0.0479, +0.0231 and
+> −0.0077 all come from the **534-head** model — +0.0479 scored on the 11 panel drugs, the other two on
+> all 534 — so they move the **scoring set**, which §D's own heading says is what moves the answer. The
+> head-count comparison holds the scoring set fixed (11-head model, `panel_arch_summary.csv`, against
+> the 534-head model scored on the panel, `panel_heads_summary.csv`): the margin goes **+0.0317 →
+> +0.0479** with a linear head (towards `X_pca`) and **+0.0382 → +0.0251** with a trunk (towards
+> `X_scGPT`), so head count alone does not favour `X_scGPT` consistently. What does is the scoring set,
+> and the gene-set sweep, which scores all 534. The trunk also loses score with more heads in both arms
+> (`X_pca` 0.2429 → 0.2073, `X_scGPT` 0.2047 → 0.1822), which the report now states (Table
+> `tab:capacity`).
 
 **So: in plain English both axes are "more labels", and in the data they point opposite ways.** Any
 sentence of the form *"scGPT needs more supervision"* has to name which axis, or it is simply
@@ -358,6 +392,15 @@ does not survive a re-run, and it does not survive a change of scoring conventio
 the bag-objective axis is not re-scored under the four conventions.
 
 ### Reproducibility — the instability is one *configuration*
+
+> ⟳ **21.10.2026 (Selin, options a and i): three executions, MLP arms only.** The audit re-executed
+> `4a` in full, changing only the ridge, so its MLP arms are a third execution of this pipeline
+> (`157a385`). `build_execution_band.py` now replays all three from history and drops the ridge rows
+> (they described the pre-audit ridge; the new one has one recorded execution, and a closed-form fit has
+> no run-to-run noise to measure). Result: **11 of 12 MLP rows identical to six decimals; α=0/mse/`X_pca`
+> reads 0.2541, 0.2473 and 0.2485** — the third inside the band, which stays 0.2473–0.2541. The
+> "thirteen of fourteen" below counted the two ridge rows. This partly settles
+> [OPEN_DECISIONS](../OPEN_DECISIONS.md) §8 (which executions count) for the current pipeline.
 
 > ✅ **RESOLVED 14.08.2026 (Selin) — the band is now rebuilt from replayable executions only.**
 > It used to be composed of eight, of which **six** were read from an agent session's scratch
@@ -716,6 +759,14 @@ much of their variance is *between* cell lines.**
 From `notebooks/outputs/mil/stage0_input_ceiling.csv`, which measures this on the inputs alone, before
 any model:
 
+> ⟳ **21.10.2026 (audit, Selin option a): the `X_pca` rows below were computed on the stored all-cells
+> PCA, test lines included.** `4b` stage 0 and its bootstrap now read one PCA fitted to the cells of the
+> 153 CV lines (`X_pca_cvfit`, `4b` cell 7). `X_pca` now reads within 0.4211, between **0.579**, ratio
+> **1.375**; the paired difference is **0.207, interval 0.077 to 0.336**, PCA ahead in 99.8 % of
+> resamples. `X_scGPT` is unchanged. The conclusion — PCA carries more between-line structure, and the
+> interval excludes zero — stands; the "20 % more" below becomes 18 % (1.375 / 1.168). Values:
+> `report/results_numbers.tex` (`Btw*`).
+
 | | within-line share | between-line share | between / within |
 |---|---|---|---|
 | `X_pca` | 0.4158 | 0.5842 | **1.405** |
@@ -784,6 +835,13 @@ Tested by splitting each drug's held-out lines at the median of their within-lin
 **The advantage shrinks with within-line spread, for both arms.** That is the opposite of the
 prediction, so the mechanism is wrong.
 
+> ⟳ **21.10.2026 (audit): scored per seed, and on the re-run `4b`.** `mil_within_line_test.py` pooled
+> the three seeds' predictions into one Spearman per drug; it now scores each seed and averages. With
+> the re-executed `4b` (stage-0 PCA on the CV lines) the gaps read **`X_pca` −0.004 / −0.056, `X_scGPT`
+> +0.051 / +0.012** (low / high half; `diagnostics/mil_by_within_line_spread.csv`). Same pattern: the
+> advantage shrinks with spread in both arms. The bag scores move too — `X_pca` MIL **0.239** (was
+> 0.2441), margin **+0.022** (was +0.0265); `report/results_numbers.tex` (`Mil*`).
+
 **What survives, and it is only the fact.** The bag objective does help `X_scGPT` (positive in both
 halves) and does hurt `X_pca` where spread is high. **Why remains unexplained.**
 
@@ -824,6 +882,14 @@ plateaus almost immediately at epoch 2 because there is little for it to extract
 trains longer without finding more.
 
 ### ⛔ Input scale is NOT the cause — tested and refuted 14.08.2026
+
+> ⟳ **Re-run 21.10.2026 (Selin, option a), same conclusion.** The test used a factor hard-coded from the
+> pre-audit `input_scale.csv` (103.4×; all cells, all-cells PCA) and wrote its table to an agent scratch
+> path, so the committed `diagnostics/input_scale_test.csv` had been copied in by hand. The script now
+> reads the factor from the current `input_scale.csv` (**106.1×**: CV cells, CV-line PCA) and writes the
+> committed file. Mean `best_epoch` **6.80 native, 7.40 rescaled** (median 8 and 6); 6 of 15 folds
+> identical. The native arm moved too (seed 42 fold 1: 3 → 4) — MPS nondeterminism, not the factor.
+> The table below is the 14.08 run.
 
 An earlier entry here attributed the epoch crossover to the **104×** input-scale gap. **That is
 wrong, and the test is direct.** `X_scGPT` was rescaled by 103.4× to `X_pca`'s exact magnitude
@@ -875,6 +941,15 @@ had read them.** `scripts/evaluation/label_quality.py` now does, on the exact 1,
 project's labels — **1,971 curves, 11 panel drugs × 180 cell lines** →
 `notebooks/outputs/diagnostics/label_quality_vs_performance.csv`.
 
+> ⟳ **21.10.2026 (audit): 1,699 curves over the 153 CV lines.** `label_quality.py` read every line in
+> `split_ctrp.csv`, the 28 test lines included, and did not apply the pipeline's alias table, so CTRP's
+> `H292` never matched the atlas's `NCIH292` (that is the missing 181st line below). It now applies
+> `CTRP_CELL_LINE_ALIASES` and keeps train/val only: **1,699 curves, 11 drugs × 153 lines**, median `R2`
+> 0.866, cisplatin flat share 72.3 %, and the flat-share correlation on the best arm **ρ = −0.75
+> (p = 0.008)**, was −0.78 (0.004). Values: `report/results_numbers.tex` (`NCurves`, `Curve*`,
+> `Platin*`, `Flat*`). The paragraph below, and "181 is what the pipeline trains on" in it, are the
+> 14.08 record; the pipeline trains on the 153 CV lines.
+
 > **Why 180 and not 181** (checked 14.08.2026). `label_quality.py` filters on the committed
 > `splits/split_ctrp.csv`, which holds **181** lines — but only 180 of them carry a CurveCurator fit
 > for *any* panel compound, so the curve set spans 180. The two numbers answer different questions:
@@ -924,6 +999,8 @@ per-drug random forest matches the multi-task model to 0.0003"; on the same feat
 forest scores 0.0458 against the MLP's 0.3304, so the ridge carries this point alone —
 [Corrections](corrections-and-dead-ends.md#the-dreval-benchmark-ran-on-the-test-lines-an-all-cells-pca-and-unseeded-forests).)* **Whatever is limiting performance is not model capacity**, which is
 consistent with 1 and 2: the ceiling is label supply and label quality.
+*(21.10.2026: the ridge reads 0.2610 on the fitting lines, and 0.2608 is the linear head at α=0/mse
+(§C), not the best arm; the two are now level. The MLP's DrEval score is 0.3372, see the DrEval section.)*
 
 ### The gene-set sweep, on live numbers — and it puts scGPT ahead at every gene-set size
 
@@ -932,7 +1009,9 @@ curve `hvg_sweep_auc_curve.png`. **All five variants were re-embedded on 13.08.2
 is like-for-like for the first time — the warning that it mixed re-embedded `hvg5000` with three
 variants from the older code no longer applies.
 
-Heads beating the per-drug-mean baseline, out of 534, 5-fold CV, `auc_cc`:
+Heads beating the per-drug-mean baseline, out of 534, 5-fold CV, `auc_cc` — **one seed (42)**, the
+(128, 64) trunk, MSE, α = 0 (cell 24; the report states this since 21.10.2026, and that "flat" is
+judged against the fold-to-fold SD):
 
 | gene set | `X_pca` | `X_scGPT` |
 |---|---|---|
@@ -973,15 +1052,21 @@ lines, forests seeded with 42 — `notebooks/outputs/dreval/dreval_lco_results.c
 
 | algorithm | normalized Spearman | sd over folds |
 |---|---|---|
-| `OncoMLP (X_pca)` | **0.3304** | 0.0674 |
+| `OncoMLP (X_pca)` | **0.3372** | 0.0518 |
 | `SingleDrugRF (scgpt)` | 0.2988 | 0.0407 |
-| `OncoMLP (X_scGPT)` | 0.2979 | 0.0529 |
+| `OncoMLP (X_scGPT)` | 0.2681 | 0.0455 |
 | `SingleDrugEN (pca)` | 0.2218 | 0.0583 |
 | `SingleDrugRF (pca)` | 0.0458 | 0.0606 |
 | the four naive predictors, and `SingleDrugEN (scgpt)` | 0.0000–0.0063 | — |
 
-**On the same features the MLP clears DrEval's per-drug random forest by a wide margin** (0.3304 against
-0.0458). On scGPT the forest is level with the MLP on scGPT, and about one fold SD below the MLP on PCA.
+> ⟳ **MLP rows re-run 21.10.2026 (Selin, item 7):** the default configuration (unweighted MAE) and the
+> mean over seeds 42–44, as everywhere else in the project; per seed in `dreval_lco_mlp_seeds.csv`
+> (`X_pca` 0.3438 / 0.3367 / 0.3310, `X_scGPT` 0.2680 / 0.2800 / 0.2563). Earlier that day, one seed under
+> MSE: `X_pca` 0.3304 (SD 0.0674), `X_scGPT` 0.2979 (0.0529).
+
+**On the same features the MLP clears DrEval's per-drug random forest by a wide margin** (0.3372 against
+0.0458). On scGPT the forest now scores above the MLP on scGPT (0.2988 against 0.2681), and below the MLP
+on PCA by less than one fold SD.
 The forest is drevalpy's first default hyperparameter set, untuned, so this does **not** test DrEval's
 finding that no model beat a tuned forest under LCO.
 
@@ -992,9 +1077,10 @@ the default, 0.3015 at `max_samples=1.0`. The trailing components, on which each
 by chance, are the main cause; the subsample is a lesser one. ⚠️ k ∈ {10, 50, 512} was set after the
 fact and scored on these folds, so 0.2928 is evidence about the cause, not a score for the forest.
 
-⚠️ **The MLP rows are a single draw.** They train on `mps`, which is not deterministic under a fixed
-seed: two seeded reruns on 21.10.2026 gave `X_pca` 0.3356 and 0.3304, `X_scGPT` 0.2874 and 0.2979. The
-forests are exact.
+⚠️ **The MLP rows are a mean of three seeds, each run once on `mps`,** which is not deterministic under a
+fixed seed: before the three-seed rerun, two seeded single-seed MSE runs on 21.10.2026 gave `X_pca`
+0.3356 and 0.3304, `X_scGPT` 0.2874 and 0.2979. The forests are exact. *(This read "a single draw" until
+the three-seed rerun the same day.)*
 
 ⚠️ **One thing the same table says about the baseline suite rather than about us.**
 `SingleDrugEN (scgpt)` scores **exactly** what `NaiveDrugMeanPredictor` scores, raw and normalized —
@@ -1181,7 +1267,7 @@ that does address it, without changing the split, is the fragility control immed
 
 ### ⛔ What "we beat the baseline" is worth, and it is less than it sounds
 
-Our model scores **normalized Spearman 0.3304** on DrEval's protocol against **0.0000** for
+Our model scores **normalized Spearman 0.3304** *(0.3372 since the 21.10.2026 three-seed rerun)* on DrEval's protocol against **0.0000** for
 `NaiveMeanEffectsPredictor`. **That margin is inflated by our split design, not earned against it.**
 Under LCO the baseline cannot use a line effect — the line is unseen — so it is competing with one
 channel removed. Beating a handicapped baseline is close to automatic for any model carrying signal.
@@ -1238,7 +1324,7 @@ Values in the table above. **What that licenses is narrower than it looks:**
 > PCA components scores 0.2928, level with the scGPT forest (0.2988), so its collapse on PCA comes from
 > the ~500 trailing components it is handed, not from what the representation carries
 > (`dreval_rf_checks.csv`, k set after the fact). The forests are now seeded, and `SingleDrugEN (pca)`
-> (0.2218) no longer lands near the MLP (0.3304). Neither half licenses *"they need different model
+> (0.2218) no longer lands near the MLP (0.3304; 0.3372 after the three-seed rerun). Neither half licenses *"they need different model
 > classes"*.
 
 ---
@@ -1318,6 +1404,12 @@ seeds on both representations. Source: `notebooks/4b_mil_training.ipynb` →
 | 2 | does that structure **reproduce across seeds**? | median ρ 0.256, 83.0 % beat a shuffled-cell null | ρ 0.861, 99.2 % |
 | 6 | do **technical confounds** explain it? | R²adj 0.0533 — **82 % as much as the signal reproduces** | 0.2656 — 36 % |
 | 7 | can the instrument detect a **known** gap? | AUROC **0.518**, 45.6 % of pairs significant | **0.537**, 48.4 % |
+
+> ⟳ **21.10.2026 (audit): `X_pca` column after re-executing `4b`** with stage 0 on the CV-line PCA:
+> stage 0 share **0.421**; stage 6 R²adj **0.054**, 83 % of the bar; stage 7 AUROC **0.521**, 46.0 %
+> significant. Stages 1 and 2 and the whole `X_scGPT` column are unchanged; the verdict is unchanged.
+> `q2_verdict.csv` also gained the stage-6 columns the notebook already computed but the committed file
+> predated. Values: `report/results_numbers.tex` (`Q*`).
 
 **The verdict, in the notebook's own words: `Q2(a) POSITIVE` for both representations** — but stated
 there with the qualifier that matters, *"at a measured instrument sensitivity of AUROC 0.518"*.

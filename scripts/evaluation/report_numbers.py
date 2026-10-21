@@ -153,6 +153,18 @@ def controls() -> list[dict]:
     ridge = pd.read_csv(OUT / src).groupby("rep").spearman.mean()
     rows += [row("RidgePca", ridge["X_pca"], src, "mean spearman over compounds"),
              row("RidgeScgpt", ridge["X_scGPT"], src, "mean spearman over compounds")]
+    # Where the penalty grid still binds (21.10.2026): per fit, from ridge_grid_refit.py --edges, which
+    # asserts that its refit reproduces panel_ridge_baseline.csv before writing.
+    src_e = "panel/ridge_alpha_per_fit.csv"
+    pf = pd.read_csv(OUT / src_e)
+    n = pf.groupby("rep").size()
+    assert n.nunique() == 1, "fit counts differ between representations"
+    edges = pf.groupby("rep")[["at_floor", "at_ceiling"]].sum()
+    rows += [row("RidgeFitsPerRep", n.iloc[0], src_e, "ridge fits per representation (compounds x folds)"),
+             row("RidgeFloorPca", edges.loc["X_pca", "at_floor"], src_e, "fits at the grid floor, X_pca"),
+             row("RidgeCeilPca", edges.loc["X_pca", "at_ceiling"], src_e, "fits at the grid ceiling, X_pca"),
+             row("RidgeFloorScgpt", edges.loc["X_scGPT", "at_floor"], src_e, "fits at the grid floor, X_scGPT"),
+             row("RidgeCeilScgpt", edges.loc["X_scGPT", "at_ceiling"], src_e, "fits at the grid ceiling, X_scGPT")]
 
     src = "panel/panel_heads_summary.csv"
     heads = pd.read_csv(OUT / src)
@@ -403,7 +415,15 @@ def read_macros(path: Path) -> dict[str, str]:
     """``\\newcommand{\\Name}{value}`` -> {Name: value}, for numeric values only (spelled words and
     macro references such as ``\\SpBest{\\SwPcaMaeHalf}`` are skipped)."""
     out = {}
-    for name, val in re.findall(r"\\newcommand\{\\(\w+)\}\{((?:[^{}]|\{,\})*)\}", path.read_text()):
+    # Anything after a macro's closing brace must be whitespace, a comment or another definition. Added
+    # 21.10.2026: an edit left `\NCurves{1{,}699}971}`, the pattern below read `1{,}699` and the check
+    # passed on a macro that typesets as "1,699971}".
+    text = path.read_text()
+    for m in re.finditer(r"\\newcommand\{\\(\w+)\}\{((?:[^{}]|\{,\})*)\}([^\n]*)", text):
+        rest = m.group(3).lstrip()
+        if rest and not rest.startswith(("%", "\\newcommand")):
+            raise SystemExit(f"\\{m.group(1)}: unexpected text after the definition: {rest[:40]!r}")
+    for name, val in re.findall(r"\\newcommand\{\\(\w+)\}\{((?:[^{}]|\{,\})*)\}", text):
         val = val.replace("{,}", "")
         if re.fullmatch(r"-?\d+(\.\d+)?", val):
             out[name] = val

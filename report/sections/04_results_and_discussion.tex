@@ -255,6 +255,10 @@ all four scoring conventions --- cell or line level, pooled or per fold
 alone, before training, the between-line share of variance, one minus the within-line share defined in
 Section~\ref{sec:mil}, was \BtwSharePca{} for PCA and
 \BtwShareScgpt{} for scGPT, a between-to-within ratio of \BtwRatioPca{} against \BtwRatioScgpt{}.
+For PCA this used one decomposition fitted to the cells of all \NLinesCV{} cross-validation lines, in
+place of the five per-fold fits the model receives.
+% (\code{notebooks/4b\_mil\_training.ipynb} cell 7, \code{X\_pca\_cvfit}; it read the all-cells PCA,
+% test lines included, until 21.10.2026)
 Resampling the \NLinesCV{} lines with replacement, both representations on the same resample
 (\BtwBootB{} resamples), the difference of the ratios was \BtwRatioDiff{} with a 95\,\% percentile
 interval from \BtwRatioDiffLo{} to \BtwRatioDiffHi{}, and PCA was ahead in \BtwBootPcaAheadPct\,\% of
@@ -335,8 +339,10 @@ panel compounds and on all \NDrugsModelled{}. Input dropout: the linear head at 
 \end{table}
 
 The size of the gene set made no difference beyond fold-to-fold variation. Over five sizes from
-1{,}000 genes to the full transcriptome, the PCA arm's number of compounds beating their per-compound
-baseline, out of \NDrugsModelled{}, varied by \SweepRangePca{}, against a fold-to-fold SD of \SweepFoldSd{}, and both representations were flat within error. For scGPT the sweep compared
+1{,}000 genes to the full transcriptome, with the trunk and all \NDrugsModelled{} heads trained once
+(seed 42, MSE, $\alpha = 0$) on the same folds, the PCA arm's number of compounds beating their
+per-compound baseline, out of \NDrugsModelled{}, varied by \SweepRangePca{}, against a fold-to-fold SD of
+\SweepFoldSd{}, and both representations were flat within that fold-to-fold variation. For scGPT the sweep compared
 selection rather than count: at \NHvg{} genes it read about \GenesSeenHvg{} dispersion-selected genes per
 cell, in the full-transcriptome variant about \GenesSeenAll{} genes drawn at random under its cap. The
 flat result therefore shows only that twice as many random genes do no better than selected ones, not
@@ -352,7 +358,7 @@ more of that structure before any model is trained, which Figure~\ref{fig:umap} 
 scGPT was used frozen, because about \NLinesCV{} labelled lines are too few to fine-tune it and the
 project's time did not allow it, and it was
 chosen in the expectation that its embedding would carry less cell-line identity, an impression the UMAP
-of the atlas gives (Figure~\ref{fig:umap}) and the variance ratio, computed on the model inputs,
+of the atlas gives (Figure~\ref{fig:umap}) and the variance ratio, computed on the inputs before training,
 confirms. Its authors note that the current pretraining does not
 inherently mitigate batch effects \cite{scgpt}, so this reduction is an observation on this atlas, not a
 design property of the model. On this label it removes exactly the structure the label varies over. Five rival accounts are eliminated: the margin is larger with more labels than with few, which

@@ -34,8 +34,8 @@ has only one recorded execution (``ridge_grid_refit.py`` and 4a both wrote the s
 would give a range of zero without measuring anything. Being a closed-form fit, it has no run-to-run
 nondeterminism to measure.
 
-⚠️ **The third execution is read from the working tree until it is committed.** When it is, replace
-``WORKTREE`` below with that commit's hash, so the band is replayable from history again.
+The third execution was read from the working tree until Selin committed it as ``157a385``
+(21.10.2026); it is now replayed from that commit like the other two.
 """
 import io, subprocess
 from pathlib import Path
@@ -63,14 +63,11 @@ if __name__ == "__main__":   # guard added 14.08.2026 (Selin): importing this fi
             ['git','show',f'{rev}:notebooks/outputs/panel/panel_leaderboard.csv'],
             capture_output=True, text=True).stdout))
 
-    # The first two replayed from committed history, so anyone with the repository can rebuild them.
-    # The third is the 21.10.2026 audit rerun, read from the working tree until it is committed (see
-    # the module docstring).
-    WORKTREE = Path('notebooks/outputs/panel/panel_leaderboard.csv')
+    # All three replayed from committed history, so anyone with the repository can rebuild this file.
     frames = [
         tidy(from_git('9732b6f^'), 'exec_1_committed_13.08',  'normal order'),
         tidy(from_git('9732b6f'),  'exec_2_full_rerun_13.08', 'normal order'),
-        tidy(pd.read_csv(WORKTREE), 'exec_3_audit_rerun_21.10', 'normal order'),
+        tidy(from_git('157a385'),  'exec_3_audit_rerun_21.10', 'normal order'),
     ]
 
     band = pd.concat(frames, ignore_index=True)

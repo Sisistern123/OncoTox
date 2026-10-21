@@ -34,6 +34,11 @@ SwPcaMseZeroAlt,0.2541,panel/panel_execution_band.csv,"X_pca mse alpha=0, first 
 SwPcaMseZeroAltB,0.2473,panel/panel_execution_band.csv,"X_pca mse alpha=0, second execution"
 RidgePca,0.26104057027598526,panel/panel_ridge_baseline.csv,mean spearman over compounds
 RidgeScgpt,0.18683175181054237,panel/panel_ridge_baseline.csv,mean spearman over compounds
+RidgeFitsPerRep,55.0,panel/ridge_alpha_per_fit.csv,ridge fits per representation (compounds x folds)
+RidgeFloorPca,3.0,panel/ridge_alpha_per_fit.csv,"fits at the grid floor, X_pca"
+RidgeCeilPca,3.0,panel/ridge_alpha_per_fit.csv,"fits at the grid ceiling, X_pca"
+RidgeFloorScgpt,0.0,panel/ridge_alpha_per_fit.csv,"fits at the grid floor, X_scGPT"
+RidgeCeilScgpt,9.0,panel/ridge_alpha_per_fit.csv,"fits at the grid ceiling, X_scGPT"
 SpAllDrugs,0.1019412204799148,panel/panel_heads_summary.csv,"all compounds, linear head, X_pca"
 HdPanLinPca,0.2706684905697492,panel/panel_heads_summary.csv,"534-head model, panel compounds, linear, X_pca"
 HdAllLinScgpt,0.0788730141383945,panel/panel_heads_summary.csv,"all compounds, linear, X_scGPT"

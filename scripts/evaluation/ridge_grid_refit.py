@@ -67,7 +67,7 @@ GRID_FITTING = np.logspace(-4, 6, 21)
 
 
 def ridge_table(adata, groups, idx, fold_split, masks, panel, yl, ol, lines, line_of, paths, grid,
-                fitting_only=True):
+                fitting_only=True, per_fit=None):
     """`4a`'s ridge cell, parameterised by the penalty grid and by which training lines it fits on.
 
     ``fitting_only`` (Selin, 21.10.2026): fit on the fold's FITTING lines -- the training side minus
@@ -95,6 +95,10 @@ def ridge_table(adata, groups, idx, fold_split, masks, panel, yl, ol, lines, lin
                 m = RidgeCV(alphas=grid).fit(E[tj], yl[tj, j])
                 pred[vj, j] = m.predict(E[vj])
                 chosen.setdefault(j, []).append(float(m.alpha_))
+                if per_fit is not None:
+                    per_fit.append({"rep": rep, "drug": panel[j], "fold": fold_i + 1,
+                                    "alpha": float(m.alpha_), "at_floor": bool(m.alpha_ == grid[0]),
+                                    "at_ceiling": bool(m.alpha_ == grid[-1])})
         for j, d in enumerate(panel):
             sel = ol[:, j] & np.isfinite(pred[:, j])
             t, p = yl[sel, j], pred[sel, j]
@@ -140,6 +144,21 @@ def main() -> None:
         masks.append((fitc, vac))
 
     args = (adata, groups, idx, fold_split, masks, panel, yl, ol, lines, line_of, paths)
+
+    if "--edges" in sys.argv:
+        # Added 21.10.2026: the committed ridge's penalty per fit, so the report can say how many fits
+        # sit on the floor and how many on the ceiling (panel_ridge_baseline.csv keeps only their sum
+        # per drug). Refits, checks that the refit IS the committed table, and writes nothing else.
+        per_fit = []
+        table = ridge_table(*args, GRID_FITTING, fitting_only=True, per_fit=per_fit)
+        ref = pd.read_csv(OUT / "panel_ridge_baseline.csv").set_index(["rep", "drug"])["spearman"]
+        assert ref.round(6).sort_index().equals(table.set_index(["rep", "drug"])["spearman"].round(6).sort_index()), \
+            "the refit does not reproduce panel_ridge_baseline.csv; nothing written"
+        pf = pd.DataFrame(per_fit)
+        pf.to_csv(OUT / "ridge_alpha_per_fit.csv", index=False)
+        print(pf.groupby("rep")[["at_floor", "at_ceiling"]].sum().to_string())
+        print(f"wrote {(OUT / 'ridge_alpha_per_fit.csv').relative_to(ROOT)}  ({len(pf)} fits)")
+        return
 
     # ---- 1. reproduce the committed artifact, or stop -------------------------------------
     # Since 21.10.2026 (Selin) the committed artifact is the WIDE grid on the whole training side
