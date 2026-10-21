@@ -77,7 +77,9 @@
                                    % no response label. Was a literal 198 in 03_methods.tex
                                    % until 14.08.2026, the last line-count digits left in a
                                    % section file.
-\newcommand{\NCells}{53{,}513}     % single cells
+\newcommand{\NCells}{53{,}513}     % single cells -- the WHOLE atlas, all \NLinesAtlas{} lines
+\newcommand{\NCellsLabelled}{47{,}440} % cells of the \NLines{} labelled lines (added 21.10.2026)
+\newcommand{\NCellsCV}{40{,}911}       % cells of the \NLinesCV{} CV lines (added 21.10.2026)
 \newcommand{\NGenes}{22{,}722}     % genes in the distributed SCP542 matrix
 % \NIndep was RETIRED 12.08.2026 (Selin) -- it named two different quantities at once
 % (see the note at the foot of this file). Replaced by the two below, each named for
@@ -274,6 +276,7 @@
 % % MSE reduction against the per-compound constant, ratio of means (negative = worse than it):
 \newcommand{\HdGainLinPca}{-0.5}     \newcommand{\HdGainLinScgpt}{1.6}
 \newcommand{\HdGainTrunkPca}{2.4}    \newcommand{\HdGainTrunkScgpt}{4.1}
+\newcommand{\HdRiseLinPca}{0.5}      % = -HdGainLinPca: % by which the linear head's MSE exceeds the constant's
 % % of compounds on which the model's MSE is below the constant's:
 \newcommand{\HdBeatLinPca}{35}       \newcommand{\HdBeatLinScgpt}{39}
 \newcommand{\HdBeatTrunkPca}{46}     \newcommand{\HdBeatTrunkScgpt}{53}

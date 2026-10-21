@@ -12,6 +12,8 @@ AucMedian,0.9254664182662964,"targets h5ad (hvg5000, auc_cc)","median auc_cc ove
 CellsMin,56.0,"targets h5ad (hvg5000, auc_cc)",fewest cells in a labelled line
 CellsMax,1990.0,"targets h5ad (hvg5000, auc_cc)",most cells in a labelled line
 CellsPerLineMean,262.09944751381215,"targets h5ad (hvg5000, auc_cc)",mean cells per labelled line
+NCellsLabelled,47440.0,"targets h5ad (hvg5000, auc_cc)",cells of the labelled lines (any M_ctrp = 1)
+NCellsCV,40911.0,"targets h5ad (hvg5000, auc_cc)",cells of the CV lines (split_ctrp train + val)
 SwPcaMseZero,0.2485359509544556,panel/panel_per_drug_correlation.csv,"X_pca mse alpha=0.0: mean over compounds per seed, then over seeds"
 SwPcaMseHalf,0.27541459556570763,panel/panel_per_drug_correlation.csv,"X_pca mse alpha=0.5: mean over compounds per seed, then over seeds"
 SwPcaMseOne,0.26791364813603274,panel/panel_per_drug_correlation.csv,"X_pca mse alpha=1.0: mean over compounds per seed, then over seeds"
@@ -55,6 +57,7 @@ HdGainTrunkPca,2.399644118283715,panel/panel_heads_oof.csv,"% MSE reduction vs p
 HdBeatTrunkPca,46.37952559300874,panel/panel_heads_oof.csv,"% of compounds with model MSE below the constant's, mean over seeds"
 HdGainTrunkScgpt,4.0913474128950025,panel/panel_heads_oof.csv,"% MSE reduction vs per-compound constant, ratio of means, mean over seeds"
 HdBeatTrunkScgpt,52.559300873907624,panel/panel_heads_oof.csv,"% of compounds with model MSE below the constant's, mean over seeds"
+HdRiseLinPca,0.45637452362101927,panel/panel_heads_oof.csv,% by which the linear head's MSE exceeds the constant's (X_pca); stated as a rise in the text
 DrMlpNorm,0.33716838815360595,dreval/dreval_lco_results.csv,"normalized Spearman, mean over folds"
 DrRfNorm,0.2988489334770984,dreval/dreval_lco_results.csv,"normalized Spearman, mean over folds"
 DrMlpSd,0.05176251375980346,dreval/dreval_lco_results.csv,"normalized Spearman, SD over folds"

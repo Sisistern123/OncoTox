@@ -43,10 +43,10 @@ density exponent $\alpha$ for the MLP, followed by the ridge regression on cell-
 the two representations, and the highest score is set in bold \cite{hoerl1970,dir}. All six PCA
 configurations scored between \SpSweepLo{} and \SpBest{}, the highest score being reached with MAE and
 $\alpha = 0.5$, and the ridge regression scored \RidgePca{}. Under the decision rule no configuration
-improved on the default, unweighted MAE at \SwPcaMaeZero{}: the \SpBest{} configuration was better at ranking
+improved on the default, unweighted MAE at \SwPcaMaeZero{}: the configuration with MAE and $\alpha = 0.5$ was better at ranking
 but worse on absolute error and calibration by more than their variation across seeds.
 % (\code{panel\_metrics.csv})
-One configuration (PCA, MSE, $\alpha = 0$) gave \SwPcaMseZeroAltB{}, \SwPcaMseZeroAlt{} and
+One configuration (PCA, MSE, $\alpha = 0$) gave \SwPcaMseZeroAlt{}, \SwPcaMseZeroAltB{} and
 \SpSweepLo{} in three identical executions, and the table reports the last. The other eleven MLP entries
 agreed to four decimals.
 % (\code{panel\_execution\_band.csv}, \code{scripts/evaluation/build\_execution\_band.py}; three
@@ -57,8 +57,8 @@ DrEval's predictor that knows only each compound's average response reached \SpD
 same pairs, so a pooled
 score measures mainly the differences in potency between compounds \cite{dreval}. Averaging the
 within-compound score per fold, over about 30 lines each, gave a higher score than pooling the held-out
-lines in every configuration and seed, so the pooled value reported here is the more conservative of
-the two.
+lines in every configuration and seed, so the value reported here, pooled over the held-out lines of
+all folds, is the more conservative of the two.
 % (\code{dreval/bias\_accounting.csv}, \code{panel\_aggregation\_comparison.csv})
 
 \begin{table}[h]
@@ -95,7 +95,7 @@ between the two axes rather than any single compound. Each point is one
 compound, placed by the share of its dose--response curves that are flat (logarithmic axis) and by its
 score. The compounds at the extremes and the exception are labelled in bold. Scores ranged from
 \SpDrugLo{} for cisplatin to \SpDrugHi{} for dasatinib, and the share of flat curves from $0$ to
-\PlatinFracNs\,\%. The two were correlated, Spearman $\rho = \FlatRho$ ($p = \FlatP$, $n = 11$):
+\PlatinFracNs\,\%. The two were correlated, Spearman $\rho = \FlatRho$ ($p = \FlatP$, $n = \NPanel$):
 compounds with more flat curves scored lower, cisplatin having both the largest share and the lowest
 score, while crizotinib had no flat curves and a middling score. Across all \NCurves{} curves behind the
 panel, the median $R^2$ of the fits was \CurveMedRsq{}, \CurveFracLowRsq\,\% had $R^2 < 0.5$, and
@@ -146,13 +146,15 @@ in training, and each compound is scored per fold rather than pooled across fold
 \end{figure}
 
 Finally, the per-cell model was set against the two line-level controls and the unselected catalogue
-\cite{hoerl1970,breiman2001}. The ridge regression on cell-line means scored \RidgePca{} against
-\SpBest{}. On DrEval's LCO protocol, the MLP scored \DrMlpNorm{} on the normalised metric (fold SD
+\cite{hoerl1970,breiman2001}. The ridge regression on cell-line means scored \RidgePca{}, level with the default configuration
+(\SwPcaMaeZero{}) and below the highest-scoring one (\SpBest{}). On DrEval's LCO protocol, the MLP in
+the default configuration scored \DrMlpNorm{} on the normalised metric (fold SD
 \DrMlpSd{}). DrEval's per-compound random forest, trained here on the line means of the same per-fold PCA
-features, scored \DrRfPcaNorm{} (\DrRfPcaSd{}). Over all \NDrugsModelled{} compounds the model scored \SpAllDrugs{} with a linear head and
-\HdAllTrunkPca{} with the trunk (Table~\ref{tab:capacity}). Relative to a per-compound constant, their
-squared error changed by \HdGainLinPca\,\% and \HdGainTrunkPca\,\%, and they had the lower error on
-\HdBeatLinPca\,\% and \HdBeatTrunkPca\,\% of compounds.
+features, scored \DrRfPcaNorm{} (\DrRfPcaSd{}). Over all \NDrugsModelled{} compounds the model, trained with unweighted MSE, scored \SpAllDrugs{} with a
+linear head and \HdAllTrunkPca{} with the trunk (Table~\ref{tab:capacity}). Relative to a per-compound
+constant, the linear head's squared error was \HdRiseLinPca\,\% higher and the trunk's
+\HdGainTrunkPca\,\% lower, and they had the lower error on \HdBeatLinPca\,\% and \HdBeatTrunkPca\,\%
+of compounds.
 % (\code{panel\_heads\_summary.csv}; gain and share: \code{scripts/evaluation/report\_numbers.py::heads\_vs\_constant}
 % on \code{panel\_heads\_oof.csv}. Until 21.10.2026 this gave the linear head's score alone, unnamed,
 % with \code{NullGainMax}, an MSE difference from a different row.)
@@ -161,7 +163,8 @@ squared error changed by \HdGainLinPca\,\% and \HdGainTrunkPca\,\%, and they had
 \paragraph{Discussion.} Drug response is predictable from these data,
 but modestly, unevenly, and not demonstrably from single cells. The score is out of fold over held-out
 lines, stable across seeds, and clears DrEval's naive predictors on a protocol this work did not design
-\cite{dreval}. Against that, a ridge regression on cell-line means \cite{hoerl1970} reaches the per-cell model, so
+\cite{dreval}. Against that, a ridge regression on cell-line means \cite{hoerl1970} scores about as well as the
+default per-cell configuration, so
 the single-cell resolution and the network are not what does the work. On the unselected catalogue the signal nearly vanishes, which marks the
 panel's score as a property of eleven well-covered compounds rather than of the screen.
 
@@ -180,8 +183,8 @@ general cell-line fragility, in nearly the same proportion for both. Under LPO, 
 baseline can use a line's average response to the other compounds, that baseline alone reached
 \LpoLineMean{}, above the \SpBest{} of the best configuration here. The two protocols hold out different
 pairs and aggregate them differently, so this is a reference for the size of the channel rather than a
-comparison of models. The LCO protocol used here hides the channel by construction, because a held-out line has no estimated
-effect \cite{dreval}. The reported score is therefore real but partly not compound-specific. What this shared component is
+comparison of models. The LCO protocol used here gives no baseline access to the channel, because a held-out line has no
+estimated effect \cite{dreval}. The reported score is therefore real but partly not compound-specific. What this shared component is
 was not measured. One candidate, offered as a hypothesis, is proliferation rate: the AUC, like the IC50,
 varies with the number of divisions the cells undergo during the assay, and because response is
 normalised to an untreated control that keeps dividing, faster-dividing lines appear more sensitive
@@ -197,9 +200,8 @@ which carried no signal for it, it fell far below the same forest on a few leadi
 This comparison therefore does not test DrEval's finding that no model surpassed a tuned forest under
 LCO. The result agrees with the expectation that more
 complex models need more observations \cite{adam2020}. With about \NLinesCV{} labelled lines, a ridge
-regression on line means reached the network's score. It differs in one respect from the NCI-DREAM
-challenge, whose best methods modelled non-linear relationships \cite{costello2014}, whereas a linear
-model on line means matched the network here. The settings differ, however. The challenge combined
+regression on line means scored about as well as the network's default configuration. This differs
+from the NCI-DREAM challenge, whose best methods modelled non-linear relationships \cite{costello2014}. The settings differ, however. The challenge combined
 several bulk profiling data types and pathway information on breast cancer lines, and this work used
 one single-cell representation without either. The closest comparison is PERCEPTION, which used the
 same atlas \cite{perception}. It obtained predictive models for 44 of 133 drugs, and the drugs with
@@ -210,8 +212,8 @@ trained in that weaker setting, which is one possible reason for its modest scor
 not test. The scores themselves are not comparable, because the screen, the response measure, the
 metric and the drugs differ.
 
-\paragraph{LCO only.} The fragility channel is invisible under the protocol used, and whether the model
-clears a baseline that can use it would require retraining under an LPO split \cite{dreval}.
+\paragraph{LCO only.} Under the protocol used no baseline can exploit the fragility channel, and whether
+the model clears a baseline that can use it would require retraining under an LPO split \cite{dreval}.
 
 \paragraph{Why the panel was not selected on response.} Two earlier panels of
 this project had been selected on the response values and were discarded: a gate requiring a compound to both
@@ -221,7 +223,7 @@ dependency because its candidates had been pre-ranked on that statistic. Selecti
 one's own labels enriches for compounds that separate these particular lines, flatters every correlation
 measured on them, and reads labels of lines that are later held out \cite{dreval}.
 
-\paragraph{About \NLinesCV{} independent labels, not \NCells{} cells.} Every uncertainty in this report is
+\paragraph{About \NLinesCV{} independent labels, not \NCellsCV{} cells.} Every uncertainty in this report is
 governed by the number of cell lines (Section~\ref{sec:data}) \cite{lazic2010}, and the work covers
 one database, one response score and \NPanel{} compounds. Cross-database integration, toxicity and
 leave-tissue-out or leave-drug-out evaluation \cite{dreval} are not attempted.
@@ -302,7 +304,7 @@ configuration scored \FragBestPca{} in the PCA arm and \FragBestScgpt{} in the s
 \centering
 \includegraphics[width=0.72\textwidth]{label_supply.png}
 \caption{\textbf{Score against label supply.} Mean within-compound Spearman correlation of the per-cell
-model on PCA (blue) and scGPT (amber), with the labelled lines of each fold's training side thinned to
+model on PCA (blue) and scGPT (gold), with the labelled lines of each fold's training side thinned to
 25, 50 and 75 and at the full 103. Points are the mean over seeds 42--44, error bars the lowest and
 highest seed, and the two arms are offset slightly along the horizontal axis so that their bars do not
 overlap. All runs used a linear head in place of the trunk and the unweighted MSE objective, not the
@@ -318,8 +320,7 @@ inputs of different structure \cite{srivastava2014}. Over six rates the PCA arm 
 \DropRangePca{} and the scGPT arm by \DropRangeScgpt{}. The PCA arm scored \DropBestPca{} at rate 0.02
 and \DropShippedPca{} at the rate of \CfgInDrop{} used for all other results. Table~\ref{tab:capacity} lists both
 tests per arm. The trunk scored below the linear head in both arms, by more than the seed range in
-the scGPT arm, and over the six input-dropout rates the scGPT arm stayed within a range of
-\DropRangeScgpt{}, while the PCA arm was highest at the two lowest rates.
+the scGPT arm, and over the six input-dropout rates the PCA arm was highest at the two lowest rates.
 
 \begin{table}[h]
 \caption{\textbf{Capacity and input-dropout tests.} Mean within-compound Spearman correlation of the
@@ -328,7 +329,12 @@ per-cell model, mean over seeds 42--44 with the lowest and highest seed in brack
 highest-scoring configuration of Table~\ref{tab:sweep}. Capacity: a linear head against the
 (\CfgHidA, \CfgHidB) trunk, with \NPanel{} heads and with all \NDrugsModelled{}, the latter scored on the
 panel compounds and on all \NDrugsModelled{}. Input dropout: the linear head at six rates. Rate
-\CfgInDrop{}, used for all other results, repeats the linear-head row with \NPanel{} heads.
+\CfgInDrop{}, used for all other results, repeats the linear-head row with \NPanel{} heads. The trunk
+with \NPanel{} heads is the MSE, $\alpha = 0$ configuration of Table~\ref{tab:sweep}, trained in a later part
+of the same run. On MPS that configuration scored differently there (\ArchTrunkPca{} against
+\SwPcaMseZero{} for PCA, \ArchTrunkScgpt{} against \SwScgptMseZero{} for scGPT), as training on MPS is
+not bit-reproducible and depends on what ran before it (Section~\ref{sec:results-q1}).
+% (scripts/evaluation/first_fit_order_test.py: X_scGPT alpha=0/mse 0.2009 in normal order, 0.2024 when run first)
 % Body generated by \code{docs/make\_figures.py} (\code{build\_capacity\_dropout\_table}) from
 % \code{panel/panel\_arch\_summary.csv} and \code{diagnostics/input\_dropout\_test.csv},
 % \code{input\_dropout\_sweep\_extra.csv}.
@@ -353,8 +359,9 @@ that scGPT gains nothing from the full transcriptome.
 
 \paragraph{Discussion.} scGPT is a viable representation but falls behind PCA here, and the
 leading account is a mismatch of granularity rather than a deficit of the embedding. The label is
-defined per cell line, so what a model must read is variation between lines. PCA carries about a fifth
-more of that structure before any model is trained, which Figure~\ref{fig:umap} illustrates.
+defined per cell line, so what a model must read is variation between lines. Before any model is
+trained, PCA's between-to-within variance ratio is about a fifth higher than scGPT's, which
+Figure~\ref{fig:umap} illustrates.
 scGPT was used frozen, because about \NLinesCV{} labelled lines are too few to fine-tune it and the
 project's time did not allow it, and it was
 chosen in the expectation that its embedding would carry less cell-line identity, an impression the UMAP
@@ -376,12 +383,11 @@ not about scGPT in general.
 
 \paragraph{Relation to previous work.} The ordering agrees with the zero-shot evaluation of
 Kedzierska et al., in which frozen scGPT and Geneformer embeddings separated known cell types worse
-than a selection of highly variable genes, and the highly variable genes outperformed both models on all
-metrics, although the datasets resembled those used in pretraining \cite{kedzierska2025}. Here, too, the
+than a selection of highly variable genes (Section~\ref{sec:bg-foundation}) \cite{kedzierska2025}. Here, too, the
 frozen scGPT embedding fell behind a reduction of highly variable genes, on a different task and at a
-different granularity, the cell line rather than the cell type. A property of scGPT's pretraining
-offers a further account that this work did not test. Its corpus consists of human cells under normal,
-non-disease conditions, so cancer cell lines were not among them \cite{scgpt}. Both foundation models
+different granularity, the cell line rather than the cell type. The composition of scGPT's
+pretraining corpus, which contains no cancer cell lines (Section~\ref{sec:bg-foundation}), offers a
+further account that this work did not test \cite{scgpt}. Both foundation models
 were designed to be fine-tuned towards downstream tasks with limited task-specific data, and scGPT's
 reported results on cell type annotation, batch integration and perturbation prediction were obtained
 after fine-tuning \cite{scgpt,theodoris2023}. This work therefore tests the zero-shot use of the
@@ -397,9 +403,8 @@ itself is fitted on: the whole training side would have given PCA about \CfgExtr
 model it feeds, at a cost of about \CfgHoldoutPct\,\% of the cells available to the decomposition. Storing five
 fold-specific matrices was rejected, at about a gigabyte and because it would tie the fold design to the
 preprocessing. Two asymmetries
-remained: PCA decomposes every selected gene while scGPT reads only those in its vocabulary, and PCA is
-fitted on this atlas while scGPT is frozen, so the comparison is not like-for-like with respect to
-adaptation to the data.
+remained: PCA decomposes every selected gene while scGPT reads only those in its vocabulary, and only
+PCA is fitted on this atlas.
 
 \paragraph{Only one representation is fitted on this atlas.} PCA is fitted on these cells and scGPT is
 frozen, so the comparison is not like-for-like with respect to adaptation. The atlas-size test shows
@@ -445,7 +450,7 @@ fire for either representation.
 % (\code{mil/stage6\_confounds.csv})
 
 Figure~\ref{fig:q2instrument} shows the positive control, to establish whether the model can separate
-two populations that are known to differ. The focus is the position of the distributions relative to
+two populations that are known to differ slightly in response. The focus is the position of the distributions relative to
 chance \cite{hanley1982}. Each histogram collects the within-bag AUROC of one arm, PCA in blue and
 scGPT in gold, with chance marked by the dashed line. The median was \QAurocPca{} for PCA and
 \QAurocScgpt{} for scGPT, and \QAurocSigPca\,\% and \QAurocSigScgpt\,\% of the pairs separated
@@ -457,7 +462,7 @@ and 1.
 \includegraphics[width=0.78\textwidth]{q2_instrument.png}
 \caption{\textbf{Positive control of the heterogeneity criterion.} Distribution of the within-bag area
 under the receiver operating characteristic curve (AUROC) with which the MIL model separates the cells of
-two mixed cell lines whose response is known to differ, computed as the Mann--Whitney statistic divided
+two mixed cell lines whose response is known to differ slightly, computed as the Mann--Whitney statistic divided
 by $n_A n_B$ \cite{mannwhitney1947,hanley1982}. One value per (compound, line pair, seed), $17{,}427$ per
 representation, is shown as a density histogram for PCA (blue) and scGPT (gold). The dashed line marks
 chance (0.5). A value near 1 or 0 means the two populations are ranked apart. Medians: \QAurocPca{}
@@ -479,16 +484,15 @@ in the low-spread half and \MilGapHighPca{} in the high-spread half for PCA, and
 % \code{scripts/evaluation/mil\_within\_line\_test.py})
 
 \paragraph{Discussion.} The question remains open. The MIL model
-separates a line's cells reproducibly and not as a sequencing artefact, but it does not separate two
-lines known to differ: its positive control is barely above chance, so the instrument cannot carry a
-negative result and makes the positive one weak. The PCA arm clears the
-confound veto at \QBarPca\,\% of the bar, so its within-line signal is not confound-dominated rather than
-confound-free, and whether any of the variation is drug-response heterogeneity cannot be decided here. The closest
+separates a line's cells reproducibly and not as a sequencing artefact, but it does not reliably
+separate two lines known to differ slightly: the median AUROC of its positive control is barely above
+chance, so the instrument cannot carry a negative result and makes the positive one weak. The PCA arm
+clears the confound veto at \QBarPca\,\% of the bar, so its within-line signal is not confound-dominated
+rather than confound-free. Whether any of the variation is drug-response heterogeneity cannot be decided
+here, because no per-cell response was measured. The closest
 measurement, the source study's drug screen of sorted subpopulations, found that co-existing
 subpopulations differ in drug sensitivity, but it covers two head and neck cancer lines and two
-subpopulations, not the cells of every line \cite{scp542}. The criterion can establish whether per-cell predictions
-vary within a line reproducibly and not as a sequencing artefact. Whether that variation is
-drug-response heterogeneity cannot be established, because no per-cell response was measured.
+subpopulations, not the cells of every line \cite{scp542}.
 What the reproducible variation follows was described against the heterogeneity programs annotated
 for this atlas, as a description that gates nothing \cite{scp542}. In the scGPT arm it followed the
 proteasomal-degradation program most closely, weakly and negatively (median within-line Spearman
@@ -525,8 +529,7 @@ passes. Per-line centring of expression, rejected for the per-cell model (Sectio
 natural representation for this question, and the point to revisit it is a model that pools a line's cells
 (Section~\ref{sec:mil}).
 
-\paragraph{The heterogeneity instrument is barely above chance.} A negative answer to the third question
+\paragraph{The positive control's median is barely above chance.} A negative answer to the third question
 would be uninformative, and little exists to validate a positive one: the only response measurement
-below the line level for this atlas is the source study's drug screen of sorted subpopulations of two
-head and neck cancer lines \cite{scp542}, and post-treatment single-cell profiles exist for other lines
+below the line level for this atlas is the sorted-subpopulation screen above \cite{scp542}, and post-treatment single-cell profiles exist for other lines
 and compounds \cite{srivatsan2020,tahoe100m} but carry no per-cell response label.

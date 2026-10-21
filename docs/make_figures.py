@@ -1024,7 +1024,9 @@ def build_pipeline_flow():
 
     # ================================================== 2 · drug panel
     stage(26.0, ROW1_TITLE, "2", "Drug panel",
-          "only compounds with a published\nsensitivity determinant", ROW1_CAP)
+          "FDA-approved, well covered and\nwell characterised compounds", ROW1_CAP)
+    # 21.10.2026: read "only compounds with a published sensitivity determinant", which named one of
+    # the three panel conditions of the report's Methods (FDA approval, coverage, well characterised).
     ax = fig.add_axes([0.255, 0.615, 0.125, 0.225]); ax.set_xlim(0, 10); ax.set_ylim(0, 10)
     ax.axis("off")
     # Both lower tiers are derived. They were hardcoded 173 and 8: the first is a per-drug cell-line

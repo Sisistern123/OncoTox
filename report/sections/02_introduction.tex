@@ -57,7 +57,7 @@ transcriptome, over the \NLinesCV{} cross-validation lines rather than all \NLin
 
 The scope of this report is a single database, a single continuous response score and a supervised
 regressor, trained on a panel of \NPanel{} compounds and controlled against the unselected catalogue of
-\NDrugsModelled{} \cite{ctrpv2,dreval}. Every result is read against a ridge regression on cell-line
+\NDrugsModelled{} \cite{ctrpv2,dreval}. Every prediction score is read against a ridge regression on cell-line
 means \cite{hoerl1970}, against the naive baselines of the DrEval benchmark, and with general cell-line
 sensitivity controlled out, because DrEval shows that published drug-response models often score well
 through compound and cell-line mean effects alone \cite{dreval}. Cross-database integration, toxicity and

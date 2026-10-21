@@ -4,11 +4,12 @@
 A general-purpose foundation embedding loses to a dataset-fitted linear reduction
 here, most plausibly because the label is defined per cell line and the frozen embedding carries less
 between-line structure on this atlas, and with
-\NLinesCV{} labels a ridge regression on cell-line means matches everything built in this work: the
+\NLinesCV{} labels a ridge regression on cell-line means scores about as well as the default per-cell
+model built in this work: the
 ceiling is the data, and the analysis identifies which part of the data sets it.
 
 The work contributes three results to the question of predicting drug response from single cells.
-The first is a negative result with a measured mechanism. On bulk labels defined per cell line, a
+The first is a negative result with a measured input difference and a leading account. On bulk labels defined per cell line, a
 frozen general-purpose foundation embedding was a viable but weaker representation than PCA fitted to
 the atlas, and before any training the scGPT inputs already carried less between-line structure
 (Section~\ref{sec:rd-q2}). The second is an accounting of what the score consists of. About a fifth of
@@ -49,9 +50,8 @@ learning to explicit explanation: identifying the subpopulations within cell lin
 and relating them to the recurrent heterogeneity programs annotated for this atlas \cite{scp542}.
 
 \paragraph{Missing controls.} Every comparison here is between two reductions of one matrix. A
-line-level model on the \NHvg{} selected genes alone would show whether either reduction helps at all. Division rate is a further bias to extract, as fragility is: a 72-hour viability assay
-confounds compound effect with proliferation \cite{hafner}, and an earlier test against the dataset's
-cell-cycle scores, negative but run on a since-retired target, used a snapshot rather than a rate, so
-measured doubling times are the open version. The input-dropout rate could be matched in effect rather
+line-level model on the \NHvg{} selected genes alone would show whether either reduction helps at all. Division rate, the first hypothesis above, would be extracted as fragility is, from
+measured doubling times rather than from the dataset's cell-cycle scores, which are a snapshot rather
+than a rate. The input-dropout rate could be matched in effect rather
 than in value, by choosing per arm the rate that removes the same expected variance
 \cite{srivastava2014}.

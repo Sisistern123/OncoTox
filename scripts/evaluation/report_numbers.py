@@ -106,6 +106,10 @@ def data_counts() -> list[dict]:
         row("CellsMin", per_line.min(), src_t, "fewest cells in a labelled line"),
         row("CellsMax", per_line.max(), src_t, "most cells in a labelled line"),
         row("CellsPerLineMean", per_line.mean(), src_t, "mean cells per labelled line"),
+        # Added 21.10.2026: NCells (53,513) is the whole atlas, 198 lines, but the report set it beside
+        # the 181 labelled lines and the 153 CV lines.
+        row("NCellsLabelled", int(labelled.sum()), src_t, "cells of the labelled lines (any M_ctrp = 1)"),
+        row("NCellsCV", int(cv.sum()), src_t, "cells of the CV lines (split_ctrp train + val)"),
     ]
 
 
@@ -244,6 +248,8 @@ def heads_vs_constant() -> list[dict]:
                          "% MSE reduction vs per-compound constant, ratio of means, mean over seeds"),
                      row(f"HdBeat{a_name}{r_name}", 100 * m.loc[(arch, rep), "beat"], src,
                          "% of compounds with model MSE below the constant's, mean over seeds")]
+    rows.append(row("HdRiseLinPca", -m.loc[("linear", "X_pca"), "gain"], src,
+                    "% by which the linear head's MSE exceeds the constant's (X_pca); stated as a rise in the text"))
     return rows
 
 

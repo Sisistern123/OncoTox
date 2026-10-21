@@ -162,7 +162,8 @@ close to the compound mean. These fits were kept rather than widening the grid f
 % (\code{scripts/evaluation/ridge\_grid\_refit.py}, \code{--edges} for \code{panel/ridge\_alpha\_per\_fit.csv}.
 % Rewritten 21.10.2026: until then this described the 17-value grid on the whole training side.)
 DrEval's normalised metric subtracts a fitted overall mean, cell-line effect and compound effect from
-truth and prediction \cite{dreval}.
+truth and prediction \cite{dreval}, of which under LCO only the compound effect can be estimated
+(Section~\ref{sec:evaluation}).
 On DrEval's LCO protocol the MLP was run in the default configuration, the trunk with the unweighted
 MAE objective. It was trained on the cells of each fold's training lines, stopped early on DrEval's
 validation lines and scored on its test lines, once for each of seeds 42--44, and its score is the mean
@@ -178,7 +179,7 @@ The density $\hat p_j$ of Equation~\ref{eq:density} was fitted per compound beca
 within-compound, and on one label per line rather than per cell because every cell carries its line's
 label: a line with \CellsMax{} cells would otherwise bend the density while one with \CellsMin{} barely
 registered. The cap $c = \CfgCap$ is a safety limit against a few extreme lines driving a fit over about
-\NLinesCV{} points. It is arbitrary and was held fixed, since sweeping it with $\alpha$ would confound
+a hundred points, the fitting lines of one fold. It is arbitrary and was held fixed, since sweeping it with $\alpha$ would confound
 the two. The exponent was not justified in advance but swept. The weightings of \cite{dir} use a
 smoothed histogram, for which a kernel density estimate was substituted here. DenseWeight
 \cite{denseweight}, a related scheme, weights linearly in the density rather than by a power and was
@@ -195,6 +196,7 @@ slope of risk prediction models \cite{vancalster2016}. A configuration counted a
 default only if it was better on order and worse on no other quantity by more than that quantity's own
 seed band, the half-range over the default's three seeds.
 % (\code{notebooks/5\_evaluation.ipynb} cell 6, \code{decide()}: the band pooled the challenger's and the
-% default's six seeds until 21.10.2026, while this text said three) The default was the unweighted MAE configuration on PCA,
+% default's six seeds until 21.10.2026, while this text said three)
+The default was the unweighted MAE configuration on PCA,
 because unweighted MSE, the initial default, was the only configuration whose score differed between
 identical runs (Section~\ref{sec:results-q1}).

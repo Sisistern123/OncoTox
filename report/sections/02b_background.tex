@@ -37,9 +37,7 @@ measured tumours in bulk, revealing aggregate profiles and masking important asp
 (Section~\ref{sec:bg-screens}). The cancer cell lines used in those screens are themselves heterogeneous:
 across the cell lines of the SCP542 atlas, 12 expression programs were recurrently heterogeneous within
 multiple lines, and co-existing subpopulations sorted from two head and neck cancer lines differed in
-their sensitivity to drugs \cite{scp542}. A model that predicts response for individual cells could
-report a distribution of sensitivities within a sample rather than one average
-\cite{perception,scdeal}, which is the motivation for this work.
+their sensitivity to drugs \cite{scp542}.
 
 \section{Bulk and single-cell RNA sequencing}
 \label{sec:bg-rnaseq}
@@ -187,7 +185,7 @@ obstacles that make reported performance overly optimistic \cite{dreval}. First,
 the intended use: a model meant for unseen patients must be tested on cell lines not used for training
 or tuning (leave-cell-line-out, LCO), whereas splitting random pairs of line and drug (leave-pairs-out, LPO) is warranted
 only for imputing missing values. Second, the measurements are pseudo-replicates: CTRPv2's roughly
-400{,}000 response curves stem from \NCtrpLines{} cell lines and \NDrugs{} compounds, so the effective
+400{,}000 response curves in DrEval's release stem from \NCtrpLines{} cell lines and \NDrugs{} compounds, so the effective
 sample size is far smaller than the number of curves. Third, most of the variance in response lies
 between drugs, because drugs act at very different concentrations, so a model that memorises each drug's
 mean explains most of it. This Simpson's paradox inflates global metrics. In one model, a global
