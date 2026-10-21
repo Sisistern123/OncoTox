@@ -61,9 +61,6 @@ fitting lines.
 Because the label is defined per cell line and compound, all cells of a line carry the same value and
 are pseudo-replicates \cite{lazic2010}. The effective sample size was therefore taken to be the number of
 cell lines in the CV, \NLinesCV{}, not \NCellsCV{} cells \cite{lazic2010,dreval}.
-Treating cells as independent observations would overstate the precision of every estimate, since the
-cells of a line increase the number of observations without contributing independent information about
-the response.
 
 \section{Compound panel selection}
 \label{sec:panel}
@@ -148,8 +145,7 @@ scGPT received the same CPM matrix without logarithm or standardisation, since i
 makes it invariant to both (Appendix~\ref{app:scgpt-input}).
 
 Genes renamed since the expression matrix was annotated were matched to the scGPT vocabulary under
-their current symbols, which raised the \NHvg-gene variant from \NVocabDirect{} to \NVocab{} embedded genes
-(Appendix~\ref{app:hgnc}).
+their current symbols (Appendix~\ref{app:hgnc}).
 % (\code{scripts/annotation/gene\_symbols.py})
 
 The \NHvg-gene set was used throughout. Its size was checked by a sweep over five gene-set sizes from
@@ -218,24 +214,19 @@ crowded middle of a compound's distribution \cite{dir,denseweight}:
   \LossWeightFn
   \label{eq:density}
 \end{equation}
-where $\hat p_j$ is a Gaussian kernel density estimate with Scott's bandwidth \cite{scott1992}, fitted per
-compound $j$ on one label $y_{ij}$ per fitting line $i \in \mathcal{I}_j$ of the fold, and the weights are clipped to $[1/c, c]$ with
-$c = \CfgCap$ and normalised to mean one. The exponent was varied over $\alpha \in \{0, 0.5, 1\}$:
+where $\hat p_j$ is a density estimate of compound $j$'s labels $y_{ij}$ over the fold's fitting lines
+$i \in \mathcal{I}_j$, and $c = \CfgCap$ (Appendix~\ref{app:density}). The exponent was varied over $\alpha \in \{0, 0.5, 1\}$:
 $\alpha = 0$ gives unweighted training, and $\alpha = 0.5$ and $\alpha = 1$ correspond to the square-root
 inverse and inverse weightings of \cite{dir}. The choices behind these settings are given in
 Appendix~\ref{app:density}. Two losses and three exponents gave six
 configurations per representation.
 % (\code{scripts/training/density\_weighting.py})
 
-Because the AUC lies near one rather than zero and its mean differs per compound, from \PanelMeanLo{} to
-\PanelMeanHi{}, each head's bias was initialised at its compound's mean over the fold's fitting lines, so
-that the first epochs are not spent shifting predictions to that level and early stopping cannot select a
-checkpoint before any between-line structure is fitted \cite{lin2017focal}.
-
 Training used AdamW \cite{loshchilov2019adamw} with early stopping \cite{prechelt1998} on an inner
 hold-out of each fold's training lines, grouped by line, since measuring it on the scored fold would
-have made each score a minimum over epochs on its own evaluation data. Every configuration was trained
-under three seeds, and no hyperparameter was tuned for either representation (Table~\ref{tab:training}).
+have made each score a minimum over epochs on its own evaluation data. Each head's bias was initialised at its compound's mean over the fold's fitting lines
+(Appendix~\ref{app:training}). Every configuration was trained under three seeds, and no hyperparameter
+was tuned for either representation (Table~\ref{tab:training}).
 
 \section{Evaluation}
 \label{sec:evaluation}
@@ -249,12 +240,10 @@ over the held-out lines screened against it, pooled across folds, averaged over 
   \label{eq:metric}
 \end{equation}
 The correlation is within a compound because pooling all pairs is dominated by differences in potency
-between compounds (Section~\ref{sec:bg-prediction}) \cite{dreval}. Line level was chosen over cell level
-because one point per line is one point per label, whereas cell-level scoring adds about
-\CellsPerLineMean{} points per label without independent information and weights lines by their cell
-count, which varies 36-fold. Pooling the held-out lines of all folds was chosen over averaging per fold
-as the more conservative of the two, and the alternatives --- pooled pairs, cell level and per-fold
-averaging --- were computed for comparison (Section~\ref{sec:results-q1}).
+between compounds (Section~\ref{sec:bg-prediction}) \cite{dreval}. It is computed on lines because one
+point per line is one point per label, and on the held-out lines of all folds pooled, the more
+conservative of the two options. The alternatives were computed for comparison
+(Section~\ref{sec:results-q1}).
 % (\code{panel\_aggregation\_comparison.csv})
 
 Whether a different loss or the density weighting improves on the default, the unweighted MAE
@@ -304,19 +293,14 @@ ranked: the standard first-order partial correlation applied to Spearman correla
 % (\code{scripts/evaluation/bias\_accounting.py})
 
 Five alternative explanations of a difference between the representations were tested, on the same
-folds except for atlas size: label supply,
-% (until 21.10.2026 "on the same folds" without the exception; removing lines re-partitions the rest,
-% since cv.grouped_folds is GroupKFold over the eligible lines)
-% (\code{notebooks/4a\_percell\_training.ipynb} \S C, \S E; \code{scripts/evaluation/})
-by thinning the labelled lines per fold to 25, 50, 75 and all 103 with input, architecture and loss
-fixed; atlas size, by removing whole lines so that their cells also left the per-fold PCA fit; capacity, by replacing the trunk with a single linear head; input scale, by rescaling the scGPT
-embedding to the magnitude of the PCA input and recording the epoch of best validation error;
-% (\code{input\_scale\_test.py})
-and fragility, by Equation~\ref{eq:partial}. The input-dropout rate was
-swept over $\{0, 0.02, 0.05, 0.1, 0.2, 0.3\}$, and label quality was
-% (\code{input\_dropout\_test.py})
-related to the per-compound score by a Spearman correlation between the share of flat curves and the
-score over the \NPanel{} compounds \cite{bayer2023curvecurator}.
+folds except for atlas size: label supply, atlas size, capacity, input scale and fragility, each
+described with its result (Section~\ref{sec:rd-q2}). The input-dropout rate was swept over
+$\{0, 0.02, 0.05, 0.1, 0.2, 0.3\}$, and label quality was related to the per-compound score by a
+Spearman correlation between the share of flat curves and the score over the \NPanel{} compounds
+\cite{bayer2023curvecurator}.
+% (until 21.10.2026 "on the same folds" without the exception, and each test described here as well as in
+% Results; \code{notebooks/4a\_percell\_training.ipynb} \S C, \S E, \code{scripts/evaluation/},
+% \code{input\_scale\_test.py}, \code{input\_dropout\_test.py})
 
 \section{Multiple-instance learning and the heterogeneity criterion}
 \label{sec:mil}
@@ -342,28 +326,16 @@ Of the two standard MIL formulations (Section~\ref{sec:bg-mil}), the instance-le
 embedding-level attention pooling, although the latter has been argued to classify bags better \cite{ilse2018}: the
 question is whether individual cells receive different predictions, and only
 the instance-level form produces that quantity. A bag was one complete cell line --- every sequenced cell,
-not a sample --- because the label is defined per line, and because for a sub-bag of $B$ cells drawn from
-a line of $n$ the expected loss is
-\begin{equation}
-  \mathrm{E}\,\mathcal{L}_B = \left(\bar p_n - y\right)^2 + \frac{\sigma^2}{B}\left(1 - \frac{B-1}{n-1}\right),
-  \label{eq:subbag}
-\end{equation}
-which is the per-cell loss at $B = 1$ and contains no variance term only at $B = n$. The bag size
-therefore sets how strongly the objective charges for the quantity under study. Complete bags also make
-each line one training example, removing the per-cell objective's weighting of lines by their cell count,
-which ranges from \CellsMin{} to \CellsMax{}, at the cost of one gradient step per line. The bag prediction was the
+not a sample --- because the label is defined per line and because only a complete bag removes the
+variance term (Appendix~\ref{app:milcrit}). The bag prediction was the
 mean of its cells' predictions, matching the label's definition, and the criterion includes a
 positive control because mean pooling can be minimised by collapsing a bag onto its mean. The
 alternatives that were rejected are discussed with the results (Section~\ref{sec:rd-q3}).
 
 The criterion had five stages, each passing against a null or a comparison rather than an invented
 threshold. The \emph{input ceiling} measured the within-line share of variance $w$ of each representation
-before training and failed only on collapse. Its between-to-within ratio $(1-w)/w$ is reported. Here
-$w$ is the mean over lines, each weighted equally, of the within-line variance divided by the total
-variance over the cells of all cross-validation lines, where variance is the trace of the covariance.
-The ratio therefore does not depend on the units of an embedding, but each dimension counts in
-proportion to its own variance, so for PCA the leading components dominate by construction. This is the
-variance that a distance between cells sees. The
+before training and failed only on collapse. Its between-to-within ratio $(1-w)/w$ is reported
+(Appendix~\ref{app:milcrit}). The
 \emph{positive control} mixed the cells of two lines whose response differs, taken from the lowest
 quartile of a compound's pairwise response differences, and measured the AUROC separating the two populations \emph{within} one bag --- the
 Mann--Whitney statistic divided by $n_A n_B$ \cite{mannwhitney1947,hanley1982} --- against a null from permuting the
@@ -374,17 +346,10 @@ Equation~\ref{eq:mil-decomposition} makes this a test of the deleted term. The \
 stage correlated per-cell predictions across seeds against a null permuting cells within each line.
 The \emph{confound} stage regressed the predictions within each line on total UMI count, detected genes,
 mitochondrial fraction and the dataset's G1/S and G2/M scores \cite{scp542}, and vetoed a pass if the
-adjusted $R^2$ reached the squared cross-seed correlation, both being shares of the same variance.
-
-The adjusted $R^2$ was used because the unadjusted one is biased upward by the number of covariates,
-and depth and mitochondrial fraction were computed from the study's unnormalised UMI matrix
-(Appendix~\ref{app:confounds}).
-
-As a description that gates nothing, the per-cell predictions were correlated within each line with
-the eleven distinct program scores (Spearman). For the program with the largest association, the
-correlation was recomputed with mitochondrial fraction controlled by Equation~\ref{eq:partial}, and the
-program score was correlated within each line with sequencing depth, detected genes and mitochondrial
-fraction.
+adjusted $R^2$ reached the squared cross-seed correlation, both being shares of the same variance
+(Appendix~\ref{app:confounds}). As a description that gates nothing, the per-cell predictions were also
+correlated within each line with the heterogeneity programs of the source study
+(Appendix~\ref{app:milcrit}).
 
 \section{Data and code availability}
 \label{sec:availability}

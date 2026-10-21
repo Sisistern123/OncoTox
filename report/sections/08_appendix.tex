@@ -102,8 +102,8 @@ the scGPT input.
 \chapter{Training and evaluation details}
 \label{app:training-eval}
 
-This appendix holds the training settings and the details of the controls behind
-Sections~\ref{sec:model} and \ref{sec:evaluation}.
+This appendix holds the training settings, the details of the controls and of the multiple-instance
+criterion behind Sections~\ref{sec:model} to \ref{sec:mil}.
 
 \section{Training settings}
 \label{app:training}
@@ -140,6 +140,10 @@ adaptive gradient, whereas AdamW applies it to the parameters directly, so the s
 different things and no sourced value existed \cite{loshchilov2019adamw}. Biases and normalisation
 parameters were nonetheless excluded from decay, following the convention of the \code{transformers}
 library's trainer \cite{wolf2020transformers}, so that the question can later be settled by one coefficient.
+Because the AUC lies near one rather than zero and its mean differs per compound, from \PanelMeanLo{} to
+\PanelMeanHi{}, each head's bias was initialised at its compound's mean over the fold's fitting lines, so
+that the first epochs are not spent shifting predictions to that level and early stopping cannot select a
+checkpoint before any between-line structure is fitted \cite{lin2017focal}.
 Early stopping restored the checkpoint of lowest error on the inner hold-out. The per-compound
 means and head initialisation used the remaining fitting lines. This three-way split follows the DrEval
 benchmark \cite{dreval}. The \CfgHoldoutPct\,\% is arbitrary and was preferred to reusing a whole fold, which would
@@ -175,7 +179,8 @@ the line means of the same projection. DrEval's forest sets no random seed, so i
 \section{Density weight}
 \label{app:density}
 
-The density $\hat p_j$ of Equation~\ref{eq:density} was fitted per compound because the metric is
+The density $\hat p_j$ of Equation~\ref{eq:density} is a Gaussian kernel density estimate with Scott's
+bandwidth \cite{scott1992}, fitted on one label per fitting line of the fold. It was fitted per compound because the metric is
 within-compound, and on one label per line rather than per cell because every cell carries its line's
 label: a line with \CellsMax{} cells would otherwise bend the density while one with \CellsMin{} barely
 registered. The cap $c = \CfgCap$ is a safety limit against a few extreme lines driving a fit over about
@@ -200,3 +205,29 @@ seed band, the half-range over the default's three seeds.
 The default was the unweighted MAE configuration on PCA,
 because unweighted MSE, the initial default, was the only configuration whose score differed between
 identical runs (Section~\ref{sec:results-q1}).
+
+\section{Multiple-instance model and criterion}
+\label{app:milcrit}
+
+A bag was a complete cell line because, for a sub-bag of $B$ cells drawn from a line of $n$, the expected
+loss is
+\begin{equation}
+  \mathrm{E}\,\mathcal{L}_B = \left(\bar p_n - y\right)^2 + \frac{\sigma^2}{B}\left(1 - \frac{B-1}{n-1}\right),
+  \label{eq:subbag}
+\end{equation}
+which is the per-cell loss at $B = 1$ and contains no variance term only at $B = n$. The bag size
+therefore sets how strongly the objective charges for the quantity under study. Complete bags also make
+each line one training example, removing the per-cell objective's weighting of lines by their cell count,
+which ranges from \CellsMin{} to \CellsMax{}, at the cost of one gradient step per line.
+
+In the input ceiling, $w$ is the mean over lines, each weighted equally, of the within-line variance
+divided by the total variance over the cells of all cross-validation lines, where variance is the trace
+of the covariance. The ratio $(1-w)/w$ therefore does not depend on the units of an embedding, but each
+dimension counts in proportion to its own variance, so for PCA the leading components dominate by
+construction. This is the variance that a distance between cells sees.
+
+As a description that gates nothing, the per-cell predictions were correlated within each line with the
+eleven distinct program scores (Spearman). For the program with the largest association, the
+correlation was recomputed with mitochondrial fraction controlled by Equation~\ref{eq:partial}, and the
+program score was correlated within each line with sequencing depth, detected genes and mitochondrial
+fraction.
