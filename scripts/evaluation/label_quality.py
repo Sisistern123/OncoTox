@@ -12,7 +12,7 @@ from scipy.stats import spearmanr
 
 ROOT = Path('/Users/selin/PycharmProjects/OncoTox')
 sys.path.insert(0, str(ROOT))
-from scripts.preprocessing.ctrp_to_h5ad import _normalize_cell_line, _normalize_drug
+from scripts.preprocessing.ctrp_to_h5ad import CTRP_CELL_LINE_ALIASES, _normalize_cell_line, _normalize_drug
 from scripts.layout import PipelinePaths
 
 
@@ -22,12 +22,17 @@ if __name__ == "__main__":   # guard added 14.08.2026 (Selin): importing this fi
     resp = pd.read_csv(p.ctrp_response_csv,
                        usecols=['ccl_name', 'drug_name', 'AUC_curvecurator', 'R2', 'RMSE',
                                 'pValue', 'conc_pts_fit'])
-    resp['line'] = _normalize_cell_line(resp.ccl_name)
+    # The pipeline's own alias table, applied as ctrp_to_h5ad applies it (CTRP side only). Without it
+    # CTRP's 'H292' never met SCP542's 'NCIH292' and that line silently dropped out (Selin, 21.10.2026).
+    resp['line'] = _normalize_cell_line(resp.ccl_name).replace(CTRP_CELL_LINE_ALIASES)
     resp['drug'] = _normalize_drug(resp.drug_name)
 
     panel = pd.read_csv(ROOT / 'notebooks/outputs/panel/panel.csv')
     drugs = set(_normalize_drug(panel.drug_ctrp))
     split = pd.read_csv(ROOT / 'splits/split_ctrp.csv')
+    # The 153 CV lines only (Selin, 21.10.2026). This read every line in split_ctrp.csv, the 28 test
+    # lines included, which the report says were never used.
+    split = split[split.split.isin(['train', 'val'])]
     lines = set(_normalize_cell_line(split.Cell_line.str.split('_').str[0]))
 
     r = resp[resp.drug.isin(drugs) & resp.line.isin(lines)].dropna(subset=['AUC_curvecurator'])

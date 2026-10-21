@@ -72,13 +72,13 @@ single cells supports prediction on **held-out cell lines** at all.
 | `RidgeCV` on cell-line-mean embeddings | **0.2725** | `panel_ridge_baseline.csv` |
 | best over **all 534** drugs | **0.1019** | `panel_heads_summary.csv` |
 | … against the per-drug constant | **+0.00043** at best | `panel_heads_summary.csv` |
-| external, DrEval normalized | **0.2776** | `dreval_lco_results.csv` |
+| external, DrEval normalized | **0.3304** (recomputed 21.10.2026; was 0.2776 — [Corrections](corrections-and-dead-ends.md#the-dreval-benchmark-ran-on-the-test-lines-an-all-cells-pca-and-unseeded-forests)) | `dreval_lco_results.csv` |
 
 **The answer, in three parts.**
 
 **1 · On a curated panel, modestly — about 0.28 mean per-drug Spearman.** That is a real signal and
 not noise: it is stable across seeds, survives out-of-fold scoring over held-out cell lines, and
-reproduces on an external protocol at 0.2776.
+clears DrEval's naive predictors on an external protocol (normalised 0.3304, a different scale).
 
 **2 · Very unevenly across drugs.** On `X_pca` at α=0/mse the eleven panel compounds run from
 **+0.0177** (`imatinib`) to **+0.5134** (`dasatinib`). **Five of eleven fall below 0.20 and two below
@@ -919,8 +919,10 @@ that both drivers are properties of the **labels** rather than of the model or t
 constant (`panel_heads_summary.csv`).
 
 **4 · Simple models match or beat the network.** `RidgeCV` on cell-line-mean embeddings scores 0.2725
-against 0.2608 for the best per-cell `X_pca` arm, and on DrEval a per-drug random forest matches the
-multi-task model to 0.0003. **Whatever is limiting performance is not model capacity**, which is
+against 0.2608 for the best per-cell `X_pca` arm. *(Until 21.10.2026 this also read "on DrEval a
+per-drug random forest matches the multi-task model to 0.0003"; on the same features DrEval's untuned
+forest scores 0.0458 against the MLP's 0.3304, so the ridge carries this point alone —
+[Corrections](corrections-and-dead-ends.md#the-dreval-benchmark-ran-on-the-test-lines-an-all-cells-pca-and-unseeded-forests).)* **Whatever is limiting performance is not model capacity**, which is
 consistent with 1 and 2: the ceiling is label supply and label quality.
 
 ### The gene-set sweep, on live numbers — and it puts scGPT ahead at every gene-set size
@@ -958,37 +960,49 @@ different drug sets with different statistics.
 wins the sweep" means it wins a comparison in which **both arms lose to the null on average** — the
 same noise floor §D reports, in the sweep's own units.
 
-### The DrEval baselines — a per-drug random forest matches the multi-task model
+### The DrEval baselines — on the same features the MLP clears DrEval's random forest
 
-Found by **looking at `notebooks/outputs/dreval/dreval_lco.png`**, not by reading the CSV: in the
-normalized panel, `SingleDrugRF (scgpt)` sits level with `OncoMLP (X_pca)`. Mean over the five
-leave-cell-line-out folds, `notebooks/outputs/dreval/dreval_lco_results.csv`:
+> ⚠️ **Rewritten 21.10.2026.** Until then this section read *"a per-drug random forest matches the
+> multi-task model"* (`SingleDrugRF (scgpt)` 0.2773 against `OncoMLP (X_pca)` 0.2776). That set the
+> scGPT forest beside the PCA MLP, on a run that held the 28 test lines, read the all-cells PCA and left
+> the forests unseeded. Record and old values: [Corrections](corrections-and-dead-ends.md#the-dreval-benchmark-ran-on-the-test-lines-an-all-cells-pca-and-unseeded-forests).
+
+Mean over the five leave-cell-line-out folds, 153 CV lines, PCA fitted per fold on each fold's `train`
+lines, forests seeded with 42 — `notebooks/outputs/dreval/dreval_lco_results.csv`
+(`notebooks/analysis/evaluation/dreval_benchmark.ipynb` §3):
 
 | algorithm | normalized Spearman | sd over folds |
 |---|---|---|
-| `OncoMLP (X_pca)` | **0.2776** | 0.0474 |
-| `SingleDrugRF (scgpt)` | **0.2773** | 0.0392 |
-| `OncoMLP (X_scGPT)` | 0.2720 | 0.0213 |
-| `SingleDrugEN (pca)` | 0.2534 | 0.0414 |
-| `SingleDrugRF (pca)` | 0.0279 | 0.0640 |
-| the four naive predictors, and `SingleDrugEN (scgpt)` | 0.0000–0.0022 | — |
+| `OncoMLP (X_pca)` | **0.3304** | 0.0674 |
+| `SingleDrugRF (scgpt)` | 0.2988 | 0.0407 |
+| `OncoMLP (X_scGPT)` | 0.2979 | 0.0529 |
+| `SingleDrugEN (pca)` | 0.2218 | 0.0583 |
+| `SingleDrugRF (pca)` | 0.0458 | 0.0606 |
+| the four naive predictors, and `SingleDrugEN (scgpt)` | 0.0000–0.0063 | — |
 
-**A per-drug random forest on scGPT features matches our multi-task MLP to 0.0003**, with a smaller
-fold spread. That bounds what the multi-task architecture has been shown to buy on this protocol: on
-DrEval's own normalized metric, **nothing measurable over a per-drug RF**. It is the external analogue
-of the internal finding that `RidgeCV` on line-mean embeddings beats both per-cell PCA arms.
+**On the same features the MLP clears DrEval's per-drug random forest by a wide margin** (0.3304 against
+0.0458). On scGPT the forest is level with the MLP on scGPT, and about one fold SD below the MLP on PCA.
+The forest is drevalpy's first default hyperparameter set, untuned, so this does **not** test DrEval's
+finding that no model beat a tuned forest under LCO.
 
-⚠️ **Two things the same table says about the baseline suite rather than about us.**
+**Why the forest fails on PCA** (`scripts/evaluation/dreval_rf_checks.py` →
+`notebooks/outputs/dreval/dreval_rf_checks.csv`, 21.10.2026): on the first 10 components it scores
+0.2928, on 50 0.2648, on all 512 0.0458; with `max_samples=1.0` on all 512, 0.1473. scGPT: 0.2988 at
+the default, 0.3015 at `max_samples=1.0`. The trailing components, on which each ~23-line tree splits
+by chance, are the main cause; the subsample is a lesser one. ⚠️ k ∈ {10, 50, 512} was set after the
+fact and scored on these folds, so 0.2928 is evidence about the cause, not a score for the forest.
+
+⚠️ **The MLP rows are a single draw.** They train on `mps`, which is not deterministic under a fixed
+seed: two seeded reruns on 21.10.2026 gave `X_pca` 0.3356 and 0.3304, `X_scGPT` 0.2874 and 0.2979. The
+forests are exact.
+
+⚠️ **One thing the same table says about the baseline suite rather than about us.**
 `SingleDrugEN (scgpt)` scores **exactly** what `NaiveDrugMeanPredictor` scores, raw and normalized —
-it collapsed to the per-drug mean, so it is not a live comparator. ⚠️ **Bit-identical in all five
-folds on every metric** — the cause is the fixed `alpha=1` on unstandardised features, the same
-penalty artifact recorded for the LPO run below (17.08.2026). And `SingleDrugRF (pca)` at 0.0279
-± 0.0640 is indistinguishable from zero. **Only the RF contrast is interpretable**: trees are
-invariant to per-feature rescaling, so its representation-dependence cannot be a scale effect, while
-the EN's collapse is nothing else.
+it collapsed to the per-drug mean, so it is not a live comparator. The cause is the fixed `alpha=1` on
+unstandardised features, the same penalty artifact recorded for the LPO run below (17.08.2026).
 
 ⚠️ **The raw panel is the reason the normalized one exists.** Every non-degenerate model scores
-0.74–0.78 raw, clustered just above `NaiveMeanEffects` — pooled Spearman is dominated by drug potency
+0.73–0.77 raw, clustered just above `NaiveMeanEffects` — pooled Spearman is dominated by drug potency
 and barely discriminates. Do not quote a raw DrEval number.
 
 **Ruled out by measurement, not by argument:** the metric, drug-level response spread, a misuse of
@@ -1024,21 +1038,23 @@ DrEval's normalization has no line effect to subtract either.
 **`drevalpy` ships four test modes and six naive baselines; this project had only ever run one mode.**
 Under **leave-pairs-out** the held-out pairs come from lines that *are* in training, so the line-mean
 baseline becomes informative. Produced by `scripts/evaluation/dreval_lpo.py` →
-`notebooks/outputs/dreval/dreval_lpo_results.csv`; 5 folds, 1,918 (line, drug) pairs, 181 lines,
-11 drugs.
+`notebooks/outputs/dreval/dreval_lpo_results.csv`; 5 folds, 1,635 (line, drug) pairs, the 153 CV
+lines, 11 drugs, PCA fitted once on the CV lines' cells, forests seeded with 42. *(Until 21.10.2026:
+1,918 pairs over all 181 lines, the 28 test lines included, all-cells PCA, unseeded forests —
+[Corrections](corrections-and-dead-ends.md#the-dreval-benchmark-ran-on-the-test-lines-an-all-cells-pca-and-unseeded-forests).)*
 
 | predictor | pooled Spearman | **per-drug Spearman** |
 |---|---|---|
 | `NaivePredictor` | 0.0000 | — (constant) |
-| `NaiveDrugMeanPredictor` | 0.7413 | — (constant within a drug) |
-| **`NaiveCellLineMeanPredictor`** | 0.0354 | **0.3220** |
-| `NaiveTissueMeanPredictor` | 0.0999 | 0.1835 |
-| `NaiveTissueDrugMeanPredictor` | 0.7356 | 0.1646 |
-| `NaiveMeanEffectsPredictor` | 0.7541 | 0.3220 |
-| `SingleDrugElasticNet` (pca) ⚠️ | 0.7688 | 0.3165 — **over 5.6 of 11 drugs only** |
-| `SingleDrugElasticNet` (scgpt) ⚠️ | 0.7413 | — (all coefficients zeroed; **penalty-scale artifact**) |
-| `SingleDrugRandomForest` (pca) ⚠️ | 0.7476 | 0.0488 |
-| `SingleDrugRandomForest` (scgpt) ⚠️ | 0.7768 | 0.2101 |
+| `NaiveDrugMeanPredictor` | 0.7377 | — (constant within a drug) |
+| **`NaiveCellLineMeanPredictor`** | 0.0696 | **0.3122** |
+| `NaiveTissueMeanPredictor` | 0.1186 | 0.1825 |
+| `NaiveTissueDrugMeanPredictor` | 0.7151 | 0.1844 |
+| `NaiveMeanEffectsPredictor` | 0.7474 | 0.3122 |
+| `SingleDrugElasticNet` (pca) ⚠️ | 0.7638 | 0.3186 — **over 5.8 of 11 drugs only** |
+| `SingleDrugElasticNet` (scgpt) ⚠️ | 0.7377 | — (all coefficients zeroed; **penalty-scale artifact**) |
+| `SingleDrugRandomForest` (pca) | 0.7396 | 0.0474 |
+| `SingleDrugRandomForest` (scgpt) | 0.7689 | 0.2476 |
 
 > ⚠️ **The two random forests do not reproduce, and nothing else in this table moved** (found
 > 14.08.2026 on a re-run that added the `n_scored` column). `drevalpy`'s default hyperparameter set
@@ -1048,38 +1064,41 @@ baseline becomes informative. Produced by `scripts/evaluation/dreval_lpo.py` →
 > **No conclusion on this page rests on them:** both sit below the line-mean baseline under either
 > execution. Pinning a seed would make them reproducible but picks a number, so it is
 > [an open decision](../OPEN_DECISIONS.md) rather than a silent fix.
+>
+> ✅ **Settled 21.10.2026 (Selin): seeded with 42, "like everywhere else"** — set after `build_model` in
+> `dreval_lpo.py` and in the LCO notebook. The forest rows above are from the seeded run.
 
 > ✅ **Every row is scored on the same pairs — checked, not assumed.** The naive baselines are scored
 > on every test pair while the per-drug models are scored only where prediction succeeded, so this
 > could have been false and the comparison not a comparison. `n_scored` is now written per row and is
-> **1,918 for all ten** (383–384 per fold). `build_lpo_bias()` raises rather than draws if that ever
+> **1,635 for all ten** (327 per fold; 1,918 and 383–384 before 21.10.2026). `build_lpo_bias()` raises rather than draws if that ever
 > stops holding.
 
 **Read the two columns as different questions.** Pooled Spearman is dominated by compound potency —
-predicting each drug's mean alone scores 0.7413 of it, so the raw 0.77-ish numbers say almost nothing.
+predicting each drug's mean alone scores 0.7377 of it, so the raw 0.77-ish numbers say almost nothing.
 This project's metric is the per-drug column, which removes the drug effect by construction.
 **The two columns rank the predictors almost oppositely**, which is the clearest single argument for
-the metric: `SingleDrugRandomForest (scgpt)` is top pooled (0.7773) and mid-table per drug;
-`NaiveCellLineMeanPredictor` is second-from-bottom pooled (0.0354) and **top per drug**.
+the metric: `SingleDrugRandomForest (scgpt)` is top pooled (0.7689) and mid-table per drug;
+`NaiveCellLineMeanPredictor` is second-from-bottom pooled (0.0696) and **top per drug**.
 
 **Figure:** `docs/figures/lpo_bias.png` (`docs/make_figures.py::build_lpo_bias`).
 
 ### What it establishes
 
 **A predictor that knows only each cell line's average response, and nothing about any compound,
-reaches 0.3220 mean per-drug Spearman.** So **the within-drug ranking of cell lines is substantially a
+reaches 0.3122 mean per-drug Spearman.** So **the within-drug ranking of cell lines is substantially a
 line-level property**: broadly fragile lines rank low in most drugs.
 
-**Lineage is most of that channel but not all of it.** `NaiveTissueMeanPredictor` reaches **0.1835**,
-which is **57 %** of the line-mean baseline's 0.3220. So the tissue-of-origin bias the project set out
+**Lineage is most of that channel but not all of it.** `NaiveTissueMeanPredictor` reaches **0.1825**,
+which is **58 %** of the line-mean baseline's 0.3122. So the tissue-of-origin bias the project set out
 to remove is real and large — and **cell-line identity beyond lineage is worth about as much again**.
 That matters for the motivating hypothesis: an embedding that suppressed *only* lineage would leave
 the larger half of the channel untouched.
 
-⚠️ **Not a variance decomposition.** 0.1835 and 0.3220 are two predictors' scores, not two shares of
+⚠️ **Not a variance decomposition.** 0.1825 and 0.3122 are two predictors' scores, not two shares of
 one quantity; they are nested (a line's tissue is a function of the line) but the metric is a rank
-correlation, so the 57 % is a ratio of scores and does not partition anything. Say *"lineage alone
-recovers 57 % of what line identity recovers"*, not *"lineage explains 57 % of the bias"*.
+correlation, so the 58 % is a ratio of scores and does not partition anything. Say *"lineage alone
+recovers 58 % of what line identity recovers"*, not *"lineage explains 58 % of the bias"*.
 
 > ⛔ **WITHDRAWN 16.08.2026 — this paragraph claimed *"no feature-using model clears the line-mean
 > baseline"*, and this run cannot support it.** Selin: *"if we dont have proper results for this,
@@ -1162,20 +1181,20 @@ that does address it, without changing the split, is the fragility control immed
 
 ### ⛔ What "we beat the baseline" is worth, and it is less than it sounds
 
-Our model scores **normalized Spearman 0.2776** on DrEval's protocol against **0.0000** for
+Our model scores **normalized Spearman 0.3304** on DrEval's protocol against **0.0000** for
 `NaiveMeanEffectsPredictor`. **That margin is inflated by our split design, not earned against it.**
 Under LCO the baseline cannot use a line effect — the line is unseen — so it is competing with one
 channel removed. Beating a handicapped baseline is close to automatic for any model carrying signal.
 
 **The test DrEval's paper is actually about is the leave-pairs-out one, and we have not run our model
-under it.** There the baseline gets its line effect back and reaches **0.3220** on the per-drug scale,
+under it.** There the baseline gets its line effect back and reaches **0.3122** on the per-drug scale,
 above our LCO 0.2824 — on an easier task. Whether our model still clears a *fully-armed*
 mean-effects baseline is therefore **open**, and it is the single most informative measurement this
 project could still make. Doing it means retraining under an LPO split.
 
 ### ⛔ What it does NOT establish, and the comparison not to make
 
-**0.3220 is LPO and the project's 0.2824 is LCO. They are not a horse race and must never be quoted
+**0.3122 is LPO and the project's 0.2824 is LCO. They are not a horse race and must never be quoted
 side by side as one.** The baseline is allowed to know the held-out line; our model is not — it
 predicts lines it has never seen, which is a strictly harder task and the one the project is about.
 A line-mean baseline scores **0.0000** under our protocol.
@@ -1192,7 +1211,8 @@ the embeddings.** The two model classes do split the two embeddings: on **PCA** 
 `SingleDrugElasticNet` is the best feature-using model in the table while the random forest is the
 worst; on **scGPT** line-means the ordering reverses, the elastic net shrinking to the intercept while
 the forest is the better of the two arms. The same pattern appears under LCO — `SingleDrugEN (pca)`
-0.2534 / `SingleDrugRF (pca)` 0.0279 normalized against `EN (scgpt)` 0.0000 / `RF (scgpt)` 0.2773.
+0.2218 / `SingleDrugRF (pca)` 0.0458 normalized against `EN (scgpt)` 0.0000 / `RF (scgpt)` 0.2988
+(recomputed 21.10.2026; was 0.2534 / 0.0279 / 0.0000 / 0.2773).
 Values in the table above. **What that licenses is narrower than it looks:**
 
 > **Corrected 17.08.2026 — this concluded *"neither representation is simply better; they need
@@ -1213,6 +1233,13 @@ Values in the table above. **What that licenses is narrower than it looks:**
 > landing near our 0.2776, which belongs with the ceiling argument rather than with this one.
 > ⚠️ The bit-identity check ran in a shell session over the committed CSV, **not yet from committed
 > code**. The same claim stood in the presentation deck and is fixed there too.
+
+> **Corrected 21.10.2026 — the random-forest half does not survive either.** The forest on the first 10
+> PCA components scores 0.2928, level with the scGPT forest (0.2988), so its collapse on PCA comes from
+> the ~500 trailing components it is handed, not from what the representation carries
+> (`dreval_rf_checks.csv`, k set after the fact). The forests are now seeded, and `SingleDrugEN (pca)`
+> (0.2218) no longer lands near the MLP (0.3304). Neither half licenses *"they need different model
+> classes"*.
 
 ---
 

@@ -173,8 +173,8 @@ A shared trunk with $K$ heads was preferred to $K$ separate models so that the m
 cell line responds across all compounds: the trunk is trained on the labels of every compound, so what it
 learns from a line's response to one compound can inform its predictions for the others
 \cite{partin2023}. Separate models would each learn from only about \NLinesCV{} labels. Whether the trunk's
-non-linearity and shared representation are used was tested by replacing it with a single linear layer
-(Section~\ref{sec:results-q2}, Table~\ref{tab:capacity}).
+non-linearity and shared representation are used was tested by replacing it with a single linear layer,
+with \NPanel{} and with \NDrugsModelled{} heads (Section~\ref{sec:results-q2}, Table~\ref{tab:capacity}).
 Figure~\ref{fig:architecture} shows this network for one cell.
 % (\code{scripts/model/OncoMLP.py})
 
@@ -262,20 +262,29 @@ the recovery of the most sensitive lines (Appendix~\ref{app:decision}).
 The rule therefore need not select the configuration with the highest order score, which is reported as
 the highest-scoring configuration (Section~\ref{sec:results-q1}).
 
-Three controls were computed on the same folds. First, a ridge regression \cite{hoerl1970} on cell-line means
+Three controls were computed. The first two used the same folds, and the third DrEval's own splits.
+% (until 21.10.2026: "Three controls were computed on the same folds", which the DrEval control was not)
+First, a ridge regression \cite{hoerl1970} on cell-line means
 averaged each line's cells into one \NPca-dimensional vector and fitted one model per compound and fold
 on the fitting lines, with the same per-fold PCA, choosing its penalty by leave-one-out error
-(Appendix~\ref{app:controls}). Second, a model with all \NDrugsModelled{} heads was
-scored on every compound against a per-compound constant, to test the panel against the unselected catalogue.
+(Appendix~\ref{app:controls}). Second, the model was trained with all \NDrugsModelled{} heads, once with the
+trunk and once with a single linear layer in its place, and scored on the panel compounds and on every
+compound against a per-compound constant. This tests the panel against the unselected catalogue, and
+whether training on more compounds helps the trunk.
 % (\code{notebooks/4a\_percell\_training.ipynb} \S D)
 Third, the model was evaluated with DrEval \cite{dreval} under its LCO protocol, with its splits, its
 naive baselines --- predicting the global mean, the compound mean, the cell-line mean, or both mean
-effects together --- its per-compound random forest \cite{breiman2001} and elastic net, and its
-normalised metric, unmodified (Appendix~\ref{app:controls}). Because a held-out line is absent from
-training, that metric can remove only the compound effect, not the cell-line effect. DrEval's
+effects together --- its per-compound random forest \cite{breiman2001}, and its
+normalised metric, unmodified (Appendix~\ref{app:controls}). DrEval's
 leave-pairs-out (LPO) protocol, in which held-out pairs belong to lines seen in training, was run for its
 baselines, which there include the tissue mean, to measure how much a line's average response alone
-predicts.
+predicts. Because a held-out line is absent from
+training, the LCO metric can remove only the compound effect, not the cell-line effect.
+Under LCO the normalised metric is therefore zero for every naive baseline by construction, up to
+fold-to-fold noise, so a positive score is signal beyond them.
+% (\code{dreval/dreval\_lco\_results.csv}: compound-mean and mean-effects 0.0000; global-mean and
+% cell-line-mean 0.0063, fold SD 0.112. Moved here from Results on 21.10.2026, where it read "DrEval's
+% naive baselines score zero on that metric \cite{dreval}".)
 % DrEval version 1.5.1 (\code{scripts/evaluation/dreval\_lpo.py})
 
 The share of the cell-line effect was therefore measured directly on held-out labels. As a proxy for a line's general sensitivity, its fragility $f_i$ was defined here as its mean

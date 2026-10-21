@@ -11,6 +11,13 @@ Prediction if it is not: nothing moves, because a uniform rescale changes no rel
 structure whatsoever -- the same directions, the same ordering, the same everything but units.
 
 Writes only to the job scratch directory; touches no committed artifact.
+
+**21.10.2026 (Selin, option a): two defects fixed, and re-run.** (1) The output went to an agent scratch
+directory (``/Users/selin/.claude/jobs/ce8d4fe5/tmp/scale_test.csv``), so the committed
+``diagnostics/input_scale_test.csv`` had no producer that wrote it; the sentence above no longer holds,
+and this script now writes that file. (2) The factor was hard-coded as ``1.1062 / 0.0107`` (103.4x), read
+from the pre-audit ``input_scale.csv``, which was computed on all cells with the all-cells PCA. It is now
+read from the current ``input_scale.csv`` (CV cells, CV-line PCA fit; diagnostics.ipynb cell 13).
 """
 import sys
 from dataclasses import replace
@@ -46,8 +53,10 @@ if __name__ == "__main__":   # guard added 14.08.2026 (Selin): importing this fi
     adata.uns['ctrp_drugs'] = PANEL
     src.file.close()
 
-    # The measured gap, from diagnostics/input_scale.csv: 1.1062 / 0.0107.
-    FACTOR = 1.1062 / 0.0107
+    # The measured gap, read from diagnostics/input_scale.csv (was hard-coded as 1.1062 / 0.0107 until
+    # 21.10.2026, the pre-audit values).
+    scale = pd.read_csv(ROOT / 'notebooks/outputs/diagnostics/input_scale.csv').set_index('rep')
+    FACTOR = scale.loc['X_pca', 'std_median'] / scale.loc['X_scGPT', 'std_median']
     adata.obsm['X_scGPT_scaled'] = (X * FACTOR).astype(np.float32)
     print(f'scaling factor {FACTOR:.1f}x')
     for r in ('X_scGPT', 'X_scGPT_scaled'):
@@ -69,7 +78,7 @@ if __name__ == "__main__":   # guard added 14.08.2026 (Selin): importing this fi
             del pred
 
     d = pd.DataFrame(rows)
-    d.to_csv('/Users/selin/.claude/jobs/ce8d4fe5/tmp/scale_test.csv', index=False)
+    d.to_csv(ROOT / 'notebooks/outputs/diagnostics/input_scale_test.csv', index=False)
     print('\n=== median best_epoch ===')
     print(d.groupby('rep')['best_epoch'].agg(['median', 'mean', 'min', 'max']).round(2).to_string())
     print('\n=== per fold/seed ===')

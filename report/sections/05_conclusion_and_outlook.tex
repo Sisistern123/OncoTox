@@ -13,7 +13,8 @@ frozen general-purpose foundation embedding was a viable but weaker representati
 the atlas, and before any training the scGPT inputs already carried less between-line structure
 (Section~\ref{sec:rd-q2}). The second is an accounting of what the score consists of. About a fifth of
 the ranking was general cell-line sensitivity, the spread across compounds followed the share of flat
-dose--response curves, and two line-level models matched the per-cell model (Section~\ref{sec:rd-q1}).
+dose--response curves, and a ridge regression on cell-line means scored about as well as the default
+per-cell configuration, \RidgePca{} against \SwPcaMaeZero{} (Section~\ref{sec:rd-q1}).
 The third is an instrument for the third question. It showed that a model can assign a line's cells
 reproducibly different predictions that are not dominated by sequencing artefacts, and its positive
 control showed that it cannot yet detect a known, slight difference in response (Section~\ref{sec:rd-q3}).

@@ -1,4 +1,4 @@
 quantity,point,ci_lo,ci_hi,frac_resamples_pca_ahead,n_lines,B,ci,seed,unit
-ratio_X_pca,1.4048226472949383,1.280125323056717,1.5095106138232557,0.999,153,2000,0.95,0,"cell line, paired across representations"
-ratio_X_scGPT,1.1676133515639,0.9908040466346547,1.3345827772140304,0.999,153,2000,0.95,0,"cell line, paired across representations"
-ratio_diff_pca_minus_scgpt,0.23720929573103833,0.09874043811186621,0.37530050553489785,0.999,153,2000,0.95,0,"cell line, paired across representations"
+ratio_X_pca,1.3746734257065094,1.2435975768517282,1.4847364630562874,0.998,153,2000,0.95,0,"cell line, paired across representations"
+ratio_X_scGPT,1.1676133515639,0.9908040466346547,1.3345827772140304,0.998,153,2000,0.95,0,"cell line, paired across representations"
+ratio_diff_pca_minus_scgpt,0.2070600741426094,0.07714942685023084,0.3364849170795346,0.998,153,2000,0.95,0,"cell line, paired across representations"

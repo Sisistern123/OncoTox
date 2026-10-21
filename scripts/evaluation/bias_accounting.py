@@ -70,7 +70,11 @@ from scipy.stats import rankdata, spearmanr
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from scripts.evaluation.dreval_normalize import naive_predictions  # noqa: E402
+from drevalpy.datasets.dataset import DrugResponseDataset  # noqa: E402
+from drevalpy.datasets.utils import CELL_LINE_IDENTIFIER, DRUG_IDENTIFIER  # noqa: E402
+from drevalpy.models import MODEL_FACTORY  # noqa: E402
+
+from scripts.evaluation.dreval_normalize import _identity_features, naive_predictions  # noqa: E402
 
 OOF = ROOT / "notebooks/outputs/panel/panel_oof_predictions.csv"
 OUT = ROOT / "notebooks/outputs/dreval/bias_accounting.csv"
@@ -92,6 +96,34 @@ def fragility_proxies(oof: pd.DataFrame) -> dict[str, pd.Series]:
     for drug in truth["drug"].unique():
         own = truth[truth.drug == drug].set_index("cell_line")["y_true"].reindex(tot.index)
         out[drug] = (tot["sum"] - own.fillna(0)) / (tot["count"] - own.notna().astype(int))
+    return out
+
+
+def drug_mean_predictions(oof: pd.DataFrame) -> pd.Series:
+    """DrEval's ``NaiveDrugMeanPredictor``, fitted per fold on the *other* folds.
+
+    Added 21.10.2026 (Selin) so the report's pooled-score sentence compares like with like: until then
+    it set ``spearman_raw_pooled`` (these folds, pooled over all five) against DrEval's own LCO run of
+    this predictor (DrEval's splits, pooled per fold, mean over folds). Fitted exactly as
+    ``dreval_normalize.naive_predictions`` fits the mean-effects predictor, with only the model swapped.
+    """
+    out = pd.Series(np.nan, index=oof.index, dtype=float)
+    for fold in oof["fold"].unique():
+        held_out = oof["fold"] == fold
+        train, test = oof[~held_out], oof[held_out]
+        model = MODEL_FACTORY["NaiveDrugMeanPredictor"]()
+        model.train(
+            output=DrugResponseDataset(response=train["y_true"].to_numpy(),
+                                       cell_line_ids=train["cell_line"].to_numpy(),
+                                       drug_ids=train["drug"].to_numpy()),
+            cell_line_input=_identity_features(train["cell_line"].to_numpy(), CELL_LINE_IDENTIFIER),
+            drug_input=_identity_features(train["drug"].to_numpy(), DRUG_IDENTIFIER),
+        )
+        out.loc[test.index] = model.predict(
+            cell_line_ids=test["cell_line"].to_numpy(), drug_ids=test["drug"].to_numpy(),
+            cell_line_input=_identity_features(test["cell_line"].to_numpy(), CELL_LINE_IDENTIFIER),
+            drug_input=_identity_features(test["drug"].to_numpy(), DRUG_IDENTIFIER),
+        )
     return out
 
 
@@ -122,6 +154,7 @@ def score_one_run(run: pd.DataFrame, proxies: dict[str, pd.Series]) -> dict:
 
     return {
         "spearman_raw_pooled": rho(scored.y_true, scored.y_pred),
+        "spearman_drug_mean_pooled": rho(scored.y_true, drug_mean_predictions(run)),
         "spearman_norm_pooled": rho(scored.y_true - scored.y_naive, scored.y_pred - scored.y_naive),
         "spearman_raw_per_drug": float(np.mean(per_drug)),
         "spearman_norm_per_drug": float(np.mean(per_drug_norm)),

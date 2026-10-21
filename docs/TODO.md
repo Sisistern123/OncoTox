@@ -8,7 +8,7 @@
 > every number a macro in `report/results_numbers.tex` naming its source CSV). **What is next is no
 > longer this file's review checklist** but the next steps named in the presentation —
 > [Step 06 §Next steps as presented](./steps/06-planned-work.md#next-steps-as-presented--final-presentation-17082026-added-12102026).
-> Open decisions: [OPEN_DECISIONS](./OPEN_DECISIONS.md) — one entry, §9.
+> Open decisions: [OPEN_DECISIONS](./OPEN_DECISIONS.md) — none open (§9 settled 21.10.2026).
 >
 > Unchecked items further down are either still open (item 12's extraction script, the drug-panel counts
 > as macros, the FAIR items D–H, the PCA component count) or were never re-read after the rerun;

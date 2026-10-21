@@ -9,7 +9,7 @@ It matters more now than when the item was written: weight_decay is 0.0, so drop
 regularizer.
 
 Design: section C's linear row (alpha=0, mse, linear head, 3 seeds x 5 folds), both representations,
-at input_dropout 0.1 (as shipped) and 0.0 (off). 60 fits. If the margin is unchanged the asymmetry is
+at input_dropout 0.1 (as shipped) and 0.0 (off), plus 0.02, 0.05, 0.2, 0.3 since 21.10.2026. 180 fits. If the margin is unchanged the asymmetry is
 harmless; if it moves, every Q1 margin carries an uncontrolled regularizer difference.
 """
 import sys
@@ -39,9 +39,14 @@ if __name__ == "__main__":   # guard added 14.08.2026 (Selin): importing this fi
     adata.uns['ctrp_drugs'] = PANEL
     src.file.close()
 
+    # All six rates in one run (Selin, 21.10.2026). Until then this ran 0.1 and 0.0 only, and the
+    # other four (input_dropout_sweep_extra.csv, 14.08.2026, 9512b41) had no committed producer. The
+    # two files keep their split -- the shipped/off contrast and the extra rates -- so their readers
+    # are unchanged, but both are now written here, from the same run.
+    RATES_MAIN, RATES_EXTRA = (0.1, 0.0), (0.02, 0.05, 0.2, 0.3)
     cfg = TrainConfig(epochs=50, seed=42, loss='mse')
     rows = []
-    for idrop in (0.1, 0.0):
+    for idrop in (*RATES_MAIN, *RATES_EXTRA):
         for rep in ('X_pca', 'X_scGPT'):
             for seed in (42, 43, 44):
                 pred, folds = oof_predictions(
@@ -58,6 +63,9 @@ if __name__ == "__main__":   # guard added 14.08.2026 (Selin): importing this fi
                 del pred
 
     d = pd.DataFrame(rows)
+    d[d.input_dropout.isin(RATES_EXTRA)].to_csv(
+        ROOT/'notebooks/outputs/diagnostics/input_dropout_sweep_extra.csv', index=False)
+    d = d[d.input_dropout.isin(RATES_MAIN)]
     d.to_csv(ROOT/'notebooks/outputs/diagnostics/input_dropout_test.csv', index=False)
     m = d.groupby(['input_dropout', 'rep'])['order'].mean().unstack()
     m['margin'] = m.X_pca - m.X_scGPT

@@ -64,6 +64,7 @@ so the improvement is auditable.
 
 | Date | What |
 |---|---|
+| 21.10.2026 | [The DrEval benchmark ran on the test lines, an all-cells PCA and unseeded forests](#the-dreval-benchmark-ran-on-the-test-lines-an-all-cells-pca-and-unseeded-forests) — the 28 test lines were in every DrEval fold; **"the random forest matches the MLP" did not survive the fix** |
 | 12.08.2026 | [The same val-split leak, in the code that produced everything else](#the-same-val-split-leak-in-the-code-that-produced-everything-else) — fixed once in the DrEval notebook 14.07.2026 and never carried into `cv.py`; **every out-of-fold prediction and CV metric on record is a minimum over epochs on its own scored data** |
 | 12.08.2026 | [The evidence that closed model-side tuning](#the-evidence-that-closed-model-side-tuning) — the same leak, in the ablation notebook, on a retired target and a discredited drug set; only the MLP rows are flattered and ridge ties them |
 | 12.08.2026 | [The two uncentred-target mechanics ran in one training path of three](#the-two-uncentred-target-mechanics-ran-in-one-training-path-of-three) — the 8-run matrix trained against an offset the panel run did not, and the flag did not do what the docs said |
@@ -741,6 +742,62 @@ the selection saw held-out labels. Both are **best-case diagnostics**: they answ
 signal exist here?" (yes) and not "how well does this generalize?". Making them reportable needs the
 selection run **inside each CV fold on training lines only**, which remains blocking for any headline
 number ([TODO](../TODO.md)).
+
+### The DrEval benchmark ran on the test lines, an all-cells PCA and unseeded forests
+
+**Established** by the DrEval runs the report quoted until 21.10.2026:
+`notebooks/analysis/evaluation/dreval_benchmark.ipynb` (LCO) and `scripts/evaluation/dreval_lpo.py`
+(LPO), `drevalpy` 1.5.1. Results §4 and the Discussion read from them that DrEval's per-compound random
+forest matched the per-cell MLP (normalised Spearman 0.2773 against 0.2776), and used that as the
+second line-level model reaching the per-cell score.
+
+**Overturned 21.10.2026 (Selin), three defects, found while checking which representation each number
+used:**
+
+1. **The 28 `split_ctrp` test lines were in every fold.** Both files built their dataset from
+   `np.unique(lines)`, all 181 labelled lines, so drevalpy drew its folds over the test set too. The
+   report says the test set was set aside and never used; for the DrEval numbers it was trained on and
+   scored. No setting was chosen from these numbers, so the test set is used but not tuned to.
+2. **The PCA view was the all-cells `X_pca`.** Its rotation was fitted on every cell, held-out lines
+   included — the leak `cv.py` closed on 12.08.2026 (decision 2) and this notebook kept. It affected
+   the MLP and the forest on PCA; scGPT is frozen and needs no fit. The LPO figure's two baselines use
+   no features and were not affected by this.
+3. **drevalpy's random forest is unseeded.** `RandomForest.build_model` passes no `random_state`
+   (`drevalpy/models/baselines/sklearn_models.py`), so every forest number was one random draw.
+   Recorded for LPO in `docs/make_figures.py::build_lpo_bias` on 16.08.2026, never carried to LCO.
+
+Also, the comparison quoted the **scGPT** forest against the **PCA** MLP without saying so.
+
+**Fixed 21.10.2026 (Selin):** both files restricted to the 153 train + val lines; the LCO PCA fitted per
+fold on each fold's `train` lines (the pipeline's rule — validation lines stop the MLP early and stay
+out); the LPO PCA fitted once on the CV lines' cells (every CV line is a training line under LPO); both
+forests seeded with 42 after `build_model`. The two line changes and the PCA change were made in one
+run (Selin, option 1), so their separate effects are not known.
+
+**Values, normalised Spearman, mean (fold SD)** — before from the committed
+`notebooks/outputs/dreval/dreval_lco_results.csv` / `dreval_lpo_results.csv`, after from the reruns of
+21.10.2026; read through `scripts/evaluation/report_numbers.py`:
+
+| | Before | After |
+|---|---|---|
+| MLP on PCA, LCO (`\DrMlpNorm`) | 0.2776 (0.047) | 0.3304 (0.067) |
+| RF on scGPT, LCO (`\DrRfNorm`) | 0.2773 (0.039) | 0.2988 (0.041) |
+| RF on PCA, LCO (`\DrRfPcaNorm`, new) | 0.0279 (0.064) | 0.0458 (0.061) |
+| Line mean, LPO (`\LpoLineMean`) | 0.322 | 0.312 |
+| Tissue mean, LPO (`\LpoTissueMean`) | 0.184 | 0.183 |
+
+⚠️ **The MLP rows are not reproducible to the third decimal.** It trains on `mps`; two seeded reruns on
+21.10.2026 gave 0.3356 and 0.3304 (scGPT 0.2874 and 0.2979). The forests are now exact.
+
+**What changed in the conclusions.** On the same features the forest scored 0.046 against 0.330 for
+the MLP, so it no longer supports "two structurally different line-level models reach the same
+score"; the Discussion now rests that point on the ridge alone. The forest was untuned (drevalpy's
+first hyperparameter set), so the comparison does not test DrEval's finding that no model beat a tuned
+forest under LCO, and Relation to previous work no longer opens with "agrees with DrEval's benchmark".
+Why it fails on PCA: `scripts/evaluation/dreval_rf_checks.py` → `dreval_rf_checks.csv` — 0.293 on the
+first 10 components, 0.265 on 50, 0.046 on all 512, 0.147 on all 512 with `max_samples=1.0`; scGPT
+0.299 / 0.302. The trailing components, not the subsample, are the main cause. k was set after the
+fact and scored on the evaluation folds, so 0.293 is evidence about the cause, not a score.
 
 ### The first DrEval benchmark — a val-split leak
 

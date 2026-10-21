@@ -59,10 +59,22 @@ GRID_ORIGINAL = np.logspace(-2, 4, 13)
 #: for this (drug, fold) -- predict the intercept". That is an outcome, not an artifact, and no
 #: ceiling fixes it.
 GRID_WIDE = np.logspace(-2, 6, 17)
+#: Two decades of extra room at the BOTTOM as well (Selin, 21.10.2026). Fitting on the ~104 fitting
+#: lines instead of the ~122 training lines put 6 of 110 fits on the 10^-2 floor (PCA imatinib and
+#: afatinib, scGPT doxorubicin, two folds each) -- the grid, not the data, chose their penalty, which
+#: 4a's pre-registered test (13.08.2026) does not allow. Same 2-per-decade spacing.
+GRID_FITTING = np.logspace(-4, 6, 21)
 
 
-def ridge_table(adata, groups, idx, fold_split, masks, panel, yl, ol, lines, line_of, paths, grid):
-    """`4a`'s ridge cell, parameterised only by the penalty grid."""
+def ridge_table(adata, groups, idx, fold_split, masks, panel, yl, ol, lines, line_of, paths, grid,
+                fitting_only=True):
+    """`4a`'s ridge cell, parameterised by the penalty grid and by which training lines it fits on.
+
+    ``fitting_only`` (Selin, 21.10.2026): fit on the fold's FITTING lines -- the training side minus
+    the ``inner_holdout`` early-stopping lines -- the ~104 lines the MLP learns from. Until then the
+    ridge fitted on the whole training side (~122), 18 labelled lines per fold more than the model it
+    is compared with, while Methods said "on the fitting lines". ``False`` reproduces the old fit.
+    """
     recs = []
     for rep in REPS:
         proj = fold_pca_projections_for(rep, paths.raw_h5ad, [m[0] for m in masks], seed=PCA_SEED)
@@ -72,7 +84,8 @@ def ridge_table(adata, groups, idx, fold_split, masks, panel, yl, ol, lines, lin
             X = (np.asarray(adata.obsm[rep], dtype=np.float32) if proj is None
                  else np.asarray(proj[fold_i], dtype=np.float32))
             E = np.vstack([X[groups == ln].mean(0) for ln in lines])
-            ti = [line_of[l] for l in np.unique(groups[idx[tr]]) if l in line_of]
+            fit_side = masks[fold_i][0] if fitting_only else np.isin(np.arange(len(groups)), idx[tr])
+            ti = [line_of[l] for l in np.unique(groups[fit_side]) if l in line_of]
             vi = [line_of[l] for l in np.unique(groups[idx[va]]) if l in line_of]
             for j in range(len(panel)):
                 tj = [i for i in ti if ol[i, j]]
@@ -128,45 +141,42 @@ def main() -> None:
 
     args = (adata, groups, idx, fold_split, masks, panel, yl, ol, lines, line_of, paths)
 
-    # ---- 1. reproduce the committed artifact on the original grid, or stop ------------------
-    print("reproducing the committed ridge on the ORIGINAL grid ...")
-    ref = pd.read_csv(OUT / "panel_ridge_baseline.csv")
-    # This script overwrites the file it validates against, so a second run would compare the new
-    # grid with itself and pass vacuously. Refuse instead, and say how to reset.
-    if ref["ridge_alpha_max"].max() > GRID_ORIGINAL[-1]:
-        raise SystemExit(
-            "panel_ridge_baseline.csv already holds a widened fit (max selected penalty "
-            f"{ref['ridge_alpha_max'].max():g} > {GRID_ORIGINAL[-1]:g}). The reproduction check "
-            "would be vacuous. Reset it first:\n"
-            "    git checkout notebooks/outputs/panel/panel_ridge_baseline.csv")
-    old = ridge_table(*args, GRID_ORIGINAL)
+    # ---- 1. reproduce the committed artifact, or stop -------------------------------------
+    # Since 21.10.2026 (Selin) the committed artifact is the WIDE grid on the whole training side
+    # (16.08.2026), and what changes is the set of lines fitted on. So the reproduction target is
+    # that fit; the original-grid check of 16.08.2026 is in git (7ee329d) and is not repeated.
     key = ["rep", "drug"]
-    j = ref.set_index(key)["spearman"].round(6).sort_index()
-    k = old.set_index(key)["spearman"].round(6).sort_index()
-    if not j.equals(k):
-        bad = (j - k).abs().sort_values(ascending=False).head(5)
-        raise SystemExit(f"does NOT reproduce panel_ridge_baseline.csv; worst rows:\n{bad}\n"
-                         "the reimplementation has drifted from 4a -- the widened numbers would "
-                         "not be comparable, so nothing is written.")
-    print(f"  ✅ all {len(k)} (rep, drug) rows identical to six decimals\n")
+    ref = pd.read_csv(OUT / "panel_ridge_baseline.csv").set_index(key)["spearman"].round(6).sort_index()
 
-    # ---- 2. the widened grid --------------------------------------------------------------
-    print(f"re-fitting on the widened grid {GRID_WIDE[0]:g} .. {GRID_WIDE[-1]:g} ...")
-    new = ridge_table(*args, GRID_WIDE)
+    def same(table):
+        return ref.equals(table.set_index(key)["spearman"].round(6).sort_index())
+
+    print("reproducing the committed ridge (wide grid, whole training side) ...")
+    old = ridge_table(*args, GRID_WIDE, fitting_only=False)
+    if not same(old):
+        if same(ridge_table(*args, GRID_FITTING, fitting_only=True)):
+            raise SystemExit("panel_ridge_baseline.csv already holds the fitting-lines ridge; nothing to do.")
+        raise SystemExit("does NOT reproduce panel_ridge_baseline.csv -- the reimplementation has drifted "
+                         "from 4a, so nothing is written.")
+    print(f"  ✅ all {len(ref)} (rep, drug) rows identical to six decimals\n")
+
+    # ---- 2. the fitting lines only --------------------------------------------------------
+    print("re-fitting on the fold's fitting lines only (the MLP's ~104, not the ~122 training lines) ...")
+    new = ridge_table(*args, GRID_FITTING, fitting_only=True)
 
     summary = []
     for rep in REPS:
         o, n = old[old.rep == rep], new[new.rep == rep]
         summary.append({"rep": rep,
-                        "mean_spearman_before": o.spearman.mean(), "mean_spearman_after": n.spearman.mean(),
-                        "at_edge_before": int(o.ridge_alpha_at_edge.sum()),
-                        "at_edge_after": int(n.ridge_alpha_at_edge.sum()),
+                        "mean_spearman_training_side": o.spearman.mean(), "mean_spearman_fitting_lines": n.spearman.mean(),
+                        "at_edge_training_side": int(o.ridge_alpha_at_edge.sum()),
+                        "at_edge_fitting_lines": int(n.ridge_alpha_at_edge.sum()),
                         "n_fits": int(n.ridge_alpha_n_fits.sum()),
                         "median_alpha_after": float(n.ridge_alpha_median.median())})
     s = pd.DataFrame(summary)
     print("\n" + s.round(4).to_string(index=False))
 
-    still = int(s.at_edge_after.sum())
+    still = int(s.at_edge_fitting_lines.sum())
     print(f"\n  fits still at a grid boundary: {still}")
     if still > 5:
         print("  ⚠️ MORE BOUNDARY FITS THAN THE KNOWN FIVE -- widen further before quoting these.")

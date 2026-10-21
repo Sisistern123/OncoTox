@@ -48,19 +48,22 @@ BEST = dict(rep="X_pca", alpha=0.5, loss="mae")
 def label_quality_globals() -> list[dict]:
     """B: the fit statistics of the curves behind the panel, as ``label_quality.py`` section 1 prints
     them -- same filter (panel compounds, split lines, a defined AUC), written instead of printed."""
-    from scripts.preprocessing.ctrp_to_h5ad import _normalize_cell_line, _normalize_drug
+    from scripts.preprocessing.ctrp_to_h5ad import CTRP_CELL_LINE_ALIASES, _normalize_cell_line, _normalize_drug
 
     p = PipelinePaths.build(None, "hvg5000", "auc_cc")
     resp = pd.read_csv(p.ctrp_response_csv,
                        usecols=["ccl_name", "drug_name", "AUC_curvecurator", "R2", "pValue"])
-    resp["line"] = _normalize_cell_line(resp.ccl_name)
+    # Same filter as label_quality.py, kept in step with it (21.10.2026, Selin): the pipeline's alias
+    # table on the CTRP side, and the 153 CV lines only -- not the 28 test lines.
+    resp["line"] = _normalize_cell_line(resp.ccl_name).replace(CTRP_CELL_LINE_ALIASES)
     resp["drug"] = _normalize_drug(resp.drug_name)
     panel = pd.read_csv(OUT / "panel/panel.csv")
     split = pd.read_csv(ROOT / "splits/split_ctrp.csv")
+    split = split[split.split.isin(["train", "val"])]
     drugs = set(_normalize_drug(panel.drug_ctrp))
     lines = set(_normalize_cell_line(split.Cell_line.str.split("_").str[0]))
     r = resp[resp.drug.isin(drugs) & resp.line.isin(lines)].dropna(subset=["AUC_curvecurator"])
-    src, how = "DrEval CTRPv2 response table", "curves of panel compounds x split lines (label_quality.py filter)"
+    src, how = "DrEval CTRPv2 response table", "curves of panel compounds x CV lines (label_quality.py filter)"
     return [
         row("NCurves", len(r), src, how + "; count"),
         row("CurveMedRsq", r.R2.median(), src, how + "; median R2"),
@@ -136,6 +139,10 @@ def sweep() -> list[dict]:
     band = pd.read_csv(OUT / band_src)
     alt = band[(band.arm == "MLP mse alpha=0") & (band.rep == "X_pca")]["exec_1_committed_13.08"].iloc[0]
     rows.append(row("SwPcaMseZeroAlt", alt, band_src, "X_pca mse alpha=0, first execution"))
+    # Added 21.10.2026 (Selin): the band holds three executions since the audit rerun, and the report
+    # names all three values. The third is SwPcaMseZero itself, read from panel_leaderboard.csv.
+    alt2 = band[(band.arm == "MLP mse alpha=0") & (band.rep == "X_pca")]["exec_2_full_rerun_13.08"].iloc[0]
+    rows.append(row("SwPcaMseZeroAltB", alt2, band_src, "X_pca mse alpha=0, second execution"))
     return rows
 
 
@@ -151,8 +158,19 @@ def controls() -> list[dict]:
     heads = pd.read_csv(OUT / src)
     allc = heads[heads.scored_on.str.startswith("all ")]
     rows += [row("SpAllDrugs", allc[(allc.arch == "linear") & (allc.rep == "X_pca")].spearman.iloc[0], src,
-                 "all compounds, linear head, X_pca"),
-             row("NullGainMax", allc.vs_null.max(), src, "largest vs_null over the four all-compound rows")]
+                 "all compounds, linear head, X_pca")]
+    # Both architectures at both scorings, so the (capacity x head count) factorial of 4a sections C
+    # and D is reported whole (Selin, 21.10.2026, option ii). Until then only the linear PCA row was.
+    # NullGainMax (largest vs_null of the four rows, in MSE units, 0.0004) was retired the same day:
+    # it sat beside a Spearman and came from a different row than the score it qualified.
+    pan = heads[~heads.scored_on.str.startswith("all ")]
+    for arch, a_name in (("linear", "Lin"), ("trunk", "Trunk")):
+        for rep, r_name in (("X_pca", "Pca"), ("X_scGPT", "Scgpt")):
+            sel = lambda df: df[(df.arch == arch) & (df.rep == rep)].spearman.iloc[0]
+            if (arch, rep) != ("linear", "X_pca"):   # that one is SpAllDrugs
+                rows.append(row(f"HdAll{a_name}{r_name}", sel(allc), src, f"all compounds, {arch}, {rep}"))
+            rows.append(row(f"HdPan{a_name}{r_name}", sel(pan), src, f"534-head model, panel compounds, {arch}, {rep}"))
+    rows += heads_vs_constant()
 
     src = "dreval/dreval_lco_results.csv"
     lco = pd.read_csv(OUT / src).groupby("algorithm")
@@ -161,12 +179,59 @@ def controls() -> list[dict]:
              row("DrRfNorm", norm.mean()["SingleDrugRF (scgpt)"], src, "normalized Spearman, mean over folds"),
              row("DrMlpSd", norm.std()["OncoMLP (X_pca)"], src, "normalized Spearman, SD over folds"),
              row("DrRfSd", norm.std()["SingleDrugRF (scgpt)"], src, "normalized Spearman, SD over folds"),
-             row("DrDrugMean", raw.mean()["NaiveDrugMeanPredictor"], src, "raw Spearman, mean over folds")]
+             # The forest on the MLP's own representation, so the comparison holds the features fixed
+             # (Selin, 21.10.2026, option b). DrRfNorm stays the scGPT forest.
+             row("DrRfPcaNorm", norm.mean()["SingleDrugRF (pca)"], src, "normalized Spearman, mean over folds"),
+             row("DrRfPcaSd", norm.std()["SingleDrugRF (pca)"], src, "normalized Spearman, SD over folds")]
 
     src = "dreval/dreval_lpo_results.csv"
     lpo = pd.read_csv(OUT / src).groupby("algorithm").per_drug_Spearman.mean()
     rows += [row("LpoLineMean", lpo["NaiveCellLineMeanPredictor"], src, "per_drug_Spearman, mean over folds"),
              row("LpoTissueMean", lpo["NaiveTissueMeanPredictor"], src, "per_drug_Spearman, mean over folds")]
+    return rows
+
+
+def heads_vs_constant() -> list[dict]:
+    """The 534-head model against a per-compound constant, over all compounds, per (arch, rep).
+
+    Two quantities (Selin, 21.10.2026, options b and a-plus-share):
+
+    * the **relative error reduction**, (constant MSE - model MSE) / constant MSE, each first averaged
+      over compounds -- a ratio of means, so compounds with more response variance weigh more, as they
+      already do in ``vs_null``;
+    * the **share of compounds** on which the model's MSE is below the constant's.
+
+    Both per seed, then averaged over the three seeds. The constant is 4a section D2's ``_null_mse``,
+    restated here: the compound's mean label on the other folds' lines, never on the held-out truth.
+    Compounds with fewer than 5 lines or no label variance are skipped, as section D2 skips them.
+    """
+    src = "panel/panel_heads_oof.csv"
+    d = pd.read_csv(OUT / src)
+
+    def null_mse(g):
+        err = [(held.y_true.to_numpy() - g.loc[g.fold != f, "y_true"].mean()) ** 2
+               for f, held in g.groupby("fold", sort=False)]
+        return float(np.concatenate(err).mean())
+
+    recs = []
+    for (arch, rep, seed, _drug), g in d.groupby(["arch", "rep", "seed", "drug"]):
+        if len(g) < 5 or g.y_true.std(ddof=0) == 0:
+            continue
+        recs.append(dict(arch=arch, rep=rep, seed=seed, null=null_mse(g),
+                         model=float(((g.y_pred - g.y_true) ** 2).mean())))
+    x = pd.DataFrame(recs)
+    per_seed = x.groupby(["arch", "rep", "seed"]).agg(null=("null", "mean"), model=("model", "mean"),
+                                                      beat=("model", "size"))
+    per_seed["beat"] = (x.assign(b=x.model < x.null).groupby(["arch", "rep", "seed"]).b.mean())
+    per_seed["gain"] = 100 * (per_seed.null - per_seed.model) / per_seed.null
+    m = per_seed.groupby(["arch", "rep"])[["gain", "beat"]].mean()
+    rows = []
+    for arch, a_name in (("linear", "Lin"), ("trunk", "Trunk")):
+        for rep, r_name in (("X_pca", "Pca"), ("X_scGPT", "Scgpt")):
+            rows += [row(f"HdGain{a_name}{r_name}", m.loc[(arch, rep), "gain"], src,
+                         "% MSE reduction vs per-compound constant, ratio of means, mean over seeds"),
+                     row(f"HdBeat{a_name}{r_name}", 100 * m.loc[(arch, rep), "beat"], src,
+                         "% of compounds with model MSE below the constant's, mean over seeds")]
     return rows
 
 
@@ -186,6 +251,10 @@ def fragility() -> list[dict]:
                  row(f"FragBest{tag}", best.loc[rep, "partial_rho"], src, "partial_rho, best configuration")]
     pooled = b[(b.rep == BEST["rep"]) & (b.alpha == BEST["alpha"]) & (b.loss == BEST["loss"])]
     rows.append(row("SpPooled", pooled.spearman_raw_pooled.iloc[0], src, "pooled raw Spearman, best configuration"))
+    # Same folds, pairs and pooling as SpPooled (Selin, 21.10.2026, option a); replaces DrDrugMean, which
+    # came from DrEval's own LCO splits and was pooled per fold.
+    rows.append(row("SpDrugMeanPooled", pooled.spearman_drug_mean_pooled.iloc[0], src,
+                    "pooled raw Spearman of DrEval's NaiveDrugMeanPredictor on the same out-of-fold pairs"))
     return rows
 
 
@@ -224,6 +293,12 @@ def representations() -> list[dict]:
     src = "diagnostics/input_scale.csv"
     s = pd.read_csv(OUT / src).set_index("rep").std_median
     rows.append(row("InputScaleRatio", s["X_pca"] / s["X_scGPT"], src, "ratio of median per-dimension SD"))
+    # Checked since 21.10.2026: the rescaling test's epochs, until then hand-copied (and the report said
+    # the output was not committed, though it was).
+    src = "diagnostics/input_scale_test.csv"
+    e = pd.read_csv(OUT / src).groupby("rep").best_epoch.mean()
+    rows += [row("ScaleEpochNative", e["X_scGPT"], src, "mean best epoch over seeds x folds, X_scGPT"),
+             row("ScaleEpochScaled", e["X_scGPT_scaled"], src, "mean best epoch, X_scGPT rescaled to X_pca")]
 
     srcs = ["diagnostics/input_dropout_test.csv", "diagnostics/input_dropout_sweep_extra.csv"]
     d = pd.concat([pd.read_csv(OUT / f) for f in srcs]).groupby(["rep", "input_dropout"]).order.mean()
@@ -265,6 +340,17 @@ def heterogeneity() -> list[dict]:
                  row(f"QSdCell{tag}Lo", s.median_sd_4a.min(), src, "min over seeds, per-cell model"),
                  row(f"QSdCell{tag}Hi", s.median_sd_4a.max(), src, "max over seeds, per-cell model")]
     rows.append(row("QPairs", s1.n_pairs.iloc[0], src, "(compound, line) pairs per seed"))
+    # Stage 7's own unit (21.10.2026, Selin, item 10 option a): mixed two-line bags, not (compound, line)
+    # pairs, so the report no longer gives QPairs as the count of every stage.
+    s7 = pd.read_csv(OUT / "mil/stage7_positive_control.csv").groupby(["rep", "seed"]).size()
+    assert s7.nunique() == 1, "stage 7 bag count differs between arms or seeds"
+    rows.append(row("QBags", s7.iloc[0], "mil/stage7_positive_control.csv", "mixed two-line bags per seed and arm"))
+    # The (compound, line) combinations the label-free stages include although CTRPv2 never screened
+    # them (21.10.2026, Selin): all combinations less the screened ones, which are the pairs scored out of
+    # fold in panel_oof_predictions.csv.
+    oof = pd.read_csv(OUT / "panel/panel_oof_predictions.csv", usecols=["drug", "cell_line"]).drop_duplicates()
+    rows.append(row("QUnscreened", s1.n_pairs.iloc[0] - len(oof), f"{src} + panel/panel_oof_predictions.csv",
+                    "QPairs less the screened (compound, line) pairs"))
     # Closing description of Q3 (4b §4, cells 29 and 31; added 19.10.2026): the scGPT arm's within-line
     # association of per-cell predictions with the proteasomal-degradation program, with and without
     # mitochondrial fraction controlled, and that program's own within-line relation to depth.

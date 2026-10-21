@@ -8,8 +8,8 @@ acted on. When one is settled, move it into the file that owns the topic (`docs/
 items, `docs/steps/` for the scientific record) and delete it here, so this file never becomes a
 second place where a decision lives.
 
-*Status 12.10.2026:* the final presentation (17.08.2026) has been given and the report rewritten to
-it. **One entry is open — §9.** Everything else is settled; §10 was settled by the grid refit of
+*Status 21.10.2026:* the final presentation (17.08.2026) has been given and the report rewritten to
+it. **No entry is open** — §9 was settled 21.10.2026. Everything else is settled; §10 was settled by the grid refit of
 16.08.2026. The entries were once ranked by what they blocked for the 14.08.2026 lab meeting; that
 ranking no longer orders anything.
 
@@ -354,7 +354,15 @@ it are not interpretable", which a floor supports. It also costs nothing and cha
 
 ---
 
-## §9 · The LPO random forests are unseeded — pin, mark, or drop them (opened 14.08.2026)
+## §9 · ~~The LPO random forests are unseeded — pin, mark, or drop them~~ — SETTLED 21.10.2026 (Selin: "rerun the forests with a fixed seed like everywhere else")
+
+**Settled by pinning 42**, the rule-based option below, in `scripts/evaluation/dreval_lpo.py` and in the
+LCO notebook (`notebooks/analysis/evaluation/dreval_benchmark.ipynb` cell 8), set after `build_model`
+because drevalpy does not forward a `random_state`. Decided together with restricting both DrEval runs
+to the 153 CV lines and fitting their PCA without held-out cells; record in
+[Corrections](steps/corrections-and-dead-ends.md#the-dreval-benchmark-ran-on-the-test-lines-an-all-cells-pca-and-unseeded-forests),
+current values in [Step 05](steps/05-multitask-results.md). The entry below is kept as it was opened.
+
 
 **The choice.** `drevalpy`'s default hyperparameter set for `SingleDrugRandomForest` pins no
 `random_state`, so those two rows of the leave-pairs-out benchmark move between executions:
@@ -471,5 +479,6 @@ report, so it is a re-verify rather than a one-line change — which is why it i
 ## Everything else is settled
 
 **Every other entry is settled, dissolved or demoted** — §8 on 14.08.2026 by evidence rather
-than by choice, §10 on 16.08.2026 by the grid refit. **§9 is the one open entry.** Add the next one
+than by choice, §10 on 16.08.2026 by the grid refit, §9 on 21.10.2026 by a fixed seed. **No entry is
+open.** Add the next one
 as §11.

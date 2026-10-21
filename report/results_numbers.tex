@@ -214,7 +214,7 @@
 \newcommand{\NPanel}{11}           % compounds in the panel (panel/panel.csv)
 % --- the six-arm sweep: panel/panel_per_drug_correlation.csv, mean over the 11 drugs per seed,
 %     then over seeds 42/43/44. Same values as panel/panel_leaderboard.csv's MLP rows.
-\newcommand{\SwPcaMseZero}{0.2473}  \newcommand{\SwScgptMseZero}{0.2009}
+\newcommand{\SwPcaMseZero}{0.2485}  \newcommand{\SwScgptMseZero}{0.2009}  % 21.10.2026 rerun after the audit; was: SwPcaMseZero 0.2473
 \newcommand{\SwPcaMseHalf}{0.2754}  \newcommand{\SwScgptMseHalf}{0.1927}
 \newcommand{\SwPcaMseOne}{0.2679}   \newcommand{\SwScgptMseOne}{0.2031}
 \newcommand{\SwPcaMaeZero}{0.2617}  \newcommand{\SwScgptMaeZero}{0.2403}
@@ -222,7 +222,10 @@
 \newcommand{\SwPcaMaeOne}{0.2765}   \newcommand{\SwScgptMaeOne}{0.2214}
 % panel/panel_execution_band.csv: the one arm that differs between two identical executions on
 % the MPS backend (13.08.2026). The table reports the second (the full rerun).
-\newcommand{\SwPcaMseZeroAlt}{0.2541}
+% 21.10.2026: the band now holds three executions (scripts/evaluation/build_execution_band.py), MLP
+% arms only. The table reports the third (the audit rerun, SwPcaMseZero = 0.2485).
+\newcommand{\SwPcaMseZeroAlt}{0.2541}   % first execution, 13.08.2026
+\newcommand{\SwPcaMseZeroAltB}{0.2473}  % second execution, 13.08.2026 (the table's value until 21.10.2026)
 \newcommand{\SpBest}{\SwPcaMaeHalf}    % best arm: X_pca, loss=mae, alpha=0.5
 \newcommand{\SpSweepLo}{\SwPcaMseZero} % lowest X_pca arm: loss=mse, alpha=0
 \newcommand{\SpDrugLo}{0.05}       % best arm, lowest compound: cisplatin (`platin`), 0.0512
@@ -231,26 +234,52 @@
 %     The refit of 16.08.2026 (scripts/evaluation/ridge_grid_refit.py, commit 7ee329d, grid
 %     logspace(-2, 6, 17)). panel/panel_leaderboard.csv's ridge row still holds the pre-refit
 %     0.2767 / 0.1914 -- the refit script did not update it; NOT the value to quote.
-\newcommand{\RidgePca}{0.2725}
-\newcommand{\RidgeScgpt}{0.1884}
+\newcommand{\RidgePca}{0.2610}  % 21.10.2026 rerun after the audit; was: RidgePca 0.2725
+\newcommand{\RidgeScgpt}{0.1868}  % 21.10.2026 rerun after the audit; was: RidgeScgpt 0.1884
 % --- DrEval leave-cell-line-out: dreval/dreval_lco_results.csv, "Spearman: normalized", mean
 %     over the five folds.
-\newcommand{\DrMlpNorm}{0.2776}    % OncoMLP (X_pca)
-\newcommand{\DrRfNorm}{0.2773}     % SingleDrugRF (scgpt) -- the best DrEval baseline
-\newcommand{\DrMlpSd}{0.047}       % fold SD of DrMlpNorm (0.0474)
-\newcommand{\DrRfSd}{0.039}        % fold SD of DrRfNorm (0.0392)
+%     Recomputed 21.10.2026: the run now uses the 153 CV lines only (it held all 181, the 28 test
+%     lines included), PCA fitted per fold on each fold's train lines (it read the all-cells X_pca),
+%     and seeded random forests (drevalpy passes no random_state). Before: DrMlpNorm 0.2776 (SD
+%     0.047), DrRfNorm 0.2773 (SD 0.039). See docs/steps/corrections-and-dead-ends.md.
+\newcommand{\DrMlpNorm}{0.3372}    % OncoMLP (X_pca)  % 21.10.2026 rerun after the audit (MAE, mean of seeds 42/43/44; was one seed, MSE); was: DrMlpNorm 0.3304
+\newcommand{\DrRfNorm}{0.2988}     % SingleDrugRF (scgpt)
+\newcommand{\DrMlpSd}{0.052}       % fold SD of DrMlpNorm (0.0518)  % 21.10.2026 rerun after the audit (MAE, mean of seeds 42/43/44); was: DrMlpSd 0.067 (0.0674)
+\newcommand{\DrRfSd}{0.041}        % fold SD of DrRfNorm (0.0407)
+\newcommand{\DrRfPcaNorm}{0.0458}  % SingleDrugRF (pca) -- same features as the MLP, added 21.10.2026
+\newcommand{\DrRfPcaSd}{0.061}     % fold SD of DrRfPcaNorm (0.0606)
 % --- DrEval leave-pairs-out: dreval/dreval_lpo_results.csv (scripts/evaluation/dreval_lpo.py),
 %     per_drug_Spearman, mean over five folds. Held-out pairs belong to lines seen in training.
-\newcommand{\LpoLineMean}{0.322}   % NaiveCellLineMeanPredictor
-\newcommand{\LpoTissueMean}{0.184} % NaiveTissueMeanPredictor
+%     Recomputed 21.10.2026 on the 153 CV lines (was all 181). Before: 0.322 and 0.184.
+\newcommand{\LpoLineMean}{0.312}   % NaiveCellLineMeanPredictor
+\newcommand{\LpoTissueMean}{0.183} % NaiveTissueMeanPredictor
 % --- the unselected catalogue: panel/panel_heads_summary.csv, rows "all 534 drugs".
 \newcommand{\SpAllDrugs}{0.1019}   % linear head, X_pca, spearman 0.10194
-\newcommand{\NullGainMax}{0.0004}  % largest vs_null of the four (trunk, X_scGPT: 0.00043)
+% \NullGainMax{0.0004} RETIRED 21.10.2026: the largest vs_null of the four rows (trunk, X_scGPT: 0.00043),
+% an MSE difference stated beside SpAllDrugs, a Spearman of a different row. Replaced by HdGain*/HdBeat*.
+% 21.10.2026 (Selin, options ii, b and a-plus-share): the whole (capacity x head count) factorial, and
+% the 534-head model against a per-compound constant per row, replacing NullGainMax (which was in MSE
+% units and came from a different row than SpAllDrugs). Spearman: panel/panel_heads_summary.csv.
+% Gain and share: scripts/evaluation/report_numbers.py::heads_vs_constant on panel/panel_heads_oof.csv.
+% All compounds, Spearman (linear PCA is SpAllDrugs):
+\newcommand{\HdAllLinScgpt}{0.079}   \newcommand{\HdAllTrunkPca}{0.064}   \newcommand{\HdAllTrunkScgpt}{0.072}
+% 534-head model scored on the panel compounds, Spearman:
+\newcommand{\HdPanLinPca}{0.271}     \newcommand{\HdPanLinScgpt}{0.223}
+\newcommand{\HdPanTrunkPca}{0.207}   \newcommand{\HdPanTrunkScgpt}{0.182}
+% % MSE reduction against the per-compound constant, ratio of means (negative = worse than it):
+\newcommand{\HdGainLinPca}{-0.5}     \newcommand{\HdGainLinScgpt}{1.6}
+\newcommand{\HdGainTrunkPca}{2.4}    \newcommand{\HdGainTrunkScgpt}{4.1}
+% % of compounds on which the model's MSE is below the constant's:
+\newcommand{\HdBeatLinPca}{35}       \newcommand{\HdBeatLinScgpt}{39}
+\newcommand{\HdBeatTrunkPca}{46}     \newcommand{\HdBeatTrunkScgpt}{53}
 % --- why the metric is per drug (slide 12).
 \newcommand{\SpPooled}{0.77}       % dreval/bias_accounting.csv spearman_raw_pooled, best arm
                                    % (X_pca, mae, alpha=0.5): 0.768
-\newcommand{\DrDrugMean}{0.74}     % dreval/dreval_lco_results.csv NaiveDrugMeanPredictor, raw
-                                   % Spearman, mean over five folds: 0.7413
+% \DrDrugMean{0.74} RETIRED 21.10.2026: dreval/dreval_lco_results.csv NaiveDrugMeanPredictor, raw
+% Spearman, mean over five folds (0.7413) -- DrEval's splits and per-fold pooling, set against SpPooled,
+% which is neither. Replaced by:
+\newcommand{\SpDrugMeanPooled}{0.72} % dreval/bias_accounting.csv spearman_drug_mean_pooled: 0.7245,
+                                   % same folds, pairs and pooling as SpPooled
 % --- fragility: dreval/bias_accounting.csv, mean over the six (loss, alpha) arms of
 %     spearman_raw_per_drug (before) and partial_rho (fragility controlled out).
 \newcommand{\FragRhoPca}{0.160}    % rho_pred_fragility, mean of the six arms
@@ -264,33 +293,33 @@
 \newcommand{\FragPartialScgpt}{0.173}
 \newcommand{\FragCostScgpt}{19.9}
 % --- the inputs alone: mil/stage0_input_ceiling.csv, from within_line_share w.
-\newcommand{\BtwSharePca}{0.584}   % 1 - w
+\newcommand{\BtwSharePca}{0.579}   % 1 - w  % 21.10.2026 rerun after the audit; was: BtwSharePca 0.584
 \newcommand{\BtwShareScgpt}{0.539}
-\newcommand{\BtwRatioPca}{1.405}   % (1 - w) / w
+\newcommand{\BtwRatioPca}{1.375}   % (1 - w) / w  % 21.10.2026 rerun after the audit; was: BtwRatioPca 1.405
 \newcommand{\BtwRatioScgpt}{1.168}
 % --- its precision: mil/stage0_bootstrap.csv (4b_mil_training.ipynb §3.2b, 19.10.2026). Cell lines
 %     resampled with replacement, paired across the two representations, 95 % percentile interval,
 %     B = 2,000, seed 0 -- conventions (Efron & Tibshirani 1993), not values the data determine.
-\newcommand{\BtwRatioDiff}{0.237}      % PCA ratio minus scGPT ratio, point estimate
-\newcommand{\BtwRatioDiffLo}{0.099}    % 2.5th percentile of the paired difference
-\newcommand{\BtwRatioDiffHi}{0.375}    % 97.5th percentile
-\newcommand{\BtwBootPcaAheadPct}{99.9} % % of the 2,000 resamples in which the PCA ratio is higher
+\newcommand{\BtwRatioDiff}{0.207}      % PCA ratio minus scGPT ratio, point estimate  % 21.10.2026 rerun after the audit; was: BtwRatioDiff 0.237
+\newcommand{\BtwRatioDiffLo}{0.077}    % 2.5th percentile of the paired difference  % 21.10.2026 rerun after the audit; was: BtwRatioDiffLo 0.099
+\newcommand{\BtwRatioDiffHi}{0.336}    % 97.5th percentile  % 21.10.2026 rerun after the audit; was: BtwRatioDiffHi 0.375
+\newcommand{\BtwBootPcaAheadPct}{99.8} % % of the 2,000 resamples in which the PCA ratio is higher  % 21.10.2026 rerun after the audit; was: BtwBootPcaAheadPct 99.9
 \newcommand{\BtwBootB}{2{,}000}
 % --- label quality: CurveCurator fit statistics of the curves behind the panel, read by
 %     scripts/evaluation/label_quality.py (printed, not written -- section 1 of its output) from the
 %     DrEval CTRPv2 response table; re-computed 12.10.2026.
-\newcommand{\NCurves}{1{,}971}
-\newcommand{\CurveMedRsq}{0.867}
+\newcommand{\NCurves}{1{,}699}  % 21.10.2026 rerun after the audit (153 CV lines; was all lines of split_ctrp.csv, test included); was: NCurves 1{,}971
+\newcommand{\CurveMedRsq}{0.866}  % 21.10.2026 rerun after the audit; was: CurveMedRsq 0.867
 \newcommand{\CurveFracLowRsq}{22.2} % % with R2 < 0.5
 \newcommand{\CurveFracNs}{10.9}     % % with pValue > 0.05 ("flat": no-effect null not rejected)
-\newcommand{\PlatinFracNs}{73}      % cisplatin's share of flat curves (73.3 %)
-\newcommand{\PlatinMedRsq}{0.166}  % 0.166473; read 0.167 until 12.10.2026 (mis-rounded)
+\newcommand{\PlatinFracNs}{72}      % cisplatin's share of flat curves (72.3 %)  % 21.10.2026 rerun after the audit; was: PlatinFracNs 73 (73.3 %)
+\newcommand{\PlatinMedRsq}{0.171}  % 0.170717  % 21.10.2026 rerun after the audit; was: PlatinMedRsq 0.166 (0.166473; read 0.167 until 12.10.2026, mis-rounded)
 % flat fraction vs per-drug score, best arm, Spearman over the 11 compounds:
 % docs/make_figures.py::build_label_quality, on diagnostics/label_quality_vs_performance.csv
 % (frac_ns) and panel/panel_per_drug_correlation.csv. label_quality.py itself reports -0.72 on the
 % default arm (mse, alpha=0); the slide and this report use the best arm.
-\newcommand{\FlatRho}{-0.78}
-\newcommand{\FlatP}{0.004}
+\newcommand{\FlatRho}{-0.75}  % 21.10.2026 rerun after the audit; was: FlatRho -0.78
+\newcommand{\FlatP}{0.008}  % 21.10.2026 rerun after the audit; was: FlatP 0.004
 % --- Q2, four alternative explanations (slide 19).
 % label supply: panel/panel_curve_summary.csv (4a section E), mean at 25 vs 103 labelled lines.
 \newcommand{\CurveGainPca}{0.123}   % 0.2608 - 0.1374 (the slide rounds to 0.124)
@@ -301,39 +330,44 @@
 \newcommand{\ArchLinPca}{0.261}   \newcommand{\ArchTrunkPca}{0.243}
 \newcommand{\ArchLinScgpt}{0.229} \newcommand{\ArchTrunkScgpt}{0.205}
 % input scale: diagnostics/input_scale.csv, median per-dimension SD 1.106 vs 0.0107.
-\newcommand{\InputScaleRatio}{104}
+\newcommand{\InputScaleRatio}{106}  % 21.10.2026 rerun after the audit; was: InputScaleRatio 104
 % The rescaling test itself (scripts/evaluation/input_scale_test.py) wrote its table to a session
 % tmp path, not to notebooks/outputs/ -- NO COMMITTED ARTIFACT. Values as recorded in
 % docs/steps/05 ("Input scale is NOT the cause"): mean best epoch 6.73 native vs 7.13 rescaled.
-\newcommand{\ScaleEpochNative}{6.73}
-\newcommand{\ScaleEpochScaled}{7.13}
+% [21.10.2026: that note was wrong -- diagnostics/input_scale_test.csv was committed in c2cbd68, though
+% copied in by hand. The script now writes it, reads its factor from input_scale.csv (106.1x, was a
+% hard-coded pre-audit 103.4x) and was re-run; report_numbers.py checks both macros. Was 6.73 / 7.13.]
+\newcommand{\ScaleEpochNative}{6.80}  % mean best epoch over 3 seeds x 5 folds, X_scGPT
+\newcommand{\ScaleEpochScaled}{7.40}  % the same, X_scGPT rescaled to the PCA magnitude
 % input dropout: diagnostics/input_dropout_test.csv + input_dropout_sweep_extra.csv, alpha=0, mse,
 % linear head, mean over seeds 42-44; range over the six rates {0, .02, .05, .1, .2, .3}.
-\newcommand{\DropRangePca}{0.0145}
+\newcommand{\DropRangePca}{0.0147}  % 21.10.2026 rerun after the audit; was: DropRangePca 0.0145
 \newcommand{\DropRangeScgpt}{0.0020}
-\newcommand{\DropBestPca}{0.2753}  % X_pca at rate 0.02
+\newcommand{\DropBestPca}{0.2756}  % X_pca at rate 0.02  % 21.10.2026 rerun after the audit; was: DropBestPca 0.2753
 \newcommand{\DropShippedPca}{0.2608} % X_pca at the shipped 0.1
 % --- Q3: mil/q2_verdict.csv (4b), one row per representation.
 \newcommand{\QSpreadPca}{100}        % % of pairs where MIL within-line spread exceeds per-cell
 \newcommand{\QSpreadScgpt}{82.3}
 \newcommand{\QSeedRhoPca}{0.256}     % median cross-seed rho
 \newcommand{\QSeedRhoScgpt}{0.861}
-\newcommand{\QAurocPca}{0.518}       % stage 7 median within-bag AUROC
+\newcommand{\QAurocPca}{0.521}       % stage 7 median within-bag AUROC  % 21.10.2026 rerun after the audit; was: QAurocPca 0.518
 \newcommand{\QAurocScgpt}{0.537}
-\newcommand{\QConfPca}{0.053}        % stage 6 median adjusted R2 of the confounds
+\newcommand{\QConfPca}{0.054}        % stage 6 median adjusted R2 of the confounds  % 21.10.2026 rerun after the audit; was: QConfPca 0.053
 \newcommand{\QConfScgpt}{0.266}
 \newcommand{\QReprPca}{0.065}        % squared median cross-seed rho
 \newcommand{\QReprScgpt}{0.740}   % 0.8605^2 = 0.74046; read 0.741 until 12.10.2026 (double rounding via 0.7405)
-\newcommand{\QBarPca}{82}            % QConf / QRepr, %
+\newcommand{\QBarPca}{83}            % QConf / QRepr, %  % 21.10.2026 rerun after the audit; was: QBarPca 82
 \newcommand{\QBarScgpt}{36}
 % --- stage by stage, for the expanded Section 4.3 (19.10.2026): q2_verdict.csv and, for the SD ranges,
 %     stage1_spread_vs_percell.csv (range over the three seeds, no pooling over seeds).
-\newcommand{\QPairs}{1{,}683}         % (compound, line) pairs per seed
+\newcommand{\QPairs}{1{,}683}         % (compound, line) pairs per seed  % = 153 lines x 11 compounds, screened or not (stages 1, 2, 6)
+\newcommand{\QBags}{5{,}809}          % stage 7 mixed two-line bags per seed and arm (added 21.10.2026)
+\newcommand{\QUnscreened}{48}          % of QPairs, never screened by CTRPv2 (1,683 - 1,635; added 21.10.2026)
 \newcommand{\QSeedSigPca}{83}       % % pairs beating the within-line permutation null, stage 2
 \newcommand{\QSeedSigScgpt}{99}
-\newcommand{\QConfRawPca}{0.077}    % median unadjusted R2 of the confounds, stage 6
+\newcommand{\QConfRawPca}{0.078}    % median unadjusted R2 of the confounds, stage 6  % 21.10.2026 rerun after the audit; was: QConfRawPca 0.077
 \newcommand{\QConfRawScgpt}{0.285}
-\newcommand{\QAurocSigPca}{45.6}    % % positive-control pairs beating the permutation null, stage 7
+\newcommand{\QAurocSigPca}{46.0}    % % positive-control pairs beating the permutation null, stage 7  % 21.10.2026 rerun after the audit; was: QAurocSigPca 45.6
 \newcommand{\QAurocSigScgpt}{48.4}
 \newcommand{\QSdMilPcaLo}{0.087}    % median within-line SD of predictions, range over seeds
 \newcommand{\QSdMilPcaHi}{0.112}
@@ -355,12 +389,12 @@
 \newcommand{\EtwoMarginA}{0.035}     \newcommand{\EtwoMarginB}{0.028}  \newcommand{\EtwoMarginAll}{0.034}
 % --- the MIL model's line-level score (19.10.2026): panel/panel_metrics.csv, alpha 0.5, mse, mean over
 %     seeds; the per-cell values at the same setting are \SwPcaMseHalf and \SwScgptMseHalf.
-\newcommand{\MilScorePca}{0.244}     \newcommand{\MilScoreScgpt}{0.218}
-\newcommand{\MilMarginPercell}{0.083} \newcommand{\MilMarginBag}{0.026}
+\newcommand{\MilScorePca}{0.239}     \newcommand{\MilScoreScgpt}{0.218}  % 21.10.2026 rerun after the audit; was: MilScorePca 0.244
+\newcommand{\MilMarginPercell}{0.083} \newcommand{\MilMarginBag}{0.022}  % 21.10.2026 rerun after the audit; was: MilMarginBag 0.026
 % --- diagnostics/mil_by_within_line_spread.csv: MIL minus per-cell, lines split per drug at the median
 %     of the per-cell model's within-line spread (scripts/evaluation/mil_within_line_test.py).
-\newcommand{\MilGapLowPca}{0.000}    \newcommand{\MilGapHighPca}{-0.032}
-\newcommand{\MilGapLowScgpt}{0.059}  \newcommand{\MilGapHighScgpt}{0.020}
+\newcommand{\MilGapLowPca}{-0.004}    \newcommand{\MilGapHighPca}{-0.056}  % 21.10.2026 rerun after the audit; was: MilGapLowPca 0.000, MilGapHighPca -0.032
+\newcommand{\MilGapLowScgpt}{0.051}  \newcommand{\MilGapHighScgpt}{0.012}  % 21.10.2026 rerun after the audit; was: MilGapLowScgpt 0.059, MilGapHighScgpt 0.020
 
 % =============================================================================
 % WITHDRAWN 12.08.2026 -- every macro carrying a MODEL RESULT has been removed.

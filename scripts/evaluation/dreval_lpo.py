@@ -56,6 +56,7 @@ from drevalpy.models import MODEL_FACTORY  # noqa: E402
 
 from scripts.evaluation.dreval_normalize import load_panel  # noqa: E402
 from scripts.layout import DEFAULT_CTRP_SCORE, PipelinePaths  # noqa: E402
+from scripts.training.cv import fold_pca_projections  # noqa: E402
 
 N_SPLITS = 5
 SEED = 42
@@ -132,15 +133,26 @@ def build_response_dataset():
     all_drugs = list(a.uns["ctrp_drugs"])
     lines = a.obs["Cell_line"].astype(str).to_numpy()
     tissue = a.obs["Cancer_type"].astype(str).to_numpy()
-    emb = {"scgpt": np.asarray(a.obsm["X_scGPT"], float),
-           "pca": np.asarray(a.obsm["X_pca"], float)}
 
     missing = [d for d in panel if d not in all_drugs]
     if missing:
         raise ValueError(f"panel drugs absent from the targets file: {missing}")
 
+    # CV lines only (Selin, 21.10.2026). This looped over np.unique(lines) -- all 181 labelled lines,
+    # the 28 split_ctrp test lines included, so the test set the report keeps untouched was trained on
+    # and scored here. Restricted to train + val, the 153 lines the pipeline's CV uses (cv.py).
+    cv_mask = a.obs["split_ctrp"].isin(["train", "val"]).to_numpy()
+    cv_lines = sorted(set(lines[cv_mask]))
+
+    # PCA fitted once on the cells of the CV lines (Selin, 21.10.2026). This read the all-cells X_pca,
+    # whose rotation was fitted on every cell, the test and unlabelled lines included. Under LPO every
+    # CV line is a training line, so one fit on all of them is the protocol's equivalent of the
+    # per-fold fit LCO uses; the PCA sees expression only, so no held-out label can reach it.
+    emb = {"scgpt": np.asarray(a.obsm["X_scGPT"], float),
+           "pca": np.asarray(fold_pca_projections(paths.raw_h5ad, [cv_mask], seed=SEED)[0], float)}
+
     pairs, feats = [], {}
-    for line in np.unique(lines):
+    for line in cv_lines:
         ci = np.flatnonzero(lines == line)
         feats[line] = {
             "cell_line_name": np.array([line]),
@@ -228,6 +240,13 @@ def main() -> None:
                 hp["cell_line_views"] = view
                 try:
                     model.build_model(hp)
+                    # drevalpy's RandomForest passes no random_state to sklearn (sklearn_models.py, RandomForest.build_model),
+                    # so every run drew new trees: three LPO runs gave scGPT 0.240 / 0.214 / 0.210 (16.08.2026). Seeded
+                    # here with SEED (42), the seed of every other fit in this project (Selin, 21.10.2026). The elastic net
+                    # needs none: its coordinate descent is deterministic. Set after build_model, not via the
+                    # hyperparameters, which drevalpy does not forward.
+                    if "random_state" in model.model.get_params():
+                        model.model.set_params(random_state=SEED)
                     model.train(
                         output=DrugResponseDataset(response=tr.response[trm],
                                                    cell_line_ids=tr.cell_line_ids[trm],

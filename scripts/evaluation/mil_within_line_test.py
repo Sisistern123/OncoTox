@@ -31,14 +31,18 @@ if __name__ == "__main__":   # guard added 14.08.2026 (Selin): importing this fi
     mil = mil[(mil.alpha == A) & (mil.loss == L)]
 
     def per_drug_rho(df, keep):
-        """Mean per-drug Spearman over the (drug, line) pairs in `keep`."""
+        """Per-drug Spearman over the (drug, line) pairs in `keep`, scored per seed, then averaged.
+
+        Per seed (Selin, 21.10.2026), as the report's metric and 4a score every arm. This averaged each
+        line's prediction over the three seeds BEFORE the Spearman, which smooths seed noise and scores
+        a different quantity from every other number it is set against.
+        """
         d = df.merge(keep, on=['rep', 'drug', 'cell_line'], how='inner')
         out = {}
-        for (rep, drug), g in d.groupby(['rep', 'drug']):
-            g = g.groupby('cell_line')[['y_true', 'y_pred']].mean()
+        for (rep, drug, seed), g in d.groupby(['rep', 'drug', 'seed']):
             if len(g) >= 5 and g.y_true.nunique() > 2:
-                out[(rep, drug)] = spearmanr(g.y_true, g.y_pred).statistic
-        return pd.Series(out)
+                out[(rep, drug, seed)] = spearmanr(g.y_true, g.y_pred).statistic
+        return pd.Series(out).groupby(level=[0, 1]).mean()
 
     rows = []
     for rep in ['X_pca', 'X_scGPT']:

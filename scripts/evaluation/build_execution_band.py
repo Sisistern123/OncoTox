@@ -23,6 +23,19 @@ and panel corrections, so including them would measure pipeline changes rather t
 **Which commits count as comparable executions is an analysis decision** and was not taken --
 parked as ``docs/OPEN_DECISIONS.md`` §8. The candidate set is one commit: ``ffe13be`` is the only
 other execution on the corrected pipeline, and it carries 4 arms against these 7.
+
+**21.10.2026 (Selin, options a and i): a third execution, and the band is now MLP-only.**
+After the methods/results audit, 4a was re-executed in full. The audit changed only the ridge
+control (fitted on each fold's fitting lines, grid ``logspace(-4, 6, 21)``), not the MLP path, so the
+MLP arms of that run are a third execution of the same pipeline. The evidence that they are: 11 of
+the 12 MLP arm x rep rows equal both 13.08 executions to four decimals. The ridge rows are dropped,
+not carried. The 13.08 rows describe the pre-audit ridge the report no longer uses, and the new ridge
+has only one recorded execution (``ridge_grid_refit.py`` and 4a both wrote the same file), which
+would give a range of zero without measuring anything. Being a closed-form fit, it has no run-to-run
+nondeterminism to measure.
+
+⚠️ **The third execution is read from the working tree until it is committed.** When it is, replace
+``WORKTREE`` below with that commit's hash, so the band is replayable from history again.
 """
 import io, subprocess
 from pathlib import Path
@@ -50,13 +63,21 @@ if __name__ == "__main__":   # guard added 14.08.2026 (Selin): importing this fi
             ['git','show',f'{rev}:notebooks/outputs/panel/panel_leaderboard.csv'],
             capture_output=True, text=True).stdout))
 
-    # Both replayed from committed history, so anyone with the repository can rebuild this file.
+    # The first two replayed from committed history, so anyone with the repository can rebuild them.
+    # The third is the 21.10.2026 audit rerun, read from the working tree until it is committed (see
+    # the module docstring).
+    WORKTREE = Path('notebooks/outputs/panel/panel_leaderboard.csv')
     frames = [
         tidy(from_git('9732b6f^'), 'exec_1_committed_13.08',  'normal order'),
         tidy(from_git('9732b6f'),  'exec_2_full_rerun_13.08', 'normal order'),
+        tidy(pd.read_csv(WORKTREE), 'exec_3_audit_rerun_21.10', 'normal order'),
     ]
 
     band = pd.concat(frames, ignore_index=True)
+    # MLP arms only since 21.10.2026 (Selin, option i): see the module docstring.
+    band = band[band.arm.str.startswith('MLP')]
+    assert band.groupby(['arm', 'rep']).execution.nunique().eq(3).all(), 'an MLP arm is missing an execution'
+
     wide = band.pivot_table(index=['arm','rep'], columns='execution', values='spearman')
     wide['min'], wide['max'] = wide.min(axis=1), wide.max(axis=1)
     wide['range'] = wide['max'] - wide['min']
