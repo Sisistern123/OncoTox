@@ -28,27 +28,36 @@ result \cite{perception}.
 
 The next steps address the model's objective, the label bottleneck and the third research question.
 
-\paragraph{MIL as the primary model, with a ranking loss.} A model trained on bags of a line's cells
+\paragraph{MIL as the primary model, with a ranking loss} A model trained on bags of a line's cells
 leaves each cell free to differ (Equation~\ref{eq:mil-decomposition}), and since the metric ranks lines
 within a compound, a ranking loss would align the objective with what is scored
 \cite{ilse2018,burges2005}.
 
-\paragraph{Bulk pretraining and domain adaptation.} CTRPv2 alone covers \NCtrpLines{} cell lines
+\paragraph{Bulk pretraining and domain adaptation} CTRPv2 alone covers \NCtrpLines{} cell lines
 against the \NLines{} here, so labels exist and single-cell expression is what is missing
 \cite{ctrpv2,scdeal}. Pretraining on bulk expression and aligning bulk and single-cell spaces by domain
 adaptation addresses that gap \cite{scdeal,ganin2015}. The most direct form is to apply PERCEPTION's
 bulk-pretrained response models to these cells and compare their predictions with those from the two
 representations here \cite{perception}.
 
-\paragraph{Fine-tuning scGPT, given more data.} Fine-tuning tests whether the ordering against PCA
+\paragraph{Combining label sources} CTRPv2 is one of several screens that label the same kind of cell
+lines, and GDSC and PRISM measure response with different assays and readouts
+(Section~\ref{sec:bg-screens}) \cite{gdsc_yang2013,corsello2020}. A model could be trained on several of them at
+once, with one output per screen and compound, so that each screen's labels inform the shared
+representation. This would broaden the data the model is trained on and make it less dependent on the
+particularities of a single screen's labels. Because screens disagree on the same line and compound
+\cite{haibekains2013,safikhani2017}, labels could also be weighted by their agreement across screens or by the quality
+of their curve fit, which CurveCurator reports per curve \cite{bayer2023curvecurator}.
+
+\paragraph{Fine-tuning scGPT, given more data} Fine-tuning tests whether the ordering against PCA
 reverses once the encoder may keep line identity, but on about \NLinesCV{} labels a fine-tuned encoder
 may memorise them, so it follows the previous step.
 
-\paragraph{Explicit explainability of heterogeneity.} The question could be reframed from implicit
+\paragraph{Explicit explainability of heterogeneity} The question could be reframed from implicit
 learning to explicit explanation: identifying the subpopulations within cell lines that drive resistance
 and relating them to the recurrent heterogeneity programs annotated for this atlas \cite{scp542}.
 
-\paragraph{Missing controls.} Every comparison here is between two reductions of one matrix. A
+\paragraph{Missing controls} Every comparison here is between two reductions of one matrix. A
 line-level model on the \NHvg{} selected genes alone would show whether either reduction helps at all. Division rate, the first hypothesis above, would be extracted as fragility is, from
 measured doubling times rather than from the dataset's cell-cycle scores, which are a snapshot rather
 than a rate. The input-dropout rate could be matched in effect rather

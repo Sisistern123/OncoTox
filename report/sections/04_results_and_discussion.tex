@@ -4,7 +4,7 @@
 The results are reported and discussed per research question. Each section opens with its question,
 reports the results and closes with their discussion. Unless stated otherwise, a score is the mean
 within-compound Spearman correlation of Equation~\ref{eq:metric}, out of fold over held-out cell lines,
-averaged over the \NPanel{} panel compounds and three seeds \cite{spearman1904,dreval}.
+averaged over the \NPanel{} panel compounds and three seeds \cite{dreval}.
 % ; each value is
 % read from a committed artifact under \code{notebooks/outputs/}, named in \code{results\_numbers.tex}.
 
@@ -146,8 +146,8 @@ pooled across folds.
 \label{fig:lpo}
 \end{figure}
 
-Finally, the per-cell model was set against the two line-level controls and the unselected catalogue
-\cite{hoerl1970,breiman2001}. The ridge regression on cell-line means scored \RidgePca{}, level with the default configuration
+Finally, the per-cell model was set against the two line-level controls and the unselected catalogue.
+The ridge regression on cell-line means scored \RidgePca{}, level with the default configuration
 (\SwPcaMaeZero{}) and below the highest-scoring one (\SpBest{}). On DrEval's LCO protocol, the MLP in
 the default configuration scored \DrMlpNorm{} on the normalised metric (fold SD
 \DrMlpSd{}). DrEval's per-compound random forest, trained here on the line means of the same per-fold PCA
@@ -165,14 +165,14 @@ of compounds.
 predictable from these data, but modestly, unevenly across compounds, and not demonstrably from single
 cells. The score is out of fold over held-out
 lines, stable across seeds, and clears DrEval's naive predictors on a protocol this work did not design
-\cite{dreval}. Against that, a ridge regression on cell-line means \cite{hoerl1970} scores about as well as the
+\cite{dreval}. Against that, a ridge regression on cell-line means scores about as well as the
 default per-cell configuration, so
 the single-cell resolution and the network are not what does the work. On the unselected catalogue the signal nearly vanishes, which marks the
 panel's score as a property of eleven well-covered compounds rather than of the screen.
 
 The spread across compounds is explained on the label side: the share
 of flat curves predicts the per-compound score without recourse to biology, which agrees with the known
-inconsistency of pharmacogenomic labels \cite{haibekains2013,bayer2023curvecurator}. With one label in nine
+inconsistency of pharmacogenomic labels \cite{haibekains2013,safikhani2017,bayer2023curvecurator}. With one label in nine
 carrying no dose--response and roughly \NLinesCV{} independent lines \cite{lazic2010,dreval}, the binding constraint is the
 supply and quality of labels, not model capacity. The relation is a trend over eleven points,
 and crizotinib shows it is not a law. Cisplatin's position at the bottom was anticipated by the
@@ -192,13 +192,14 @@ was not measured.
 DrEval found that about half of the tested models did not significantly outperform a
 predictor of mean drug and cell-line effects, and that under leave-cell-line-out evaluation no model
 surpassed a tuned random forest \cite{dreval}. Here the per-cell model scored \DrMlpNorm{} against
-\DrRfPcaNorm{} for DrEval's per-compound random forest \cite{breiman2001} on the same features. That forest
+\DrRfPcaNorm{} for DrEval's per-compound random forest on the same features. That forest
 used DrEval's default hyperparameters rather than being tuned, and on all \NPca{} components, most of
 which carried no signal for it, it fell far below the same forest on the first 10 components.
 % (\code{dreval/dreval\_rf\_checks.csv}, \code{scripts/evaluation/dreval\_rf\_checks.py})
 This comparison therefore does not test DrEval's finding that no model surpassed a tuned forest under
 LCO. The result agrees with the expectation that more
-complex models need more observations \cite{adam2020}. With about \NLinesCV{} labelled lines, a ridge
+complex models need more observations \cite{adam2020}, and with a benchmark on GDSC in which elastic
+nets outperformed neural networks for most compounds \cite{eckhart2024}. With about \NLinesCV{} labelled lines, a ridge
 regression on line means scored about as well as the network's default configuration. This differs
 from the NCI-DREAM challenge, whose best methods modelled non-linear relationships \cite{costello2014}. The settings differ, however. The challenge combined
 several bulk profiling data types and pathway information on breast cancer lines, and this work used
@@ -224,7 +225,7 @@ baseline that can use a line's average response, which no baseline can do under 
 Weighting each label by the quality of its fit, for example by the $p$-value or $F$-statistic that
 CurveCurator reports per curve \cite{bayer2023curvecurator}, alongside the density weight, would let the
 model discount the one label in nine that comes from a flat curve. CurveCurator reports no per-curve
-variance, so an inverse-variance weight would first need one \cite{haibekains2013}. Measuring each line's
+variance, so an inverse-variance weight would first need one. Measuring each line's
 division rate would test whether the fragility component reflects proliferation, which the AUC depends on
 through the number of divisions during the assay \cite{hafner}.
 
@@ -303,7 +304,7 @@ objective, not the highest-scoring configuration of Table~\ref{tab:sweep}.
 \end{figure}
 
 The input-dropout rate was varied last, because it is the one regulariser applied identically to
-inputs of different structure \cite{srivastava2014}. Over six rates the PCA arm varied by
+inputs of different structure. Over six rates the PCA arm varied by
 \DropRangePca{} and the scGPT arm by \DropRangeScgpt{}. The PCA arm scored \DropBestPca{} at rate 0.02
 and \DropShippedPca{} at the rate of \CfgInDrop{} used for all other results. Table~\ref{tab:capacity} lists both
 tests per arm. The trunk scored below the linear head in both arms, by more than the seed range in
@@ -361,7 +362,7 @@ Adam update underlying AdamW, whose step magnitudes are invariant to rescaling o
 \cite{kingma2015adam}, although rescaling the input is not the same as rescaling the gradient. PCA also
 stays ahead once fragility is removed. Eliminating rivals does not establish the granularity account,
 whose positive evidence is one variance ratio, robust to resampling the lines and illustrated by one
-figure. The margins are conservative with respect to input dropout \cite{srivastava2014}, since the
+figure. The margins are conservative with respect to input dropout, since the
 shared rate costs the PCA arm and not the scGPT arm.
 
 PCA's lead does not come from seeing more of the data than scGPT. Both arms read the same \NHvg{} genes,
@@ -464,7 +465,7 @@ and 1, with most values in between.
 \caption{\textbf{Positive control of the MIL evaluation.} The figure shows the distribution of the
 within-bag area under the receiver operating characteristic curve (AUROC) with which the MIL model
 separates the cells of two mixed cell lines whose response is known to differ slightly, computed as the
-Mann--Whitney statistic divided by $n_A n_B$ \cite{mannwhitney1947,hanley1982}. One value per
+Mann--Whitney statistic divided by $n_A n_B$. One value per
 (compound, line pair, seed), $17{,}427$ per representation, is shown as a density histogram for PCA
 (blue) and scGPT (gold). The dashed line marks chance (0.5), and a value near 1 or 0 means the two
 populations are ranked apart. The medians are \QAurocPca{} for PCA and \QAurocScgpt{} for scGPT.

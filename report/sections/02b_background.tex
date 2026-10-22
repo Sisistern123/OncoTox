@@ -299,6 +299,36 @@ response is measured only for the bag, while each cell's own response remains un
 (Section~\ref{sec:bg-screens}). Unlike the standard case, however, the label is continuous rather than
 binary. How this work adapts MIL to such a label is described in Section~\ref{sec:mil}.
 
+\section{Learning and evaluation methods}
+\label{sec:bg-methods}
+
+The per-cell model is a multilayer perceptron, a stack of linear layers with non-linear activations, here
+the Gaussian error linear unit (GELU) \cite{hendrycks2016gelu}. Layer normalisation rescales the
+activations within each layer \cite{ba2016layernorm}, and dropout sets a random share of units to zero
+during training to reduce overfitting \cite{srivastava2014}. Such networks are trained by stochastic
+gradient descent, commonly with Adam, which scales each parameter's step by running estimates of the
+gradient's moments \cite{kingma2015adam}, or AdamW, which applies weight decay separately from that
+scaling \cite{loshchilov2019adamw}. Clipping the gradient norm prevents single steps from becoming too
+large \cite{pascanu2013}, and early stopping ends training when the error on held-out data stops
+improving \cite{prechelt1998}. Initialising an output's bias at the target's mean saves the first epochs
+from fitting that level \cite{lin2017focal}.
+
+When continuous targets are unevenly distributed, a regression model fits the crowded middle and neglects
+rare values. Weighting each sample by the inverse of the target's density, estimated for example by a
+kernel density estimate \cite{scott1992}, counteracts this \cite{dir,denseweight}.
+
+Simple models serve as controls. Ridge regression adds a squared penalty on the coefficients to a linear
+least-squares fit \cite{hoerl1970}, and its penalty can be chosen by leave-one-out error computed in
+closed form \cite{hastie2009,pedregosa2011}. A random forest averages many decision trees, each grown on a
+resample of the data \cite{breiman2001}.
+
+Rankings are compared with the Spearman correlation, the Pearson correlation of ranks
+\cite{spearman1904}. How well a score separates two groups is measured by the area under the receiver
+operating characteristic curve (AUROC), which equals the Mann--Whitney statistic divided by the product of
+the group sizes \cite{mannwhitney1947,hanley1982}. The uncertainty of an estimate can be obtained by the
+bootstrap, recomputing it on resamples of the independent units \cite{efron1993}, and the calibration of
+a model's predictions by the slope of a regression of truth on prediction \cite{vancalster2016}.
+
 \section{Objective of this work}
 \label{sec:bg-objective}
 

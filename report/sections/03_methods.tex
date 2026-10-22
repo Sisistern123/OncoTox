@@ -168,9 +168,9 @@ of all \NLinesCV{} CV lines.
 
 Each training example was a single cell: its \NPca-dimensional representation as input and its line's
 response to each panel compound as target. Both representations were fed into the same multilayer perceptron (MLP) architecture, trained
-separately for each: input dropout at rate \CfgInDrop{}
-\cite{srivastava2014}, a shared trunk of two blocks of linear layer, layer normalisation
-\cite{ba2016layernorm}, Gaussian error linear unit (GELU) activation \cite{hendrycks2016gelu} and dropout at \CfgDrop{}, with widths \CfgHidA{} and
+separately for each: input dropout at rate \CfgInDrop{},
+a shared trunk of two blocks of linear layer, layer normalisation,
+Gaussian error linear unit (GELU) activation and dropout at \CfgDrop{}, with widths \CfgHidA{} and
 \CfgHidB{}, and one linear output head per compound, $K = \NPanel$. The network was kept small so that it could
 model non-linear relations between expression and response without overfitting the roughly \NLinesCV{}
 labelled lines.
@@ -216,7 +216,7 @@ screened. The error $\ell$
 was either squared or absolute, giving a mean squared error (MSE) or mean absolute error (MAE) objective.
 
 The density weight up-weights rare response values so that the sparse extremes are not dominated by the
-crowded middle of a compound's distribution \cite{dir,denseweight}:
+crowded middle of a compound's distribution:
 \begin{equation}
   \LossWeightFn
   \label{eq:density}
@@ -229,7 +229,7 @@ Appendix~\ref{app:density}. Two losses and three exponents gave six
 configurations per representation.
 % (\code{scripts/training/density\_weighting.py})
 
-Training used AdamW \cite{loshchilov2019adamw} with early stopping \cite{prechelt1998} on an inner
+Training used AdamW with early stopping on an inner
 hold-out of each fold's training lines, grouped by line, since measuring it on the scored fold would
 have made each score a minimum over epochs on its own evaluation data. Each head's bias was initialised at its compound's mean over the fold's fitting lines
 (Appendix~\ref{app:training}). Every configuration was trained under three seeds, and no hyperparameter
@@ -239,7 +239,7 @@ was tuned for either representation (Table~\ref{tab:training}).
 \label{sec:evaluation}
 
 The per-cell predictions of each held-out line were averaged, and the score was the Spearman
-correlation \cite{spearman1904} between predicted and true line-level responses within each compound,
+correlation between predicted and true line-level responses within each compound,
 over the held-out lines screened against it, pooled across folds, averaged over compounds and seeds:
 \begin{equation}
   \bar\rho = \frac{1}{3}\sum_{s=1}^{3}\frac{1}{K}\sum_{j=1}^{K}
@@ -263,7 +263,7 @@ the highest-scoring configuration (Section~\ref{sec:results-q1}).
 
 Three controls were computed. The first two used the same folds, and the third DrEval's own splits.
 % (until 21.10.2026: "Three controls were computed on the same folds", which the DrEval control was not)
-First, a ridge regression \cite{hoerl1970} on cell-line means
+First, a ridge regression on cell-line means
 averaged each line's cells into one \NPca-dimensional vector and fitted one model per compound and fold
 on the fitting lines, on each representation and for PCA with the same per-fold PCA, choosing its penalty by leave-one-out error
 (Appendix~\ref{app:controls}). Second, the model was trained with all \NDrugsModelled{} heads, once with the
@@ -273,7 +273,7 @@ whether training on more compounds helps the trunk.
 % (\code{notebooks/4a\_percell\_training.ipynb} \S D)
 Third, the model was evaluated with DrEval \cite{dreval} under its LCO protocol, with its splits, its
 naive baselines --- predicting the global mean, the compound mean, the cell-line mean, or both mean
-effects together --- its per-compound random forest \cite{breiman2001}, and its
+effects together --- its per-compound random forest, and its
 normalised metric, unmodified (Appendix~\ref{app:controls}). DrEval's
 leave-pairs-out (LPO) protocol, in which held-out pairs belong to lines seen in training, was run for its
 baselines, which there include the tissue mean, to measure how much a line's average response alone
@@ -295,8 +295,7 @@ partial correlation
   \label{eq:partial}
 \end{equation}
 was computed between truth $y$ and prediction $p$ with fragility $f$ controlled out, all quantities
-ranked: the standard first-order partial correlation applied to Spearman correlations
-\cite{spearman1904}.
+ranked: the standard first-order partial correlation applied to Spearman correlations.
 % (\code{scripts/evaluation/bias\_accounting.py})
 
 Five alternative explanations of a difference between the representations were tested: label supply,
@@ -345,7 +344,7 @@ of between-line to within-line variance, with a paired bootstrap interval over l
 difference between the representations (Appendix~\ref{app:milcrit}). The \emph{positive control} mixed the cells of two lines with
 slightly different response, from the lowest quartile of a compound's pairwise response differences,
 into one bag, and tested whether the per-cell predictions separate them, by the AUROC against shuffled
-line labels \cite{mannwhitney1947,hanley1982}. The \emph{spread} stage required the predictions within a
+line labels. The \emph{spread} stage required the predictions within a
 line to vary more than under the per-cell model. The \emph{reproducibility} stage required different
 seeds to order a line's cells alike. The \emph{confound} stage vetoed a pass if sequencing depth,
 detected genes, mitochondrial fraction and the two cell-cycle scores \cite{scp542} explained as much of
