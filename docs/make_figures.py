@@ -617,7 +617,7 @@ def draw_architecture(ax, *, compact: bool = False):
     # lines, and back to 14 once the paragraph moved to Methods the same day -- the note is now the
     # only thing below the legends and sits where the paragraph began. Compact is untouched: it is
     # embedded in pipeline.png, which has its own layout, and it draws neither note.
-    ax.set_xlim(0, 62 if compact else 100); ax.set_ylim(23 if compact else 14, 47 if compact else 52)
+    ax.set_xlim(0, 62 if compact else 100); ax.set_ylim(23 if compact else 20.5, 47 if compact else 52)  # bottom 14 -> 20.5 on 22.10.2026, after the grey notes went
     ax.set_aspect("equal"); ax.axis("off")
 
 
@@ -687,10 +687,7 @@ def draw_architecture(ax, *, compact: bool = False):
         ax.text(43.2, 22.6, "hidden block  =  linear layer → layer normalisation → GELU → dropout 0.5      ·      "
                             "input dropout 0.1      ·      AdamW, early stopping (patience 10)",
                 ha="center", va="top", fontsize=8.2, color=INK)
-        ax.text(43.2, 19.8, f"the {len(PANEL)} heads are the {len(PANEL)} rows of one "
-                            f"linear layer (64 → {len(PANEL)}) over a shared trunk — "
-                            "there is no per-drug sub-network",
-                ha="center", va="top", fontsize=8.2, color=GREY, style="italic")
+        # Grey note on the heads removed 22.10.2026 (Selin): the report caption says it.
 
     # ---------- OUTPUT: predicted raw AUC per drug ----------
     amax = 1.15                                # AUC 0 .. 1.15 maps to x0 .. x0+span
@@ -719,10 +716,7 @@ def draw_architecture(ax, *, compact: bool = False):
                 ha="center", va="top", fontsize=6.6, color=GREY)
         return
 
-    ax.text(x0 - 4.5, 19.6, f"bars: out-of-fold prediction for {EXAMPLE_LINE.split('_', 1)[0]} "
-                           f"({EXAMPLE_LINE.split('_', 1)[1].lower()})\n"
-                            "◆ = the measured CTRPv2 value (never seen in training)",
-            ha="left", va="top", fontsize=7.6, color=GREY)
+    # Grey bar/diamond note removed 22.10.2026 (Selin): the report caption says it.
 
     # Two corrections, 12.08.2026. The retired auc_z target is no longer named -- the point stands
     # on its own, and Methods no longer describes that target at all. And "the output layer is
@@ -788,7 +782,7 @@ def draw_architecture(ax, *, compact: bool = False):
 def build_architecture():
     if _needs_data("model_architecture.png") or _example_matches_panel("model_architecture.png"):
         return
-    fig, ax = plt.subplots(figsize=(17.0, 6.6))
+    fig, ax = plt.subplots(figsize=(17.0, 5.47))  # 6.6 until 22.10.2026; height scaled with the y-range
     draw_architecture(ax)
     out = FIG / "model_architecture.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
@@ -971,8 +965,7 @@ def build_pipeline_flow():
     bg = fig.add_axes([0, 0, 1, 1]); bg.set_xlim(0, 100); bg.set_ylim(0, 100); bg.axis("off")
     bg.text(1.5, 99.0, "OncoTox — the pipeline", ha="left", va="top",
             fontsize=17, fontweight="bold", color=INK)
-    bg.text(1.5, 94.0, "one cell in, one AUC per drug out  ·  everything grouped by cell line",
-            ha="left", va="top", fontsize=9.5, color=GREY)
+    # Subtitle removed 22.10.2026 (Selin): the report caption carries this information.
 
     ROW1_TITLE, ROW1_CAP = 86.5, 58.5
     ROW2_TITLE, ROW2_CAP = 46.0, 8.5
@@ -980,8 +973,8 @@ def build_pipeline_flow():
     def stage(x, y, n, title, caption, cap_y):
         bg.text(x, y, f"{n}", ha="left", va="bottom", fontsize=12, fontweight="bold", color="#c3c3bd")
         bg.text(x + 2.4, y, title, ha="left", va="bottom", fontsize=10.5, fontweight="bold", color=INK)
-        if caption:
-            bg.text(x, cap_y, caption, ha="left", va="top", fontsize=8.2, color=MUTED)
+        # Grey per-stage captions no longer drawn (22.10.2026, Selin): the report caption describes
+        # each stage. The strings stay in the calls below as the record of what each stage shows.
 
     # ================================================== 1 · data
     stage(1.5, ROW1_TITLE, "1", "Data",
@@ -1855,7 +1848,7 @@ def build_panel_response():
     order = sorted(range(len(panel)),
                    key=lambda k: np.nanpercentile(auc[:, k], 75) - np.nanpercentile(auc[:, k], 25))
     fig, ax = plt.subplots(figsize=(8.6, 4.8))
-    fig.subplots_adjust(top=0.86, left=0.24)
+    fig.subplots_adjust(top=0.91, left=0.24)
     fig.suptitle("Response (refitted AUC) across cell lines, per panel compound",
                  x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.0)
     # One line, and only what cannot be inferred from the plot: n, the whisker convention (5-95 is
@@ -1866,11 +1859,7 @@ def build_panel_response():
     # asked what they meant). The percentile form is no longer and strictly more precise -- the
     # jargon does not say *which* whisker convention, which is the one thing here that is
     # non-default -- and the presenter should not have to define a term to answer a question.
-    fig.text(0.02, 0.905,
-             f"{int(np.isfinite(auc).any(1).sum())} train+val cell lines  ·  "
-             "box = 25th–75th percentile, line = median, whiskers = 5th–95th  ·  "
-             "ordered by box width",
-             ha="left", va="top", fontsize=8.6, color=GREY)
+    # Subtitle removed 22.10.2026 (Selin): the report caption carries this information.
 
     rng = np.random.default_rng(0)                # jitter only, never the values
     for row, k in enumerate(order):
@@ -1938,17 +1927,12 @@ def build_label_quality():
     x = j.frac_ns * 100
 
     fig, ax = plt.subplots(figsize=(8.2, 4.6))
-    fig.subplots_adjust(top=0.80, left=0.10, right=0.97, bottom=0.14)
+    fig.subplots_adjust(top=0.90, left=0.10, right=0.97, bottom=0.14)
     fig.suptitle("Per-compound score against the share of its curves that are flat",
                  x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.0)
     # The arm is named on the figure, not only in this docstring: the deck's own rule is that no
     # score is quoted without its arm, and "mean per-drug Spearman" alone names none.
-    fig.text(0.02, 0.90,
-             f"one point per panel compound ({len(j)})  ·  y = that compound's mean per-drug "
-             "Spearman, out of fold, on the best arm (PCA · MAE · alpha 0.5)\n"
-             "x = share of that compound's curves whose fitted dose-response cannot be "
-             "distinguished from no effect (p > 0.05), log scale",
-             ha="left", va="top", fontsize=8.4, color=GREY, linespacing=1.6)
+    # Subtitle removed 22.10.2026 (Selin): the report caption carries this information.
 
     ax.scatter(np.clip(x, 0.35, None), j.rho, s=46, color=BLUE, alpha=0.85, zorder=3,
                edgecolor="white", linewidth=0.8)
@@ -2051,14 +2035,10 @@ def build_lpo_bias():
         raise SystemExit(f"bars are not commensurable: {sub[['n', 'k']].to_dict()}")
 
     fig, ax = plt.subplots(figsize=(7.8, 2.9))
-    fig.subplots_adjust(top=0.72, left=0.27, right=0.97, bottom=0.24)
+    fig.subplots_adjust(top=0.84, left=0.27, right=0.97, bottom=0.24)
     fig.suptitle("Mean per-drug Spearman under DrEval leave-pairs-out",
                  x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.02)
-    fig.text(0.02, 0.88,
-             f"predictors using no expression at all  ·  5 folds, {int(g['n'].iloc[0] / 5):,} "
-             f"held-out pairs per fold, all {n_panel} compounds  ·  whiskers = sd over folds\n"
-             "not directly comparable with this project's leave-cell-line-out numbers",
-             ha="left", va="top", fontsize=8.4, color=GREY, linespacing=1.6)
+    # Subtitle removed 22.10.2026 (Selin): the report caption carries this information.
 
     for i, (key, label, colour) in enumerate(BARS):
         y = len(BARS) - 1 - i
