@@ -19,9 +19,11 @@ from scripts.layout import PipelinePaths
 if __name__ == "__main__":   # guard added 14.08.2026 (Selin): importing this file used to RUN it
 
     p = PipelinePaths.build(None, 'hvg5000', 'auc_cc')
-    resp = pd.read_csv(p.ctrp_response_csv,
-                       usecols=['ccl_name', 'drug_name', 'AUC_curvecurator', 'R2', 'RMSE',
-                                'pValue', 'conc_pts_fit'])
+    # Exact duplicate rows dropped over the full row, as the pipeline drops them
+    # (ctrp_to_h5ad._deduplicate_measurements; Selin, 11.08.2026). Added 22.10.2026: without it 64 curves
+    # behind the panel were counted twice (1,699 rows for 1,635 pairs).
+    resp = (pd.read_csv(p.ctrp_response_csv).drop_duplicates()
+            [['ccl_name', 'drug_name', 'AUC_curvecurator', 'R2', 'RMSE', 'pValue', 'conc_pts_fit']])
     # The pipeline's own alias table, applied as ctrp_to_h5ad applies it (CTRP side only). Without it
     # CTRP's 'H292' never met SCP542's 'NCIH292' and that line silently dropped out (Selin, 21.10.2026).
     resp['line'] = _normalize_cell_line(resp.ccl_name).replace(CTRP_CELL_LINE_ALIASES)
@@ -36,6 +38,7 @@ if __name__ == "__main__":   # guard added 14.08.2026 (Selin): importing this fi
     lines = set(_normalize_cell_line(split.Cell_line.str.split('_').str[0]))
 
     r = resp[resp.drug.isin(drugs) & resp.line.isin(lines)].dropna(subset=['AUC_curvecurator'])
+    assert not r.duplicated(['line', 'drug']).any(), 'a (line, compound) pair still carries two curves'
     print(f'curves behind this project\'s labels: {len(r):,}  '
           f'({r.drug.nunique()} drugs x {r.line.nunique()} lines)\n')
 

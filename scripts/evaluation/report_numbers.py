@@ -51,8 +51,10 @@ def label_quality_globals() -> list[dict]:
     from scripts.preprocessing.ctrp_to_h5ad import CTRP_CELL_LINE_ALIASES, _normalize_cell_line, _normalize_drug
 
     p = PipelinePaths.build(None, "hvg5000", "auc_cc")
-    resp = pd.read_csv(p.ctrp_response_csv,
-                       usecols=["ccl_name", "drug_name", "AUC_curvecurator", "R2", "pValue"])
+    # Exact duplicate rows dropped first, over the full row, as the pipeline drops them
+    # (ctrp_to_h5ad._deduplicate_measurements; Selin, 11.08.2026). Added 22.10.2026: without it 64 curves
+    # behind the panel were counted twice (1,699 rows for 1,635 pairs).
+    resp = pd.read_csv(p.ctrp_response_csv).drop_duplicates()
     # Same filter as label_quality.py, kept in step with it (21.10.2026, Selin): the pipeline's alias
     # table on the CTRP side, and the 153 CV lines only -- not the 28 test lines.
     resp["line"] = _normalize_cell_line(resp.ccl_name).replace(CTRP_CELL_LINE_ALIASES)
@@ -63,6 +65,7 @@ def label_quality_globals() -> list[dict]:
     drugs = set(_normalize_drug(panel.drug_ctrp))
     lines = set(_normalize_cell_line(split.Cell_line.str.split("_").str[0]))
     r = resp[resp.drug.isin(drugs) & resp.line.isin(lines)].dropna(subset=["AUC_curvecurator"])
+    assert not r.duplicated(["line", "drug"]).any(), "a (line, compound) pair still carries two curves"
     src, how = "DrEval CTRPv2 response table", "curves of panel compounds x CV lines (label_quality.py filter)"
     return [
         row("NCurves", len(r), src, how + "; count"),
@@ -199,6 +202,11 @@ def controls() -> list[dict]:
              # (Selin, 21.10.2026, option b). DrRfNorm stays the scGPT forest.
              row("DrRfPcaNorm", norm.mean()["SingleDrugRF (pca)"], src, "normalized Spearman, mean over folds"),
              row("DrRfPcaSd", norm.std()["SingleDrugRF (pca)"], src, "normalized Spearman, SD over folds")]
+    # The same forest on the first 10 PCA components only (22.10.2026), which the Discussion compares with.
+    src_rf = "dreval/dreval_rf_checks.csv"
+    rf = pd.read_csv(OUT / src_rf)
+    rows.append(row("DrRfPcaTen", rf[(rf.view == "pca") & (rf.k == 10) & (rf.max_samples == 0.2)]
+                    ["Spearman: normalized"].mean(), src_rf, "normalized Spearman, k=10, default forest, mean over folds"))
 
     src = "dreval/dreval_lpo_results.csv"
     lpo = pd.read_csv(OUT / src).groupby("algorithm").per_drug_Spearman.mean()

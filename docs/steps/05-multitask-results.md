@@ -949,6 +949,9 @@ project's labels — **1,971 curves, 11 panel drugs × 180 cell lines** →
 > (p = 0.008)**, was −0.78 (0.004). Values: `report/results_numbers.tex` (`NCurves`, `Curve*`,
 > `Platin*`, `Flat*`). The paragraph below, and "181 is what the pipeline trains on" in it, are the
 > 14.08 record; the pipeline trains on the 153 CV lines.
+> ⟳ **22.10.2026:** 64 of those 1,699 rows were exact duplicates, which the pipeline drops when it builds
+> the targets. De-duplicated: **1,635 curves**, median R² 0.871, cisplatin flat 73 %, and the flat-share
+> correlation **ρ = −0.78 (p = 0.004)**.
 
 > **Why 180 and not 181** (checked 14.08.2026). `label_quality.py` filters on the committed
 > `splits/split_ctrp.csv`, which holds **181** lines — but only 180 of them carry a CurveCurator fit

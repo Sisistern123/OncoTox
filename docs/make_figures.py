@@ -1000,7 +1000,12 @@ def build_pipeline_flow():
     arrow(ax, 8.2, 9.8, 11.0, 9.8, color=MUTED)
 
     x0, y0, cw, ch = 12.2, 3.2, 1.75, 1.15
-    sub = d["line_mask"][:6, :10]
+    # A 6x10 window of `line_mask` that contains unscreened pairs, so the grey of the legend appears in
+    # the grid (22.10.2026): the top-left corner, drawn until then, is fully screened, while the caption
+    # describes both kinds. The first window in column steps of 5 with 10-30 % unscreened is used.
+    _lm = d["line_mask"]
+    _j = next(j for j in range(0, _lm.shape[1] - 10, 5) if 0.1 < 1 - _lm[:6, j:j + 10].mean() < 0.3)
+    sub = _lm[:6, _j:_j + 10]
     for i in range(6):
         for j in range(10):
             ax.add_patch(Rectangle((x0 + j * cw, y0 + (5 - i) * ch), cw * 0.9, ch * 0.85,
@@ -1180,9 +1185,15 @@ def build_pipeline_flow():
           f"{_n_seeds()} seeds — each MLP against its own ridge", ROW2_CAP)
     ax = fig.add_axes([0.868, 0.155, 0.115, 0.255])
     ridge = pd.read_csv(PANEL_OUT / "panel_ridge_baseline.csv")
+    # The default configuration (unweighted MAE), not FIG_LOSS (22.10.2026): stage 8 showed MSE, alpha = 0,
+    # the one configuration whose score differs between identical executions, beside a text that compares
+    # the ridge with the default. Mean over seeds per compound, then over compounds, as panel_corr does.
+    _pc = pd.read_csv(PANEL_OUT / "panel_per_drug_correlation.csv")
+    _pc = (_pc[(_pc.loss == "mae") & (_pc.alpha == 0.0)]
+           .groupby(["rep", "drug"]).spearman.mean().groupby("rep").mean())
     bars = [
-        ("scGPT MLP", corr[(corr.rep == "X_scGPT") & (corr.alpha == 0.0)].spearman.mean(), AMBER),
-        ("PCA MLP", corr[(corr.rep == "X_pca") & (corr.alpha == 0.0)].spearman.mean(), GREY),
+        ("scGPT MLP", _pc["X_scGPT"], AMBER),
+        ("PCA MLP", _pc["X_pca"], GREY),
         ("scGPT ridge", ridge[ridge.rep == "X_scGPT"].spearman.mean(), "#cfcfc9"),
         ("PCA ridge", ridge[ridge.rep == "X_pca"].spearman.mean(), "#cfcfc9"),
     ]
@@ -1958,7 +1969,8 @@ def build_label_quality():
     top = float(x.max())
     ax.set_xticks([0.35, 1, 2, 5, 10, 25, top])
     ax.set_xticklabels(["0", "1", "2", "5", "10", "25", f"{top:.0f}"])
-    ax.set_xlabel("share of that compound's curves that are flat  (%, log scale)", fontsize=9.5)
+    ax.set_xlabel("share of that compound's curves that are flat  (%, log scale; 0 drawn at the left end)",
+                  fontsize=9.5)
     ax.set_ylabel("mean per-drug Spearman\n(PCA · MAE · alpha 0.5)", fontsize=9.5)
     ax.set_ylim(-0.02, 0.60)
     # Read from the points that are drawn, so the annotation cannot disagree with the figure.

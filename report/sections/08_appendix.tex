@@ -42,7 +42,7 @@ HVGs, so both were computed from the study's unnormalised UMI matrix over all ge
 alone is depth multiplied by a biological share, and a confounder carrying the signal under test could
 veto a true positive \cite{scp542,luecken2019}.
 The per-fold standardisation and PCA fits of Section~\ref{sec:representations} were cached per run,
-keyed by the reproducible fold assignment, in single precision like the all-cells decomposition, which
+keyed by the reproducible fold assignment, in single precision like the decomposition over all CV lines used for the input ceiling, which
 was kept for description only.
 
 \chapter{Data and preprocessing details}
@@ -114,7 +114,7 @@ and the output tables from which the reported numbers are read are available at
 \label{app:training-eval}
 
 This appendix holds the training settings, the details of the controls and of the multiple-instance
-criterion behind Sections~\ref{sec:model} to \ref{sec:mil}.
+evaluation behind Sections~\ref{sec:model} to \ref{sec:mil}.
 
 \section{Training settings}
 \label{app:training}
@@ -146,9 +146,9 @@ Hardware & Apple Metal Performance Shaders (MPS) backend \\
 \end{tabular}
 \end{table}
 
-Weight decay was zero because the inherited value had been chosen for Adam, which couples decay into the
-adaptive gradient, whereas AdamW applies it to the parameters directly, so the same coefficient means
-different things and no sourced value existed \cite{loshchilov2019adamw}. Biases and normalisation
+Weight decay was zero because no sourced value for AdamW existed. A coefficient chosen for Adam, which
+couples decay into the adaptive gradient, means something different under AdamW, which applies it to the
+parameters directly \cite{loshchilov2019adamw}. Biases and normalisation
 parameters were nonetheless excluded from decay, following the convention of the \code{transformers}
 library's trainer \cite{wolf2020transformers}, so that the question can later be settled by one coefficient.
 Because the AUC lies near one rather than zero and its mean differs per compound, from \PanelMeanLo{} to
@@ -167,13 +167,10 @@ The ridge regression on cell-line means was fitted on each fold's fitting lines,
 less those held out for early stopping, so that it learns from the same lines as the MLP. It chose its
 penalty from \CfgGridN{} log-spaced values between $10^{-4}$ and $10^{6}$ by efficient leave-one-out
 error \cite{hastie2009,pedregosa2011}. Features entered unscaled, since a log-spaced grid is invariant
-to feature scale up to a shift. A test fixed before the run asked whether any selected penalty lies on a
-grid end. It fired for the original \CfgGridOldN{} values ending at $10^{4}$, in \RidgeEdgePca{} of
-\RidgeFitsPerRep{} PCA fits and \RidgeEdgeScgpt{} of \RidgeFitsPerRep{} scGPT fits, all at the ceiling, and the
-grid was widened at the top and, once the fit moved to the fitting lines, at the bottom. It still fires
-for the current grid: \RidgeFloorPca{} PCA fits lie on the floor, and \RidgeCeilPca{} PCA and
-\RidgeCeilScgpt{} scGPT fits on the ceiling, of \RidgeFitsPerRep{} each. A fit on the ceiling predicts
-close to the compound mean. These fits were kept rather than widening the grid further.
+to feature scale up to a shift. Of \RidgeFitsPerRep{} fits per representation, \RidgeFloorPca{} PCA fits
+chose the lowest penalty of the grid and \RidgeCeilPca{} PCA and \RidgeCeilScgpt{} scGPT fits the highest, so
+for these the grid rather than the data set the penalty. A fit at the highest penalty predicts close to
+the compound mean.
 % (\code{scripts/evaluation/ridge\_grid\_refit.py}, \code{--edges} for \code{panel/ridge\_alpha\_per\_fit.csv}.
 % Rewritten 21.10.2026: until then this described the 17-value grid on the whole training side.)
 DrEval's normalised metric subtracts a fitted overall mean, cell-line effect and compound effect from
@@ -213,27 +210,40 @@ default only if it was better on order and worse on no other quantity by more th
 seed band, the half-range over the default's three seeds.
 % (\code{notebooks/5\_evaluation.ipynb} cell 6, \code{decide()}: the band pooled the challenger's and the
 % default's six seeds until 21.10.2026, while this text said three)
-The default was the unweighted MAE configuration on PCA,
-because unweighted MSE, the initial default, was the only configuration whose score differed between
-identical runs (Section~\ref{sec:results-q1}).
+The default was the unweighted MAE configuration on PCA rather than unweighted MSE, because unweighted
+MSE on PCA was the only configuration whose score differed between identical runs (Section~\ref{sec:results-q1}).
 
-\section{Multiple-instance model and criterion}
+\section{Multiple-instance model and its evaluation}
 \label{app:milcrit}
 
 A bag was a complete cell line because, for a sub-bag of $B$ cells drawn from a line of $n$, the expected
 loss is
 \begin{equation}
-  \mathrm{E}\,\mathcal{L}_B = \left(\bar p_n - y\right)^2 + \frac{\sigma^2}{B}\left(1 - \frac{B-1}{n-1}\right),
+  \mathrm{E}\,\mathcal{L}_B = \left(\bar p - y\right)^2 + \frac{\mathrm{Var}_m(p)}{B}\left(1 - \frac{B-1}{n-1}\right),
   \label{eq:subbag}
 \end{equation}
-which is the per-cell loss at $B = 1$ and contains no variance term only at $B = n$. The bag size
+with $\bar p$ and $\mathrm{Var}_m(p)$ the mean and variance of the predictions over all $n$ cells of the line
+(Equation~\ref{eq:mil-decomposition}). This is the per-cell loss at $B = 1$ and contains no variance term
+only at $B = n$. The bag size
 therefore sets how strongly the objective charges for the quantity under study. Complete bags also make
 each line one training example, removing the per-cell objective's weighting of lines by their cell count,
 which ranges from \CellsMin{} to \CellsMax{}, at the cost of one gradient step per line.
 
-In the input ceiling, $w$ is the mean over lines, each weighted equally, of the within-line variance
+A variance term in the loss was rejected
+because it would make the spread stage pass by construction and change objective and architecture at
+once. A maximum or quantile aggregator was rejected because it does not force variation any more than the mean does and does
+not match an averaged label. This departs from Ilse et al., who, for binary labels under the assumption
+that a bag is positive if any of its instances is, call the mean a poor pooling of instance scores
+\cite{ilse2018}. Here the label is a continuous average over a line's cells, which the mean matches by
+definition. Per-line centring of expression, rejected for the per-cell model (Section~\ref{sec:representations}), would
+suit this question, but the MIL model used the same uncentred representations, so it remains untested.
+
+The positive control was scored within the bag, on the per-cell predictions, because a score on the
+bag's mean prediction is equally good for a model that gives all cells the same value.
+
+In the input ceiling, the within-line share $s$ is the mean over lines, each weighted equally, of the within-line variance
 divided by the total variance over the cells of all cross-validation lines, where variance is the trace
-of the covariance. The ratio $(1-w)/w$ therefore does not depend on the units of an embedding, but each
+of the covariance. The ratio $(1-s)/s$ therefore does not depend on the units of an embedding, but each
 dimension counts in proportion to its own variance, so for PCA the leading components dominate by
 construction. This is the variance that a distance between cells sees.
 

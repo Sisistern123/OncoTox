@@ -814,7 +814,11 @@ DrEval defects above. Every fix was re-run in dependency order (`4a` → diagnos
    difference 0.237 → **0.207** (interval 0.077–0.336), input scale 104× → **106×**.
 2. **The label-quality measurement read the test lines and missed one alias.** `label_quality.py` →
    CV lines and `CTRP_CELL_LINE_ALIASES`: 1,971 → **1,699** curves; the flat-share correlation −0.78 →
-   **−0.75** (p 0.004 → 0.008).
+   **−0.75** (p 0.004 → 0.008). ⟳ **22.10.2026:** 64 of the 1,699 were exact duplicate rows of DrEval's
+   table, which the pipeline drops (`ctrp_to_h5ad._deduplicate_measurements`) but this measurement did
+   not. De-duplicated: **1,635** curves (one per screened pair), median R² 0.871, flat 11.0 %, cisplatin
+   73 %, and the correlation back at **−0.78 (p 0.004)** — the −0.75 came from the duplicates, not from
+   the CV-line restriction. (They had been described in the session as replicate curves; that was wrong.)
 3. **The ridge control fitted on more lines than the model.** It used the whole training side (~122
    lines) while the MLP learns from the ~104 fitting lines. Now the fitting lines, grid
    `logspace(-4, 6, 21)`: **0.2725 → 0.2610** (PCA), 0.1884 → **0.1868** (scGPT). The pre-registered edge

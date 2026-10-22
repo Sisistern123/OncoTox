@@ -16,7 +16,7 @@ the atlas, and before any training the scGPT inputs already carried less between
 the ranking was general cell-line sensitivity, the spread across compounds followed the share of flat
 dose--response curves, and a ridge regression on cell-line means scored about as well as the default
 per-cell configuration, \RidgePca{} against \SwPcaMaeZero{} (Section~\ref{sec:rd-q1}).
-The third is an instrument for the third question. It showed that a model can assign a line's cells
+The third is a five-stage evaluation for the third question. It showed that a model can assign a line's cells
 reproducibly different predictions that are not dominated by sequencing artefacts, and its positive
 control showed that it cannot yet detect a known, slight difference in response (Section~\ref{sec:rd-q3}).
 
@@ -26,8 +26,7 @@ divisions the cells undergo during the assay \cite{hafner}. The per-cell model m
 the absence of bulk pretraining, which in PERCEPTION's linear models on the same atlas gave the weaker
 result \cite{perception}.
 
-The next steps address the label bottleneck, the model's objective and the third research question, in
-that order of directness.
+The next steps address the model's objective, the label bottleneck and the third research question.
 
 \paragraph{MIL as the primary model, with a ranking loss.} A model trained on bags of a line's cells
 leaves each cell free to differ (Equation~\ref{eq:mil-decomposition}), and since the metric ranks lines

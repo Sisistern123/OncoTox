@@ -255,6 +255,7 @@
 \newcommand{\DrRfSd}{0.041}        % fold SD of DrRfNorm (0.0407)
 \newcommand{\DrRfPcaNorm}{0.0458}  % SingleDrugRF (pca) -- same features as the MLP, added 21.10.2026
 \newcommand{\DrRfPcaSd}{0.061}     % fold SD of DrRfPcaNorm (0.0606)
+\newcommand{\DrRfPcaTen}{0.2928}  % SingleDrugRF (pca) on the first 10 components only, dreval_rf_checks.csv (22.10.2026)
 % --- DrEval leave-pairs-out: dreval/dreval_lpo_results.csv (scripts/evaluation/dreval_lpo.py),
 %     per_drug_Spearman, mean over five folds. Held-out pairs belong to lines seen in training.
 %     Recomputed 21.10.2026 on the 153 CV lines (was all 181). Before: 0.322 and 0.184.
@@ -316,20 +317,20 @@
 % --- label quality: CurveCurator fit statistics of the curves behind the panel, read by
 %     scripts/evaluation/label_quality.py (printed, not written -- section 1 of its output) from the
 %     DrEval CTRPv2 response table; re-computed 12.10.2026.
-\newcommand{\NCurves}{1{,}699}  % 21.10.2026 rerun after the audit (153 CV lines; was all lines of split_ctrp.csv, test included); was: NCurves 1{,}971
-\newcommand{\CurveMedRsq}{0.866}  % 21.10.2026 rerun after the audit; was: CurveMedRsq 0.867
-\newcommand{\CurveFracLowRsq}{22.2} % % with R2 < 0.5
-\newcommand{\CurveFracNs}{10.9}     % % with pValue > 0.05 ("flat": no-effect null not rejected)
-\newcommand{\PlatinFracNs}{72}      % cisplatin's share of flat curves (72.3 %)  % 21.10.2026 rerun after the audit; was: PlatinFracNs 73 (73.3 %)
-\newcommand{\PlatinMedRsq}{0.171}  % 0.170717  % 21.10.2026 rerun after the audit; was: PlatinMedRsq 0.166 (0.166473; read 0.167 until 12.10.2026, mis-rounded)
+\newcommand{\NCurves}{1{,}635} % 22.10.2026: exact duplicate curves dropped as the pipeline drops them; was 1,699 (1,971 before 21.10.2026)
+\newcommand{\CurveMedRsq}{0.871} % 22.10.2026: exact duplicate curves dropped as the pipeline drops them; was 0.866
+\newcommand{\CurveFracLowRsq}{21.8} % % with R2 < 0.5; 22.10.2026: exact duplicate curves dropped as the pipeline drops them; was 22.2
+\newcommand{\CurveFracNs}{11.0}     % % with pValue > 0.05 ("flat"); 22.10.2026: exact duplicate curves dropped as the pipeline drops them; was 10.9
+\newcommand{\PlatinFracNs}{73}      % cisplatin flat share (73.2 %); 22.10.2026: exact duplicate curves dropped as the pipeline drops them; was 72 (72.3 %)
+\newcommand{\PlatinMedRsq}{0.172}  % 0.1723; 22.10.2026: exact duplicate curves dropped as the pipeline drops them; was 0.171 (0.166 before 21.10.2026)
 % flat fraction vs per-drug score, best arm, Spearman over the 11 compounds:
 % docs/make_figures.py::build_label_quality, on diagnostics/label_quality_vs_performance.csv
 % (frac_ns) and panel/panel_per_drug_correlation.csv. label_quality.py itself prints the correlation
-% on the mse, alpha=0 arm (-0.69 for X_pca since the 21.10.2026 rerun; -0.72 before); the slide and this
+% on the mse, alpha=0 arm (-0.718 for X_pca since the 22.10.2026 de-duplication; -0.69 on 21.10, -0.72 before); the slide and this
 % report use the best arm. [21.10.2026: this called mse, alpha=0 "the default arm"; the decision rule's
 % default is mae, alpha=0 (5_evaluation.ipynb, INCUMBENT_ARM).]
-\newcommand{\FlatRho}{-0.75}  % 21.10.2026 rerun after the audit; was: FlatRho -0.78
-\newcommand{\FlatP}{0.008}  % 21.10.2026 rerun after the audit; was: FlatP 0.004
+\newcommand{\FlatRho}{-0.78} % 22.10.2026: exact duplicate curves dropped as the pipeline drops them; was -0.75
+\newcommand{\FlatP}{0.004} % 22.10.2026: exact duplicate curves dropped as the pipeline drops them; was 0.008
 % --- Q2, four alternative explanations (slide 19).
 % label supply: panel/panel_curve_summary.csv (4a section E), mean at 25 vs 103 labelled lines.
 \newcommand{\CurveGainPca}{0.123}   % 0.2608 - 0.1374 (the slide rounds to 0.124)

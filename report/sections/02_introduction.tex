@@ -14,7 +14,7 @@ This report trains such a model on the labels that exist. The response labels of
 Response Portal v2 (CTRPv2) \cite{ctrpv2,ctrp_rees}, like those of PRISM \cite{prism} and the Genomics of
 Drug Sensitivity in Cancer (GDSC) \cite{gdsc_yang2013,gdsc}, are measured on bulk cell populations. They are mapped onto the individual
 cells of the corresponding cell lines in the SCP542 pan-cancer atlas \cite{scp542}, so that one value per
-(cell line, compound) is broadcast onto several hundred heterogeneous cells, and the setup is therefore
+(cell line, compound) is broadcast onto a few hundred heterogeneous cells, and the setup is therefore
 weakly supervised. Cell lines do not fully recapitulate tumours, but they provide the volume of
 continuous labels needed to train a representation, and they are heterogeneous in expression: in this
 atlas, distinct genetic subclones were detectable in 26\,\% of the lines, and 39\,\% of the discrete
@@ -46,9 +46,9 @@ coloured by cancer type. PCA separates the atlas into many compact islands, and 
 across several of them, so the islands are individual cell lines nested within lineage. scGPT projects
 the same cells onto one continuous manifold in which cancer type is only partly organised. The axes are
 UMAP coordinates and carry no units. The between-line share of variance that the figure shows
-qualitatively is quantified in Section~\ref{sec:results-q2} on the representations the models read,
-which differ from the plotted ones: PCA of the \NHvg{} highly variable genes rather than of the full
-transcriptome, over the \NLinesCV{} cross-validation lines rather than all \NLinesAtlas{}.
+qualitatively is quantified in Section~\ref{sec:results-q2} on inputs close to those the models read:
+PCA of the \NHvg{} highly variable genes rather than of the full transcriptome, over the \NLinesCV{}
+cross-validation lines rather than all \NLinesAtlas{}, and fitted once on these lines rather than per fold.
 % Produced by
 % \code{notebooks/analysis/qc/verify\_variants.ipynb}.
 }
@@ -57,7 +57,7 @@ transcriptome, over the \NLinesCV{} cross-validation lines rather than all \NLin
 
 The scope of this report is a single database, a single continuous response score and a supervised
 regressor, trained on a panel of \NPanel{} compounds and controlled against the unselected catalogue of
-\NDrugsModelled{} \cite{ctrpv2,dreval}. Every prediction score is read against a ridge regression on cell-line
+\NDrugsModelled{} \cite{ctrpv2,dreval}. The panel scores are read against a ridge regression on cell-line
 means \cite{hoerl1970}, against the naive baselines of the DrEval benchmark, and with general cell-line
 sensitivity controlled out, because DrEval shows that published drug-response models often score well
 through compound and cell-line mean effects alone \cite{dreval}. Cross-database integration, toxicity and
