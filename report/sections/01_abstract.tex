@@ -2,33 +2,27 @@
 \thispagestyle{empty}
 
 Rare subpopulations of tumour cells may underlie resistance to treatment, yet drug response is
-measured on bulk populations, and no large-scale screen measures it per cell. This report asks three questions:
-whether anti-cancer drug response can be predicted from single cells with bulk labels at all, whether
-scGPT embeddings are a viable representation against principal component analysis (PCA) at matched
-width, and whether a model trained on single cells learns cellular heterogeneity implicitly. On the
-intersection of the SCP542 atlas and CTRPv2 as reprocessed by DrEval (\NLines{} cell lines), one
-CurveCurator-fitted area under the dose--response curve (AUC) per cell line and compound was broadcast onto every cell of that line, so the effective
-sample size was about \NLinesCV{} lines rather than \NCellsCV{} cells. A per-cell multi-task regressor was
-trained on an initial panel of \NPanel{} well-characterised compounds and
-scored by the mean within-compound Spearman correlation under five-fold leave-cell-line-out
-cross-validation over three seeds.
+measured on bulk populations. This report asks whether anti-cancer drug response can be predicted from
+single cells with bulk labels, whether scGPT embeddings are a viable representation against principal
+component analysis (PCA) at matched width, and whether a model trained on single cells learns cellular
+heterogeneity implicitly. On the intersection of the SCP542 atlas and CTRPv2 (\NLines{} cell lines), one
+response value per cell line and compound was broadcast onto every cell of that line, so the effective
+sample size was about \NLinesCV{} lines. A per-cell multi-task regressor was trained on \NPanel{}
+well-characterised compounds and scored by the within-compound Spearman correlation under
+leave-cell-line-out cross-validation.
 
-The highest-scoring configuration reached \SpBest{}, ranging from \SpDrugLo{} to \SpDrugHi{} across
-compounds and tracking the share of flat dose--response curves. A ridge regression on cell-line means
-reached \RidgePca{}, level with the default configuration (\SwPcaMaeZero{}). Over all \NDrugsModelled{}
+The highest-scoring configuration reached \SpBest{}, from \SpDrugLo{} to \SpDrugHi{} across compounds and
+tracking the share of flat dose--response curves, and a ridge regression on cell-line means scored about
+as well as the default configuration (\RidgePca{} against \SwPcaMaeZero{}). Over all \NDrugsModelled{}
 compounds the score fell to \SpAllDrugs{} with a linear head and \HdAllTrunkPca{} with the trunk, whose
-squared error was only \HdGainTrunkPca\,\% below that of a per-compound constant. On the panel, about a
-fifth of the ranking was general cell-line sensitivity, measured by a partial correlation on each line's
-mean response to the other panel compounds. Response is thus predictable,
-but modestly, unevenly across compounds, and not demonstrably from single cells. scGPT was viable, but
-PCA led it in all six loss and weighting configurations, and before any training PCA carried more
-between-line structure (between-to-within variance ratio \BtwRatioPca{} against \BtwRatioScgpt{}, a
-difference with 95\,\% interval \BtwRatioDiffLo{} to \BtwRatioDiffHi{} over resampled cell lines). The
-leading account is that the label is defined per cell line, the granularity at which the frozen scGPT
-embedding carried less structure on this atlas, a statement about evaluation design rather than about
-scGPT. Whether heterogeneity is learned remains open: a multiple-instance model
-separated a line's cells but not reliably two lines known to differ slightly in response. The binding constraint is the supply and
-quality of labels, not model capacity.
+squared error was only \HdGainTrunkPca\,\% below that of a per-compound constant, and about a fifth of the
+panel ranking was general cell-line sensitivity. Response is thus predictable, but modestly, unevenly and
+not demonstrably from single cells. scGPT was viable, but PCA led it in all six configurations and
+carried more between-line structure before any training (variance ratio \BtwRatioPca{} against
+\BtwRatioScgpt{}), most plausibly because the label is defined per cell line. Whether heterogeneity is
+learned remains open: a multiple-instance model separated a line's cells but not reliably two lines known
+to differ slightly in response. The binding constraint is the supply and quality of labels, not model
+capacity.
 
 \clearpage
 
@@ -39,37 +33,29 @@ quality of labels, not model capacity.
 \thispagestyle{empty}
 
 Seltene Subpopulationen von Tumorzellen können der Resistenz gegen eine Therapie zugrunde liegen,
-doch das Ansprechen auf Wirkstoffe wird an ganzen Zellpopulationen gemessen, und kein groß angelegter
-Screen misst es pro Zelle. Dieser Bericht untersucht drei Fragen: ob sich das Ansprechen auf
-Krebsmedikamente mit an Zellpopulationen gemessenen Labels überhaupt aus einzelnen Zellen vorhersagen
-lässt, ob scGPT-Embeddings gegenüber einer Hauptkomponentenanalyse (PCA) gleicher Dimension eine
-brauchbare Repräsentation sind und ob ein auf Einzelzellen trainiertes Modell zelluläre Heterogenität
-implizit lernt. Auf der Schnittmenge des SCP542-Atlas mit CTRPv2 in der Aufbereitung durch DrEval
-(\NLines{} Zelllinien) wurde ein mit CurveCurator angepasster Wert der Fläche unter der
-Dosis-Wirkungs-Kurve (AUC) pro Zelllinie und Substanz auf jede Zelle dieser Linie übertragen, sodass
-der effektive Stichprobenumfang etwa \NLinesCV{} Zelllinien statt \NCellsCV{} Zellen betrug. Ein
-Multi-Task-Regressor auf Einzelzellebene wurde auf einem anfänglichen Panel von \NPanel{} gut
-charakterisierten Substanzen trainiert und anhand der
-mittleren Spearman-Korrelation innerhalb jeder Substanz in einer fünffachen Kreuzvalidierung mit
-zurückgehaltenen Zelllinien über drei Seeds bewertet.
+doch das Ansprechen auf Wirkstoffe wird an ganzen Zellpopulationen gemessen. Dieser Bericht untersucht,
+ob sich das Ansprechen auf Krebsmedikamente mit an Zellpopulationen gemessenen Labels aus einzelnen Zellen
+vorhersagen lässt, ob scGPT-Embeddings gegenüber einer Hauptkomponentenanalyse (PCA) gleicher Dimension
+eine brauchbare Repräsentation sind und ob ein auf Einzelzellen trainiertes Modell zelluläre
+Heterogenität implizit lernt. Auf der Schnittmenge des SCP542-Atlas mit CTRPv2 (\NLines{} Zelllinien)
+wurde ein Antwortwert pro Zelllinie und Substanz auf jede Zelle dieser Linie übertragen, sodass der
+effektive Stichprobenumfang etwa \NLinesCV{} Zelllinien betrug. Ein Multi-Task-Regressor auf
+Einzelzellebene wurde auf \NPanel{} gut charakterisierten Substanzen trainiert und anhand der
+Spearman-Korrelation innerhalb jeder Substanz in einer Kreuzvalidierung mit zurückgehaltenen Zelllinien
+bewertet.
 
-Die bestbewertete Konfiguration erreichte \SpBest{}, mit einer Spanne von \SpDrugLo{} bis
-\SpDrugHi{} zwischen den Substanzen, die dem Anteil flacher Dosis-Wirkungs-Kurven folgte. Eine
-Ridge-Regression auf Zelllinien-Mittelwerten erreichte \RidgePca{}, gleichauf mit der
-Standardkonfiguration (\SwPcaMaeZero{}). Über alle \NDrugsModelled{} Substanzen fiel der Wert auf
-\SpAllDrugs{} mit linearem Kopf und \HdAllTrunkPca{} mit dem Trunk, dessen quadratischer Fehler nur
-\HdGainTrunkPca\,\% unter dem einer substanzspezifischen Konstante lag. Auf dem Panel ging etwa ein
-Fünftel der Rangordnung auf die allgemeine Empfindlichkeit der Zelllinien zurück, gemessen durch eine
-partielle Korrelation mit der mittleren Antwort jeder Linie auf die übrigen Panel-Substanzen. Das
-Ansprechen ist somit vorhersagbar, aber nur mäßig, ungleichmäßig über die Substanzen hinweg und nicht
-nachweislich aus einzelnen Zellen. scGPT war brauchbar, doch PCA lag in allen sechs Kombinationen aus
-Verlustfunktion und Gewichtung vorn und trug bereits vor jedem Training mehr Struktur zwischen den
-Zelllinien (Verhältnis der Varianz zwischen und innerhalb der Linien \BtwRatioPca{} gegenüber
-\BtwRatioScgpt{}, eine Differenz mit 95-\%-Intervall \BtwRatioDiffLo{} bis \BtwRatioDiffHi{} über
-neu gezogene Zelllinien). Die naheliegendste Erklärung ist, dass das Label pro Zelllinie definiert ist, also
-auf der Ebene, auf der das eingefrorene scGPT-Embedding in diesem Atlas weniger Struktur trug. Dies ist
-eine Aussage über das Evaluationsdesign, nicht über scGPT. Ob Heterogenität gelernt wird, bleibt offen:
-ein Multiple-Instance-Modell trennte die Zellen einer Linie, nicht aber zuverlässig zwei Linien, die sich
-nachweislich geringfügig im Ansprechen unterscheiden. Der begrenzende Faktor ist die Menge und Qualität der Labels, nicht die
+Die bestbewertete Konfiguration erreichte \SpBest{}, von \SpDrugLo{} bis \SpDrugHi{} zwischen den
+Substanzen und dem Anteil flacher Dosis-Wirkungs-Kurven folgend, und eine Ridge-Regression auf
+Zelllinien-Mittelwerten schnitt etwa so gut ab wie die Standardkonfiguration (\RidgePca{} gegenüber
+\SwPcaMaeZero{}). Über alle \NDrugsModelled{} Substanzen fiel der Wert auf \SpAllDrugs{} mit linearem
+Kopf und \HdAllTrunkPca{} mit dem Trunk, dessen quadratischer Fehler nur \HdGainTrunkPca\,\% unter dem
+einer substanzspezifischen Konstante lag, und etwa ein Fünftel der Rangordnung auf dem Panel ging auf die
+allgemeine Empfindlichkeit der Zelllinien zurück. Das Ansprechen ist somit vorhersagbar, aber nur mäßig,
+ungleichmäßig und nicht nachweislich aus einzelnen Zellen. scGPT war brauchbar, doch PCA lag in allen
+sechs Konfigurationen vorn und trug bereits vor jedem Training mehr Struktur zwischen den Zelllinien
+(Varianzverhältnis \BtwRatioPca{} gegenüber \BtwRatioScgpt{}), am wahrscheinlichsten, weil das Label pro
+Zelllinie definiert ist. Ob Heterogenität gelernt wird, bleibt offen: Ein Multiple-Instance-Modell trennte
+die Zellen einer Linie, nicht aber zuverlässig zwei Linien, die sich nachweislich geringfügig im
+Ansprechen unterscheiden. Der begrenzende Faktor ist die Menge und Qualität der Labels, nicht die
 Modellkapazität.
 \end{otherlanguage}
