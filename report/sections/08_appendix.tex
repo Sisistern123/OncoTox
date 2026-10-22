@@ -49,7 +49,7 @@ was kept for description only.
 \label{app:data}
 
 This appendix holds the details of the data and its preprocessing behind Sections~\ref{sec:data} to
-\ref{sec:representations}.
+\ref{sec:representations}, and where the data and code are available.
 
 \section{Quality control of the atlas}
 \label{app:qc}
@@ -98,6 +98,17 @@ preprocessing to both arms would alter nothing scGPT sees while disguising that 
 different information \cite{scgpt}. It also means the choice of source matrix is open only for PCA:
 substituting the pre-quality-control UMI counts would change gene selection and the components but not
 the scGPT input.
+
+\section{Data and code availability}
+\label{sec:availability}
+
+The single-cell expression data are the processed matrix of study SCP542 on the Broad Institute Single
+Cell Portal \cite{scp542_portal}. The response labels are DrEval's reprocessing of CTRPv2, Zenodo record
+21807175 \cite{dreval_data}, published on 5 August 2026 and retrieved on 11 August 2026. The scGPT
+weights and embedding routine are those of the scGPT repository \cite{scgpt_code}. All code, notebooks
+and the output tables from which the reported numbers are read are available at
+\url{https://github.com/Sisistern123/OncoTox}.
+% (moved here from Methods on 21.10.2026)
 
 \chapter{Training and evaluation details}
 \label{app:training-eval}

@@ -40,7 +40,8 @@ differently, which left \NLines{} lines with response measurements and \NCellsLa
 types. Of the
 \NDrugs{} compounds in DrEval's CTRPv2 release, \NDrugsModelled{} entered the target matrix. The other eleven were excluded because
 their response had been measured in fewer than \NCovMinLines{} of the overlapping cell lines, an arbitrary
-threshold chosen to ensure sufficient coverage for training.
+threshold chosen to ensure sufficient coverage for training. The data sources and the code are listed in
+Appendix~\ref{sec:availability}.
 
 SCP542 is distributed after the source study's own quality control, and no cell-level filtering was
 added here \cite{scp542}. Any statement about heterogeneity therefore concerns cells inside the source
@@ -350,13 +351,3 @@ adjusted $R^2$ reached the squared cross-seed correlation, both being shares of 
 (Appendix~\ref{app:confounds}). As a description that gates nothing, the per-cell predictions were also
 correlated within each line with the heterogeneity programs of the source study
 (Appendix~\ref{app:milcrit}).
-
-\section{Data and code availability}
-\label{sec:availability}
-
-The single-cell expression data are the processed matrix of study SCP542 on the Broad Institute Single
-Cell Portal \cite{scp542_portal}. The response labels are DrEval's reprocessing of CTRPv2, Zenodo record
-21807175 \cite{dreval_data}, published on 5 August 2026 and retrieved on 11 August 2026. The scGPT
-weights and embedding routine are those of the scGPT repository \cite{scgpt_code}. All code, notebooks
-and the output tables from which the reported numbers are read are available at
-\url{https://github.com/Sisistern123/OncoTox}.
