@@ -197,6 +197,8 @@ def controls() -> list[dict]:
     rows += [row("DrMlpNorm", norm.mean()["OncoMLP (X_pca)"], src, "normalized Spearman, mean over folds"),
              row("DrRfNorm", norm.mean()["SingleDrugRF (scgpt)"], src, "normalized Spearman, mean over folds"),
              row("DrMlpSd", norm.std()["OncoMLP (X_pca)"], src, "normalized Spearman, SD over folds"),
+             # The scGPT arm on the same protocol (22.10.2026), reported with question 2.
+             row("DrMlpScgptNorm", norm.mean()["OncoMLP (X_scGPT)"], src, "normalized Spearman, mean over folds"),
              row("DrRfSd", norm.std()["SingleDrugRF (scgpt)"], src, "normalized Spearman, SD over folds"),
              # The forest on the MLP's own representation, so the comparison holds the features fixed
              # (Selin, 21.10.2026, option b). DrRfNorm stays the scGPT forest.

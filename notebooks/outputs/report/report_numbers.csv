@@ -61,6 +61,7 @@ HdRiseLinPca,0.45637452362101927,panel/panel_heads_oof.csv,% by which the linear
 DrMlpNorm,0.33716838815360595,dreval/dreval_lco_results.csv,"normalized Spearman, mean over folds"
 DrRfNorm,0.2988489334770984,dreval/dreval_lco_results.csv,"normalized Spearman, mean over folds"
 DrMlpSd,0.05176251375980346,dreval/dreval_lco_results.csv,"normalized Spearman, SD over folds"
+DrMlpScgptNorm,0.26809541485828664,dreval/dreval_lco_results.csv,"normalized Spearman, mean over folds"
 DrRfSd,0.040676324277316794,dreval/dreval_lco_results.csv,"normalized Spearman, SD over folds"
 DrRfPcaNorm,0.04575001808358268,dreval/dreval_lco_results.csv,"normalized Spearman, mean over folds"
 DrRfPcaSd,0.060568169381396884,dreval/dreval_lco_results.csv,"normalized Spearman, SD over folds"

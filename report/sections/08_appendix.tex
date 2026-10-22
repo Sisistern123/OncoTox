@@ -245,7 +245,10 @@ In the input ceiling, the within-line share $s$ is the mean over lines, each wei
 divided by the total variance over the cells of all cross-validation lines, where variance is the trace
 of the covariance. The ratio $(1-s)/s$ therefore does not depend on the units of an embedding, but each
 dimension counts in proportion to its own variance, so for PCA the leading components dominate by
-construction. This is the variance that a distance between cells sees.
+construction. This is the variance that a distance between cells sees. The interval for the difference
+of the ratios between the representations came from a paired bootstrap over lines: lines were drawn
+with replacement, each with all its cells, both representations were recomputed on the same resample,
+and the 95\,\% percentile interval was taken over \BtwBootB{} resamples \cite{efron1993,lazic2010}.
 
 As a description that gates nothing, the per-cell predictions were correlated within each line with the
 eleven distinct program scores (Spearman). For the program with the largest association, the

@@ -12,12 +12,11 @@ averaged over the \NPanel{} panel compounds and three seeds \cite{spearman1904,d
 \label{sec:results-q1}
 \label{sec:rd-q1}
 
+The first question was whether drug response can be predicted from single cells when every label is a
+bulk measurement.
 Figure~\ref{fig:panelresponse} shows the label itself, the refitted AUC of each panel compound across
-the \NLinesCV{} cross-validation lines, to establish what there is to predict for each compound before
-any model is scored. The focus is the spread of each compound's response, since a compound whose lines
-all respond alike cannot be ranked. Each row is one compound, the box spans the 25th to 75th
-percentile, the whiskers the 5th to 95th, every line is a dot, and the dashed line marks the no-effect
-level of 1.0. The rows are ordered by box width. Paclitaxel, gemcitabine, dasatinib, doxorubicin and
+the \NLinesCV{} cross-validation lines, before any model is scored. A compound whose lines all respond
+alike cannot be ranked. Paclitaxel, gemcitabine, dasatinib, doxorubicin and
 afatinib spread widely below the no-effect level. Erlotinib, sorafenib and etoposide are centred closer to it,
 and crizotinib has a narrow box well below it. Imatinib and cisplatin sit close to the no-effect level, and
 cisplatin has the narrowest box of the panel.
@@ -36,11 +35,8 @@ ordered by box width as a display choice. The panel was not selected on this spr
 \label{fig:panelresponse}
 \end{figure}
 
-Table~\ref{tab:sweep} reports the score of every configuration, to establish whether any configuration
-predicts response and how the per-cell model compares with the ridge control. The focus is the PCA
-column, which holds both the highest score and the control. Rows are the six combinations of loss and
-density exponent $\alpha$ for the MLP, followed by the ridge regression on cell-line means. Columns are
-the two representations, and the highest score is set in bold \cite{hoerl1970,dir}. All six PCA
+Table~\ref{tab:sweep} reports the score of every configuration and of the ridge control on both
+representations. All six PCA
 configurations scored between \SpSweepLo{} and \SpBest{}, the highest score being reached with MAE and
 $\alpha = 0.5$, and the ridge regression scored \RidgePca{}. Under the decision rule no configuration
 improved on the default, unweighted MAE at \SwPcaMaeZero{}: the configuration with MAE and $\alpha = 0.5$ was better at ranking
@@ -51,7 +47,7 @@ One configuration (PCA, MSE, $\alpha = 0$) gave \SwPcaMseZeroAlt{}, \SwPcaMseZer
 agreed to four decimals.
 % (\code{panel\_execution\_band.csv}, \code{scripts/evaluation/build\_execution\_band.py}; three
 % executions and MLP arms only since 21.10.2026, two and all fourteen entries before)
-The scoring conventions behaved as expected. Pooled over all (line, compound) pairs rather than within
+Pooled over all (line, compound) pairs rather than within
 each compound, the highest-scoring configuration reached a correlation of about \SpPooled{}, and
 DrEval's predictor that knows only each compound's average response reached \SpDrugMeanPooled{} on the
 same pairs, so a pooled
@@ -90,10 +86,7 @@ Ridge (line means) & --- & \RidgePca & \RidgeScgpt \\
 \end{table}
 
 Figure~\ref{fig:labelquality} breaks the highest-scoring configuration down by compound, to test
-whether the variation between compounds follows the quality of their labels. The focus is the relation
-between the two axes rather than any single compound. Each point is one
-compound, placed by the share of its dose--response curves that are flat (logarithmic axis) and by its
-score. The compounds at the extremes and the exception are labelled in bold. Scores ranged from
+whether the variation between compounds follows the quality of their labels. Scores ranged from
 \SpDrugLo{} for cisplatin to \SpDrugHi{} for dasatinib, and the share of flat curves from $0$ to
 \PlatinFracNs\,\%. The two were correlated, Spearman $\rho = \FlatRho$ ($p = \FlatP$, $n = \NPanel$):
 compounds with more flat curves scored lower, cisplatin having both the largest share and the lowest
@@ -124,9 +117,8 @@ from \FragRawPca{} to \FragPartialPca{} ($-\FragCostPca\,\%$) and from \FragRawS
 \FragPartialScgpt{} ($-\FragCostScgpt\,\%$).
 % (\code{bias\_accounting.csv})
 Figure~\ref{fig:lpo} shows how much a line's identity alone predicts when the protocol allows it to.
-The focus is the size of that baseline relative to the scores above. The two bars are DrEval's LPO
-baselines that use no expression: the mean response of the line (black) reached a mean within-compound
-correlation of \LpoLineMean{}, and the mean response of its lineage (grey) \LpoTissueMean{}.
+Under LPO, predicting each line's mean response reached a mean within-compound correlation of
+\LpoLineMean{}, and predicting its lineage's mean response \LpoTissueMean{}.
 % (\code{dreval\_lpo\_results.csv})
 
 \begin{figure}[t]
@@ -160,8 +152,9 @@ of compounds.
 % with \code{NullGainMax}, an MSE difference from a different row.)
 
 
-\paragraph{Discussion.} Drug response is predictable from these data,
-but modestly, unevenly, and not demonstrably from single cells. The score is out of fold over held-out
+\paragraph{Discussion.} The answer to the first question is a qualified yes: drug response is
+predictable from these data, but modestly, unevenly across compounds, and not demonstrably from single
+cells. The score is out of fold over held-out
 lines, stable across seeds, and clears DrEval's naive predictors on a protocol this work did not design
 \cite{dreval}. Against that, a ridge regression on cell-line means \cite{hoerl1970} scores about as well as the
 default per-cell configuration, so
@@ -215,13 +208,6 @@ metric and the drugs differ.
 \paragraph{LCO only.} Under the protocol used no baseline can exploit the fragility channel, and whether
 the model clears a baseline that can use it would require retraining under an LPO split \cite{dreval}.
 
-\paragraph{Why the panel was not selected on response.} Selecting compounds on the spread of one's own
-labels enriches for compounds that separate these particular lines, flatters every correlation measured
-on them, and reads labels of lines that are later held out \cite{dreval}. A response-based filter can
-also exclude whole classes of compounds. A filter requiring a compound to both kill and spare cell lines
-excludes every cytostatic agent by construction, because a compound that arrests rather than kills
-never crosses a viability threshold \cite{hafner}.
-
 \paragraph{About \NLinesCV{} independent labels, not \NCellsCV{} cells.} Every uncertainty in this report is
 governed by the number of cell lines (Section~\ref{sec:data}) \cite{lazic2010}, and the work covers
 one database, one response score and \NPanel{} compounds. Cross-database integration, toxicity and
@@ -247,11 +233,15 @@ MPS and CPU embeddings of the same cells was not verified.
 \label{sec:results-q2}
 \label{sec:rd-q2}
 
+The second question was whether scGPT embeddings are a viable representation for this task, measured
+against PCA at matched width.
 The two arms were compared first on the trained models and then on their inputs.
 The PCA arm scored higher than the scGPT arm in all six configurations (Table~\ref{tab:sweep}), under
 all four scoring conventions --- cell or line level, pooled or per fold
 % (\code{panel\_aggregation\_comparison.csv})
---- and after fragility was controlled out. On the inputs
+--- and after fragility was controlled out. On DrEval's LCO protocol the scGPT arm also scored below
+the PCA arm, \DrMlpScgptNorm{} against \DrMlpNorm{}, and below DrEval's forest on the scGPT features
+(\DrRfNorm{}). On the inputs
 alone, before training, the between-line share of variance, one minus the within-line share defined in
 Appendix~\ref{app:milcrit}, was \BtwSharePca{} for PCA and
 \BtwShareScgpt{} for scGPT, a between-to-within ratio of \BtwRatioPca{} against \BtwRatioScgpt{}.
@@ -259,20 +249,16 @@ For PCA this used one decomposition fitted to the cells of all \NLinesCV{} cross
 place of the five per-fold fits the model receives.
 % (\code{notebooks/4b\_mil\_training.ipynb} cell 7, \code{X\_pca\_cvfit}; it read the all-cells PCA,
 % test lines included, until 21.10.2026)
-Resampling the \NLinesCV{} lines with replacement, both representations on the same resample
-(\BtwBootB{} resamples), the difference of the ratios was \BtwRatioDiff{} with a 95\,\% percentile
-interval from \BtwRatioDiffLo{} to \BtwRatioDiffHi{}, and PCA was ahead in \BtwBootPcaAheadPct\,\% of
-resamples \cite{efron1993}. The lines, not the cells, are resampled because they are the independent
-units \cite{lazic2010}.
+Over a paired bootstrap of the \NLinesCV{} lines (Appendix~\ref{app:milcrit}), the difference of the
+ratios was \BtwRatioDiff{} with a 95\,\% interval from \BtwRatioDiffLo{} to \BtwRatioDiffHi{}, and PCA was
+ahead in \BtwBootPcaAheadPct\,\% of resamples.
 % (\code{mil/stage0\_input\_ceiling.csv})
 
 Five alternative explanations of the difference were then tested, each on the same folds except the
 smaller-atlas test, which removed whole lines and so re-partitioned the remaining ones.
 % (\code{cv.grouped\_folds} is GroupKFold over the eligible lines; until 21.10.2026 this said "each on the same folds")
-Figure~\ref{fig:labelsupply} shows the first, label supply, to establish whether scGPT's deficit is a
-shortage of labels that more labels would close. The focus is the gap between the two arms as the number
-of labelled lines grows. Each point is one arm at one budget, the mean over three seeds, with error bars
-spanning the lowest and highest seed. Both arms scored higher with more labelled lines. When the labelled lines per fold were thinned from 103 to 25, the
+Figure~\ref{fig:labelsupply} shows the first, label supply, to test whether scGPT's deficit is a
+shortage of labels that more labels would close. Both arms scored higher with more labelled lines. When the labelled lines per fold were thinned from 103 to 25, the
 PCA arm lost \CurveGainPca{} and the scGPT arm \CurveGainScgpt{}, and the difference between the arms was
 $+\CurveMarginLo$ at 25 and $+\CurveMarginHi$ at 103 lines, the two lying within each other's seed band
 at 25 and 50 lines. Label supply leaves every cell in the fold and in the per-fold PCA, so the second
@@ -356,8 +342,8 @@ that scGPT gains nothing from the full transcriptome.
 % (\code{diagnostics/input\_dropout\_test.csv}, \code{input\_dropout\_sweep\_extra.csv})
 
 
-\paragraph{Discussion.} scGPT is a viable representation but falls behind PCA here, and the
-leading account is a mismatch of granularity rather than a deficit of the embedding. The label is
+\paragraph{Discussion.} The answer to the second question is that scGPT is viable but falls behind
+PCA here, and the leading account is a mismatch of granularity rather than a deficit of the embedding. The label is
 defined per cell line, so what a model must read is variation between lines. Before any model is
 trained, PCA's between-to-within variance ratio is about a fifth higher than scGPT's, which
 Figure~\ref{fig:umap} illustrates.
@@ -414,6 +400,7 @@ granularity account, fine-tuning scGPT on the task, has not been run \cite{scgpt
 \label{sec:results-q3}
 \label{sec:rd-q3}
 
+The third question was whether a model trained on single cells learns cellular heterogeneity implicitly.
 The MIL model \cite{dietterich1997,ilse2018} was run over three seeds on both representations and
 evaluated by the five stages of Section~\ref{sec:mil}. The input ceiling was computed per line on the
 \NLinesCV{} lines. The spread, reproducibility and confound stages read only predictions, so they were
@@ -448,10 +435,8 @@ veto is read, was \QConfPca{} and \QConfScgpt{}. Against the squared cross-seed 
 fire for either representation.
 % (\code{mil/stage6\_confounds.csv})
 
-Figure~\ref{fig:q2instrument} shows the positive control, to establish whether the model can separate
-two populations that are known to differ slightly in response. The focus is the position of the distributions relative to
-chance \cite{hanley1982}. Each histogram collects the within-bag AUROC of one arm, PCA in blue and
-scGPT in gold, with chance marked by the dashed line. The median was \QAurocPca{} for PCA and
+Figure~\ref{fig:q2instrument} shows the positive control, to test whether the model can separate
+two populations that are known to differ slightly in response. The median was \QAurocPca{} for PCA and
 \QAurocScgpt{} for scGPT, and \QAurocSigPca\,\% and \QAurocSigScgpt\,\% of the pairs separated
 significantly from the permutation null. The PCA distribution was close to uniform, whereas the scGPT distribution peaked at 0
 and 1, with most values in between.
@@ -482,7 +467,7 @@ in the low-spread half and \MilGapHighPca{} in the high-spread half for PCA, and
 % (\code{panel/panel\_metrics.csv}, \code{diagnostics/mil\_by\_within\_line\_spread.csv},
 % \code{scripts/evaluation/mil\_within\_line\_test.py})
 
-\paragraph{Discussion.} The question remains open. The MIL model
+\paragraph{Discussion.} The third question remains open. The MIL model
 separates a line's cells reproducibly and not as a sequencing artefact, but it does not reliably
 separate two lines known to differ slightly: the median AUROC of its positive control is barely above
 chance, so the evaluation cannot carry a negative result and makes the positive one weak. The PCA arm

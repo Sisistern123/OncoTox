@@ -251,6 +251,7 @@
 %     0.047), DrRfNorm 0.2773 (SD 0.039). See docs/steps/corrections-and-dead-ends.md.
 \newcommand{\DrMlpNorm}{0.3372}    % OncoMLP (X_pca)  % 21.10.2026 rerun after the audit (MAE, mean of seeds 42/43/44; was one seed, MSE); was: DrMlpNorm 0.3304
 \newcommand{\DrRfNorm}{0.2988}     % SingleDrugRF (scgpt)
+\newcommand{\DrMlpScgptNorm}{0.2681} % OncoMLP (X_scGPT), MAE, mean of seeds 42-44 (22.10.2026)
 \newcommand{\DrMlpSd}{0.052}       % fold SD of DrMlpNorm (0.0518)  % 21.10.2026 rerun after the audit (MAE, mean of seeds 42/43/44); was: DrMlpSd 0.067 (0.0674)
 \newcommand{\DrRfSd}{0.041}        % fold SD of DrRfNorm (0.0407)
 \newcommand{\DrRfPcaNorm}{0.0458}  % SingleDrugRF (pca) -- same features as the MLP, added 21.10.2026

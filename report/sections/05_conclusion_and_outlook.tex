@@ -1,24 +1,24 @@
 \chapter{Conclusion and Outlook}
 \label{sec:conclusion}
 
-A general-purpose foundation embedding loses to a dataset-fitted linear reduction
-here, most plausibly because the label is defined per cell line and the frozen embedding carries less
-between-line structure on this atlas, and with
-\NLinesCV{} labels a ridge regression on cell-line means scores about as well as the default per-cell
-model built in this work: the
-ceiling is the data, and the analysis identifies which part of the data sets it.
+This work asked three questions about predicting drug response from single cells with bulk labels.
 
-The work contributes three results to the question of predicting drug response from single cells.
-The first is a negative result with a measured input difference and a leading account. On bulk labels defined per cell line, a
-frozen general-purpose foundation embedding was a viable but weaker representation than PCA fitted to
-the atlas, and before any training the scGPT inputs already carried less between-line structure
-(Section~\ref{sec:rd-q2}). The second is an accounting of what the score consists of. About a fifth of
-the ranking was general cell-line sensitivity, the spread across compounds followed the share of flat
-dose--response curves, and a ridge regression on cell-line means scored about as well as the default
-per-cell configuration, \RidgePca{} against \SwPcaMaeZero{} (Section~\ref{sec:rd-q1}).
-The third is a five-stage evaluation for the third question. It showed that a model can assign a line's cells
-reproducibly different predictions that are not dominated by sequencing artefacts, and its positive
-control showed that it cannot yet detect a known, slight difference in response (Section~\ref{sec:rd-q3}).
+Drug response can be predicted in this setting, but modestly and unevenly. The highest-scoring
+configuration reached \SpBest{}, the spread across compounds followed the share of flat dose--response
+curves, and about a fifth of the ranking was general cell-line sensitivity. A ridge regression on
+cell-line means scored about as well as the default per-cell configuration, \RidgePca{} against
+\SwPcaMaeZero{}, so the prediction is not demonstrably drawn from single cells (Section~\ref{sec:rd-q1}).
+
+scGPT embeddings are a viable representation, but a weaker one than PCA fitted to the atlas, in all six
+configurations. Before any training the scGPT inputs already carried less between-line structure, and
+since the label is defined per cell line, this is the leading account of the gap (Section~\ref{sec:rd-q2}).
+
+Whether a model trained on single cells learns cellular heterogeneity implicitly remains open. A
+multiple-instance model gave a line's cells reproducibly different predictions that are not dominated by
+sequencing artefacts, but its positive control did not reliably detect a known, slight difference in
+response (Section~\ref{sec:rd-q3}).
+
+Taken together, the binding constraint is the supply and quality of labels rather than the model.
 
 Two hypotheses follow from these results and remain untested. The general cell-line sensitivity
 within the score may partly reflect proliferation rate, since the AUC depends on the number of

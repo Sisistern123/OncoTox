@@ -67,7 +67,11 @@ cell lines in the CV, \NLinesCV{}, not \NCellsCV{} cells \cite{lazic2010,dreval}
 \label{sec:panel}
 
 Because the reported score is an average over the panel's compounds, the panel was selected without
-reference to the response values the model is trained on (Section~\ref{sec:rd-q1}). A compound entered
+reference to the response values the model is trained on. Selecting on the spread of one's own labels
+would enrich for compounds that separate these particular lines, flatter every correlation measured on
+them, and read labels of lines that are later held out \cite{dreval}, and a filter requiring a compound
+to both kill and spare cell lines would exclude every cytostatic agent, since a compound that arrests
+rather than kills never crosses a viability threshold \cite{hafner}. A compound entered
 the panel if it met three conditions: (i) approval by the U.S. Food and Drug Administration (FDA) for a
 cancer indication \cite{sun_fda}, (ii) screening by CTRPv2 against at least \PanelCovCut\,\% of the
 overlapping cell lines \cite{ctrpv2}, and (iii) being well characterised in the literature. Condition
@@ -244,7 +248,7 @@ The correlation is within a compound because pooling all pairs is dominated by d
 between compounds (Section~\ref{sec:bg-prediction}) \cite{dreval}. It is computed on lines because one
 point per line is one point per label, and on the held-out lines of all folds pooled, the more
 conservative of the two options. The alternatives were computed for comparison
-(Section~\ref{sec:results-q1}).
+(Sections~\ref{sec:results-q1} and~\ref{sec:results-q2}).
 % (\code{panel\_aggregation\_comparison.csv})
 
 Whether a different loss or the density weighting improves on the default, the unweighted MAE
@@ -335,7 +339,8 @@ The evaluation asked whether the MIL model gives the cells of one line different
 those differences are reproducible across seeds and not explained by sequencing quality or the cell cycle.
 It had five stages, each judged against a null or a comparison rather than a fixed threshold. The
 \emph{input ceiling} checked that the cells of a line differ in the input at all, reported as the ratio
-of between-line to within-line variance. The \emph{positive control} mixed the cells of two lines with
+of between-line to within-line variance, with a paired bootstrap interval over lines for the
+difference between the representations (Appendix~\ref{app:milcrit}). The \emph{positive control} mixed the cells of two lines with
 slightly different response, from the lowest quartile of a compound's pairwise response differences,
 into one bag, and tested whether the per-cell predictions separate them, by the AUROC against shuffled
 line labels \cite{mannwhitney1947,hanley1982}. The \emph{spread} stage required the predictions within a
@@ -345,3 +350,6 @@ detected genes, mitochondrial fraction and the two cell-cycle scores \cite{scp54
 that variation as the agreement between seeds (Appendix~\ref{app:confounds}). As a description rather than a
 test, the predictions were also correlated within each line with the heterogeneity programs identified in
 the source study, to see which known variation within a line they follow (Appendix~\ref{app:milcrit}).
+The MIL model was also scored like the per-cell model, on the mean prediction of each line, and its gain
+over the per-cell model was compared between the held-out lines below and above the median of the
+per-cell model's within-line spread.
