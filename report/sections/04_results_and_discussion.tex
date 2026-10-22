@@ -257,6 +257,25 @@ ratios was \BtwRatioDiff{} with a 95\,\% interval from \BtwRatioDiffLo{} to \Btw
 ahead in \BtwBootPcaAheadPct\,\% of resamples.
 % (\code{mil/stage0\_input\_ceiling.csv})
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{fig_umap.png}
+\caption{\textbf{Latent space of the SCP542 atlas under the two representations.} The figure shows all \NCells{} cells
+of the \NLinesAtlas{} cell lines, embedded by full-transcriptome PCA (left) and by scGPT (right), reduced
+to two dimensions by Uniform Manifold Approximation and Projection (UMAP) \cite{mcinnes2018umap} and
+coloured by cancer type. PCA separates the atlas into many compact islands, and a single colour recurs
+across several of them, so the islands are individual cell lines nested within lineage. scGPT projects
+the same cells onto one continuous manifold in which cancer type is only partly organised. The axes are
+UMAP coordinates and carry no units. The between-line share of variance that the figure shows
+qualitatively is quantified in the text on inputs close to those the models read:
+PCA of the \NHvg{} highly variable genes rather than of the full transcriptome, over the \NLinesCV{}
+cross-validation lines rather than all \NLinesAtlas{}, and fitted once on these lines rather than per fold.
+% Produced by
+% \code{notebooks/analysis/qc/verify\_variants.ipynb}.
+}
+\label{fig:umap}
+\end{figure}
+
 Five alternative explanations of the difference were then tested, each on the same folds except the
 smaller-atlas test, which removed whole lines and so re-partitioned the remaining ones.
 % (\code{cv.grouped\_folds} is GroupKFold over the eligible lines; until 21.10.2026 this said "each on the same folds")
