@@ -1679,7 +1679,7 @@ def build_q2_instrument():
     fig, ax = plt.subplots(figsize=(7.2, 3.8))
     # Titled by what the panel measures, not by its stage number: the numbering is `4b`'s internal
     # bookkeeping and carries nothing for a reader of the figure.
-    ax.set_title("can the method see a gap known to be there?", fontsize=12, fontweight="bold",
+    ax.set_title("Within-bag AUROC of the positive control", fontsize=12, fontweight="bold",
                  color=INK, loc="left", pad=10)
 
     for rep, c, name in reps:
@@ -2057,7 +2057,7 @@ def build_lpo_bias():
     fig.text(0.02, 0.88,
              f"predictors using no expression at all  ·  5 folds, {int(g['n'].iloc[0] / 5):,} "
              f"held-out pairs per fold, all {n_panel} compounds  ·  whiskers = sd over folds\n"
-             "not comparable with this project's leave-cell-line-out numbers",
+             "not directly comparable with this project's leave-cell-line-out numbers",
              ha="left", va="top", fontsize=8.4, color=GREY, linespacing=1.6)
 
     for i, (key, label, colour) in enumerate(BARS):
