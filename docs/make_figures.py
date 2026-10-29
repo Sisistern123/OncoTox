@@ -1669,24 +1669,21 @@ def build_q2_instrument():
     s7 = pd.read_csv(MIL_OUT / "stage7_positive_control.csv")
 
     reps = [("X_pca", BLUE, "PCA"), ("X_scGPT", AMBER, "scGPT")]
-    fig, ax = plt.subplots(figsize=(7.2, 3.8))
+    fig, ax = plt.subplots(figsize=(6.2, 3.6))
     # Titled by what the panel measures, not by its stage number: the numbering is `4b`'s internal
     # bookkeeping and carries nothing for a reader of the figure.
-    ax.set_title("Within-bag AUROC of the positive control", fontsize=12, fontweight="bold",
+    ax.set_title("Is the more resistant line ranked higher?", fontsize=12, fontweight="bold",
                  color=INK, loc="left", pad=10)
 
     for rep, c, name in reps:
         ax.hist(s7[s7.rep == rep]["auroc"].dropna(), bins=60, range=(0, 1), histtype="step",
                 lw=1.8, color=c, label=name, density=True)
     ax.axvline(0.5, color="#9a9a95", lw=1.1, ls="--", zorder=1)
-    ax.set_xlabel("AUROC separating the two lines' cells inside one mixed bag", fontsize=9)
+    ax.set_xlabel("AUROC (1 = more resistant line ranked higher, 0 = reversed)", fontsize=9)
     ax.set_xlim(0, 1)
 
-    # The null is named at the line rather than in the legend: a reader should not have to carry
-    # which of two entries is the reference.
-    ax.annotate("chance", xy=(0.5, 1.0), xycoords=("data", "axes fraction"),
-                xytext=(4, -2), textcoords="offset points", ha="left", va="top",
-                fontsize=8.4, color=GREY)
+    # The dashed line is not labelled "chance" (Selin, 29.10.2026): at 0.5 a single pair is not
+    # separated, while the conclusion rests on the direction across pairs. The caption explains it.
 
     # No median annotation. Both medians are in the slide's table and in `q2_verdict.csv`, they sit
     # 0.02 apart, and printing them here put two nearly equal numbers on top of each other and of
@@ -1732,7 +1729,7 @@ def build_label_supply():
     assert len(cfg) == 1, f"label-supply runs mix configurations: {cfg.to_dict('records')}"
     print(f"label supply: {cfg.iloc[0].to_dict()}, seeds {sorted(f.seed.unique())}")
 
-    fig, ax = plt.subplots(figsize=(6.4, 3.8))
+    fig, ax = plt.subplots(figsize=(6.2, 3.8))
     ax.set_title("Mean per-drug Spearman against labelled lines per fold", fontsize=12,
                  fontweight="bold", color=INK, loc="left", pad=10)
     for rep, c, name, dx in (("X_pca", BLUE, "PCA", -0.8), ("X_scGPT", AMBER, "scGPT", 0.8)):
@@ -1847,9 +1844,9 @@ def build_panel_response():
 
     order = sorted(range(len(panel)),
                    key=lambda k: np.nanpercentile(auc[:, k], 75) - np.nanpercentile(auc[:, k], 25))
-    fig, ax = plt.subplots(figsize=(8.6, 4.8))
+    fig, ax = plt.subplots(figsize=(6.4, 4.6))  # 8.6 x 4.8 until 22.10.2026: drawn at text width so labels print at their size
     fig.subplots_adjust(top=0.91, left=0.24)
-    fig.suptitle("Response (refitted AUC) across cell lines, per panel compound",
+    fig.suptitle("Refitted AUC across cell lines, per panel compound",
                  x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.0)
     # One line, and only what cannot be inferred from the plot: n, the whisker convention (5-95 is
     # NOT matplotlib's default 1.5xIQR) and the row ordering. Direction and the meaning of 1.0 were
@@ -1926,7 +1923,7 @@ def build_label_quality():
     rho, pval = spearmanr(j.frac_ns, j.rho)
     x = j.frac_ns * 100
 
-    fig, ax = plt.subplots(figsize=(8.2, 4.6))
+    fig, ax = plt.subplots(figsize=(6.4, 4.2))  # 8.2 x 4.6 until 22.10.2026: drawn at text width
     fig.subplots_adjust(top=0.90, left=0.10, right=0.97, bottom=0.14)
     fig.suptitle("Per-compound score against the share of its curves that are flat",
                  x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.0)
@@ -1938,8 +1935,8 @@ def build_label_quality():
                edgecolor="white", linewidth=0.8)
     # Hand offsets only where the automatic one collides -- sorafenib and gemcitabine sit within
     # 0.03 of each other on both axes, and etoposide's label runs into sorafenib's.
-    NUDGE = {"gemcitabine": (-34, -3), "sorafenib": (0, 9), "etoposide": (-18, -13),
-             "imatinib": (20, 2)}
+    NUDGE = {"gemcitabine": (20, 7), "sorafenib": (0, 9), "etoposide": (-22, -13),
+             "imatinib": (20, 2)}  # gemcitabine below its point since 22.10.2026, at the narrower width
     for d, xi, yi in zip(j.index, np.clip(x, 0.35, None), j.rho):
         big = d in ("platin", "dasatinib", "crizotinib")
         ax.annotate(names[d], (xi, yi), xytext=NUDGE.get(d, (0, 9 if big else 7)),
@@ -1969,6 +1966,65 @@ def build_label_quality():
 
     out = FIG / "label_quality.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
+def build_umap():
+    """The report's Fig. 4.4: UMAP of the whole SCP542 atlas under full-transcriptome PCA and scGPT.
+
+    **Added 22.10.2026 (Selin)**, after feedback that the figure's labels were unreadable in the report.
+    It was the 16 x 7.5 in ``umap_cancertype_pca_vs_scgpt.png`` of ``analysis/qc/verify_variants.ipynb``
+    (cell 20), scaled to a third of its size on the page. The computation is that cell's, unchanged:
+    the ``all_genes`` targets file, its stored ``X_pca`` and ``X_scGPT``, 15 neighbours, seed 42. Only the
+    drawing differs -- text width, a larger legend. Descriptive: all cells, the all-cells PCA, as the
+    report caption says. The coordinates are cached, so a rebuild does not recompute them.
+    """
+    import anndata as ad_lib
+    import scanpy as sc
+    from matplotlib.lines import Line2D
+    from scripts.layout import PipelinePaths
+
+    cache = ROOT / "notebooks/outputs/embeddings/umap_coords_all_genes_seed42.npz"
+    src = sc.read_h5ad(PipelinePaths.build(None, "all_genes").targets_h5ad, backed="r")
+    cancer = src.obs["Cancer_type"].astype(str).to_numpy()
+    if cache.exists():
+        z = np.load(cache)
+        coords = {"X_pca": z["X_pca"], "X_scGPT": z["X_scGPT"]}
+    else:
+        a = ad_lib.AnnData(X=np.zeros((src.n_obs, 1), dtype="float32"), obs=src.obs.copy())
+        coords = {}
+        for rep in ("X_pca", "X_scGPT"):
+            a.obsm[rep] = np.asarray(src.obsm[rep], dtype="float32")
+            nk = f"nn_{rep}"
+            sc.pp.neighbors(a, use_rep=rep, n_neighbors=15, random_state=42, key_added=nk)
+            sc.tl.umap(a, random_state=42, neighbors_key=nk)
+            coords[rep] = a.obsm["X_umap"].copy()
+        np.savez(cache, **coords)
+    if hasattr(src, "file"):
+        src.file.close()
+
+    cats = sorted(set(cancer))
+    pal = plt.colormaps["tab20"].colors + plt.colormaps["tab20b"].colors
+    colmap = {c: pal[i % len(pal)] for i, c in enumerate(cats)}
+    cvec = [colmap[c] for c in cancer]
+
+    fig, axs = plt.subplots(1, 2, figsize=(6.4, 4.9))
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.90, bottom=0.30, wspace=0.04)
+    for ax, rep, title in ((axs[0], "X_pca", "PCA"), (axs[1], "X_scGPT", "scGPT")):
+        U = coords[rep]
+        ax.scatter(U[:, 0], U[:, 1], c=cvec, s=0.4, alpha=0.5, linewidths=0, rasterized=True)
+        ax.set_title(title, fontsize=11, color=INK)
+        ax.set_xticks([]); ax.set_yticks([])
+        for s in ax.spines.values():
+            s.set_color("#c9c9c3")
+    handles = [Line2D([0], [0], marker="o", ls="", ms=5, color=colmap[c]) for c in cats]
+    fig.legend(handles, cats, loc="lower center", ncol=3, fontsize=7.6, frameon=False,
+               bbox_to_anchor=(0.5, 0.0), handletextpad=0.3, columnspacing=1.0)
+    fig.suptitle("UMAP of the atlas, coloured by cancer type", x=0.01, ha="left", fontsize=12,
+                 fontweight="bold", color=INK, y=0.99)
+    out = FIG / "fig_umap.png"
+    fig.savefig(out, dpi=300, facecolor="white")
     plt.close(fig)
     print(f"wrote {out}")
 
@@ -2034,7 +2090,7 @@ def build_lpo_bias():
     if sub["n"].nunique() != 1 or sub["k"].nunique() != 1 or round(sub["k"].iloc[0]) != n_panel:
         raise SystemExit(f"bars are not commensurable: {sub[['n', 'k']].to_dict()}")
 
-    fig, ax = plt.subplots(figsize=(7.8, 2.9))
+    fig, ax = plt.subplots(figsize=(6.3, 2.6))  # 7.8 x 2.9 until 22.10.2026: drawn at text width
     fig.subplots_adjust(top=0.84, left=0.27, right=0.97, bottom=0.24)
     fig.suptitle("Mean per-drug Spearman under DrEval leave-pairs-out",
                  x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK, y=1.02)
@@ -2078,3 +2134,4 @@ if __name__ == "__main__":
     build_capacity_dropout_table()
     build_label_quality()
     build_lpo_bias()
+    build_umap()

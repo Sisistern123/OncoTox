@@ -54,6 +54,7 @@ notebooks/outputs/panel/panel_heads_oof.csv
 # personal presentation material (speaker notes + evidence appendix)
 docs/progress_report_*.md
 docs/final_presentation*.md
+docs/reference_check.md
 
 # The Gate 5 rerun log. Untracked on Selin's instruction (13.08.2026) -- it is a working
 # execution record of one run, not part of the scientific record: what it establishes belongs in
