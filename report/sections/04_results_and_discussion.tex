@@ -173,8 +173,8 @@ panel's score as a property of eleven well-covered compounds rather than of the 
 The spread across compounds is explained on the label side: the share
 of flat curves predicts the per-compound score without recourse to biology, which agrees with the known
 inconsistency of pharmacogenomic labels \cite{haibekains2013,safikhani2017,bayer2023curvecurator}. With one label in nine
-carrying no dose--response and roughly \NLinesCV{} independent lines \cite{lazic2010,dreval}, the binding constraint is the
-supply and quality of labels, not model capacity. The relation is a trend over eleven points,
+carrying no dose--response and roughly \NLinesCV{} independent lines \cite{lazic2010,dreval}, the comparisons point to the
+supply and quality of labels, not model capacity, as the binding constraint. The relation is a trend over eleven points,
 and crizotinib shows it is not a law. Cisplatin's position at the bottom was anticipated by the
 literature on its determinant: only one of four ERCC1 isoforms confers repair
 capacity and cisplatin resistance, and no antibody distinguishes them \cite{friboulet_ercc1}, so a
@@ -189,9 +189,8 @@ comparison of models. The LCO protocol used here gives no baseline access to the
 estimated effect \cite{dreval}. The reported score is therefore real but partly not compound-specific. What this shared component is
 was not measured.
 
-DrEval found that about half of the tested models did not significantly outperform a
-predictor of mean drug and cell-line effects, and that under leave-cell-line-out evaluation no model
-surpassed a tuned random forest \cite{dreval}. Here the per-cell model scored \DrMlpNorm{} against
+DrEval found that under LCO no model surpassed a tuned random forest (Section~\ref{sec:bg-prediction})
+\cite{dreval}. Here the per-cell model scored \DrMlpNorm{} against
 \DrRfPcaNorm{} for DrEval's per-compound random forest on the same features. That forest
 used DrEval's default hyperparameters rather than being tuned, and on all \NPca{} components, most of
 which carried no signal for it, it fell far below the same forest on the first 10 components.
@@ -211,11 +210,6 @@ pretraining on bulk data, were weaker than its bulk-pretrained ones. The per-cel
 trained in that weaker setting, which is one possible reason for its modest score that this work did
 not test. The scores themselves are not comparable, because the screen, the response measure, the
 metric and the drugs differ.
-
-That the score is modest and uneven across compounds is in line with the size of the label set and with
-the known inconsistency of drug-screen labels. Less in line with the premise of this work is that a ridge
-regression on line means scores about as well as the per-cell model, so single-cell resolution shows no
-measured advantage here, and that the signal nearly vanishes on the unselected catalogue.
 
 The answer rests on about \NLinesCV{} independent labels (Section~\ref{sec:data}) \cite{lazic2010}, on one
 database, one response score and \NPanel{} compounds. Cross-database integration, toxicity and
@@ -248,8 +242,6 @@ the PCA arm, \DrMlpScgptNorm{} against \DrMlpNorm{}, and below DrEval's forest o
 alone, before training, the between-line share of variance, one minus the within-line share defined in
 Appendix~\ref{app:milcrit}, was \BtwSharePca{} for PCA and
 \BtwShareScgpt{} for scGPT, a between-to-within ratio of \BtwRatioPca{} against \BtwRatioScgpt{}.
-For PCA this used one decomposition fitted to the cells of all \NLinesCV{} cross-validation lines, in
-place of the five per-fold fits the model receives.
 % (\code{notebooks/4b\_mil\_training.ipynb} cell 7, \code{X\_pca\_cvfit}; it read the all-cells PCA,
 % test lines included, until 21.10.2026)
 Over a paired bootstrap of the \NLinesCV{} lines (Appendix~\ref{app:milcrit}), the difference of the
@@ -276,8 +268,7 @@ cross-validation lines rather than all \NLinesAtlas{}, and fitted once on these 
 \label{fig:umap}
 \end{figure}
 
-Five alternative explanations of the difference were then tested, each on the same folds except the
-smaller-atlas test, which removed whole lines and so re-partitioned the remaining ones.
+Five alternative explanations of the difference were then tested (Section~\ref{sec:evaluation}).
 % (\code{cv.grouped\_folds} is GroupKFold over the eligible lines; until 21.10.2026 this said "each on the same folds")
 Figure~\ref{fig:labelsupply} shows the first, label supply, to test whether scGPT's deficit is a
 shortage of labels that more labels would close. Both arms scored higher with more labelled lines. When the labelled lines per fold were thinned from 103 to 25, the
@@ -435,8 +426,7 @@ line's cells different predictions, and these differences should be reproducible
 explained by sequencing quality or the cell cycle, and able to separate cells known to differ in response.
 This was tested with the MIL model and the five-stage evaluation of Section~\ref{sec:mil}.
 
-The MIL model \cite{dietterich1997,ilse2018} was run over three seeds on both representations and
-evaluated by the five stages of Section~\ref{sec:mil}. The input ceiling was computed per line on the
+The MIL model \cite{dietterich1997,ilse2018} was run over three seeds on both representations. The input ceiling was computed per line on the
 \NLinesCV{} lines. The spread, reproducibility and confound stages read only predictions, so they were
 computed on all \QPairs{} (compound, line) combinations of the panel, including the \QUnscreened{} that
 were not screened, since a held-out line is predicted without its labels either way. The positive control

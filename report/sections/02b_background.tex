@@ -355,8 +355,7 @@ closed form \cite{hastie2009,pedregosa2011}. A random forest averages many decis
 resample of the data \cite{breiman2001}.
 
 Rankings are compared with the Spearman correlation, the Pearson correlation of ranks
-\cite{spearman1904}. How well a score separates two groups is measured by the area under the receiver
-operating characteristic curve (AUROC), which equals the Mann--Whitney statistic divided by the product of
+\cite{spearman1904}. How well a score separates two groups is measured by the AUROC (Section~\ref{sec:bg-heterogeneity}), which equals the Mann--Whitney statistic divided by the product of
 the group sizes \cite{mannwhitney1947,hanley1982}. The uncertainty of an estimate can be obtained by the
 bootstrap, recomputing it on resamples of the independent units \cite{efron1993}, and the calibration of
 a model's predictions by the slope of a regression of truth on prediction \cite{vancalster2016}.

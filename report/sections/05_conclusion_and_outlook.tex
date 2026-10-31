@@ -8,11 +8,8 @@ configuration reached \SpBest{}, the spread across compounds followed the share 
 curves, and about a fifth of the ranking was general cell-line sensitivity. A ridge regression on
 cell-line means scored about as well as the default per-cell configuration, \RidgePca{} against
 \SwPcaMaeZero{}, so nothing in this work shows the per-cell pipeline earning its complexity
-(Section~\ref{sec:rd-q1}). This agrees with benchmarks in which simpler models kept pace with more
-complex ones: elastic nets outperformed neural networks for most compounds on GDSC \cite{eckhart2024},
-and under leave-cell-line-out evaluation no model surpassed a tuned random forest \cite{dreval}.
-PERCEPTION, on the same atlas, likewise obtained predictive models for only 44 of 133 drugs
-\cite{perception}.
+(Section~\ref{sec:rd-q1}). This agrees with a benchmark on GDSC in which elastic nets outperformed
+neural networks for most compounds \cite{eckhart2024}.
 
 scGPT embeddings are a viable representation, but a weaker one than PCA fitted to the atlas, in all six
 configurations. Before any training the scGPT inputs already carried less between-line structure, and
@@ -23,7 +20,7 @@ comparison has a clear limit, however. scGPT was used frozen, although its repor
 obtained after fine-tuning \cite{scgpt}. Fine-tuning was not attempted because about \NLinesCV{}
 labelled lines are few for adapting a pretrained encoder, which then risks overfitting to them.
 Single-cell profiles with matching response labels exist here for \NLines{} cell lines, against
-\NCtrpLines{} lines labelled in CTRPv2 alone \cite{dreval_data}. What this work tests is therefore the
+\NCtrpLines{} lines labelled in DrEval's release of CTRPv2 alone \cite{dreval_data}. What this work tests is therefore the
 frozen embedding under the current data situation, not scGPT in the use its authors intended.
 
 Whether a model trained on single cells learns cellular heterogeneity implicitly remains open. A
@@ -31,16 +28,15 @@ multiple-instance model gave a line's cells reproducibly different predictions t
 sequencing artefacts, but its positive control did not reliably detect a known, slight difference in
 response (Section~\ref{sec:rd-q3}). The prior methods closest to this work face the same limit. scDEAL
 and PERCEPTION also evaluated per-cell predictions through labels defined for groups of cells
-\cite{scdeal,perception}. As long as drug response is measured per well rather than per cell, whether a
-model reads response from single cells can be checked only indirectly.
+\cite{scdeal,perception}.
 
 These results also bear on how drug response prediction is evaluated more generally. DrEval found that
 reported performance is often overly optimistic, because the mean effects of compounds and cell lines
 can carry a score \cite{dreval}. The present results confirm that such mean effects make up a large part
 of what is scored. Pooled over all pairs, the highest-scoring configuration reached \SpPooled{}, but a
-predictor that knows only each compound's average response already reached \SpDrugMeanPooled{}. Within
-compounds, about a fifth of the score was general cell-line sensitivity, and under LPO a line's average
-response alone reached \LpoLineMean{}, above the best configuration here. On all \NDrugsModelled{}
+predictor that knows only each compound's average response already reached \SpDrugMeanPooled{}. Beyond
+the fifth of the within-compound score that was general cell-line sensitivity, under LPO a line's
+average response alone reached \LpoLineMean{}, above the best configuration here. On all \NDrugsModelled{}
 compounds rather than the eleven of the panel, the score fell to \SpAllDrugs{}, and that model's squared
 error was \HdRiseLinPca\,\% higher than that of a constant per compound. A score reported without these
 comparisons would therefore have overstated what the model learned. What these results cannot confirm
@@ -100,8 +96,8 @@ particularities of a single screen's labels. Because screens disagree on the sam
 of their curve fit, which CurveCurator reports per curve \cite{bayer2023curvecurator}.
 
 \paragraph{Fine-tuning scGPT, given more data} Fine-tuning tests whether the ordering against PCA
-reverses once the encoder may keep line identity, but on about \NLinesCV{} labels a fine-tuned encoder
-may memorise them, so it follows the previous step.
+reverses once the encoder may keep line identity. It needs more labels than are available here, as
+discussed above, so it follows the previous step.
 
 \paragraph{Explicit explainability of heterogeneity} The question could be reframed from implicit
 learning to explicit explanation: identifying the subpopulations within cell lines that drive resistance

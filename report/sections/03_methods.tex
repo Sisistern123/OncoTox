@@ -55,7 +55,7 @@ line on the same side.
 % (\code{splits/split\_ctrp.csv}, written by \code{scripts/preprocessing/create\_splits.py})
 It was reserved for a final evaluation of a chosen configuration, which was not performed within this
 project. The remaining \NLinesCV{} lines were
-divided into five cross-validation (CV) folds grouped by cell line (leave-cell-line-out, LCO), so that each line is held out exactly
+divided into five cross-validation (CV) folds grouped by cell line (LCO, Section~\ref{sec:bg-prediction}), so that each line is held out exactly
 once. Within each fold, \CfgHoldoutPct\,\% of the training lines were withheld for early stopping
 (Section~\ref{sec:model}), and the remaining lines, about a hundred per fold, are referred to as the
 fitting lines.
