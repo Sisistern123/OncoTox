@@ -62,7 +62,7 @@ fitting lines.
 
 Because the label is defined per cell line and compound, all cells of a line carry the same value and
 are pseudo-replicates \cite{lazic2010}. The effective sample size was therefore taken to be the number of
-cell lines in the CV, \NLinesCV{}, not \NCellsCV{} cells \cite{lazic2010,dreval}.
+cell lines in the CV, \NLinesCV{}, not \NCellsCV{} cells \cite{dreval}.
 
 \section{Compound panel selection}
 \label{sec:panel}
@@ -82,8 +82,8 @@ the cell lines on which a compound had been tested, never the measured responses
 
 Of the FDA-approved drugs, \NFdaScreened{} were screened by CTRPv2, \NFdaCovered{} cleared the coverage
 cut and \NPanel{} were selected: gemcitabine \cite{ctrp_rees}, doxorubicin \cite{skinner_abcb1},
-etoposide \cite{omori_abcb1,skinner_abcb1}, paclitaxel \cite{ctrpv2,skinner_abcb1} and cisplatin
-\cite{britten_ercc1,shimizu_ercc1,friboulet_ercc1} among cytotoxics, and imatinib
+etoposide \cite{omori_abcb1,skinner_abcb1}, paclitaxel \cite{ctrpv2,skinner_abcb1} and cisplatin, whose expression determinant is contested
+\cite{britten_ercc1,shimizu_ercc1,friboulet_ercc1}, among cytotoxics, and imatinib
 \cite{ctrp_rees,skinner_abcb1}, sorafenib \cite{scp542}, dasatinib \cite{ctrpv2}, erlotinib
 \cite{scdeal,pao2004}, crizotinib \cite{ctrpv2} and afatinib \cite{ctrpv2} among targeted agents, at \PanelCovLo--\PanelCovHi\,\% coverage. The \PanelCovCut\,\% cut lies where the coverage
 distribution breaks: the lowest included compound reaches \CovLowestIn\,\%, the next \CovNextOut\,\%, and

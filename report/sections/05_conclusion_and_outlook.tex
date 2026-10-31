@@ -7,18 +7,68 @@ Drug response can be predicted in this setting, but modestly and unevenly. The h
 configuration reached \SpBest{}, the spread across compounds followed the share of flat dose--response
 curves, and about a fifth of the ranking was general cell-line sensitivity. A ridge regression on
 cell-line means scored about as well as the default per-cell configuration, \RidgePca{} against
-\SwPcaMaeZero{}, so the prediction is not demonstrably drawn from single cells (Section~\ref{sec:rd-q1}).
+\SwPcaMaeZero{}, so nothing in this work shows the per-cell pipeline earning its complexity
+(Section~\ref{sec:rd-q1}). This agrees with benchmarks in which simpler models kept pace with more
+complex ones: elastic nets outperformed neural networks for most compounds on GDSC \cite{eckhart2024},
+and under leave-cell-line-out evaluation no model surpassed a tuned random forest \cite{dreval}.
+PERCEPTION, on the same atlas, likewise obtained predictive models for only 44 of 133 drugs
+\cite{perception}.
 
 scGPT embeddings are a viable representation, but a weaker one than PCA fitted to the atlas, in all six
 configurations. Before any training the scGPT inputs already carried less between-line structure, and
 since the label is defined per cell line, this is the leading account of the gap (Section~\ref{sec:rd-q2}).
+A zero-shot evaluation of scGPT and Geneformer came to the same ordering for cell types, which their
+frozen embeddings separated worse than a selection of highly variable genes \cite{kedzierska2025}. The
+comparison has a clear limit, however. scGPT was used frozen, although its reported results were
+obtained after fine-tuning \cite{scgpt}. Fine-tuning was not attempted because about \NLinesCV{}
+labelled lines are few for adapting a pretrained encoder, which then risks overfitting to them.
+Single-cell profiles with matching response labels exist here for \NLines{} cell lines, against
+\NCtrpLines{} lines labelled in CTRPv2 alone \cite{dreval_data}. What this work tests is therefore the
+frozen embedding under the current data situation, not scGPT in the use its authors intended.
 
 Whether a model trained on single cells learns cellular heterogeneity implicitly remains open. A
 multiple-instance model gave a line's cells reproducibly different predictions that are not dominated by
 sequencing artefacts, but its positive control did not reliably detect a known, slight difference in
-response (Section~\ref{sec:rd-q3}).
+response (Section~\ref{sec:rd-q3}). The prior methods closest to this work face the same limit. scDEAL
+and PERCEPTION also evaluated per-cell predictions through labels defined for groups of cells
+\cite{scdeal,perception}. As long as drug response is measured per well rather than per cell, whether a
+model reads response from single cells can be checked only indirectly.
 
-Taken together, the binding constraint is the supply and quality of labels rather than the model.
+These results also bear on how drug response prediction is evaluated more generally. DrEval found that
+reported performance is often overly optimistic, because the mean effects of compounds and cell lines
+can carry a score \cite{dreval}. The present results confirm that such mean effects make up a large part
+of what is scored. Pooled over all pairs, the highest-scoring configuration reached \SpPooled{}, but a
+predictor that knows only each compound's average response already reached \SpDrugMeanPooled{}. Within
+compounds, about a fifth of the score was general cell-line sensitivity, and under LPO a line's average
+response alone reached \LpoLineMean{}, above the best configuration here. On all \NDrugsModelled{}
+compounds rather than the eleven of the panel, the score fell to \SpAllDrugs{}, and that model's squared
+error was \HdRiseLinPca\,\% higher than that of a constant per compound. A score reported without these
+comparisons would therefore have overstated what the model learned. What these results cannot confirm
+is DrEval's further finding that about half of the tested models do not outperform a predictor of mean
+effects, because only one model family was tested here, and under LCO the cell-line baselines score
+zero by construction.
+
+Whether models or data limit drug response prediction cannot be settled by this setup, but every
+comparison made here points to the data. The effective sample size is the number of cell lines, about
+\NLinesCV{}, not the number of cells \cite{lazic2010}, and a ridge regression on cell-line means matched
+the per-cell network. The share of flat curves predicted the per-compound score at $\rho = \FlatRho{}$
+without recourse to biology, and screens disagree on the response of the same line to the same compound
+\cite{haibekains2013,safikhani2017}. No model can recover a response that its label does not contain.
+The models tested here were small, however, and scGPT was used frozen, so a limit on the model side is
+not excluded. More complex models may pay off once the data are richer. In the NCI-DREAM challenge,
+which combined several bulk profiling data types per cell line, the best methods modelled non-linear
+relationships \cite{costello2014}.
+
+From the perspective of this work, three things are missing to make drug response prediction from
+single cells viable. The first is more cell lines profiled at single-cell resolution, since labels
+already exist for several times as many lines as were profiled. The second is labels of known quality:
+curve fits that report whether a dose--response was established at all \cite{bayer2023curvecurator},
+and responses that agree across screens. The third is a response measured per cell rather than per
+well. The screens label the viability of a whole population, so they cannot say which of its cells
+survive. The single-cell chemical screens that exist record the transcriptome after treatment rather
+than survival \cite{srivatsan2020,tahoe100m}, and PERCEPTION's evaluation against the response of
+patients rested on 28 patients of one trial \cite{perception}. Until such data exist, the binding
+constraint is the supply and quality of labels rather than the model.
 
 Two hypotheses follow from these results and remain untested. The general cell-line sensitivity
 within the score may partly reflect proliferation rate, since the AUC depends on the number of
@@ -33,9 +83,9 @@ leaves each cell free to differ (Equation~\ref{eq:mil-decomposition}), and since
 within a compound, a ranking loss would align the objective with what is scored
 \cite{ilse2018,burges2005}.
 
-\paragraph{Bulk pretraining and domain adaptation} CTRPv2 alone covers \NCtrpLines{} cell lines
-against the \NLines{} here, so labels exist and single-cell expression is what is missing
-\cite{ctrpv2,scdeal}. Pretraining on bulk expression and aligning bulk and single-cell spaces by domain
+\paragraph{Bulk pretraining and domain adaptation} DrEval's release of CTRPv2 alone covers \NCtrpLines{} cell
+lines against the \NLines{} here, so labels exist and single-cell expression is what is missing
+\cite{dreval_data,scdeal}. Pretraining on bulk expression and aligning bulk and single-cell spaces by domain
 adaptation addresses that gap \cite{scdeal,ganin2015}. The most direct form is to apply PERCEPTION's
 bulk-pretrained response models to these cells and compare their predictions with those from the two
 representations here \cite{perception}.

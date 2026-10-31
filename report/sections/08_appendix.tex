@@ -55,9 +55,9 @@ This appendix holds the details of the data and its preprocessing behind Section
 \label{app:qc}
 
 SCP542 is distributed after the source study's own quality control \cite{scp542}. Cells had been
-profiled in \NPools{} multiplexed pools on the 10x Chromium
-platform \cite{zheng2017}, at about \SrcCellsPerLine{} cells per line, processed with Cell Ranger 3.0.1, and assigned
-to lines by the consensus of a genotype-based and an expression-based method. Cells were retained when
+profiled in \NPools{} multiplexed pools on the droplet platform of 10x Genomics \cite{zheng2017},
+with the Chromium Single Cell 3$'$ v2 kit \cite{scp542}, at about \SrcCellsPerLine{} cells per line, processed with Cell Ranger 3.0.1, and assigned
+to lines by a genotype-based and an expression-based method, keeping only cells on whose line both agreed. Cells were retained when
 their number of detected genes lay between \QcGenesLo{} and \QcGenesHi{} --- the floor removes droplets that
 captured almost no RNA, the ceiling droplets holding two cells --- and lines with fewer than \QcMinCells{} cells
 were removed, leaving an average of \SrcUmiMean{} UMIs and \SrcGenesMean{} detected

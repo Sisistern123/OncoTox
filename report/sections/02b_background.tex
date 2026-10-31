@@ -26,7 +26,7 @@ which lets some tumour cells survive treatment \cite{marusyk2020}. Survival need
 pass into a reversible, drug-tolerant state that survives therapy without itself sustaining regrowth, and
 genuine resistance can then arise from such cells by new mutations \cite{marusyk2020}. Single-cell
 profiling has found resistance-associated states before treatment, for example in BRAF-mutant melanoma
-\cite{castro2021}. In a multiple myeloma trial of 28 patients, the predicted response of the most
+\cite{castro2021}. In 28 patients of a multiple myeloma trial, the predicted response of the most
 resistant transcriptional clone, weighted by its abundance, separated responders from non-responders
 better than an abundance-weighted average over clones (area under the receiver operating characteristic
 curve, AUROC, 0.83 against 0.59), although in cell lines the average performed better \cite{perception}.
@@ -86,7 +86,7 @@ it is trained on remain bulk measurements (Section~\ref{sec:bg-screens}).
 
 A count matrix is rarely analysed as it comes. A standard analysis first normalises the counts, then
 reduces their dimension, and only then clusters, visualises or models the cells
-\cite{luecken2019,wolf2018scanpy}. The most common normalisation scales each cell's counts by its count
+\cite{luecken2019} (Figure~\ref{fig:scworkflow}). The most common normalisation scales each cell's counts by its count
 depth, to counts per million (CPM) or a similar target. This assumes that all cells initially held the same
 number of messenger RNA molecules and that differences in depth arise only from sampling
 \cite{luecken2019}. The normalised values are then typically transformed as $\log(x+1)$, which has three
@@ -121,6 +121,20 @@ counter-productive for exploratory biological analysis \cite{chari2023}. They re
 structure, but distances in them are not measurements, so a quantitative claim here rests on the full
 representation and a two-dimensional map only illustrates it.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{luecken_workflow.jpg}
+\caption{\textbf{A standard single-cell analysis workflow.} Pre-processing (left) turns raw sequencing
+data into count matrices of genes by cells and passes them through quality control, normalisation, data
+correction and feature selection, before the cells are visualised in two dimensions. Downstream analysis
+(right) clusters and annotates the cells and continues with, for example, trajectory inference or
+differential expression. This work uses the pre-processing steps up to feature selection, followed by PCA
+(Section~\ref{sec:representations}). Reproduced from Luecken and Theis \cite{luecken2019}, Figure~1, licensed
+under CC BY 4.0.
+}
+\label{fig:scworkflow}
+\end{figure}
+
 \section{Cancer cell-line drug screens and dose--response measures}
 \label{sec:bg-screens}
 
@@ -140,7 +154,7 @@ informer set of 481 compounds --- approved drugs, clinical candidates and probes
 in duplicate, with cellular ATP after 72 hours as the surrogate for viability \cite{ctrpv2}. PRISM instead labels
 cell lines with DNA barcodes and screens them in pools, with the relative abundance of each barcode as
 the surrogate for viability. Its repurposing screen tested 4,518 drugs against 578 lines at one dose and
-retested 1,448 active drugs at eight doses \cite{corsello2020,prism}. In all of them, the readout comes from a well of many cells, so
+retested 1,448 active drugs at eight doses \cite{corsello2020}. In all of them, the readout comes from a well of many cells, so
 the response of a cell line is a population average (Section~\ref{sec:bg-heterogeneity}).
 
 The measurements at each concentration, relative to untreated controls, are fitted to a sigmoidal
@@ -187,7 +201,7 @@ How such models are evaluated has proved as consequential as how they are built.
 obstacles that make reported performance overly optimistic \cite{dreval}. First, the split must match
 the intended use: a model meant for unseen patients must be tested on cell lines not used for training
 or tuning (leave-cell-line-out, LCO), whereas splitting random pairs of line and drug (leave-pairs-out, LPO) is warranted
-only for imputing missing values. Second, the measurements are pseudo-replicates: CTRPv2's roughly
+only for imputing missing values (Figure~\ref{fig:drevalsplits}). Second, the measurements are pseudo-replicates: CTRPv2's roughly
 400{,}000 response curves in DrEval's release stem from \NCtrpLines{} cell lines and \NDrugs{} compounds, so the effective
 sample size is far smaller than the number of curves. Third, most of the variance in response lies
 between drugs, because drugs act at very different concentrations, so a model that memorises each drug's
@@ -198,14 +212,29 @@ of the tested models do not significantly outperform it, and under LCO no model 
 forest \cite{dreval}. This work adopts those terms: LCO splits, scores computed within each compound, and
 DrEval's naive baselines (Section~\ref{sec:evaluation}).
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\textwidth]{dreval_splits.png}
+\caption{\textbf{Evaluation splits for drug-response prediction.} Each grid is a matrix of drugs (rows)
+by cell lines (columns), stacked over $k$ folds, with the pairs used for validation in green and for
+testing in yellow. Under leave-pairs-out (LPO), random pairs are held out, so a test line has been seen
+in training with other drugs. Under leave-cell-lines-out (LCO), whole cell lines are held out, and under
+leave-tissue-out (LTO) all lines of a tissue. Under leave-drugs-out (LDO), whole drugs are held out.
+This work evaluates under LCO. Cropped from Bernett et al.\ \cite{dreval}, Figure~1, licensed under
+CC BY 4.0, created in BioRender by J.~Bernett (2026), \url{https://BioRender.com/14e1ily}.
+}
+\label{fig:drevalsplits}
+\end{figure}
+
 \section{Drug response at single-cell resolution}
 \label{sec:bg-singlecell}
 
 Single-cell chemical screens exist, but they measure a different quantity. sci-Plex was introduced as an
 alternative to coarse readouts such as cell survival. It quantifies the global transcriptional response
-to thousands of perturbations at single-cell resolution, and its first screen profiled about 650{,}000
+to thousands of perturbations at single-cell resolution, and its main screen profiled about 650{,}000
 cells of three cancer cell lines exposed to 188 compounds \cite{srivatsan2020}. Tahoe-100M measures how
-1,100 small molecules affect 100 million cells across 50 cancer cell lines \cite{tahoe100m}. Their
+379 drugs, in 1,135 drug--dose combinations, affect 100 million cells across 50 cancer cell lines
+\cite{tahoe100m}. Their
 readout is the transcriptome after treatment, which is not a viability label of the kind the screens of
 Section~\ref{sec:bg-screens} provide. Methods that predict response per cell therefore combine
 single-cell expression with bulk labels, and they do so in different ways.
@@ -279,7 +308,7 @@ In multiple-instance learning (MIL), a label is attached not to a single instanc
 instances, which have no order among them and whose own labels exist but are unknown during training
 \cite{ilse2018}. The problem was first posed for drug activity. A molecule can adopt several shapes, so a
 bag holds the conformations of one molecule, and the molecule has the desired effect if and only if at
-least one of them binds the target \cite{dietterich1997,ilse2018}. In the standard formulation the bag
+least one of them binds the target \cite{dietterich1997}. In the standard formulation the bag
 label is therefore binary and equals the maximum of the instance labels, $Y = \max_k y_k$, so a model
 must be invariant to the order of the instances \cite{ilse2018}.
 
