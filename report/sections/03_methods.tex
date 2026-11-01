@@ -11,7 +11,7 @@ combination of loss and density weight (Section~\ref{sec:model}).
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\textwidth]{pipeline.png}
+\makebox[\textwidth][c]{\includegraphics[width=1.15\textwidth]{pipeline.png}}
 \caption{\textbf{The pipeline in eight stages.} (1) One AUC per cell line and compound labels every cell of
 that line, and the matrix marks screened (blue) and unscreened (grey) pairs. (2) The compound funnel
 narrows the \NDrugs{} CTRPv2 compounds through the \NFdaScreened{} FDA-approved ones to the
@@ -185,7 +185,7 @@ Figure~\ref{fig:architecture} shows this network for one cell.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\textwidth]{model_architecture.png}
+\makebox[\textwidth][c]{\includegraphics[width=1.15\textwidth]{model_architecture.png}}
 \caption{\textbf{The per-cell model.} One cell's \NPca-dimensional embedding (PCA or scGPT, never
 fine-tuned) passes through a shared trunk of two hidden blocks of \CfgHidA{} and \CfgHidB{} units, each a
 linear layer, layer normalisation, GELU and dropout \CfgDrop{}, after input dropout \CfgInDrop{}, into

@@ -2080,8 +2080,8 @@ def build_lpo_bias():
                                    n=("n_scored", "sum"), k=("n_drugs_scored", "mean"))
     n_panel = int(d["n_drugs_scored"].max())
 
-    BARS = [("NaiveCellLineMeanPredictor", "which cell line it is", INK),
-            ("NaiveTissueMeanPredictor", "lineage only", GREY)]
+    BARS = [("NaiveCellLineMeanPredictor", "cell-line mean", INK),
+            ("NaiveTissueMeanPredictor", "lineage mean", GREY)]
 
     # Both bars must be scored on the same pairs AND the same compounds, or they are not a
     # comparison. Equal pairs was checked from the start; equal compounds was the hole that let an
