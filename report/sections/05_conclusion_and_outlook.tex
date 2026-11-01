@@ -55,24 +55,14 @@ not excluded. More complex models may pay off once the data are richer. In the N
 which combined several bulk profiling data types per cell line, the best methods modelled non-linear
 relationships \cite{costello2014}.
 
-From the perspective of this work, three things are missing to make drug response prediction from
-single cells viable. The first is more cell lines profiled at single-cell resolution, since labels
-already exist for several times as many lines as were profiled. The second is labels of known quality:
-curve fits that report whether a dose--response was established at all \cite{bayer2023curvecurator},
-and responses that agree across screens. The third is a response measured per cell rather than per
-well. The screens label the viability of a whole population, so they cannot say which of its cells
-survive. The single-cell chemical screens that exist record the transcriptome after treatment rather
-than survival \cite{srivatsan2020,tahoe100m}, and PERCEPTION's evaluation against the response of
-patients rested on 28 patients of one trial \cite{perception}. Until such data exist, the binding
-constraint is the supply and quality of labels rather than the model.
+Two hypotheses follow from these results and remain untested. The first is that the general cell-line
+sensitivity within the score partly reflects proliferation rate, since the AUC depends on the number of
+divisions the cells undergo during the assay \cite{hafner}. The second is that the per-cell model is
+limited by the absence of bulk pretraining. In PERCEPTION's linear models on the same atlas, leaving
+out that pretraining gave the weaker result \cite{perception}. Both are taken up among the next steps.
 
-Two hypotheses follow from these results and remain untested. The general cell-line sensitivity
-within the score may partly reflect proliferation rate, since the AUC depends on the number of
-divisions the cells undergo during the assay \cite{hafner}. The per-cell model may also be limited by
-the absence of bulk pretraining, which in PERCEPTION's linear models on the same atlas gave the weaker
-result \cite{perception}.
-
-The next steps address the model's objective, the label bottleneck and the third research question.
+The next steps concern, in order, the model's objective, the supply and quality of labels, the scGPT
+representation, the third research question, and controls this work did not run.
 
 \paragraph{MIL as the primary model, with a ranking loss} A model trained on bags of a line's cells
 leaves each cell free to differ (Equation~\ref{eq:mil-decomposition}), and since the metric ranks lines
@@ -81,8 +71,9 @@ within a compound, a ranking loss would align the objective with what is scored
 
 \paragraph{Bulk pretraining and domain adaptation} DrEval's release of CTRPv2 alone covers \NCtrpLines{} cell
 lines against the \NLines{} here, so labels exist and single-cell expression is what is missing
-\cite{dreval_data,scdeal}. Pretraining on bulk expression and aligning bulk and single-cell spaces by domain
-adaptation addresses that gap \cite{scdeal,ganin2015}. The most direct form is to apply PERCEPTION's
+\cite{dreval_data,scdeal}. Pretraining on bulk expression and aligning bulk and single-cell spaces by
+domain adaptation addresses that gap and tests the second hypothesis above \cite{scdeal,ganin2015}.
+The most direct form is to apply PERCEPTION's
 bulk-pretrained response models to these cells and compare their predictions with those from the two
 representations here \cite{perception}.
 
@@ -102,10 +93,23 @@ discussed above, so it follows the previous step.
 \paragraph{Explicit explainability of heterogeneity} The question could be reframed from implicit
 learning to explicit explanation: identifying the subpopulations within cell lines that drive resistance
 and relating them to the recurrent heterogeneity programs annotated for this atlas \cite{scp542}.
+Testing such subpopulations needs a response measured per cell rather than per well. The screens label
+the viability of a whole population, so they cannot say which of its cells survive. The single-cell
+chemical screens that exist record the transcriptome after treatment rather than survival
+\cite{srivatsan2020,tahoe100m}, and PERCEPTION's evaluation against the response of patients rested on
+28 patients of one trial \cite{perception}.
 
-\paragraph{Missing controls} Every comparison here is between two reductions of one matrix. A
-line-level model on the \NHvg{} selected genes alone would show whether either reduction helps at all. Division rate, the first hypothesis above, would be extracted as fragility is, from
-measured doubling times rather than from the dataset's cell-cycle scores, which are a snapshot rather
-than a rate. The input-dropout rate could be matched in effect rather
-than in value, by choosing per arm the rate that removes the same expected variance
+\paragraph{Missing controls} Three controls were not run. First, every comparison here is between two
+reductions of one matrix, so a line-level model on the \NHvg{} selected genes alone would show whether
+either reduction helps at all. Second, division rate could be controlled out of the score in the same
+way as fragility, which would test the first hypothesis above. It would have to come from measured
+doubling times rather than from the dataset's cell-cycle scores, which are a snapshot rather than a
+rate. Third, the input-dropout rate was matched in value between the two arms. It could instead be
+matched in effect, by choosing per arm the rate that removes the same expected variance
 \cite{srivastava2014}.
+
+Taken together, drug response can be predicted from single cells with bulk labels, but the prediction
+is not yet demonstrably drawn from the single cells. Three things are missing to change that: more
+cell lines profiled at single-cell resolution, labels of known quality, and a response measured per
+cell rather than per well. Until such data exist, the binding constraint is the supply and quality of
+labels rather than the model.
