@@ -231,8 +231,8 @@ which ranges from \CellsMin{} to \CellsMax{}, at the cost of one gradient step p
 A variance term in the loss was rejected
 because it would make the spread stage pass by construction and change objective and architecture at
 once. A maximum or quantile aggregator was rejected because it does not force variation any more than the mean does and does
-not match an averaged label. This departs from Ilse et al., who, for binary labels under the assumption
-that a bag is positive if any of its instances is, call the mean a poor pooling of instance scores
+not match an averaged label. This departs from earlier MIL work that, for binary labels under the assumption
+that a bag is positive if any of its instances is, calls the mean a poor pooling of instance scores
 \cite{ilse2018}. Here the label is a continuous average over a line's cells, which the mean matches by
 definition. Per-line centring of expression, rejected for the per-cell model (Section~\ref{sec:representations}), would
 suit this question, but the MIL model used the same uncentred representations, so it remains untested.

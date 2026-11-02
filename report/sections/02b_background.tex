@@ -117,7 +117,7 @@ such a method. It is competitive with t-distributed stochastic neighbour embeddi
 visualisation and arguably preserves more of the global structure, at lower run time
 \cite{mcinnes2018umap}, and it has been regarded as best practice for exploratory visualisation of
 single-cell data \cite{luecken2019}. Reducing hundreds or thousands of dimensions to two, however,
-inevitably induces substantial distortion, and Chari and Pachter argue that such embeddings are
+inevitably induces substantial distortion, and such embeddings have been argued to be
 counter-productive for exploratory biological analysis \cite{chari2023}. They remain useful for showing
 structure, but distances in them are not measurements, so a quantitative claim here rests on the full
 representation and a two-dimensional map only illustrates it.
@@ -193,8 +193,8 @@ regression \cite{barretina2012}. The NCI-DREAM challenge then compared 44 algori
 lines: the best modelled non-linear relationships and used pathway information, gene expression
 microarrays gave the best predictive power of any single profiling data set, and combining data sets
 improved performance further \cite{costello2014}. Gene expression has since been used, alone or with
-mutation, copy-number and other data, in about 90\,\% of the 61 deep-learning models reviewed by Partin
-et al., whose most common targets are the IC50 and the AUC \cite{partin2023}. The task is difficult
+mutation, copy-number and other data, in about 90\,\% of 61 reviewed deep-learning
+models, whose most common targets are the IC50 and the AUC \cite{partin2023}. The task is difficult
 partly because of the data: as models grow in complexity, the number of observations they need grows
 with them, and deep networks need many samples to avoid overfitting \cite{adam2020}.
 
@@ -322,8 +322,8 @@ bag, and a final transformation to the bag label. In the instance-level approach
 its own score and the scores are pooled. In the embedding-level approach the instances are pooled into
 one bag representation first, which is then classified. The embedding-level approach has been argued to
 classify bags better, because an instance-level classifier is trained without instance labels and can
-add error \cite{ilse2018}. Common pooling operators are the maximum and the mean. Ilse et al.\ replace
-them with a learned weighted average of the instance embeddings $h_k$,
+add error \cite{ilse2018}. Common pooling operators are the maximum and the mean. Attention-based
+pooling replaces them with a learned weighted average of the instance embeddings $h_k$,
 \begin{equation}
   z = \sum_{k=1}^{K} a_k h_k, \qquad
   a_k = \frac{\exp\{w^\top \tanh(V h_k^\top)\}}{\sum_{j=1}^{K} \exp\{w^\top \tanh(V h_j^\top)\}},
