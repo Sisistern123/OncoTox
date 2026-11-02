@@ -265,14 +265,14 @@ configuration on PCA, was decided by a pre-specified rule: a configuration count
 improvement only if it ranked lines better and was not clearly worse on absolute error, calibration or
 the recovery of the most sensitive lines (Appendix~\ref{app:decision}).
 % (\code{notebooks/5\_evaluation.ipynb} \S1.3)
-The rule therefore need not select the configuration with the highest order score, which is reported as
+The rule therefore need not select the configuration with the highest within-compound Spearman correlation, which is reported as
 the highest-scoring configuration (Section~\ref{sec:results-q1}).
 
 Three controls were computed. The first two used the same folds, and the third DrEval's own splits.
 % (until 21.10.2026: "Three controls were computed on the same folds", which the DrEval control was not)
 First, a ridge regression on cell-line means
 averaged each line's cells into one \NPca-dimensional vector and fitted one model per compound and fold
-on the fitting lines, on each representation and for PCA with the same per-fold PCA, choosing its penalty by leave-one-out error
+on the fitting lines, on each representation, using the same per-fold PCA as the MLP, choosing its penalty by leave-one-out error
 (Appendix~\ref{app:controls}). Second, the model was trained with all \NDrugsModelled{} heads, once with the
 trunk and once with a single linear layer in its place, and scored on the panel compounds and on every
 compound against a per-compound constant. This tests the panel against the unselected catalogue, and
@@ -293,7 +293,7 @@ fold-to-fold noise, so a positive score is signal beyond them.
 % naive baselines score zero on that metric \cite{dreval}".)
 % DrEval version 1.5.1 (\code{scripts/evaluation/dreval\_lpo.py})
 
-The share of the cell-line effect was therefore measured directly on held-out labels. As a proxy for a line's general sensitivity, its fragility $f_i$ was defined here as its mean
+The share of the cell-line effect was measured directly on held-out labels. As a proxy for a line's general sensitivity, its fragility $f_i$ was defined here as its mean
 response over the other ten panel compounds, so that the compound being scored never enters its own
 proxy. For each compound the
 partial correlation
@@ -340,7 +340,8 @@ the instance-level form produces that quantity. A bag was one complete cell line
 not a sample --- since the label is defined per line and only a complete bag removes the
 variance term (Appendix~\ref{app:milcrit}). The bag prediction was the
 mean of its cells' predictions, matching the label's definition, and the evaluation includes a
-positive control as mean pooling can be minimised by collapsing a bag onto its mean. The
+positive control, because the mean-pooled loss can also be minimised by giving all cells of a bag the
+same prediction. The
 alternatives that were considered and not used are given in Appendix~\ref{app:milcrit}.
 
 The evaluation asked whether the MIL model gives the cells of one line different predictions, and whether

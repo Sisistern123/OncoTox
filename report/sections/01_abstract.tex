@@ -11,12 +11,12 @@ sample size was about \NLinesCV{} lines. A per-cell multi-task regressor was tra
 well-characterised compounds and scored by the within-compound Spearman correlation under
 leave-cell-line-out cross-validation.
 
-The highest-scoring configuration reached \SpBest{}, from \SpDrugLo{} to \SpDrugHi{} across compounds and
-tracking the share of flat dose--response curves, and a ridge regression on cell-line means scored about
+The highest-scoring configuration reached \SpBest{}. Across compounds the score ranged from \SpDrugLo{} to
+\SpDrugHi{} and tracked the share of flat dose--response curves. A ridge regression on cell-line means scored about
 as well as the default configuration (\RidgePca{} against \SwPcaMaeZero{}). Over all \NDrugsModelled{}
 compounds the score fell to \SpAllDrugs{} with a linear head and \HdAllTrunkPca{} with the trunk, whose
 squared error was only \HdGainTrunkPca\,\% below that of a per-compound constant, and about a fifth of the
-panel ranking was general cell-line sensitivity. Response is thus predictable, but modestly, unevenly and
+panel ranking was general cell-line sensitivity (fragility). Response is thus predictable, but modestly, unevenly and
 not demonstrably from single cells. scGPT was viable, but PCA led it in all six configurations and
 carried more between-line structure before any training (variance ratio \BtwRatioPca{} against
 \BtwRatioScgpt{}), most plausibly because the label is defined per cell line. Whether heterogeneity is

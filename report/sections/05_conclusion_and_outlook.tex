@@ -18,7 +18,7 @@ A zero-shot evaluation of scGPT and Geneformer came to the same ordering for cel
 frozen embeddings separated worse than a selection of highly variable genes \cite{kedzierska2025}. The
 comparison has a clear limit, however. scGPT was used frozen, although its reported results were
 obtained after fine-tuning \cite{scgpt}. Fine-tuning was not attempted because about \NLinesCV{}
-labelled lines are few for adapting a pretrained encoder, which then risks overfitting to them.
+labelled lines are few for adapting a pretrained encoder, which then risks overfitting to them, and the project's time did not allow it.
 Single-cell profiles with matching response labels exist here for \NLines{} cell lines, against
 \NCtrpLines{} lines labelled in DrEval's release of CTRPv2 alone \cite{dreval_data}. What this work tests is therefore the
 frozen embedding under the current data situation, not scGPT in the use its authors intended.
@@ -35,8 +35,8 @@ reported performance is often overly optimistic, because the mean effects of com
 can carry a score \cite{dreval}. The present results confirm that such mean effects make up a large part
 of what is scored. Pooled over all pairs, the highest-scoring configuration reached \SpPooled{}, but a
 predictor that knows only each compound's average response already reached \SpDrugMeanPooled{}. Beyond
-the fifth of the within-compound score that was general cell-line sensitivity, under LPO a line's
-average response alone reached \LpoLineMean{}, above the best configuration here. On all \NDrugsModelled{}
+the fifth of the within-compound score that was general cell-line sensitivity, a line's average
+response alone reached \LpoLineMean{} under LPO, a protocol that gives a baseline access to it. On all \NDrugsModelled{}
 compounds rather than the eleven of the panel, the score fell to \SpAllDrugs{}, and that model's squared
 error was \HdRiseLinPca\,\% higher than that of a constant per compound. A score reported without these
 comparisons would therefore have overstated what the model learned. What these results cannot confirm
