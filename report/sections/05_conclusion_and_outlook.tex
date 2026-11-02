@@ -64,12 +64,12 @@ out that pretraining gave the weaker result \cite{perception}. Both are taken up
 The next steps concern, in order, the model's objective, the supply and quality of labels, the scGPT
 representation, the third research question, and controls this work did not run.
 
-\paragraph{MIL as the primary model, with a ranking loss} A model trained on bags of a line's cells
+The first step is to make MIL the primary model and train it with a ranking loss. A model trained on bags of a line's cells
 leaves each cell free to differ (Equation~\ref{eq:mil-decomposition}), and since the metric ranks lines
 within a compound, a ranking loss would align the objective with what is scored
 \cite{ilse2018,burges2005}.
 
-\paragraph{Bulk pretraining and domain adaptation} DrEval's release of CTRPv2 alone covers \NCtrpLines{} cell
+The second step addresses the supply of labels through bulk pretraining and domain adaptation. DrEval's release of CTRPv2 alone covers \NCtrpLines{} cell
 lines against the \NLines{} here, so labels exist and single-cell expression is what is missing
 \cite{dreval_data,scdeal}. Pretraining on bulk expression and aligning bulk and single-cell spaces by
 domain adaptation addresses that gap and tests the second hypothesis above \cite{scdeal,ganin2015}.
@@ -77,29 +77,36 @@ The most direct form is to apply PERCEPTION's
 bulk-pretrained response models to these cells and compare their predictions with those from the two
 representations here \cite{perception}.
 
-\paragraph{Combining label sources} CTRPv2 is one of several screens that label the same kind of cell
+Labels could also be drawn from several screens at once. CTRPv2 is one of several screens that label the same kind of cell
 lines, and GDSC and PRISM measure response with different assays and readouts
 (Section~\ref{sec:bg-screens}) \cite{gdsc_yang2013,corsello2020}. A model could be trained on several of them at
 once, with one output per screen and compound, so that each screen's labels inform the shared
-representation. This would broaden the data the model is trained on and make it less dependent on the
+representation. This requires harmonising the screens first, matching cell lines and compounds across
+their identifiers and estimating responses consistently, as DrEval does by refitting every screen with
+CurveCurator \cite{dreval}. This would broaden the data the model is trained on and make it less dependent on the
 particularities of a single screen's labels. Because screens disagree on the same line and compound
 \cite{haibekains2013,safikhani2017}, labels could also be weighted by their agreement across screens or by the quality
 of their curve fit, which CurveCurator reports per curve \cite{bayer2023curvecurator}.
 
-\paragraph{Fine-tuning scGPT, given more data} Fine-tuning tests whether the ordering against PCA
-reverses once the encoder may keep line identity. It needs more labels than are available here, as
-discussed above, so it follows the previous step.
+Only with more labels does fine-tuning scGPT become feasible. Fine-tuning would test whether the
+ordering against PCA reverses once the encoder may keep line identity. It needs more labels than are
+available here, as discussed above, so it follows the steps that increase them.
 
-\paragraph{Explicit explainability of heterogeneity} The question could be reframed from implicit
+The third research question could be reframed from implicit
 learning to explicit explanation: identifying the subpopulations within cell lines that drive resistance
 and relating them to the recurrent heterogeneity programs annotated for this atlas \cite{scp542}.
+Bulk pretraining would make this more promising. A model that learns response from bulk-profiled lines
+and is only then applied to single cells is not trained to give a line's cells the same prediction
+(Equation~\ref{eq:mil-decomposition}), so its per-cell predictions could be examined for the
+subpopulations and biological programs they separate, as PERCEPTION did for clones within tumours
+\cite{perception}.
 Testing such subpopulations needs a response measured per cell rather than per well. The screens label
 the viability of a whole population, so they cannot say which of its cells survive. The single-cell
 chemical screens that exist record the transcriptome after treatment rather than survival
 \cite{srivatsan2020,tahoe100m}, and PERCEPTION's evaluation against the response of patients rested on
 28 patients of one trial \cite{perception}.
 
-\paragraph{Missing controls} Three controls were not run. First, every comparison here is between two
+Finally, three controls were not run. First, every comparison here is between two
 reductions of one matrix, so a line-level model on the \NHvg{} selected genes alone would show whether
 either reduction helps at all. Second, division rate could be controlled out of the score in the same
 way as fragility, which would test the first hypothesis above. It would have to come from measured
