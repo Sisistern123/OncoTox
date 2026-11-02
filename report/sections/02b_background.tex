@@ -285,7 +285,11 @@ broad range of tissues. It represents each cell by its genes ranked by expressio
 self-supervised masked objective \cite{theodoris2023}. scGPT was pretrained on 33 million human cells
 under normal, non-disease conditions from the CELLxGENE collection \cite{scgpt}. It treats genes as tokens,
 converts each cell's expression into relative values by binning, and produces cell and gene embeddings
-together. Fine-tuned, it reached strong performance in cell type annotation, multi-batch integration,
+together. It was pretrained to predict the expression of genes withheld from each cell from the
+remaining genes, under a mean squared error, with an attention mask that lets each withheld gene see
+only the observed ones \cite{scgpt}.
+% (Cui et al. 2024, Methods, "Learning objective for pretraining", Eq. 12, and "Attention mask for generative pretraining")
+Fine-tuned, it reached strong performance in cell type annotation, multi-batch integration,
 perturbation prediction and gene network inference \cite{scgpt}.
 
 Such models can also be used without fine-tuning, with the embedding taken as it is (zero-shot). In that
