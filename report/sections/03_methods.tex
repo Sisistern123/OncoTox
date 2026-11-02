@@ -46,7 +46,14 @@ Appendix~\ref{sec:availability}.
 
 SCP542 is distributed after the source study's own quality control, and no cell-level filtering was
 added here \cite{scp542}. Any statement about heterogeneity therefore concerns cells inside the source
-study's detected-gene window (Appendix~\ref{app:qc}). The metadata also carry per-cell scores for the
+study's detected-gene window (Appendix~\ref{app:qc}). Genes not detected in a cell are recorded as zero
+rather than as missing \cite{scp542}, and the matrix used here contains no missing or non-finite values.
+Each cell line was sequenced in exactly one of nine pools \cite{scp542}. Pool effects therefore cannot be
+separated from differences between lines, which are what the response labels depend on, and no batch
+correction was applied.
+% (02.11.2026: NaN/inf count and pools-per-line checked by a one-off command on
+% all_genes/SCP542_CCLE.h5ad and Metadata.txt -- no notebook cell backs either yet)
+The metadata also carry per-cell scores for the
 12 recurrent heterogeneity programs of the source study, of which eleven are distinct
 (Appendix~\ref{app:qc}).
 
